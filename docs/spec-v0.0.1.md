@@ -74,8 +74,7 @@ Hatago MCP Hub は **Hono** と **hono/mcp** を薄くラップした、**高速
 * pnpm
 * tsdown
 * vitest
-* prettier
-* biome（lint のみ）
+* biome（lint、format、check）
 
 ---
 

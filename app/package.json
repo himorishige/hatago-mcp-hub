@@ -10,7 +10,12 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "src", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": false,
   "scripts": {
     "dev": "tsdown --watch",
@@ -18,7 +23,9 @@
     "start": "node dist/index.mjs",
     "format": "biome format src --write",
     "lint": "biome lint src --write",
-    "check": "biome check src --write"
+    "check": "biome check src --write",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.0",
@@ -29,8 +36,13 @@
     "@types/node": "^20.11.17",
     "tsdown": "^0.14.1",
     "tsx": "^4.7.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   },
-  "engines": { "node": ">=20" },
-  "publishConfig": { "access": "public" }
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
