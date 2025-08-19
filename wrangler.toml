@@ -1,0 +1,108 @@
+name = "hatago-hub"
+main = "dist/workers/index.js"
+compatibility_date = "2024-09-23"
+
+# Enable Node.js compatibility
+compatibility_flags = ["nodejs_compat"]
+
+# Account ID (replace with your actual account ID)
+# account_id = "your-account-id"
+
+# Workers KV Namespaces
+# Uncomment and configure when deploying to production
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-namespace-id"
+
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "your-sessions-namespace-id"
+
+# [[kv_namespaces]]
+# binding = "CONFIG"
+# id = "your-config-namespace-id"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+LOG_LEVEL = "info"
+
+# Development settings
+[env.development]
+name = "hatago-hub-dev"
+vars = { ENVIRONMENT = "development", LOG_LEVEL = "debug" }
+
+# Local development with wrangler dev
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Build configuration
+[build]
+command = "pnpm build:workers"
+cwd = "./app"
+watch_paths = ["app/src"]
+
+# Routes (optional - for custom domain)
+# routes = [
+#   { pattern = "hatago.example.com/*", zone_name = "example.com" }
+# ]
+
+# Durable Objects (for future use)
+# [[durable_objects.bindings]]
+# name = "SESSIONS_DO"
+# class_name = "SessionDurableObject"
+# script_name = "hatago-hub"
+
+# R2 Storage (for future use - file storage)
+# [[r2_buckets]]
+# binding = "STORAGE"
+# bucket_name = "hatago-storage"
+
+# Service bindings (for microservices architecture)
+# [[services]]
+# binding = "AUTH_SERVICE"
+# service = "hatago-auth"
+
+# Cron triggers (for scheduled tasks)
+# [[triggers.crons]]
+# cron = "0 */6 * * *"
+
+# Limits and usage model
+[limits]
+cpu_ms = 50
+
+[usage_model]
+default = "bundled"
+
+# Observability
+[observability]
+enabled = true
+
+# Tail consumers (for logging)
+# [[tail_consumers]]
+# service = "hatago-logger"
+
+# AI bindings (for future Workers AI integration)
+# [[ai]]
+# binding = "AI"
+
+# Vectorize bindings (for future vector search)
+# [[vectorize]]
+# binding = "VECTORIZE"
+# index_name = "hatago-embeddings"
+
+# Analytics Engine bindings
+# [[analytics_engine_datasets]]
+# binding = "ANALYTICS"
+# dataset = "hatago_analytics"
+
+# Queue bindings (for async processing)
+# [[queues.producers]]
+# binding = "TASK_QUEUE"
+# queue = "hatago-tasks"
+
+# [[queues.consumers]]
+# queue = "hatago-tasks"
+# max_batch_size = 10
+# max_batch_timeout = 30

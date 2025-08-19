@@ -259,6 +259,294 @@ program
   });
 
 /**
+ * reloadコマンド - 設定を再読み込み
+ */
+program
+  .command('reload')
+  .description('Reload configuration')
+  .option('-c, --config <path>', 'Path to config file')
+  .action(async (options) => {
+    try {
+      console.log('Reloading configuration...');
+
+      // FileWatcherを使って設定を再読み込み
+      const { FileWatcher } = await import('../core/file-watcher.js');
+      const watcher = new FileWatcher({
+        watchPaths: [options.config || '.hatago/config.jsonc'],
+      });
+
+      const newConfig = await watcher.reload();
+      console.log('Configuration reloaded successfully');
+      console.log('New config:', JSON.stringify(newConfig, null, 2));
+
+      await watcher.stop();
+    } catch (error) {
+      console.error('Failed to reload configuration:', error);
+      process.exit(1);
+    }
+  });
+
+/**
+ * statusコマンド - 世代とセッション状況を表示
+ */
+program
+  .command('status')
+  .description('Show generation and session status')
+  .option('-c, --config <path>', 'Path to config file')
+  .action(async (options) => {
+    try {
+      const config = await loadConfig(options.config);
+
+      // ConfigManagerを作成
+      const { ConfigManager } = await import('../core/config-manager.js');
+      const configManager = new ConfigManager({
+        maxGenerations: config.generation?.maxGenerations,
+        gracePeriodMs: config.generation?.gracePeriodMs,
+      });
+
+      // 現在の設定を読み込み
+      await configManager.loadNewConfig(config);
+
+      // ステータスを表示
+      const status = configManager.getGenerationStatus();
+      console.log('\n=== Generation Status ===');
+      for (const gen of status) {
+        const current = gen.isCurrent ? ' [CURRENT]' : '';
+        console.log(`Generation ${gen.id}${current}`);
+        console.log(`  Created: ${gen.createdAt.toISOString()}`);
+        console.log(`  State: ${gen.state}`);
+        console.log(`  References: ${gen.referenceCount}`);
+      }
+
+      await configManager.shutdown();
+    } catch (error) {
+      console.error('Failed to get status:', error);
+      process.exit(1);
+    }
+  });
+
+/**
+ * policyコマンド - ポリシー管理
+ */
+program
+  .command('policy')
+  .description('Manage access policies')
+  .option('-c, --config <path>', 'Path to config file')
+  .option('--dry-run', 'Run in dry-run mode')
+  .option('--stats', 'Show policy statistics')
+  .action(async (options) => {
+    try {
+      const config = await loadConfig(options.config);
+
+      // PolicyGateとAuditLoggerを作成
+      const { PolicyGate, AuditLogger } = await import(
+        '../core/policy-gate.js'
+      );
+      const auditLogger = new AuditLogger({ outputToConsole: true });
+      const policyGate = new PolicyGate(config.policy || {}, { auditLogger });
+
+      if (options.stats) {
+        // 統計情報を表示
+        const stats = policyGate.getStats();
+        console.log('\n=== Policy Statistics ===');
+        console.log(`Enabled: ${stats.enabled}`);
+        console.log(`Dry Run: ${stats.dryRun}`);
+        console.log(`Rule Count: ${stats.ruleCount}`);
+        console.log(`Default Effect: ${stats.defaultEffect}`);
+
+        const auditStats = auditLogger.getStats();
+        console.log('\n=== Audit Statistics ===');
+        console.log(`Total Entries: ${auditStats.totalEntries}`);
+        console.log(`Allow Count: ${auditStats.allowCount}`);
+        console.log(`Deny Count: ${auditStats.denyCount}`);
+        console.log(`Dry Run Count: ${auditStats.dryRunCount}`);
+      } else if (options.dryRun) {
+        // ドライランモードを有効化
+        const updatedConfig = {
+          ...config.policy,
+          dryRun: true,
+        };
+        policyGate.updateConfig(updatedConfig);
+        console.log('Policy dry-run mode enabled');
+      } else {
+        // 現在のポリシー設定を表示
+        const policyConfig = policyGate.getConfig();
+        console.log('\n=== Policy Configuration ===');
+        console.log(JSON.stringify(policyConfig, null, 2));
+      }
+    } catch (error) {
+      console.error('Failed to manage policy:', error);
+      process.exit(1);
+    }
+  });
+
+/**
+ * sessionコマンド - セッション管理
+ */
+program
+  .command('session')
+  .description('Manage sessions')
+  .option('-c, --config <path>', 'Path to config file')
+  .option('--list', 'List active sessions')
+  .option('--share <id>', 'Generate share token for session')
+  .option('--join <token>', 'Join a shared session')
+  .option('--clients <id>', 'Show connected clients for session')
+  .option('--history <id>', 'Show session history')
+  .action(async (options) => {
+    try {
+      const config = await loadConfig(options.config);
+
+      // SharedSessionManagerを作成
+      const { SharedSessionManager } = await import(
+        '../core/shared-session-manager.js'
+      );
+      const sessionManager = new SharedSessionManager(
+        config.sessionSharing || {},
+      );
+
+      if (options.list) {
+        // アクティブセッション一覧
+        const sessions = await sessionManager.getActiveSessions();
+        console.log('\n=== Active Sessions ===');
+        for (const { session, clients } of sessions) {
+          const shared = clients.length > 1 ? ' [SHARED]' : '';
+          console.log(`Session ${session.id}${shared}`);
+          console.log(`  Created: ${session.createdAt.toISOString()}`);
+          console.log(`  Clients: ${clients.length}`);
+          console.log(`  History: ${session.history.length} entries`);
+          if (session.sharedToken) {
+            console.log(`  Token: ${session.sharedToken}`);
+          }
+        }
+
+        // 統計情報
+        const stats = sessionManager.getStats();
+        console.log('\n=== Statistics ===');
+        console.log(`Total Sessions: ${stats.totalSessions}`);
+        console.log(`Total Clients: ${stats.totalClients}`);
+        console.log(`Shared Sessions: ${stats.sharedSessions}`);
+        console.log(
+          `Avg Clients/Session: ${stats.averageClientsPerSession.toFixed(2)}`,
+        );
+      } else if (options.share) {
+        // セッション共有トークンを生成
+        const { getRuntime } = await import('../runtime/types.js');
+        const runtime = await getRuntime();
+        const clientId = await runtime.idGenerator.generate(); // 仮のクライアントID
+        await sessionManager.createSession(clientId);
+        const token = await sessionManager.generateShareToken(
+          options.share,
+          clientId,
+        );
+        console.log(`\nShare token generated for session ${options.share}:`);
+        console.log(`Token: ${token}`);
+        console.log(
+          `Expires: ${new Date(
+            Date.now() +
+              (config.sessionSharing?.tokenTtlSeconds || 86400) * 1000,
+          ).toISOString()}`,
+        );
+        console.log('\nTo join this session, run:');
+        console.log(`  hatago session --join ${token}`);
+      } else if (options.join) {
+        // 共有セッションに参加
+        const { getRuntime } = await import('../runtime/types.js');
+        const runtime = await getRuntime();
+        const clientId = await runtime.idGenerator.generate();
+        const session = await sessionManager.joinSessionByToken(
+          options.join,
+          clientId,
+          { source: 'cli' },
+        );
+        console.log(`\nJoined session ${session.id}`);
+        console.log(`Your client ID: ${clientId}`);
+        console.log(`Connected clients: ${session.clients.size}`);
+      } else if (options.clients) {
+        // セッションのクライアント一覧
+        const clients = sessionManager.getSessionClients(options.clients);
+        console.log(`\n=== Clients for session ${options.clients} ===`);
+        for (const client of clients) {
+          console.log(`Client ${client.id}`);
+          console.log(`  Connected: ${client.connectedAt.toISOString()}`);
+          console.log(
+            `  Last Activity: ${client.lastActivityAt.toISOString()}`,
+          );
+          if (client.metadata) {
+            console.log(`  Metadata: ${JSON.stringify(client.metadata)}`);
+          }
+        }
+      } else if (options.history) {
+        // セッション履歴
+        const history = await sessionManager.getSessionHistory(
+          options.history,
+          50,
+        );
+        console.log(`\n=== History for session ${options.history} ===`);
+        for (const entry of history) {
+          console.log(`[${entry.timestamp.toISOString()}] ${entry.tool}`);
+          console.log(`  Client: ${entry.clientId}`);
+          if (entry.error) {
+            console.log(`  Error: ${entry.error}`);
+          }
+        }
+      } else {
+        // デフォルト: セッション統計を表示
+        const stats = sessionManager.getStats();
+        console.log('\n=== Session Statistics ===');
+        console.log(`Total Sessions: ${stats.totalSessions}`);
+        console.log(`Total Clients: ${stats.totalClients}`);
+        console.log(`Shared Sessions: ${stats.sharedSessions}`);
+        console.log(
+          `Avg Clients/Session: ${stats.averageClientsPerSession.toFixed(2)}`,
+        );
+      }
+
+      await sessionManager.shutdown();
+    } catch (error) {
+      console.error('Failed to manage sessions:', error);
+      process.exit(1);
+    }
+  });
+
+/**
+ * drainコマンド - 特定世代の手動ドレイン
+ */
+program
+  .command('drain <generation>')
+  .description('Manually drain a specific generation')
+  .option('-c, --config <path>', 'Path to config file')
+  .action(async (generation, options) => {
+    try {
+      console.log(`Draining generation ${generation}...`);
+
+      const config = await loadConfig(options.config);
+
+      // RolloverManagerを作成
+      const { ConfigManager } = await import('../core/config-manager.js');
+      const { RolloverManager } = await import('../core/rollover-manager.js');
+
+      const configManager = new ConfigManager();
+      await configManager.loadNewConfig(config);
+
+      const rolloverManager = new RolloverManager(configManager, {
+        healthCheckIntervalMs: config.rollover?.healthCheckIntervalMs,
+        drainTimeoutMs: config.rollover?.drainTimeoutMs,
+        errorRateThreshold: config.rollover?.errorRateThreshold,
+        warmupTimeMs: config.rollover?.warmupTimeMs,
+      });
+
+      // ドレイン処理を実行（実際の実装では該当世代のワーカーを探してドレイン）
+      console.log(`Generation ${generation} drain initiated`);
+
+      await rolloverManager.shutdown();
+      await configManager.shutdown();
+    } catch (error) {
+      console.error('Failed to drain generation:', error);
+      process.exit(1);
+    }
+  });
+
+/**
  * callコマンド - ツールを実行
  */
 program

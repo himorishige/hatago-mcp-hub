@@ -36,6 +36,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.0",
     "@modelcontextprotocol/sdk": "^1.17.3",
+    "chokidar": "^4.0.3",
     "commander": "^14.0.0",
     "hono": "^4.9.2",
     "jsonc-parser": "^3.3.1",
