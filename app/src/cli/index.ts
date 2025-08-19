@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { generateSampleConfig, loadConfig } from '../config/loader.js';
 import { McpHub } from '../core/mcp-hub.js';
 import { createNpxCommands } from './commands/npx.js';
+import { createRemoteCommands } from './commands/remote.js';
 
 const program = new Command();
 
@@ -597,6 +598,11 @@ program
  * npxコマンド - NPX MCPサーバー管理
  */
 program.addCommand(createNpxCommands());
+
+/**
+ * remoteコマンド - リモート MCPサーバー管理
+ */
+program.addCommand(createRemoteCommands());
 
 // コマンドを実行
 program.parse(process.argv);

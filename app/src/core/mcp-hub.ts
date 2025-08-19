@@ -11,6 +11,7 @@ import type {
 } from '../config/types.js';
 import { getRuntime } from '../runtime/types.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
+import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
 import { StdioTransport } from '../transport/stdio.js';
@@ -19,9 +20,10 @@ import { ToolRegistry } from './tool-registry.js';
 // MCPサーバー接続情報
 export interface McpConnection {
   serverId: string;
-  client?: Client; // Optional for NPX servers
-  transport?: StdioTransport; // Optional for NPX servers
+  client?: Client; // For local servers
+  transport?: StdioTransport; // For local servers
   npxServer?: NpxMcpServer; // For NPX servers
+  remoteServer?: RemoteMcpServer; // For remote servers
   connected: boolean;
   capabilities?: unknown;
   type: 'local' | 'remote' | 'npx';
@@ -69,11 +71,17 @@ export class McpHub {
 
     console.log('Initializing MCP Hub...');
 
-    // NPXサーバーサポートの初期化
+    // NPXサーバーやリモートサーバーサポートの初期化
     const hasNpxServers = this.config.servers.some((s) => s.type === 'npx');
-    if (hasNpxServers) {
-      this.workspaceManager = new WorkspaceManager();
-      await this.workspaceManager.initialize();
+    const hasRemoteServers = this.config.servers.some(
+      (s) => s.type === 'remote',
+    );
+
+    if (hasNpxServers || hasRemoteServers) {
+      if (hasNpxServers) {
+        this.workspaceManager = new WorkspaceManager();
+        await this.workspaceManager.initialize();
+      }
 
       this.serverRegistry = new ServerRegistry(this.workspaceManager);
       await this.serverRegistry.initialize();
@@ -171,6 +179,32 @@ export class McpHub {
         await this.refreshNpxServerTools(serverId);
 
         console.log(`Connected to NPX server ${serverId}`);
+      } else if (type === 'remote') {
+        // リモートサーバーの接続
+        if (!this.serverRegistry) {
+          throw new Error('Server registry not initialized');
+        }
+
+        const remoteConfig = serverConfig as RemoteServerConfig;
+        const registered =
+          await this.serverRegistry.registerRemoteServer(remoteConfig);
+
+        // 起動
+        await this.serverRegistry.startServer(serverId);
+
+        // 接続情報を保存
+        const connection: McpConnection = {
+          serverId,
+          remoteServer: registered.instance as RemoteMcpServer,
+          connected: true,
+          type: 'remote',
+        };
+        this.connections.set(serverId, connection);
+
+        // ツールを取得して登録（リモートサーバーの場合はRegistryから取得）
+        await this.refreshRemoteServerTools(serverId);
+
+        console.log(`Connected to remote server ${serverId}`);
       } else {
         console.warn(`Server type ${type} is not yet supported`);
       }
@@ -202,6 +236,12 @@ export class McpHub {
         }
       } else if (connection.type === 'npx') {
         // NPXサーバーの切断
+        if (this.serverRegistry) {
+          await this.serverRegistry.stopServer(serverId);
+          await this.serverRegistry.unregisterServer(serverId);
+        }
+      } else if (connection.type === 'remote') {
+        // リモートサーバーの切断
         if (this.serverRegistry) {
           await this.serverRegistry.stopServer(serverId);
           await this.serverRegistry.unregisterServer(serverId);
@@ -277,6 +317,42 @@ export class McpHub {
     } catch (error) {
       console.error(
         `Failed to refresh tools for NPX server ${serverId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * リモートサーバーのツールを更新
+   */
+  private async refreshRemoteServerTools(serverId: string): Promise<void> {
+    if (!this.serverRegistry) {
+      return;
+    }
+
+    const registered = this.serverRegistry.getServer(serverId);
+    if (!registered?.tools) {
+      return;
+    }
+
+    try {
+      // ServerRegistryからツール情報を取得
+      const tools = registered.tools.map((name) => ({
+        name,
+        description: `Tool from remote server ${serverId}`,
+        inputSchema: {},
+      }));
+
+      console.log(`Remote Server ${serverId} has ${tools.length} tools`);
+
+      // レジストリに登録
+      this.registry.registerServerTools(serverId, tools);
+
+      // ハブのツールを更新
+      this.updateHubTools();
+    } catch (error) {
+      console.error(
+        `Failed to refresh tools for remote server ${serverId}:`,
         error,
       );
     }
@@ -392,6 +468,12 @@ export class McpHub {
 
         // レスポンスを待つ
         callPromise = this.waitForToolResponse(connection.npxServer, toolId);
+      } else if (connection.type === 'remote' && connection.remoteServer) {
+        // リモートサーバーの場合
+        callPromise = connection.remoteServer.callTool(
+          originalName,
+          args,
+        ) as Promise<CallToolResult>;
       } else {
         throw new Error(`Unsupported connection type: ${connection.type}`);
       }

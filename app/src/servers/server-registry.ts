@@ -3,9 +3,14 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { NpxServerConfig, ServerConfig } from '../config/types.js';
+import type {
+  NpxServerConfig,
+  RemoteServerConfig,
+  ServerConfig,
+} from '../config/types.js';
 import { getRuntime } from '../runtime/types.js';
 import { NpxMcpServer, ServerState } from './npx-mcp-server.js';
+import { RemoteMcpServer } from './remote-mcp-server.js';
 import type { WorkspaceManager } from './workspace-manager.js';
 
 /**
@@ -14,7 +19,7 @@ import type { WorkspaceManager } from './workspace-manager.js';
 export interface RegisteredServer {
   id: string;
   config: ServerConfig;
-  instance?: NpxMcpServer; // Only for NPX servers
+  instance?: NpxMcpServer | RemoteMcpServer; // NPX or Remote servers
   state: ServerState;
   registeredAt: Date;
   lastHealthCheck?: Date;
@@ -44,6 +49,10 @@ export class ServerRegistry extends EventEmitter {
   private config: ServerRegistryConfig;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private runtime = getRuntime();
+  private serverListeners = new WeakMap<
+    NpxMcpServer | RemoteMcpServer,
+    Map<string, (...args: unknown[]) => void>
+  >();
 
   // Default configuration
   private readonly defaults = {
@@ -128,6 +137,45 @@ export class ServerRegistry extends EventEmitter {
   }
 
   /**
+   * Register a new Remote server
+   */
+  async registerRemoteServer(
+    config: RemoteServerConfig,
+  ): Promise<RegisteredServer> {
+    // Check if server already exists
+    if (this.servers.has(config.id)) {
+      throw new Error(`Server ${config.id} is already registered`);
+    }
+
+    // Create server instance
+    const server = new RemoteMcpServer(config);
+
+    // Set up event listeners (reuse existing setup)
+    this.setupServerListeners(server);
+
+    // Create registered server entry
+    const registered: RegisteredServer = {
+      id: config.id,
+      config,
+      instance: server,
+      state: ServerState.STOPPED,
+      registeredAt: new Date(),
+    };
+
+    // Register the server
+    this.servers.set(config.id, registered);
+
+    // Auto-start if configured
+    if (this.config.autoStart) {
+      await this.startServer(config.id);
+    }
+
+    this.emit('server:registered', { serverId: config.id });
+
+    return registered;
+  }
+
+  /**
    * Register a server from config
    */
   async registerServer(config: ServerConfig): Promise<RegisteredServer> {
@@ -135,7 +183,11 @@ export class ServerRegistry extends EventEmitter {
       return this.registerNpxServer(config as NpxServerConfig);
     }
 
-    // For non-NPX servers, just register without instance
+    if (config.type === 'remote') {
+      return this.registerRemoteServer(config as RemoteServerConfig);
+    }
+
+    // For local servers, just register without instance (handled by MCP Hub directly)
     const registered: RegisteredServer = {
       id: config.id,
       config,
@@ -150,18 +202,24 @@ export class ServerRegistry extends EventEmitter {
   }
 
   /**
-   * Set up event listeners for NPX server
+   * Set up event listeners for MCP server (NPX or Remote)
    */
-  private setupServerListeners(server: NpxMcpServer): void {
-    server.on('starting', ({ serverId }) => {
+  private setupServerListeners(server: NpxMcpServer | RemoteMcpServer): void {
+    // Store listener functions for later cleanup
+    type ListenerFunc = (...args: unknown[]) => void;
+    const listeners = new Map<string, ListenerFunc>();
+
+    const startingListener = ({ serverId }: { serverId: string }) => {
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.STARTING;
       }
       this.emit('server:starting', { serverId });
-    });
+    };
+    listeners.set('starting', startingListener);
+    server.on('starting', startingListener);
 
-    server.on('started', async ({ serverId }) => {
+    const startedListener = async ({ serverId }: { serverId: string }) => {
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.RUNNING;
@@ -169,35 +227,62 @@ export class ServerRegistry extends EventEmitter {
         await this.discoverTools(serverId);
       }
       this.emit('server:started', { serverId });
-    });
+    };
+    listeners.set('started', startedListener);
+    server.on('started', startedListener);
 
-    server.on('stopping', ({ serverId }) => {
+    const stoppingListener = ({ serverId }: { serverId: string }) => {
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.STOPPING;
       }
       this.emit('server:stopping', { serverId });
-    });
+    };
+    listeners.set('stopping', stoppingListener);
+    server.on('stopping', stoppingListener);
 
-    server.on('stopped', ({ serverId }) => {
+    const stoppedListener = ({ serverId }: { serverId: string }) => {
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.STOPPED;
       }
       this.emit('server:stopped', { serverId });
-    });
+    };
+    listeners.set('stopped', stoppedListener);
+    server.on('stopped', stoppedListener);
 
-    server.on('crashed', ({ serverId, code, signal }) => {
+    const crashedListener = ({
+      serverId,
+      code,
+      signal,
+    }: {
+      serverId: string;
+      code?: number;
+      signal?: string;
+    }) => {
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.CRASHED;
       }
       this.emit('server:crashed', { serverId, code, signal });
-    });
+    };
+    listeners.set('crashed', crashedListener);
+    server.on('crashed', crashedListener);
 
-    server.on('error', ({ serverId, error }) => {
+    const errorListener = ({
+      serverId,
+      error,
+    }: {
+      serverId: string;
+      error: string;
+    }) => {
       this.emit('server:error', { serverId, error });
-    });
+    };
+    listeners.set('error', errorListener);
+    server.on('error', errorListener);
+
+    // Store listeners map for cleanup (WeakMap prevents memory leaks)
+    this.serverListeners.set(server, listeners);
   }
 
   /**
@@ -208,6 +293,17 @@ export class ServerRegistry extends EventEmitter {
 
     if (!registered) {
       throw new Error(`Server ${id} is not registered`);
+    }
+
+    // Clean up event listeners
+    if (registered.instance) {
+      const listeners = this.serverListeners.get(registered.instance);
+      if (listeners) {
+        for (const [event, listener] of listeners) {
+          registered.instance.off(event, listener);
+        }
+        this.serverListeners.delete(registered.instance);
+      }
     }
 
     // Stop the server if it's running
@@ -317,20 +413,40 @@ export class ServerRegistry extends EventEmitter {
     }
 
     try {
-      // Send discovery request to server
-      const discoveryRequest = JSON.stringify({
-        jsonrpc: '2.0',
-        id: await runtime.idGenerator.generate(),
-        method: 'tools/list',
-      });
+      let tools: string[] = [];
 
-      await registered.instance.send(`${discoveryRequest}\n`);
+      if (registered.instance instanceof RemoteMcpServer) {
+        // For remote servers, use the direct API
+        const result = await registered.instance.listTools();
+        if (result && typeof result === 'object' && 'tools' in result) {
+          const toolsResult = result as { tools: unknown[] };
+          if (Array.isArray(toolsResult.tools)) {
+            tools = toolsResult.tools.map((tool) => {
+              if (tool && typeof tool === 'object' && 'name' in tool) {
+                return String((tool as { name: unknown }).name);
+              }
+              return String(tool);
+            });
+          }
+        }
+      } else {
+        // For NPX servers, use the JSON-RPC approach
+        const discoveryRequest = JSON.stringify({
+          jsonrpc: '2.0',
+          id: await runtime.idGenerator.generate(),
+          method: 'tools/list',
+        });
 
-      // Wait for response with timeout
-      const tools = await this.waitForDiscoveryResponse(
-        registered.instance,
-        this.config.discoveryTimeoutMs || this.defaults.discoveryTimeoutMs,
-      );
+        await (registered.instance as NpxMcpServer).send(
+          `${discoveryRequest}\n`,
+        );
+
+        // Wait for response with timeout
+        tools = await this.waitForDiscoveryResponse(
+          registered.instance as NpxMcpServer,
+          this.config.discoveryTimeoutMs || this.defaults.discoveryTimeoutMs,
+        );
+      }
 
       // Update registered server with discovered tools
       registered.tools = tools;
