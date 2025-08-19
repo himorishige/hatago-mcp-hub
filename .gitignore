@@ -1,0 +1,14 @@
+# .env
+.env
+.env.*
+
+# development
+.windsurf
+.mcp.json
+.serena/cache
+
+# worktree
+_wt/
+
+# misc
+.DS_Store
