@@ -3,11 +3,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { serve } from '@hono/node-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Command } from 'commander';
 import { Hono } from 'hono';
 import { generateSampleConfig, loadConfig } from '../config/loader.js';
 import { McpHub } from '../core/mcp-hub.js';
+import { StreamableHTTPTransport } from '../hono-mcp/index.js';
 import { sanitizeLog } from '../utils/security.js';
 import { createNpxCommands } from './commands/npx.js';
 import { createRemoteCommands } from './commands/remote.js';
@@ -78,68 +78,24 @@ program
         );
 
         // MCPエンドポイント
-        const transports = new Map<string, StreamableHTTPServerTransport>();
-
-        // セッションマネージャー（内部でクリーンアップを実行）
-        const { SessionManager } = await import('../core/session-manager.js');
-        const sessionManager = new SessionManager(
-          config.session?.ttlSeconds || 3600,
-        );
-
-        app.post('/mcp', async (c) => {
-          const sessionId = c.req.header('mcp-session-id');
-          let transport: StreamableHTTPServerTransport;
-
-          if (sessionId && transports.has(sessionId)) {
-            // 既存セッションの有効性を確認
-            const session = sessionManager.getSession(sessionId);
-            if (!session) {
-              // セッションが期限切れの場合、トランスポートも削除
-              transports.delete(sessionId);
-              return c.json({ error: 'Session expired' }, 401);
-            }
-            transport = transports.get(
-              sessionId,
-            ) as StreamableHTTPServerTransport;
-          } else {
-            transport = new StreamableHTTPServerTransport({
-              enableDnsRebindingProtection: true,
-              allowedHosts: ['127.0.0.1', 'localhost'],
-            });
-
-            // セッションIDが生成されたら保存
-            if (transport.sessionId) {
-              transports.set(transport.sessionId, transport);
-              sessionManager.createSession(transport.sessionId);
-            }
-
-            // MCPサーバーに接続
-            await hub.getServer().connect(transport);
-          }
-
-          // リクエストを処理
-          const body = await c.req.json();
-          await transport.handleRequest(c.req.raw, c.res, body);
+        // 適切なセッション管理を実装（MCP仕様準拠）
+        const transport = new StreamableHTTPTransport({
+          sessionIdGenerator: () => crypto.randomUUID(),
+          enableJsonResponse: false,
         });
 
-        // SSEエンドポイント
+        // MCPサーバーに接続
+        await hub.getServer().connect(transport);
+
+        // POSTエンドポイント（JSON-RPC）
+        app.post('/mcp', async (c) => {
+          const body = await c.req.json();
+          return await transport.handleRequest(c, body);
+        });
+
+        // GETエンドポイント（SSE）
         app.get('/mcp', async (c) => {
-          const sessionId = c.req.header('mcp-session-id');
-          if (!sessionId || !transports.has(sessionId)) {
-            return c.text('Invalid session', 400);
-          }
-
-          // セッションの有効性を確認
-          const session = sessionManager.getSession(sessionId);
-          if (!session) {
-            transports.delete(sessionId);
-            return c.text('Session expired', 401);
-          }
-
-          const transport = transports.get(
-            sessionId,
-          ) as StreamableHTTPServerTransport;
-          await transport.handleRequest(c.req.raw, c.res);
+          return await transport.handleRequest(c);
         });
 
         // ツール一覧エンドポイント

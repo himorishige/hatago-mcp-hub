@@ -201,34 +201,42 @@ export class McpHub {
 
         // サーバーが起動してツールが発見されるまで待つ
         // ServerRegistryの'started'イベントがツール発見をトリガーする
-        const waitForToolsDiscovery = async (timeoutMs = 5000): Promise<void> => {
+        const waitForToolsDiscovery = async (
+          timeoutMs = 5000,
+        ): Promise<void> => {
           const server = this.serverRegistry?.getServer(serverId);
           if (server?.tools && server.tools.length > 0) {
             return;
           }
-          
-          return new Promise<void>((resolve, reject) => {
+
+          return new Promise<void>((resolve, _reject) => {
             const timeout = setTimeout(() => {
               this.serverRegistry?.off('server:tools-discovered', handler);
               resolve(); // タイムアウトしても続行（ツールなしで）
             }, timeoutMs);
-            
-            const handler = ({ serverId: discoveredId }: { serverId: string }) => {
+
+            const handler = ({
+              serverId: discoveredId,
+            }: {
+              serverId: string;
+            }) => {
               if (discoveredId === serverId) {
                 clearTimeout(timeout);
                 this.serverRegistry?.off('server:tools-discovered', handler);
                 resolve();
               }
             };
-            
+
             this.serverRegistry?.on('server:tools-discovered', handler);
           });
         };
-        
+
         try {
           await waitForToolsDiscovery();
-        } catch (error) {
-          console.warn(`Tool discovery timeout for ${serverId}, continuing without tools`);
+        } catch (_error) {
+          console.warn(
+            `Tool discovery timeout for ${serverId}, continuing without tools`,
+          );
         }
 
         // ツールを取得して登録（リモートサーバーの場合はRegistryから取得）
