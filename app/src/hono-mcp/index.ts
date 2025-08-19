@@ -40,10 +40,17 @@ export class StreamableHTTPTransport implements Transport {
         json: (data: unknown) => void;
       };
       stream?: SSEStreamingApi;
+      createdAt: number;
     }
   >();
   #requestToStreamMapping = new Map<RequestId, string>();
   #requestResponseMap = new Map<RequestId, JSONRPCMessage>();
+
+  // Memory leak prevention settings
+  #maxMapSize = 1000; // Maximum entries in each map
+  #ttlMs = 30000; // TTL for map entries (30 seconds)
+  #cleanupInterval?: NodeJS.Timeout;
+  #cleanupIntervalMs = 10000; // Cleanup interval (10 seconds)
 
   sessionId?: string | undefined;
   onclose?: () => void;
@@ -69,6 +76,91 @@ export class StreamableHTTPTransport implements Transport {
       throw new Error('Transport already started');
     }
     this.#started = true;
+
+    // Start cleanup interval to prevent memory leaks
+    this.startCleanupInterval();
+  }
+
+  /**
+   * Starts the cleanup interval to remove expired entries
+   */
+  private startCleanupInterval(): void {
+    if (this.#cleanupInterval) {
+      clearInterval(this.#cleanupInterval);
+    }
+
+    this.#cleanupInterval = setInterval(() => {
+      this.cleanupExpiredEntries();
+    }, this.#cleanupIntervalMs);
+  }
+
+  /**
+   * Removes expired entries from all maps
+   */
+  private cleanupExpiredEntries(): void {
+    const now = Date.now();
+    const expiredStreamIds = new Set<string>();
+
+    // Find expired streams
+    for (const [streamId, data] of this.#streamMapping.entries()) {
+      if (now - data.createdAt > this.#ttlMs) {
+        expiredStreamIds.add(streamId);
+        // Close the stream if it's still open
+        if (data.stream && !data.stream.closed) {
+          try {
+            data.stream.close();
+          } catch {
+            // Ignore errors during cleanup
+          }
+        }
+      }
+    }
+
+    // Clean up expired entries
+    for (const streamId of expiredStreamIds) {
+      this.#streamMapping.delete(streamId);
+
+      // Clean up related request mappings
+      for (const [
+        requestId,
+        mappedStreamId,
+      ] of this.#requestToStreamMapping.entries()) {
+        if (mappedStreamId === streamId) {
+          this.#requestToStreamMapping.delete(requestId);
+          this.#requestResponseMap.delete(requestId);
+        }
+      }
+    }
+
+    // Enforce max size limit (LRU-style cleanup)
+    this.enforceMaxSize();
+  }
+
+  /**
+   * Enforces maximum size limits on maps
+   */
+  private enforceMaxSize(): void {
+    // Clean up streamMapping if it exceeds max size
+    if (this.#streamMapping.size > this.#maxMapSize) {
+      const sortedEntries = Array.from(this.#streamMapping.entries()).sort(
+        (a, b) => a[1].createdAt - b[1].createdAt,
+      );
+
+      const entriesToRemove = sortedEntries.slice(
+        0,
+        sortedEntries.length - this.#maxMapSize,
+      );
+      for (const [streamId, data] of entriesToRemove) {
+        if (data.stream && !data.stream.closed) {
+          try {
+            data.stream.close();
+          } catch {
+            // Ignore errors
+          }
+        }
+        this.#streamMapping.delete(streamId);
+      }
+    }
   }
 
   /**
@@ -180,6 +272,7 @@ export class StreamableHTTPTransport implements Transport {
         this.#streamMapping.set(resolvedStreamId, {
           ctx,
           stream,
+          createdAt: Date.now(),
         });
 
         // Keep connection alive
@@ -360,6 +453,7 @@ export class StreamableHTTPTransport implements Transport {
                     header: ctx.header,
                     json: resolve,
                   },
+                  createdAt: Date.now(),
                 });
                 this.#requestToStreamMapping.set(message.id, streamId);
               }
@@ -383,6 +477,7 @@ export class StreamableHTTPTransport implements Transport {
             this.#streamMapping.set(streamId, {
               ctx,
               stream,
+              createdAt: Date.now(),
             });
             this.#requestToStreamMapping.set(message.id, streamId);
           }
@@ -527,15 +622,25 @@ export class StreamableHTTPTransport implements Transport {
   }
 
   async close(): Promise<void> {
-    // Close all SSE connections
+    // Stop cleanup interval
+    if (this.#cleanupInterval) {
+      clearInterval(this.#cleanupInterval);
+      this.#cleanupInterval = undefined;
+    }
 
+    // Close all SSE connections
     for (const { stream } of this.#streamMapping.values()) {
-      stream?.close();
+      if (stream && !stream.closed) {
+        try {
+          stream.close();
+        } catch {
+          // Ignore errors during cleanup
+        }
+      }
     }
 
     this.#streamMapping.clear();
-
-    // Clear any pending responses
+    this.#requestToStreamMapping.clear();
     this.#requestResponseMap.clear();
     this.onclose?.();
   }

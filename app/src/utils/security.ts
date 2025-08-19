@@ -2,51 +2,56 @@
  * Security utilities for masking sensitive information
  */
 
-import {
-  createGuard,
-  type GuardResult,
-  ruleBuilder,
-  securityPatterns,
-} from '@himorishige/noren';
+import { detectThreats, isContentSafe } from '@himorishige/noren';
 
 /**
- * Custom rules for Hatago-specific sensitive data
+ * Custom sanitization rules for Hatago
  */
-const customRules = ruleBuilder()
+const customSanitizations: [RegExp, string][] = [
   // Authentication headers
-  .addReplacement(/Bearer\s+[\w\-.]+/gi, 'Bearer [REDACTED]')
-  .addReplacement(/Basic\s+[\w\-+=]+/gi, 'Basic [REDACTED]')
+  [/Bearer\s+[\w\-.]+/gi, 'Bearer [REDACTED]'],
+  [/Basic\s+[\w\-+=]+/gi, 'Basic [REDACTED]'],
   // JSON tokens and keys
-  .addReplacement(/"token"\s*:\s*"[^"]*"/gi, '"token": "[REDACTED]"')
-  .addReplacement(/"apiKey"\s*:\s*"[^"]*"/gi, '"apiKey": "[REDACTED]"')
-  .addReplacement(/"api_key"\s*:\s*"[^"]*"/gi, '"api_key": "[REDACTED]"')
-  .addReplacement(/"password"\s*:\s*"[^"]*"/gi, '"password": "[REDACTED]"')
-  .addReplacement(/"secret"\s*:\s*"[^"]*"/gi, '"secret": "[REDACTED]"')
+  [/"token"\s*:\s*"[^"]*"/gi, '"token": "[REDACTED]"'],
+  [/"apiKey"\s*:\s*"[^"]*"/gi, '"apiKey": "[REDACTED]"'],
+  [/"api_key"\s*:\s*"[^"]*"/gi, '"api_key": "[REDACTED]"'],
+  [/"password"\s*:\s*"[^"]*"/gi, '"password": "[REDACTED]"'],
+  [/"secret"\s*:\s*"[^"]*"/gi, '"secret": "[REDACTED]"'],
   // URL query parameters
-  .addReplacement(/(\?|&)token=[\w\-.]+/gi, '$1token=[REDACTED]')
-  .addReplacement(/(\?|&)api_key=[\w\-.]+/gi, '$1api_key=[REDACTED]')
+  [/(\?|&)token=[\w\-.]+/gi, '$1token=[REDACTED]'],
+  [/(\?|&)api_key=[\w\-.]+/gi, '$1api_key=[REDACTED]'],
   // Environment variables
-  .addReplacement(/HATAGO_API_TOKEN=[\w\-.]+/gi, 'HATAGO_API_TOKEN=[REDACTED]')
-  .build();
+  [/HATAGO_API_TOKEN=[\w\-.]+/gi, 'HATAGO_API_TOKEN=[REDACTED]'],
+];
 
 /**
- * Security guard instance for Hatago
+ * Apply custom sanitization rules
  */
-export const securityGuard = createGuard({
-  customPatterns: securityPatterns,
-  customRules,
-  riskThreshold: 50,
-  detectPII: true,
-  detectSecrets: true,
-});
+function applyCustomSanitization(content: string): string {
+  let result = content;
+  for (const [pattern, replacement] of customSanitizations) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
 
 /**
  * Sanitize a log message to remove sensitive information
  */
 export async function sanitizeLog(message: string): Promise<string> {
   try {
-    const result = await securityGuard.check(message);
-    return result.sanitizedContent;
+    // Apply our custom sanitization rules directly
+    const sanitized = applyCustomSanitization(message);
+
+    // Check if content is safe using noren
+    const safe = await isContentSafe(sanitized);
+    if (!safe) {
+      // If not safe, apply more aggressive redaction
+      const id = Math.random().toString(36).substring(7);
+      return `[REDACTED-UNSAFE id=${id}]`;
+    }
+
+    return sanitized;
   } catch (error) {
     // Debug mode: show error details (opt-in only)
     if (process.env.HATAGO_DEBUG_REDACTION === '1') {
@@ -99,13 +104,15 @@ export function sanitizeObject<T extends Record<string, unknown>>(
  * Check if content contains sensitive information
  */
 export async function containsSensitiveInfo(content: string): Promise<boolean> {
-  const result = await securityGuard.check(content);
-  return result.riskScore > 0;
+  const result = await detectThreats(content);
+  return result.risk > 0;
 }
 
 /**
  * Get risk assessment for content
  */
-export async function assessRisk(content: string): Promise<GuardResult> {
-  return await securityGuard.check(content);
+export async function assessRisk(
+  content: string,
+): Promise<{ risk: number; safe: boolean; level: string }> {
+  return await detectThreats(content);
 }

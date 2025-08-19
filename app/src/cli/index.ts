@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Command } from 'commander';
 import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { generateSampleConfig, loadConfig } from '../config/loader.js';
 import { McpHub } from '../core/mcp-hub.js';
 import { StreamableHTTPTransport } from '../hono-mcp/index.js';
@@ -77,25 +78,99 @@ program
           }),
         );
 
-        // MCPエンドポイント
-        // 適切なセッション管理を実装（MCP仕様準拠）
-        const transport = new StreamableHTTPTransport({
-          sessionIdGenerator: () => crypto.randomUUID(),
-          enableJsonResponse: false,
-        });
-
-        // MCPサーバーに接続
-        await hub.getServer().connect(transport);
+        // MCPエンドポイント（ステートレスモード）
+        // セッションIDキャッシュ（MCP準拠のため）
+        let cachedSessionId: string | undefined;
 
         // POSTエンドポイント（JSON-RPC）
         app.post('/mcp', async (c) => {
-          const body = await c.req.json();
-          return await transport.handleRequest(c, body);
+          // 各リクエストで新しいトランスポートを作成（ステートレス）
+          const transport = new StreamableHTTPTransport({
+            sessionIdGenerator: undefined, // ステートレスモード（サーバーがセッションIDを返さない限り不要）
+            enableJsonResponse: false,
+          });
+
+          try {
+            // 一時的にサーバーに接続
+            await hub.getServer().connect(transport);
+
+            const body = await c.req.json();
+
+            // MCP仕様: サーバーからMcp-Session-Idが返されたら、以降のリクエストに必須
+            // クライアントから送られてきたセッションIDをチェック
+            const clientSessionId = c.req.header('mcp-session-id');
+            if (cachedSessionId && clientSessionId !== cachedSessionId) {
+              // セッションIDが一致しない場合は404を返す（MCP仕様）
+              return c.json(
+                {
+                  jsonrpc: '2.0',
+                  error: {
+                    code: -32001,
+                    message: 'Session not found',
+                  },
+                  id: null,
+                },
+                404,
+              );
+            }
+
+            const result = await transport.handleRequest(c, body);
+
+            // レスポンスからMcp-Session-Idヘッダーをチェック
+            if (result?.headers) {
+              const serverSessionId = result.headers.get('mcp-session-id');
+              if (serverSessionId) {
+                cachedSessionId = serverSessionId;
+              }
+            }
+
+            return result;
+          } catch (error) {
+            // エラーハンドリング
+            console.error('MCP request error:', error);
+
+            // HTTPExceptionの場合はそのまま返す
+            if (error instanceof HTTPException) {
+              const response = error.getResponse();
+              return response;
+            }
+
+            return c.json(
+              {
+                jsonrpc: '2.0',
+                error: {
+                  code: -32700,
+                  message: 'Parse error',
+                  data: error instanceof Error ? error.message : String(error),
+                },
+                id: null,
+              },
+              400,
+            );
+          } finally {
+            // クリーンアップ
+            try {
+              await transport.close();
+            } catch {
+              // クローズエラーは無視
+            }
+          }
         });
 
-        // GETエンドポイント（SSE）
+        // GETエンドポイント（SSE - ステートレスモードでは非サポート）
         app.get('/mcp', async (c) => {
-          return await transport.handleRequest(c);
+          // ステートレスモードではSSEをサポートしない
+          return c.json(
+            {
+              jsonrpc: '2.0',
+              error: {
+                code: -32000,
+                message: 'SSE not supported in stateless mode',
+              },
+              id: null,
+            },
+            405, // Method Not Allowed
+          );
         });
 
         // ツール一覧エンドポイント

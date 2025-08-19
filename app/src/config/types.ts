@@ -170,6 +170,35 @@ export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
       token: z.string().optional(),
     })
     .optional(),
+  healthCheck: z
+    .object({
+      enabled: z
+        .boolean()
+        .default(false)
+        .describe('Enable health checks for this server'),
+      intervalMs: z
+        .number()
+        .min(0)
+        .default(0)
+        .describe(
+          'Health check interval in milliseconds. 0 = disabled. Recommended: 1000-2000ms for local, 5000-10000ms for remote',
+        ),
+      timeoutMs: z
+        .number()
+        .min(1000)
+        .default(5000)
+        .describe(
+          'Health check timeout in milliseconds. Should be less than intervalMs. Can be overridden by HATAGO_HEALTH_TIMEOUT_MS env var',
+        ),
+      method: z
+        .enum(['ping', 'tools/list'])
+        .default('ping')
+        .describe(
+          'Method to use for health checks. "ping" is lighter, "tools/list" verifies tool availability',
+        ),
+    })
+    .optional()
+    .describe('Health check configuration for remote servers'),
 });
 export type RemoteServerConfig = z.infer<typeof RemoteServerConfigSchema>;
 

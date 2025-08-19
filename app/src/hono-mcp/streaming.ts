@@ -1,17 +1,42 @@
 import type { Context } from 'hono';
 import { SSEStreamingApi } from 'hono/streaming';
 
+/**
+ * Checks if running on an old Bun version that requires special handling
+ * Uses feature detection and semver comparison for robustness
+ */
 let isOldBunVersion = (): boolean => {
+  // Feature detection: Check if Bun exists
   // @ts-expect-error @types/bun is not installed
-  const version: string = typeof Bun !== 'undefined' ? Bun.version : undefined;
-  if (version === undefined) {
+  if (typeof globalThis.Bun === 'undefined') {
     return false;
   }
+
+  // @ts-expect-error @types/bun is not installed
+  const version: string = globalThis.Bun.version;
+  if (!version || typeof version !== 'string') {
+    // If version is not available, assume newer version (safer default)
+    return false;
+  }
+
+  // Parse version parts for comparison
+  const versionParts = version.split('.').map((v) => parseInt(v, 10));
+  if (versionParts.length < 2 || versionParts.some(Number.isNaN)) {
+    // Invalid version format, assume newer version
+    console.warn(`Invalid Bun version format: ${version}`);
+    return false;
+  }
+
+  const [major, minor, patch = 0] = versionParts;
+
+  // Old versions: < 1.1.27
+  // Bun v1.1.27 fixed the ReadableStream cancel() issue
   const result =
-    version.startsWith('1.1') ||
-    version.startsWith('1.0') ||
-    version.startsWith('0.');
-  // Avoid running this check on every call
+    major === 0 ||
+    (major === 1 && minor === 0) ||
+    (major === 1 && minor === 1 && patch < 27);
+
+  // Cache the result to avoid repeated checks
   isOldBunVersion = () => result;
   return result;
 };

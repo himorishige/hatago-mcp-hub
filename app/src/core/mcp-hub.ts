@@ -60,6 +60,18 @@ export class McpHub {
     this.registry = new ToolRegistry({
       namingConfig: this.config.toolNaming,
     });
+
+    // MCPサーバーにツールハンドラーを設定
+    this.setupToolHandlers();
+  }
+
+  /**
+   * ツール関連のハンドラーを設定
+   */
+  private setupToolHandlers(): void {
+    // McpServer で動的にツールを登録
+    // 実際のツール呼び出しは this.callTool を通して行う
+    // 初期化時は何もしない - connectServer でツールを動的に追加
   }
 
   /**
@@ -69,6 +81,8 @@ export class McpHub {
     if (this.initialized) {
       return;
     }
+
+    console.log('Initializing MCP Hub...');
 
     // NPXサーバーやリモートサーバーサポートの初期化
     const hasNpxServers = this.config.servers.some((s) => s.type === 'npx');
@@ -87,7 +101,11 @@ export class McpHub {
     }
 
     // 設定されたサーバーを接続
+    console.log(`Found ${this.config.servers.length} servers in config`);
     for (const serverConfig of this.config.servers) {
+      console.log(
+        `Checking server ${serverConfig.id} with start: ${serverConfig.start}`,
+      );
       if (serverConfig.start === 'eager') {
         try {
           await this.connectServer(serverConfig);
@@ -187,6 +205,20 @@ export class McpHub {
         const registered =
           await this.serverRegistry.registerRemoteServer(remoteConfig);
 
+        // エラーリスナーを設定（Node.jsのunhandled errorを防ぐ）
+        if (registered.instance) {
+          const remoteServer = registered.instance as RemoteMcpServer;
+
+          // エラーハンドリングを改善
+          remoteServer.on('error', (event) => {
+            console.warn(`Remote server ${serverId} error:`, event.error);
+            // エラーイベントを処理済みとしてマーク
+          });
+
+          // すべてのエラーイベントリスナーを確実に設定
+          remoteServer.setMaxListeners(10); // デフォルトの10を明示的に設定
+        }
+
         // 起動
         await this.serverRegistry.startServer(serverId);
 
@@ -203,40 +235,78 @@ export class McpHub {
         // ServerRegistryの'started'イベントがツール発見をトリガーする
         const waitForToolsDiscovery = async (
           timeoutMs = 5000,
-        ): Promise<void> => {
+        ): Promise<{ success: boolean; partial?: boolean }> => {
           const server = this.serverRegistry?.getServer(serverId);
           if (server?.tools && server.tools.length > 0) {
-            return;
+            return { success: true };
           }
 
-          return new Promise<void>((resolve, _reject) => {
-            const timeout = setTimeout(() => {
-              this.serverRegistry?.off('server:tools-discovered', handler);
-              resolve(); // タイムアウトしても続行（ツールなしで）
-            }, timeoutMs);
-
-            const handler = ({
-              serverId: discoveredId,
-            }: {
-              serverId: string;
-            }) => {
-              if (discoveredId === serverId) {
-                clearTimeout(timeout);
+          return new Promise<{ success: boolean; partial?: boolean }>(
+            (resolve) => {
+              const timeout = setTimeout(() => {
                 this.serverRegistry?.off('server:tools-discovered', handler);
-                resolve();
-              }
-            };
 
-            this.serverRegistry?.on('server:tools-discovered', handler);
-          });
+                // タイムアウト時の警告とpartialフラグ
+                const currentServer = this.serverRegistry?.getServer(serverId);
+                const hasPartialTools =
+                  currentServer?.tools && currentServer.tools.length > 0;
+
+                console.warn(
+                  `⚠️  Tool discovery timeout for ${serverId} (${timeoutMs}ms).`,
+                  hasPartialTools
+                    ? `Found ${currentServer.tools.length} tools so far.`
+                    : 'No tools discovered yet.',
+                );
+
+                resolve({
+                  success: false,
+                  partial: hasPartialTools,
+                });
+              }, timeoutMs);
+
+              const handler = ({
+                serverId: discoveredId,
+              }: {
+                serverId: string;
+              }) => {
+                if (discoveredId === serverId) {
+                  clearTimeout(timeout);
+                  this.serverRegistry?.off('server:tools-discovered', handler);
+                  resolve({ success: true });
+                }
+              };
+
+              this.serverRegistry?.on('server:tools-discovered', handler);
+            },
+          );
         };
 
-        try {
-          await waitForToolsDiscovery();
-        } catch (_error) {
-          console.warn(
-            `Tool discovery timeout for ${serverId}, continuing without tools`,
-          );
+        // ツール発見を待つ（リトライ機能付き）
+        let discoveryResult = await waitForToolsDiscovery();
+
+        // 初回タイムアウトの場合、指数バックオフでリトライ
+        if (!discoveryResult.success && !discoveryResult.partial) {
+          console.log(`Retrying tool discovery for ${serverId}...`);
+
+          // 指数バックオフでリトライ（最大3回）
+          const maxRetries = 3;
+          let retryDelay = 1000; // 初回1秒
+
+          for (let i = 0; i < maxRetries && !discoveryResult.success; i++) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
+
+            console.log(`Retry ${i + 1}/${maxRetries} for ${serverId}...`);
+            discoveryResult = await waitForToolsDiscovery(retryDelay * 2);
+
+            retryDelay *= 2; // 指数バックオフ
+          }
+
+          if (!discoveryResult.success) {
+            console.error(
+              `Failed to discover tools for ${serverId} after ${maxRetries} retries.`,
+              'Server will continue without tools.',
+            );
+          }
         }
 
         // ツールを取得して登録（リモートサーバーの場合はRegistryから取得）
@@ -400,10 +470,32 @@ export class McpHub {
    * ハブのツールを更新
    */
   private updateHubTools(): void {
-    // 現在の実装では、個別のツールハンドラを設定
-    // 将来的にはより効率的な方法を検討
     const tools = this.registry.getAllTools();
     console.log(`Hub now has ${tools.length} total tools`);
+
+    // McpServerに動的ツール登録
+    for (const tool of tools) {
+      // ツールが既に登録されていない場合のみ登録
+      try {
+        this.server.tool(
+          tool.name,
+          tool.inputSchema || {},
+          async (args: Record<string, unknown>) => {
+            const result = await this.callTool({
+              name: tool.name,
+              arguments: args,
+            });
+            return result;
+          },
+        );
+      } catch (error) {
+        // ツールが既に登録されている場合はスキップ
+        console.debug(
+          `Tool ${tool.name} already registered or failed to register:`,
+          error,
+        );
+      }
+    }
   }
 
   /**

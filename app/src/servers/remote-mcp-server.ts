@@ -67,16 +67,19 @@ export class RemoteMcpServer extends EventEmitter {
     maxReconnects: 5,
     maxReconnectDurationMs: 300000, // 5 minutes max reconnect duration
     connectTimeoutMs: 30000,
-    healthCheckIntervalMs: 60000, // 1 minute health check
-    healthCheckTimeoutMs: Number(process.env.HATAGO_HEALTH_TIMEOUT_MS || 1000), // 1 second health check timeout
+    healthCheckIntervalMs: 0, // Disabled by default (0 = no health check)
+    healthCheckTimeoutMs: Number(process.env.HATAGO_HEALTH_TIMEOUT_MS || 5000), // 5 seconds health check timeout (if enabled)
   };
 
   constructor(config: RemoteServerConfig) {
     super();
-    this.config = {
-      ...this.defaults,
-      ...config,
-    };
+    this.config = config;
+
+    // Override defaults with health check config if provided
+    if (config.healthCheck) {
+      this.defaults.healthCheckIntervalMs = config.healthCheck.intervalMs || 0;
+      this.defaults.healthCheckTimeoutMs = config.healthCheck.timeoutMs || 5000;
+    }
 
     // Validate URL on construction
     this.validateUrl(this.config.url);
@@ -404,6 +407,12 @@ export class RemoteMcpServer extends EventEmitter {
    * Start health check interval
    */
   private async startHealthCheck(): Promise<void> {
+    // Skip if health check is disabled (interval <= 0)
+    if (this.defaults.healthCheckIntervalMs <= 0) {
+      console.log(`Health check disabled for ${this.config.id}`);
+      return;
+    }
+
     const runtime = await this.runtime;
 
     const healthCheckInterval = runtime.setInterval(async () => {
