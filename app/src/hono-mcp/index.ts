@@ -21,8 +21,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import type { SSEStreamingApi } from 'hono/streaming';
-import { streamSSE } from './streaming.js';
 
 export class StreamableHTTPTransport implements Transport {
   #started = false;
@@ -31,7 +29,7 @@ export class StreamableHTTPTransport implements Transport {
   #sessionIdGenerator?: () => string;
   #eventStore?: EventStore;
   #enableJsonResponse = false;
-  #standaloneSseStreamId = '_GET_stream';
+
   #streamMapping = new Map<
     string,
     {
@@ -39,7 +37,7 @@ export class StreamableHTTPTransport implements Transport {
         header: (name: string, value: string) => void;
         json: (data: unknown) => void;
       };
-      stream?: SSEStreamingApi;
+
       createdAt: number;
     }
   >();
@@ -186,130 +184,25 @@ export class StreamableHTTPTransport implements Transport {
    * Handles GET requests for SSE stream
    */
   private async handleGetRequest(ctx: Context) {
-    try {
-      // The client MUST include an Accept header, listing text/event-stream as a supported content type.
-      const acceptHeader = ctx.req.header('Accept');
-      const acceptedTypes =
-        acceptHeader?.split(',').map((t) => t.trim().split(';')[0]) || [];
-      if (!acceptedTypes.includes('text/event-stream')) {
-        throw new HTTPException(406, {
-          res: Response.json({
-            jsonrpc: '2.0',
-            error: {
-              code: -32000,
-              message: 'Not Acceptable: Client must accept text/event-stream',
-            },
-            id: null,
-          }),
-        });
-      }
-
-      // If an Mcp-Session-Id is returned by the server during initialization,
-      // clients using the Streamable HTTP transport MUST include it
-      // in the Mcp-Session-Id header on all of their subsequent HTTP requests.
-      this.validateSession(ctx);
-
-      // After initialization, always include the session ID if we have one
-      if (this.sessionId !== undefined) {
-        ctx.header('mcp-session-id', this.sessionId);
-      }
-
-      let streamId: string | ((stream: SSEStreamingApi) => Promise<string>) =
-        this.#standaloneSseStreamId;
-
-      // Handle resumability: check for Last-Event-ID header
-      if (this.#eventStore) {
-        const lastEventId = ctx.req.header('last-event-id');
-        if (lastEventId) {
-          streamId = async (stream) => {
-            const result = await this.#eventStore?.replayEventsAfter(
-              lastEventId,
-              {
-                send: async (eventId: string, message: JSONRPCMessage) => {
-                  try {
-                    await stream.writeSSE({
-                      id: eventId,
-                      event: 'message',
-                      data: JSON.stringify(message),
-                    });
-                  } catch {
-                    this.onerror?.(new Error('Failed replay events'));
-                    throw new HTTPException(500, {
-                      message: 'Failed replay events',
-                    });
-                  }
-                },
-              },
-            );
-            return result ?? '_unknown_stream';
-          };
-        }
-      }
-
-      // Check if there's already an active standalone SSE stream for this session
-      if (
-        typeof streamId === 'string' &&
-        this.#streamMapping.get(streamId) !== undefined
-      ) {
-        // Only one GET SSE stream is allowed per session
-        throw new HTTPException(409, {
-          res: Response.json({
-            jsonrpc: '2.0',
-            error: {
-              code: -32000,
-              message: 'Conflict: Only one SSE stream is allowed per session',
-            },
-            id: null,
-          }),
-        });
-      }
-
-      return streamSSE(ctx, async (stream) => {
-        const resolvedStreamId =
-          typeof streamId === 'string' ? streamId : await streamId(stream);
-
-        // Assign the response to the standalone SSE stream
-        this.#streamMapping.set(resolvedStreamId, {
-          ctx,
-          stream,
-          createdAt: Date.now(),
-        });
-
-        // Keep connection alive
-        const keepAlive = setInterval(() => {
-          if (!stream.closed) {
-            stream.writeSSE({ data: '', event: 'ping' }).catch(() => {
-              clearInterval(keepAlive);
-            });
-          }
-        }, 30000);
-
-        // Set up close handler for client disconnects
-        stream.onAbort(() => {
-          this.#streamMapping.delete(resolvedStreamId);
-          clearInterval(keepAlive);
-        });
-      });
-    } catch (error) {
-      if (error instanceof HTTPException) {
-        throw error;
-      }
-
-      this.onerror?.(error as Error);
-
-      // return JSON-RPC formatted error
-      throw new HTTPException(400, {
-        res: Response.json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32700,
-            message: 'Parse error',
-            data: String(error),
-          },
-          id: null,
-        }),
-      });
-    }
+    // SSE is deprecated and no longer supported
+    // Return 405 Method Not Allowed for all GET requests
+    return ctx.json(
+      {
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message:
+            'SSE transport is deprecated and no longer supported. Please use POST with Streamable HTTP transport.',
+        },
+        id: null,
+      },
+      {
+        status: 405,
+        headers: {
+          Allow: 'POST, DELETE',
+        },
+      },
+    );
   }
 
   /**
@@ -321,18 +214,14 @@ export class StreamableHTTPTransport implements Transport {
       const acceptHeader = ctx.req.header('Accept');
       const acceptedTypes =
         acceptHeader?.split(',').map((t) => t.trim().split(';')[0]) || [];
-      // The client MUST include an Accept header, listing both application/json and text/event-stream as supported content types.
-      if (
-        !acceptedTypes.includes('application/json') ||
-        !acceptedTypes.includes('text/event-stream')
-      ) {
+      // The client MUST include an Accept header, listing application/json as a supported content type.
+      if (!acceptedTypes.includes('application/json')) {
         throw new HTTPException(406, {
           res: Response.json({
             jsonrpc: '2.0',
             error: {
               code: -32000,
-              message:
-                'Not Acceptable: Client must accept both application/json and text/event-stream',
+              message: 'Not Acceptable: Client must accept application/json',
             },
             id: null,
           }),
@@ -441,60 +330,31 @@ export class StreamableHTTPTransport implements Transport {
         ctx.header('mcp-session-id', this.sessionId);
       }
 
-      if (this.#enableJsonResponse) {
-        // Store the response for this request to send messages back through this connection
-        // We need to track by request ID to maintain the connection
-        const result = await new Promise<JSONRPCMessage | JSONRPCMessage[]>(
-          (resolve) => {
-            for (const message of messages) {
-              if (isJSONRPCRequest(message)) {
-                this.#streamMapping.set(streamId, {
-                  ctx: {
-                    header: ctx.header,
-                    json: resolve,
-                  },
-                  createdAt: Date.now(),
-                });
-                this.#requestToStreamMapping.set(message.id, streamId);
-              }
+      // Store the response for this request to send messages back through this connection
+      // We need to track by request ID to maintain the connection
+      const result = await new Promise<JSONRPCMessage | JSONRPCMessage[]>(
+        (resolve) => {
+          for (const message of messages) {
+            if (isJSONRPCRequest(message)) {
+              this.#streamMapping.set(streamId, {
+                ctx: {
+                  header: ctx.header,
+                  json: resolve,
+                },
+                createdAt: Date.now(),
+              });
+              this.#requestToStreamMapping.set(message.id, streamId);
             }
-
-            // handle each message
-            for (const message of messages) {
-              this.onmessage?.(message, { authInfo });
-            }
-          },
-        );
-
-        return ctx.json(result);
-      }
-
-      return streamSSE(ctx, async (stream) => {
-        // Store the response for this request to send messages back through this connection
-        // We need to track by request ID to maintain the connection
-        for (const message of messages) {
-          if (isJSONRPCRequest(message)) {
-            this.#streamMapping.set(streamId, {
-              ctx,
-              stream,
-              createdAt: Date.now(),
-            });
-            this.#requestToStreamMapping.set(message.id, streamId);
           }
-        }
 
-        // Set up close handler for client disconnects
-        stream.onAbort(() => {
-          this.#streamMapping.delete(streamId);
-        });
+          // handle each message
+          for (const message of messages) {
+            this.onmessage?.(message, { authInfo });
+          }
+        },
+      );
 
-        // handle each message
-        for (const message of messages) {
-          this.onmessage?.(message, { authInfo });
-        }
-        // The server SHOULD NOT close the SSE stream before sending all JSON-RPC responses
-        // This will be handled by the send() method when responses are ready
-      });
+      return ctx.json(result);
     } catch (error) {
       if (error instanceof HTTPException) {
         throw error;
@@ -655,41 +515,10 @@ export class StreamableHTTPTransport implements Transport {
       requestId = message.id;
     }
 
-    // Check if this message should be sent on the standalone SSE stream (no request ID)
-    // Ignore notifications from tools (which have relatedRequestId set)
-    // Those will be sent via dedicated response SSE streams
+    // Without SSE support, we can't send messages without a request ID
     if (requestId === undefined) {
-      // For standalone SSE streams, we can only send requests and notifications
-      if (isJSONRPCResponse(message) || isJSONRPCError(message)) {
-        throw new Error(
-          'Cannot send a response on a standalone SSE stream unless resuming a previous client request',
-        );
-      }
-      const standaloneSse = this.#streamMapping.get(
-        this.#standaloneSseStreamId,
-      );
-
-      if (standaloneSse === undefined) {
-        // The spec says the server MAY send messages on the stream, so it's ok to discard if no stream
-        return;
-      }
-
-      // Generate and store event ID if event store is provided
-      let eventId: string | undefined;
-      if (this.#eventStore) {
-        // Stores the event and gets the generated event ID
-        eventId = await this.#eventStore.storeEvent(
-          this.#standaloneSseStreamId,
-          message,
-        );
-      }
-
-      // Send the message to the standalone SSE stream
-      return standaloneSse.stream?.writeSSE({
-        id: eventId,
-        event: 'message',
-        data: JSON.stringify(message),
-      });
+      // Notifications without request ID are discarded
+      return;
     }
 
     // Get the response for this request
@@ -699,24 +528,6 @@ export class StreamableHTTPTransport implements Transport {
       throw new Error(
         `No connection established for request ID: ${String(requestId)}`,
       );
-    }
-
-    if (!this.#enableJsonResponse) {
-      // For SSE responses, generate event ID if event store is provided
-      let eventId: string | undefined;
-
-      if (this.#eventStore) {
-        eventId = await this.#eventStore.storeEvent(streamId, message);
-      }
-
-      if (response) {
-        // Write the event to the response stream
-        await response.stream?.writeSSE({
-          id: eventId,
-          event: 'message',
-          data: JSON.stringify(message),
-        });
-      }
     }
 
     if (isJSONRPCResponse(message) || isJSONRPCError(message)) {

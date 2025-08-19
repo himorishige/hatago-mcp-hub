@@ -115,12 +115,7 @@ export const ReplicationConfigSchema = z.object({
 export type ReplicationConfig = z.infer<typeof ReplicationConfigSchema>;
 
 // トランスポートタイプ
-export const TransportTypeSchema = z.enum([
-  'stdio',
-  'http',
-  'sse',
-  'websocket',
-]);
+export const TransportTypeSchema = z.enum(['stdio', 'http', 'websocket']);
 export type TransportType = z.infer<typeof TransportTypeSchema>;
 
 // サーバータイプ
@@ -163,7 +158,7 @@ export type LocalServerConfig = z.infer<typeof LocalServerConfigSchema>;
 export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
   type: z.literal('remote'),
   url: z.string(),
-  transport: z.enum(['http', 'sse', 'websocket']).default('http'),
+  transport: z.enum(['http', 'websocket']).default('http'),
   auth: z
     .object({
       type: z.enum(['bearer', 'basic']).optional(),

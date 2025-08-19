@@ -4,7 +4,6 @@
 
 import { EventEmitter } from 'node:events';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { RemoteServerConfig } from '../config/types.js';
 import { getRuntime } from '../runtime/types.js';
@@ -22,21 +21,15 @@ export enum ServerState {
 }
 
 /**
- * Transport type for remote connections
- */
-export type TransportType = 'streamable-http' | 'sse';
-
-/**
  * Connection information
  */
 export interface RemoteConnection {
   client: Client;
-  transport: StreamableHTTPClientTransport | SSEClientTransport;
-  type: TransportType;
+  transport: StreamableHTTPClientTransport;
 }
 
 /**
- * Remote MCP Server for connecting to HTTP/SSE servers
+ * Remote MCP Server for connecting to HTTP servers via Streamable HTTP transport
  */
 export class RemoteMcpServer extends EventEmitter {
   private config: RemoteServerConfig;
@@ -206,8 +199,7 @@ export class RemoteMcpServer extends EventEmitter {
   }
 
   /**
-   * Connect to remote server with backwards compatibility
-   * Following SDK example for StreamableHTTP -> SSE fallback
+   * Connect to remote server using Streamable HTTP transport
    */
   private async connect(): Promise<void> {
     const _runtime = await this.runtime;
@@ -225,65 +217,31 @@ export class RemoteMcpServer extends EventEmitter {
     }
 
     const baseUrl = new URL(this.config.url);
-    let connection: RemoteConnection | null = null;
 
-    // Determine transports to try
-    const transportsToTry: TransportType[] = [];
-    if (this.config.transport === 'sse') {
-      // Explicit SSE only
-      transportsToTry.push('sse');
-    } else if (this.config.transport === 'http') {
-      // Explicit HTTP only
-      transportsToTry.push('streamable-http');
-    } else {
-      // Try both with fallback
-      transportsToTry.push('streamable-http', 'sse');
+    try {
+      console.log(
+        `Connecting to ${this.config.id} using streamable-http transport`,
+      );
+      const connection = await this.connectWithTransport(baseUrl, headers);
+      console.log(`Successfully connected to ${this.config.id}`);
+
+      // Set up error handlers
+      connection.client.onerror = (error) => {
+        this.handleConnectionError(error).catch(console.error);
+      };
+
+      this.connection = connection;
+    } catch (error) {
+      const safeError = await sanitizeLog(String(error));
+      console.log(`Failed to connect to ${this.config.id}: ${safeError}`);
+      throw new Error(`Failed to connect to remote server: ${error}`);
     }
-
-    const errors: Array<{ transport: string; error: unknown }> = [];
-
-    // Try each transport in order
-    for (const transportType of transportsToTry) {
-      try {
-        console.log(`Trying ${transportType} transport for ${this.config.id}`);
-        connection = await this.connectWithTransport(
-          transportType,
-          baseUrl,
-          headers,
-        );
-        console.log(
-          `Successfully connected to ${this.config.id} using ${transportType}`,
-        );
-        break;
-      } catch (error) {
-        const safeError = await sanitizeLog(String(error));
-        console.log(
-          `${transportType} failed for ${this.config.id}: ${safeError}`,
-        );
-        errors.push({ transport: transportType, error });
-      }
-    }
-
-    if (!connection) {
-      const errorMessage = errors
-        .map((e, i) => `${i + 1}. ${e.transport}: ${e.error}`)
-        .join('\n');
-      throw new Error(`Failed to connect with any transport:\n${errorMessage}`);
-    }
-
-    // Set up error handlers
-    connection.client.onerror = (error) => {
-      this.handleConnectionError(error).catch(console.error);
-    };
-
-    this.connection = connection;
   }
 
   /**
-   * Connect with specific transport type
+   * Connect using Streamable HTTP transport
    */
   private async connectWithTransport(
-    transportType: TransportType,
     baseUrl: URL,
     headers: Record<string, string>,
   ): Promise<RemoteConnection> {
@@ -293,22 +251,18 @@ export class RemoteMcpServer extends EventEmitter {
       version: '0.0.1',
     });
 
-    const transport =
-      transportType === 'sse'
-        ? new SSEClientTransport(baseUrl, { headers })
-        : new StreamableHTTPClientTransport(baseUrl, { headers });
+    const transport = new StreamableHTTPClientTransport(baseUrl, { headers });
 
     // Connect with timeout
     await this.withTimeout(
       client.connect(transport),
       this.defaults.connectTimeoutMs,
-      `${transportType} connection`,
+      'streamable-http connection',
     );
 
     return {
       client,
       transport,
-      type: transportType === 'sse' ? 'sse' : 'streamable-http',
     };
   }
 
@@ -604,7 +558,6 @@ export class RemoteMcpServer extends EventEmitter {
   getStats(): {
     id: string;
     state: ServerState;
-    transportType?: TransportType;
     reconnectCount: number;
     uptime?: number;
     url: string;
@@ -612,7 +565,6 @@ export class RemoteMcpServer extends EventEmitter {
     return {
       id: this.config.id,
       state: this.state,
-      transportType: this.connection?.type,
       reconnectCount: this.reconnectCount,
       uptime: this.lastConnectTime
         ? Date.now() - this.lastConnectTime.getTime()
