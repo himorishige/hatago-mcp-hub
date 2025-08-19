@@ -1,10 +1,21 @@
 {
   "name": "app",
   "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "src", "README.md", "LICENSE"],
+  "sideEffects": false,
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "dev": "tsdown --watch",
+    "build": "tsdown",
+    "start": "node dist/index.mjs",
     "format": "biome format src --write",
     "lint": "biome lint src --write",
     "check": "biome check src --write"
@@ -16,7 +27,10 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@types/node": "^20.11.17",
+    "tsdown": "^0.14.1",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3"
-  }
+  },
+  "engines": { "node": ">=20" },
+  "publishConfig": { "access": "public" }
 }
