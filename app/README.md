@@ -94,6 +94,20 @@ hatago npx start filesystem
 hatago npx stop filesystem
 ```
 
+## 🔐 Security & Environment Variables
+
+Hatagoは以下の環境変数でセキュリティと動作をカスタマイズできます：
+
+### セキュリティ設定
+- `HATAGO_DEBUG_REDACTION=1` - ログサニタイズのデバッグモード（開発時のみ）
+
+### 再接続制限
+- `HATAGO_MAX_RECONNECT_DEPTH=32` - 再接続の最大深度（デフォルト: 32）
+- `HATAGO_MAX_RECONNECT_STEPS=10000` - 再接続の最大ステップ数（デフォルト: 10000）
+
+### ヘルスチェック
+- `HATAGO_HEALTH_TIMEOUT_MS=1000` - ヘルスチェックタイムアウト（デフォルト: 1000ms）
+
 ## ⚙️ Configuration (Optional)
 
 Hatagoは設定なしでも動作しますが、カスタマイズも可能です。
