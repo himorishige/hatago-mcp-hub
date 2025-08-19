@@ -1,18 +1,5 @@
-import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.get('/', (c) => {
-  return c.text('Hello Hono!');
-});
-
-serve(
-  {
-    fetch: app.fetch,
-    port: 3000,
-  },
-  (info) => {
-    console.log(`Server is running on http://localhost:${info.port}`);
-  },
-);
+export * from './config/loader.js';
+export * from './config/types.js';
+export * from './core/mcp-hub.js';
+export * from './core/tool-registry.js';
+export * from './transport/stdio.js';

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "logLevel": "info",
+  "http": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "toolNaming": {
+    "strategy": "namespace",
+    "separator": "_",
+    "format": "{serverId}_{toolName}"
+  },
+  "session": {
+    "ttlSeconds": 3600,
+    "persist": false,
+    "store": "memory"
+  },
+  "timeouts": {
+    "spawnMs": 8000,
+    "healthcheckMs": 2000,
+    "toolCallMs": 20000
+  },
+  "concurrency": {
+    "global": 8
+  },
+  "security": {
+    "redactKeys": ["password", "apiKey", "token", "secret"]
+  },
+  "servers": [
+    // ローカルMCPサーバーの例
+    // {
+    //   "id": "local_mcp",
+    //   "type": "local",
+    //   "start": "lazy",
+    //   "command": "node",
+    //   "args": ["./examples/mcp-server.js"],
+    //   "transport": "stdio",
+    //   "tools": {
+    //     "include": ["*"],
+    //     "prefix": "local"
+    //   }
+    // }
+  ]
+}

@@ -10,7 +10,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     "declaration": true,
-    "isolatedDeclarations": true,
+    "isolatedDeclarations": false,
     "outDir": "./dist",
     "sourceMap": true
   },
