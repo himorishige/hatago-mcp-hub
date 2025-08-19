@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@himorishige/noren':
+        specifier: ^0.3.1
+        version: 0.3.1
       '@hono/node-server':
         specifier: ^1.19.0
         version: 1.19.0(hono@4.9.2)
@@ -299,6 +302,10 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@himorishige/noren@0.3.1':
+    resolution: {integrity: sha512-kiPdeNY5RMS0goaK+e/wnPOVLtW45KNL0TB9e1hRdFdkVPdb9oVtReBJlG2HuHfeEKhtaT4bSDtzP5Aj0zzKzQ==}
+    engines: {node: '>=20.10.0'}
 
   '@hono/node-server@1.19.0':
     resolution: {integrity: sha512-1k8/8OHf5VIymJEcJyVksFpT+AQ5euY0VA5hUkCnlKpD4mr8FSbvXaHblxeTTEr90OaqWzAkQaqD80qHZQKxBA==}
@@ -1422,6 +1429,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.25.9':
     optional: true
+
+  '@himorishige/noren@0.3.1': {}
 
   '@hono/node-server@1.19.0(hono@4.9.2)':
     dependencies:

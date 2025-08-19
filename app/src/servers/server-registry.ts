@@ -9,6 +9,7 @@ import type {
   ServerConfig,
 } from '../config/types.js';
 import { getRuntime } from '../runtime/types.js';
+import { sanitizeLog } from '../utils/security.js';
 import { NpxMcpServer, ServerState } from './npx-mcp-server.js';
 import { RemoteMcpServer } from './remote-mcp-server.js';
 import type { WorkspaceManager } from './workspace-manager.js';
@@ -456,7 +457,11 @@ export class ServerRegistry extends EventEmitter {
         tools,
       });
     } catch (error) {
-      console.error(`Failed to discover tools for server ${serverId}:`, error);
+      const safeError = await sanitizeLog(String(error));
+      console.error(
+        `Failed to discover tools for server ${serverId}:`,
+        safeError,
+      );
     }
   }
 
@@ -650,7 +655,11 @@ export class ServerRegistry extends EventEmitter {
         attempt: registered.autoRestartAttempts,
       });
 
-      console.error(`Failed to auto-restart server ${registered.id}:`, error);
+      const safeError = await sanitizeLog(String(error));
+      console.error(
+        `Failed to auto-restart server ${registered.id}:`,
+        safeError,
+      );
 
       // Mark server as crashed if restart fails
       registered.state = ServerState.CRASHED;

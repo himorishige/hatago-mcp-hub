@@ -44,9 +44,14 @@ export async function findConfigFile(
 /**
  * 設定ファイルを読み込み
  */
-export async function loadConfigFile(filepath: string): Promise<HatagoConfig> {
+export async function loadConfigFile(
+  filepath: string,
+  options?: { quiet?: boolean },
+): Promise<HatagoConfig> {
   try {
-    console.log(`Loading config from: ${filepath}`);
+    if (!options?.quiet) {
+      console.log(`Loading config from: ${filepath}`);
+    }
 
     // ファイルを読み込み
     const content = await readFile(filepath, 'utf-8');
@@ -57,10 +62,14 @@ export async function loadConfigFile(filepath: string): Promise<HatagoConfig> {
     // バリデーション
     const config = validateConfig(parsed);
 
-    console.log(`Config loaded successfully`);
+    if (!options?.quiet) {
+      console.log(`Config loaded successfully`);
+    }
     return config;
   } catch (error) {
-    console.error(`Failed to load config from ${filepath}:`, error);
+    if (!options?.quiet) {
+      console.error(`Failed to load config from ${filepath}:`, error);
+    }
     throw error;
   }
 }
@@ -104,24 +113,29 @@ export function createDefaultConfig(): HatagoConfig {
 /**
  * 設定を読み込み（ファイルまたはデフォルト）
  */
-export async function loadConfig(configPath?: string): Promise<HatagoConfig> {
+export async function loadConfig(
+  configPath?: string,
+  options?: { quiet?: boolean },
+): Promise<HatagoConfig> {
   // 明示的なパスが指定されている場合
   if (configPath) {
     const resolvedPath = resolve(configPath);
     if (!existsSync(resolvedPath)) {
       throw new Error(`Config file not found: ${resolvedPath}`);
     }
-    return await loadConfigFile(resolvedPath);
+    return await loadConfigFile(resolvedPath, options);
   }
 
   // 設定ファイルを検索
   const foundPath = await findConfigFile();
   if (foundPath) {
-    return await loadConfigFile(foundPath);
+    return await loadConfigFile(foundPath, options);
   }
 
   // デフォルト設定を使用
-  console.log('No config file found, using default configuration');
+  if (!options?.quiet) {
+    console.log('No config file found, using default configuration');
+  }
   return createDefaultConfig();
 }
 

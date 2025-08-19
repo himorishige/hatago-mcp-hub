@@ -8,6 +8,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { RemoteServerConfig } from '../config/types.js';
 import { getRuntime } from '../runtime/types.js';
+import { sanitizeLog } from '../utils/security.js';
 
 /**
  * Server state enum (reuse from npx-mcp-server)
@@ -42,6 +43,7 @@ export class RemoteMcpServer extends EventEmitter {
   private connection: RemoteConnection | null = null;
   private state: ServerState = ServerState.STOPPED;
   private reconnectCount = 0;
+  private firstReconnectAttempt: Date | null = null;
   private lastConnectTime: Date | null = null;
   private shutdownRequested = false;
   private runtime = getRuntime();
@@ -49,12 +51,24 @@ export class RemoteMcpServer extends EventEmitter {
   private stopPromise: Promise<void> | null = null;
   private healthCheckInterval: NodeJS.Timeout | number | null = null;
 
+  // Recursion depth tracking
+  private reconnectDepth = 0;
+  private reconnectSteps = 0;
+  private readonly MAX_RECONNECT_DEPTH = Number(
+    process.env.HATAGO_MAX_RECONNECT_DEPTH || 32,
+  );
+  private readonly MAX_RECONNECT_STEPS = Number(
+    process.env.HATAGO_MAX_RECONNECT_STEPS || 10000,
+  );
+
   // Default configuration
   private readonly defaults = {
     reconnectDelayMs: 1000,
     maxReconnects: 5,
+    maxReconnectDurationMs: 300000, // 5 minutes max reconnect duration
     connectTimeoutMs: 30000,
     healthCheckIntervalMs: 60000, // 1 minute health check
+    healthCheckTimeoutMs: Number(process.env.HATAGO_HEALTH_TIMEOUT_MS || 1000), // 1 second health check timeout
   };
 
   constructor(config: RemoteServerConfig) {
@@ -239,7 +253,10 @@ export class RemoteMcpServer extends EventEmitter {
         );
         break;
       } catch (error) {
-        console.log(`${transportType} failed for ${this.config.id}: ${error}`);
+        const safeError = await sanitizeLog(String(error));
+        console.log(
+          `${transportType} failed for ${this.config.id}: ${safeError}`,
+        );
         errors.push({ transport: transportType, error });
       }
     }
@@ -253,7 +270,7 @@ export class RemoteMcpServer extends EventEmitter {
 
     // Set up error handlers
     connection.client.onerror = (error) => {
-      this.handleConnectionError(error);
+      this.handleConnectionError(error).catch(console.error);
     };
 
     this.connection = connection;
@@ -321,8 +338,33 @@ export class RemoteMcpServer extends EventEmitter {
   /**
    * Handle connection error
    */
-  private handleConnectionError(error: Error): void {
-    console.error(`Remote server ${this.config.id} connection error:`, error);
+  private async handleConnectionError(error: Error): Promise<void> {
+    // Check recursion depth limits
+    if (this.reconnectDepth >= this.MAX_RECONNECT_DEPTH) {
+      console.error(
+        `Max reconnect depth (${this.MAX_RECONNECT_DEPTH}) reached for ${this.config.id}`,
+      );
+      this.state = ServerState.CRASHED;
+      return;
+    }
+
+    if (this.reconnectSteps >= this.MAX_RECONNECT_STEPS) {
+      console.error(
+        `Max reconnect steps (${this.MAX_RECONNECT_STEPS}) reached for ${this.config.id}`,
+      );
+      this.state = ServerState.CRASHED;
+      return;
+    }
+
+    // Increment counters
+    this.reconnectDepth++;
+    this.reconnectSteps++;
+
+    const safeError = await sanitizeLog(error.message);
+    console.error(
+      `Remote server ${this.config.id} connection error:`,
+      safeError,
+    );
     this.state = ServerState.CRASHED;
     this.emit('error', {
       serverId: this.config.id,
@@ -330,7 +372,18 @@ export class RemoteMcpServer extends EventEmitter {
     });
 
     if (this.shouldAutoReconnect()) {
-      this.scheduleReconnect();
+      // Use setImmediate to avoid synchronous recursion and reset depth
+      setImmediate(() => {
+        this.reconnectDepth = 0; // Reset depth for async continuation
+        this.scheduleReconnect().catch((err) => {
+          sanitizeLog(String(err)).then((safeErr) =>
+            console.error(
+              `Failed to schedule reconnect for ${this.config.id}:`,
+              safeErr,
+            ),
+          );
+        });
+      });
     }
   }
 
@@ -356,14 +409,37 @@ export class RemoteMcpServer extends EventEmitter {
     const healthCheckInterval = runtime.setInterval(async () => {
       if (this.state === ServerState.RUNNING && this.connection) {
         try {
-          // Simple ping using tools/list request
-          await this.connection.client.request({
-            method: 'tools/list',
-            params: {},
+          // Create a timeout promise
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            runtime.setTimeout(() => {
+              reject(new Error('Health check timeout'));
+            }, this.defaults.healthCheckTimeoutMs);
           });
+
+          // Race between health check and timeout
+          await Promise.race([
+            this.connection.client.request({
+              method: 'tools/list',
+              params: {},
+            }),
+            timeoutPromise,
+          ]);
         } catch (error) {
-          console.warn(`Health check failed for ${this.config.id}:`, error);
-          this.handleConnectionError(error as Error);
+          const errorMessage =
+            error instanceof Error && error.message === 'Health check timeout'
+              ? `Health check timeout (${this.defaults.healthCheckTimeoutMs}ms)`
+              : String(error);
+          const safeError = await sanitizeLog(errorMessage);
+          console.warn(`Health check failed for ${this.config.id}:`, safeError);
+
+          // Only handle connection error if not a timeout
+          if (
+            !(
+              error instanceof Error && error.message === 'Health check timeout'
+            )
+          ) {
+            await this.handleConnectionError(error as Error);
+          }
         }
       }
     }, this.defaults.healthCheckIntervalMs);
@@ -380,8 +456,24 @@ export class RemoteMcpServer extends EventEmitter {
       return false;
     }
 
+    // Check reconnect count
     const maxReconnects = this.defaults.maxReconnects;
-    return this.reconnectCount < maxReconnects;
+    if (this.reconnectCount >= maxReconnects) {
+      return false;
+    }
+
+    // Check time limit
+    if (this.firstReconnectAttempt) {
+      const elapsedMs = Date.now() - this.firstReconnectAttempt.getTime();
+      if (elapsedMs > this.defaults.maxReconnectDurationMs) {
+        console.warn(
+          `Server ${this.config.id} exceeded max reconnect duration (${this.defaults.maxReconnectDurationMs}ms)`,
+        );
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
@@ -389,6 +481,12 @@ export class RemoteMcpServer extends EventEmitter {
    */
   private async scheduleReconnect(): Promise<void> {
     const runtime = await this.runtime;
+
+    // Set first reconnect attempt time
+    if (!this.firstReconnectAttempt) {
+      this.firstReconnectAttempt = new Date();
+    }
+
     const delay = Math.min(
       this.defaults.reconnectDelayMs * 2 ** this.reconnectCount,
       30000, // Max 30 seconds
@@ -400,13 +498,18 @@ export class RemoteMcpServer extends EventEmitter {
     );
 
     runtime.setTimeout(async () => {
-      if (!this.shutdownRequested) {
+      if (!this.shutdownRequested && this.shouldAutoReconnect()) {
         try {
           await this.start();
-          // Reset reconnect count on successful connection
+          // Reset counters on successful connection
           this.reconnectCount = 0;
+          this.firstReconnectAttempt = null;
         } catch (error) {
-          console.error(`Failed to reconnect server ${this.config.id}:`, error);
+          const safeError = await sanitizeLog(String(error));
+          console.error(
+            `Failed to reconnect server ${this.config.id}:`,
+            safeError,
+          );
         }
       }
     }, delay);
@@ -461,7 +564,11 @@ export class RemoteMcpServer extends EventEmitter {
       try {
         await this.connection.transport.close();
       } catch (error) {
-        console.warn(`Error closing transport for ${this.config.id}:`, error);
+        const safeError = await sanitizeLog(String(error));
+        console.warn(
+          `Error closing transport for ${this.config.id}:`,
+          safeError,
+        );
       }
       this.connection = null;
     }
@@ -526,7 +633,7 @@ export class RemoteMcpServer extends EventEmitter {
           error.message.includes('closed') ||
           error.message.includes('ENOTFOUND'))
       ) {
-        this.handleConnectionError(error);
+        await this.handleConnectionError(error);
       }
       throw error;
     }
@@ -550,7 +657,7 @@ export class RemoteMcpServer extends EventEmitter {
           error.message.includes('closed') ||
           error.message.includes('ENOTFOUND'))
       ) {
-        this.handleConnectionError(error);
+        await this.handleConnectionError(error);
       }
       throw error;
     }

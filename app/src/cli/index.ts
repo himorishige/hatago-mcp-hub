@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import { Hono } from 'hono';
 import { generateSampleConfig, loadConfig } from '../config/loader.js';
 import { McpHub } from '../core/mcp-hub.js';
+import { sanitizeLog } from '../utils/security.js';
 import { createNpxCommands } from './commands/npx.js';
 import { createRemoteCommands } from './commands/remote.js';
 
@@ -26,13 +27,23 @@ program
   .description('Start the MCP Hub server')
   .option('-c, --config <path>', 'Path to config file')
   .option('-p, --port <port>', 'HTTP port', '3000')
-  .option('-m, --mode <mode>', 'Transport mode: http | stdio', 'http')
+  .option('-m, --mode <mode>', 'Transport mode: stdio | http', 'stdio')
+  .option('--http', 'Use HTTP mode instead of STDIO')
+  .option('-q, --quiet', 'Suppress non-essential output')
   .action(async (options) => {
     try {
-      console.log('Starting Hatago MCP Hub...');
+      // --httpオプションが指定されたらHTTPモードに
+      if (options.http) {
+        options.mode = 'http';
+      }
 
-      // 設定を読み込み
-      const config = await loadConfig(options.config);
+      // quietモードではログを抑制
+      if (!options.quiet && options.mode === 'http') {
+        console.log('Starting Hatago MCP Hub...');
+      }
+
+      // 設定を読み込み（オプショナル）
+      const config = await loadConfig(options.config, { quiet: options.quiet });
 
       // ポートを上書き
       if (options.port && config.http) {
@@ -46,10 +57,11 @@ program
       // トランスポートモードに応じて起動
       if (options.mode === 'stdio') {
         // STDIOモード
-        console.log('Starting in STDIO mode...');
+        if (!options.quiet) {
+          console.error('MCP Hub running in STDIO mode');
+        }
         const transport = new StdioServerTransport();
         await hub.getServer().connect(transport);
-        console.log('MCP Hub is running in STDIO mode');
       } else {
         // HTTPモード
         const app = new Hono();
@@ -180,7 +192,8 @@ program
         process.exit(0);
       });
     } catch (error) {
-      console.error('Failed to start server:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to start server:', safeError);
       process.exit(1);
     }
   });
@@ -205,7 +218,8 @@ program
       console.log('Config file created successfully');
       console.log('Edit the file and then run: hatago serve');
     } catch (error) {
-      console.error('Failed to create config file:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to create config file:', safeError);
       process.exit(1);
     }
   });
@@ -255,7 +269,8 @@ program
       // クリーンアップ
       await hub.shutdown();
     } catch (error) {
-      console.error('Failed to list tools:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to list tools:', safeError);
       process.exit(1);
     }
   });
@@ -283,7 +298,8 @@ program
 
       await watcher.stop();
     } catch (error) {
-      console.error('Failed to reload configuration:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to reload configuration:', safeError);
       process.exit(1);
     }
   });
@@ -322,7 +338,8 @@ program
 
       await configManager.shutdown();
     } catch (error) {
-      console.error('Failed to get status:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to get status:', safeError);
       process.exit(1);
     }
   });
@@ -377,7 +394,8 @@ program
         console.log(JSON.stringify(policyConfig, null, 2));
       }
     } catch (error) {
-      console.error('Failed to manage policy:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to manage policy:', safeError);
       process.exit(1);
     }
   });
@@ -505,7 +523,8 @@ program
 
       await sessionManager.shutdown();
     } catch (error) {
-      console.error('Failed to manage sessions:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to manage sessions:', safeError);
       process.exit(1);
     }
   });
@@ -543,7 +562,8 @@ program
       await rolloverManager.shutdown();
       await configManager.shutdown();
     } catch (error) {
-      console.error('Failed to drain generation:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to drain generation:', safeError);
       process.exit(1);
     }
   });
@@ -589,7 +609,8 @@ program
       // クリーンアップ
       await hub.shutdown();
     } catch (error) {
-      console.error('Failed to call tool:', error);
+      const safeError = await sanitizeLog(String(error));
+      console.error('Failed to call tool:', safeError);
       process.exit(1);
     }
   });

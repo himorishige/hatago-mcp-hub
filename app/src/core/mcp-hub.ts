@@ -69,8 +69,6 @@ export class McpHub {
       return;
     }
 
-    console.log('Initializing MCP Hub...');
-
     // NPXサーバーやリモートサーバーサポートの初期化
     const hasNpxServers = this.config.servers.some((s) => s.type === 'npx');
     const hasRemoteServers = this.config.servers.some(
@@ -100,7 +98,6 @@ export class McpHub {
     }
 
     this.initialized = true;
-    console.log('MCP Hub initialized');
   }
 
   /**
