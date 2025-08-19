@@ -180,6 +180,13 @@ export const NpxServerConfigSchema = BaseServerConfigSchema.extend({
   version: z.string().optional(),
   args: z.array(z.string()).optional(),
   transport: z.literal('stdio').default('stdio'),
+  autoRestart: z.boolean().optional(),
+  restartDelayMs: z.number().optional(),
+  maxRestarts: z.number().optional(),
+  timeout: z.number().optional(),
+  shutdownTimeoutMs: z.number().optional(),
+  initTimeoutMs: z.number().optional(), // MCP initialization timeout
+  workDir: z.string().optional(), // Working directory
 });
 export type NpxServerConfig = z.infer<typeof NpxServerConfigSchema>;
 

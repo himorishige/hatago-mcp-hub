@@ -4,17 +4,27 @@ import type {
   CallToolRequest,
   CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
-import type { HatagoConfig, ServerConfig } from '../config/types.js';
+import type {
+  HatagoConfig,
+  NpxServerConfig,
+  ServerConfig,
+} from '../config/types.js';
+import { getRuntime } from '../runtime/types.js';
+import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
+import { ServerRegistry } from '../servers/server-registry.js';
+import { WorkspaceManager } from '../servers/workspace-manager.js';
 import { StdioTransport } from '../transport/stdio.js';
 import { ToolRegistry } from './tool-registry.js';
 
 // MCPサーバー接続情報
 export interface McpConnection {
   serverId: string;
-  client: Client;
-  transport: StdioTransport;
+  client?: Client; // Optional for NPX servers
+  transport?: StdioTransport; // Optional for NPX servers
+  npxServer?: NpxMcpServer; // For NPX servers
   connected: boolean;
   capabilities?: unknown;
+  type: 'local' | 'remote' | 'npx';
 }
 
 // MCPハブのオプション
@@ -31,6 +41,8 @@ export class McpHub {
   private connections = new Map<string, McpConnection>();
   private config: HatagoConfig;
   private initialized = false;
+  private workspaceManager?: WorkspaceManager;
+  private serverRegistry?: ServerRegistry;
 
   constructor(options: McpHubOptions) {
     this.config = options.config;
@@ -56,6 +68,16 @@ export class McpHub {
     }
 
     console.log('Initializing MCP Hub...');
+
+    // NPXサーバーサポートの初期化
+    const hasNpxServers = this.config.servers.some((s) => s.type === 'npx');
+    if (hasNpxServers) {
+      this.workspaceManager = new WorkspaceManager();
+      await this.workspaceManager.initialize();
+
+      this.serverRegistry = new ServerRegistry(this.workspaceManager);
+      await this.serverRegistry.initialize();
+    }
 
     // 設定されたサーバーを接続
     for (const serverConfig of this.config.servers) {
@@ -88,8 +110,8 @@ export class McpHub {
     console.log(`Connecting to server ${serverId} (${type})...`);
 
     try {
-      // 現在はローカルサーバーのみサポート
       if (type === 'local') {
+        // ローカルサーバーの接続
         const transport = new StdioTransport({
           command: serverConfig.command,
           args: serverConfig.args || [],
@@ -115,6 +137,7 @@ export class McpHub {
           transport,
           connected: true,
           capabilities: client.getServerCapabilities?.(),
+          type: 'local',
         };
         this.connections.set(serverId, connection);
 
@@ -122,6 +145,32 @@ export class McpHub {
         await this.refreshServerTools(serverId);
 
         console.log(`Connected to server ${serverId}`);
+      } else if (type === 'npx') {
+        // NPXサーバーの接続
+        if (!this.serverRegistry) {
+          throw new Error('Server registry not initialized');
+        }
+
+        const npxConfig = serverConfig as NpxServerConfig;
+        const registered =
+          await this.serverRegistry.registerNpxServer(npxConfig);
+
+        // 起動
+        await this.serverRegistry.startServer(serverId);
+
+        // 接続情報を保存
+        const connection: McpConnection = {
+          serverId,
+          npxServer: registered.instance,
+          connected: true,
+          type: 'npx',
+        };
+        this.connections.set(serverId, connection);
+
+        // ツールを取得して登録（NPXサーバーの場合はRegistryから取得）
+        await this.refreshNpxServerTools(serverId);
+
+        console.log(`Connected to NPX server ${serverId}`);
       } else {
         console.warn(`Server type ${type} is not yet supported`);
       }
@@ -143,11 +192,21 @@ export class McpHub {
     console.log(`Disconnecting from server ${serverId}...`);
 
     try {
-      // クライアントを切断
-      await connection.client.close();
-
-      // トランスポートを停止
-      await connection.transport.stop();
+      if (connection.type === 'local') {
+        // ローカルサーバーの切断
+        if (connection.client) {
+          await connection.client.close();
+        }
+        if (connection.transport) {
+          await connection.transport.stop();
+        }
+      } else if (connection.type === 'npx') {
+        // NPXサーバーの切断
+        if (this.serverRegistry) {
+          await this.serverRegistry.stopServer(serverId);
+          await this.serverRegistry.unregisterServer(serverId);
+        }
+      }
 
       // ツールをレジストリから削除
       this.registry.clearServerTools(serverId);
@@ -166,7 +225,7 @@ export class McpHub {
    */
   private async refreshServerTools(serverId: string): Promise<void> {
     const connection = this.connections.get(serverId);
-    if (!connection?.connected) {
+    if (!connection?.connected || !connection.client) {
       return;
     }
 
@@ -184,6 +243,42 @@ export class McpHub {
       this.updateHubTools();
     } catch (error) {
       console.error(`Failed to refresh tools for server ${serverId}:`, error);
+    }
+  }
+
+  /**
+   * NPXサーバーのツールを更新
+   */
+  private async refreshNpxServerTools(serverId: string): Promise<void> {
+    if (!this.serverRegistry) {
+      return;
+    }
+
+    const registered = this.serverRegistry.getServer(serverId);
+    if (!registered?.tools) {
+      return;
+    }
+
+    try {
+      // ServerRegistryからツール情報を取得
+      const tools = registered.tools.map((name) => ({
+        name,
+        description: `Tool from NPX server ${serverId}`,
+        inputSchema: {},
+      }));
+
+      console.log(`NPX Server ${serverId} has ${tools.length} tools`);
+
+      // レジストリに登録
+      this.registry.registerServerTools(serverId, tools);
+
+      // ハブのツールを更新
+      this.updateHubTools();
+    } catch (error) {
+      console.error(
+        `Failed to refresh tools for NPX server ${serverId}:`,
+        error,
+      );
     }
   }
 
@@ -220,13 +315,14 @@ export class McpHub {
     const { serverId, originalName } = resolved;
 
     // サーバー接続を取得
-    const connection = this.connections.get(serverId);
+    let connection = this.connections.get(serverId);
     if (!connection?.connected) {
       // 遅延接続を試みる
       const serverConfig = this.config.servers.find((s) => s.id === serverId);
       if (serverConfig && serverConfig.start === 'lazy') {
         try {
           await this.connectServer(serverConfig);
+          connection = this.connections.get(serverId);
         } catch (error) {
           return {
             content: [
@@ -251,9 +347,7 @@ export class McpHub {
       }
     }
 
-    // 再度接続を取得
-    const activeConnection = this.connections.get(serverId);
-    if (!activeConnection) {
+    if (!connection) {
       return {
         content: [
           {
@@ -270,10 +364,37 @@ export class McpHub {
       const timeoutMs = this.config.timeouts.toolCallMs;
       let timeoutId: NodeJS.Timeout | undefined;
 
-      const callPromise = activeConnection.client.callTool({
-        name: originalName,
-        arguments: args,
-      });
+      let callPromise: Promise<CallToolResult>;
+
+      if (connection.type === 'local' && connection.client) {
+        // ローカルサーバーの場合
+        callPromise = connection.client.callTool({
+          name: originalName,
+          arguments: args,
+        });
+      } else if (connection.type === 'npx' && connection.npxServer) {
+        // NPXサーバーの場合
+        const runtime = await getRuntime();
+        const toolId = await runtime.idGenerator.generate();
+
+        const toolRequest = JSON.stringify({
+          jsonrpc: '2.0',
+          id: toolId,
+          method: 'tools/call',
+          params: {
+            name: originalName,
+            arguments: args,
+          },
+        });
+
+        // リクエストを送信
+        await connection.npxServer.send(`${toolRequest}\n`);
+
+        // レスポンスを待つ
+        callPromise = this.waitForToolResponse(connection.npxServer, toolId);
+      } else {
+        throw new Error(`Unsupported connection type: ${connection.type}`);
+      }
 
       const timeoutPromise = new Promise<CallToolResult>((_, reject) => {
         timeoutId = setTimeout(() => {
@@ -312,6 +433,50 @@ export class McpHub {
   }
 
   /**
+   * NPXサーバーからのツール実行レスポンスを待つ
+   */
+  private async waitForToolResponse(
+    server: NpxMcpServer,
+    requestId: string,
+  ): Promise<CallToolResult> {
+    return new Promise((resolve, reject) => {
+      let buffer = '';
+      let cleanupStdout: (() => void) | null = null;
+
+      const onData = (data: Buffer) => {
+        buffer += data.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          try {
+            const message = JSON.parse(line);
+
+            if (message.id === requestId) {
+              if (cleanupStdout) cleanupStdout();
+
+              if (message.result) {
+                resolve(message.result);
+              } else if (message.error) {
+                reject(new Error(message.error.message));
+              }
+              return;
+            }
+          } catch {
+            // Not valid JSON, continue
+          }
+        }
+      };
+
+      cleanupStdout = server.onStdout(onData);
+
+      // タイムアウトは呼び出し側で設定される
+    });
+  }
+
+  /**
    * MCPサーバーインスタンスを取得
    */
   getServer(): McpServer {
@@ -342,6 +507,14 @@ export class McpHub {
     const serverIds = Array.from(this.connections.keys());
     for (const serverId of serverIds) {
       await this.disconnectServer(serverId);
+    }
+
+    // NPXサーバー関連のシャットダウン
+    if (this.serverRegistry) {
+      await this.serverRegistry.shutdown();
+    }
+    if (this.workspaceManager) {
+      await this.workspaceManager.shutdown();
     }
 
     console.log('MCP Hub shutdown complete');
