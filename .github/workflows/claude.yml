@@ -1,0 +1,94 @@
+name: Claude Code
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    if: |
+      github.actor == 'himorishige' && (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+      actions: read # Required for Claude to read CI results on PRs
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # This is an optional setting that allows Claude to read CI results on PRs
+          additional_permissions: |
+            actions: read
+
+          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
+          # model: "claude-opus-4-20250514"
+
+          # Optional: Customize the trigger phrase (default: @claude)
+          # trigger_phrase: "/claude"
+
+          # Optional: Trigger when specific user is assigned to an issue
+          # assignee_trigger: "claude-bot"
+
+          # Optional: Allow Claude to run specific commands
+          allowed_tools: 'Bash(pnpm install),Bash(pnpm run build),Bash(pnpm run test:*),Bash(pnpm run typecheck),Bash(pnpm run lint:*),Bash(pnpm run check:*),Bash(biome check),Bash(biome lint),Bash(vitest),Bash(pnpm dev),Bash(pnpm dev:*),Bash(pnpm start:*)'
+
+          # Optional: Add custom instructions for Claude to customize its behavior for your project
+          custom_instructions: |
+            - すべて日本語で、簡潔に。結論→根拠→提案の順で述べること。
+            - このリポジトリの前提に従うこと（TypeScript strict、Hono + MCP SDK、pnpmモノレポ構造）。
+
+            ## Hatago 基本原則
+            - **高速・軽量・シンプル**: パフォーマンス最優先、最小限の依存関係、シンプルなAPI設計
+            - **Simplicity First (SF)**: 常に最もシンプルな実行可能解を選択、複雑な実装は明確な正当化が必要
+            - **Dependency Minimalism (DM)**: 新しい依存関係の追加は厳格に審査、既存機能の活用を優先
+            - **関数型優先**: Pure function、副作用最小化、イミュータブルデータ、関数合成の活用
+
+            ## 仕様準拠要件
+            - **Hono Framework**: middleware パターン、context 管理、型安全なルーティング
+            - **Anthropic MCP 仕様 (2025-06-18)**: JSON-RPC 2.0、transport layer、security best practices
+            - **RFC 標準**: OAuth 2.1、RFC 9728 Protected Resource Metadata、HTTP/HTTPS 標準
+
+            ## レビュー観点（優先度順）
+              1) **基本原則遵守**: 高速・軽量・シンプル、SF/DM原則、関数型パターンの活用
+              2) **Hono 仕様準拠**: middleware構造、context型安全性、エラーハンドリング
+              3) **MCP プロトコル準拠**: JSON-RPC 2.0、tool/resource 命名規則、progress notification
+              4) **関数型設計**: pure function化、副作用分離、イミュータブル構造
+              5) **プラグインアーキテクチャ**: HatagoPlugin型、ステートレス設計、依存関係管理
+              6) **マルチランタイム対応**: Node.js/Workers/Deno/Bun、環境固有API回避
+              7) **セキュリティ**: OAuth 2.1、PII masking (Noren統合)、入力検証、transport security
+              8) **パフォーマンス**: 起動時間、メモリフットプリント、ストリーミング処理
+              9) **型安全性**: TypeScript strict、any禁止、型ガード、戻り値型明示
+              10) **テスト容易性**: モック可能性、単体/統合テスト、カバレッジ
+
+            ## 具体的要求事項
+            - 修正提案はファイルパスを backtick で明示し、短いパッチ例で示すこと（例: `packages/core/src/app.ts`）
+            - 該当箇所を引用して根拠を示し、憶測を避けること
+            - pure function での実装を優先し、副作用は明確に分離すること
+            - パフォーマンス影響（起動時間、メモリ使用量）を常に考慮すること
+            - 出力フォーマットは箇条書き中心で、実行可能なチェックリスト/次アクションを最後に付けること
+
+          # Optional: Custom environment variables for Claude
+          # claude_env: |
+          #   NODE_ENV: test
