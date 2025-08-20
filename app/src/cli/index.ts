@@ -496,6 +496,7 @@ program
   .command('init')
   .description('Initialize configuration file')
   .option('-o, --output <path>', 'Output path', '.hatago/config.jsonc')
+  .option('-f, --force', 'Force overwrite existing config file')
   .action(async (options) => {
     try {
       const { createLogger } = await import('../utils/logger.js');
@@ -503,15 +504,37 @@ program
 
       logger.info({ path: options.output }, 'Creating config file');
 
+      // Check if config file already exists
+      const { existsSync } = await import('node:fs');
+      if (existsSync(options.output) && !options.force) {
+        logger.error(
+          { path: options.output },
+          'Config file already exists. Use --force to overwrite',
+        );
+        process.exit(1);
+      }
+
       // Create .hatago directory if needed
       const { dirname, join } = await import('node:path');
       const { mkdir } = await import('node:fs/promises');
       const hatagoDir = dirname(options.output);
       await mkdir(hatagoDir, { recursive: true });
 
+      // Create schemas directory and generate JSON Schema
+      const schemasDir = join(hatagoDir, 'schemas');
+      await mkdir(schemasDir, { recursive: true });
+
+      // Generate JSON Schema file
+      const schemaPath = join(schemasDir, 'config.schema.json');
+      if (!existsSync(schemaPath) || options.force) {
+        const { generateJsonSchema } = await import('../config/loader.js');
+        const schema = generateJsonSchema();
+        await writeFile(schemaPath, JSON.stringify(schema, null, 2), 'utf-8');
+        logger.info({ path: schemaPath }, 'Generated JSON Schema');
+      }
+
       // Create .gitignore in .hatago directory
       const gitignorePath = join(hatagoDir, '.gitignore');
-      const { existsSync } = await import('node:fs');
       if (!existsSync(gitignorePath)) {
         const gitignoreContent = `# SECURITY WARNING: Never commit these files!
 # They contain encryption keys and secrets
@@ -549,6 +572,9 @@ secrets.policy.json
 
       logger.info('Config file created successfully');
       logger.info('Edit the file and then run: hatago serve');
+      if (options.force && existsSync(options.output)) {
+        logger.warn('Existing config file was overwritten');
+      }
     } catch (error) {
       const { logError, createLogger } = await import('../utils/logger.js');
       const logger = createLogger({ component: 'hatago-cli-init' });

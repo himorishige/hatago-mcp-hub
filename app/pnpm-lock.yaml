@@ -66,6 +66,9 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@20.19.11)(jiti@2.5.1)(tsx@4.20.4)
+      zod-to-json-schema:
+        specifier: ^3.24.6
+        version: 3.24.6(zod@3.25.76)
 
 packages:
 

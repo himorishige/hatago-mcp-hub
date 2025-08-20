@@ -5,6 +5,7 @@ import type {
   SharedSession,
   ToolCallHistory,
 } from '../stores/session-store.js';
+import { MemorySessionStore } from '../stores/session-store.js';
 
 /**
  * クライアント情報
@@ -44,7 +45,7 @@ export class SharedSessionManager extends EventEmitter {
   constructor(config: SessionSharingConfig, store?: SessionStore) {
     super();
     this.config = config;
-    this.store = store || new InMemorySessionStore();
+    this.store = store || new MemorySessionStore();
 
     // クリーンアップタスクを開始
     if (config.enabled) {
@@ -446,7 +447,7 @@ export class SharedSessionManager extends EventEmitter {
     }
 
     // ストアをクリア
-    await this.store.clear();
+    await this.store.cleanup();
 
     this.removeAllListeners();
   }

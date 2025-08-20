@@ -185,87 +185,219 @@ export async function loadConfig(
  * サンプル設定ファイルを生成
  */
 export function generateSampleConfig(): string {
-  const sample = {
-    version: 1,
-    logLevel: 'info',
-    http: {
-      port: 3000,
-      host: 'localhost',
+  return `{
+  // JSON Schema for IDE support (auto-completion, validation, etc.)
+  "$schema": "./schemas/config.schema.json",
+  
+  // Hatago MCP Hub Configuration File
+  // This file configures how Hatago manages and proxies MCP servers
+  
+  // Configuration format version (currently 1)
+  "version": 1,
+  
+  // Logging level for the application
+  // Options: "error", "warn", "info", "debug", "trace"
+  "logLevel": "info",
+  
+  // HTTP server configuration
+  "http": {
+    // Port number for the HTTP server
+    // Default: 3000
+    "port": 3000,
+    
+    // Host to bind the server to
+    // Use "0.0.0.0" to listen on all interfaces
+    "host": "localhost"
+  },
+  
+  // Tool naming configuration
+  // Controls how tool names from different servers are handled
+  "toolNaming": {
+    // Strategy for handling name conflicts between servers
+    // "namespace": Prefix tool names with server ID (recommended)
+    // "error": Fail when conflicts are detected
+    "strategy": "namespace",
+    
+    // Separator character for namespaced tool names
+    // Example: "server_toolname" when separator is "_"
+    "separator": "_",
+    
+    // Format template for tool names
+    // Available variables: {serverId}, {toolName}
+    "format": "{serverId}_{toolName}",
+    
+    // Aliases for specific tools
+    // Map long namespaced names to shorter aliases
+    "aliases": {
+      "local_mcp_hello": "hello",
+      "remote_api_search": "search"
+    }
+  },
+  
+  // Session management configuration
+  "session": {
+    // Session timeout in seconds
+    // Sessions are cleaned up after this period of inactivity
+    "ttlSeconds": 3600,
+    
+    // Whether to persist sessions across restarts
+    "persist": false,
+    
+    // Storage backend for sessions
+    // Options: "memory" (default), "redis" (future)
+    "store": "memory"
+  },
+  
+  // Timeout configuration (in milliseconds)
+  "timeouts": {
+    // Timeout for spawning new server processes
+    "spawnMs": 8000,
+    
+    // Timeout for health check operations
+    "healthcheckMs": 2000,
+    
+    // Timeout for individual tool calls
+    "toolCallMs": 20000
+  },
+  
+  // Concurrency limits
+  "concurrency": {
+    // Maximum concurrent operations across all servers
+    "global": 8,
+    
+    // Per-server concurrency limits
+    // Overrides global limit for specific servers
+    "perServer": {
+      "local_mcp": 3
+    }
+  },
+  
+  // Security configuration
+  "security": {
+    // Keys to redact from logs and error messages
+    // Add any sensitive field names here
+    "redactKeys": ["password", "apiKey", "token", "secret"],
+    
+    // Allowed network destinations for remote servers
+    // Use ["*"] to allow all (not recommended for production)
+    "allowNet": ["https://api.example.com"]
+  },
+  
+  // MCP server configurations
+  // Each server can be local, remote, or npx-based
+  "servers": [
+    {
+      // Unique identifier for this server
+      "id": "local_mcp",
+      
+      // Server type: "local", "remote", or "npx"
+      "type": "local",
+      
+      // When to start the server
+      // "eager": Start immediately on hub startup
+      // "lazy": Start when first tool is called
+      "start": "lazy",
+      
+      // Command to execute (for local servers)
+      "command": "node",
+      
+      // Command arguments
+      "args": ["./examples/mcp-server.js"],
+      
+      // Transport protocol: "stdio" or "http"
+      "transport": "stdio",
+      
+      // Tool filtering configuration
+      "tools": {
+        // Tools to include (["*"] for all)
+        "include": ["*"],
+        
+        // Tools to exclude (takes precedence over include)
+        "exclude": ["dangerous_delete"],
+        
+        // Optional prefix for all tools from this server
+        "prefix": "local"
+      }
     },
-    toolNaming: {
-      strategy: 'namespace',
-      separator: '_',
-      format: '{serverId}_{toolName}',
-      aliases: {
-        local_mcp_hello: 'hello',
-        remote_api_search: 'search',
+    {
+      // Remote MCP server example
+      "id": "remote_api",
+      "type": "remote",
+      "start": "eager",
+      
+      // URL of the remote MCP server
+      "url": "https://mcp.example.com",
+      
+      // Transport must be "http" for remote servers
+      "transport": "http",
+      
+      // Authentication configuration
+      "auth": {
+        // Auth type: "bearer", "basic", or "apikey"
+        "type": "bearer",
+        
+        // Token can reference environment variables
+        // Format: \${env:VARIABLE_NAME}
+        "token": "\${env:HATAGO_API_TOKEN}"
       },
+      
+      "tools": {
+        "include": ["*"],
+        "prefix": "api"
+      }
     },
-    session: {
-      ttlSeconds: 3600,
-      persist: false,
-      store: 'memory',
-    },
-    timeouts: {
-      spawnMs: 8000,
-      healthcheckMs: 2000,
-      toolCallMs: 20000,
-    },
-    concurrency: {
-      global: 8,
-      perServer: {
-        local_mcp: 3,
-      },
-    },
-    security: {
-      redactKeys: ['password', 'apiKey', 'token', 'secret'],
-      allowNet: ['https://api.example.com'],
-    },
-    servers: [
-      {
-        id: 'local_mcp',
-        type: 'local',
-        start: 'lazy',
-        command: 'node',
-        args: ['./examples/mcp-server.js'],
-        transport: 'stdio',
-        tools: {
-          include: ['*'],
-          exclude: ['dangerous_delete'],
-          prefix: 'local',
-        },
-      },
-      {
-        id: 'remote_api',
-        type: 'remote',
-        start: 'eager',
-        url: 'https://mcp.example.com',
-        transport: 'http',
-        auth: {
-          type: 'bearer',
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: This is intentional - environment variable reference syntax
-          token: '${env:HATAGO_API_TOKEN}',
-        },
-        tools: {
-          include: ['*'],
-          prefix: 'api',
-        },
-      },
-      {
-        id: 'npx_tool',
-        type: 'npx',
-        start: 'lazy',
-        package: '@example/mcp-tool',
-        version: '^1.0.0',
-        transport: 'stdio',
-        tools: {
-          include: ['*'],
-        },
-      },
-    ],
-  };
+    {
+      // NPX-based MCP server example
+      "id": "npx_tool",
+      "type": "npx",
+      "start": "lazy",
+      
+      // NPM package name
+      "package": "@example/mcp-tool",
+      
+      // Package version (optional)
+      "version": "^1.0.0",
+      
+      "transport": "stdio",
+      
+      "tools": {
+        "include": ["*"]
+      }
+    }
+  ]
+}`;
+}
 
-  return JSON.stringify(sample, null, 2);
+/**
+ * Generate JSON Schema for configuration
+ */
+export function generateJsonSchema(): unknown {
+  // Import dynamically to avoid circular dependency
+  try {
+    // Try to import pre-generated schema first
+    const { CONFIG_SCHEMA } = require('../config/schema.js');
+    return CONFIG_SCHEMA;
+  } catch {
+    // Fallback: generate schema on the fly
+    const { zodToJsonSchema } = require('zod-to-json-schema');
+    const { HatagoConfigSchema } = require('../config/types.js');
+
+    const jsonSchema = zodToJsonSchema(HatagoConfigSchema, {
+      name: 'HatagoConfig',
+      $refStrategy: 'none',
+      errorMessages: true,
+      markdownDescription: true,
+    });
+
+    return {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      $id: 'https://github.com/himorishige/hatago-hub/schemas/config.schema.json',
+      title: 'Hatago MCP Hub Configuration',
+      description:
+        'Configuration schema for Hatago MCP Hub - A lightweight MCP server management tool',
+      ...jsonSchema,
+    };
+  }
 }
 
 /**

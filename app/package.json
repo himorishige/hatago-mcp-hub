@@ -54,7 +54,8 @@
     "tsdown": "^0.14.1",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod-to-json-schema": "^3.24.6"
   },
   "engines": {
     "node": ">=20"
