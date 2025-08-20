@@ -32,17 +32,46 @@ program
   .option('-m, --mode <mode>', 'Transport mode: stdio | http', 'stdio')
   .option('--http', 'Use HTTP mode instead of STDIO')
   .option('-q, --quiet', 'Suppress non-essential output')
+  .option('-v, --verbose', 'Enable verbose logging')
+  .option('--log-level <level>', 'Log level: error, warn, info, debug, trace')
+  .option('--log-format <format>', 'Log format: json | pretty')
   .action(async (options) => {
     try {
+      // Loggerセットアップ
+      const {
+        createLogger,
+        createRequestLogger,
+        getLogLevel,
+        setGlobalLogger,
+        withDuration,
+      } = await import('../utils/logger.js');
+
+      const logLevel = getLogLevel({
+        verbose: options.verbose,
+        quiet: options.quiet,
+        logLevel: options.logLevel,
+      });
+
+      const logger = createLogger({
+        level: logLevel,
+        format: options.logFormat,
+        profile: options.profile,
+        component: 'hatago-cli',
+      });
+
+      setGlobalLogger(logger);
+
+      const reqLogger = createRequestLogger(logger, {
+        cmd: 'serve',
+        profile: options.profile,
+      });
+
       // --httpオプションが指定されたらHTTPモードに
       if (options.http) {
         options.mode = 'http';
       }
 
-      // quietモードではログを抑制
-      if (!options.quiet && options.mode === 'http') {
-        console.log('Starting Hatago MCP Hub...');
-      }
+      reqLogger.info({ mode: options.mode }, 'Starting Hatago MCP Hub');
 
       // プロファイルに基づいて設定を読み込み
       const config = await loadConfig(options.config, {
@@ -51,16 +80,20 @@ program
       });
 
       // プロファイル設定を検証
-      const { validateProfileConfig, printValidationResult } = await import(
-        '../config/validator.js'
-      );
+      const { validateProfileConfig } = await import('../config/validator.js');
       const validationResult = validateProfileConfig(config);
+
       if (!validationResult.valid) {
-        printValidationResult(validationResult);
+        validationResult.errors.forEach((error) => {
+          reqLogger.error({ path: error.path }, error.message);
+        });
         throw new Error('Invalid configuration');
       }
-      if (validationResult.warnings.length > 0 && !options.quiet) {
-        printValidationResult(validationResult);
+
+      if (validationResult.warnings.length > 0) {
+        validationResult.warnings.forEach((warning) => {
+          reqLogger.warn({ path: warning.path }, warning.message);
+        });
       }
 
       // ポートを上書き
@@ -69,17 +102,18 @@ program
       }
 
       // MCPハブを作成
-      const hub = new McpHub({ config });
-      await hub.initialize();
+      const hub = new McpHub({ config, logger: reqLogger });
+      await withDuration(reqLogger, 'hub initialization', async () => {
+        await hub.initialize();
+      });
 
       // トランスポートモードに応じて起動
       if (options.mode === 'stdio') {
         // STDIOモード
-        if (!options.quiet) {
-          console.error(
-            `MCP Hub running in STDIO mode${options.profile && options.profile !== 'default' ? ` with profile: ${options.profile}` : ''}`,
-          );
-        }
+        reqLogger.info(
+          { profile: options.profile },
+          `MCP Hub running in STDIO mode`,
+        );
         const transport = new StdioServerTransport();
         await hub.getServer().connect(transport);
       } else {
@@ -96,6 +130,41 @@ program
             timestamp: new Date().toISOString(),
           }),
         );
+
+        // Readinessチェックエンドポイント
+        const {
+          HealthCheckManager,
+          createConfigCheck,
+          createWorkspaceCheck,
+          createHatagoDirectoryCheck,
+          createMCPServersCheck,
+          createSystemResourcesCheck,
+        } = await import('../utils/health.js');
+        const healthManager = new HealthCheckManager(reqLogger);
+
+        // ヘルスチェックを登録
+        healthManager.register(createConfigCheck(() => !!config));
+        healthManager.register(createWorkspaceCheck(config.workspace));
+        healthManager.register(createHatagoDirectoryCheck());
+        healthManager.register(
+          createMCPServersCheck(() => {
+            // MCPハブから接続情報を取得
+            const connections = Array.from(hub.getConnections().entries());
+            return connections.map(([id, conn]) => ({
+              id,
+              state: conn.connected ? 'running' : 'stopped',
+              type: conn.type,
+            }));
+          }),
+        );
+        healthManager.register(createSystemResourcesCheck());
+
+        app.get('/readyz', async (c) => {
+          const status = await healthManager.runAll();
+          const httpStatus = status.status === 'ready' ? 200 : 503;
+
+          return c.json(status, httpStatus);
+        });
 
         // MCPエンドポイント（ステートレスモード）
         // セッションIDキャッシュ（MCP準拠のため）
@@ -146,7 +215,7 @@ program
             return result;
           } catch (error) {
             // エラーハンドリング
-            console.error('MCP request error:', error);
+            reqLogger.error({ error }, 'MCP request error');
 
             // HTTPExceptionの場合はそのまま返す
             if (error instanceof HTTPException) {
@@ -213,6 +282,7 @@ program
 <p>MCP endpoint: <code>POST /mcp</code></p>
 <p>Tools list: <code>GET /tools</code></p>
 <p>Health check: <code>GET /health</code></p>
+<p>Readiness check: <code>GET /readyz</code></p>
 <p>Debug info: <code>GET /debug</code></p>
 <p>Powered by Hono + MCP SDK</p>`),
         );
@@ -224,26 +294,30 @@ program
             port,
           },
           (info) => {
-            console.log(`MCP Hub is running on http://localhost:${info.port}`);
+            reqLogger.info(
+              { port: info.port, url: `http://localhost:${info.port}` },
+              `MCP Hub is running on http://localhost:${info.port}`,
+            );
           },
         );
       }
 
       // シャットダウンハンドラ
       process.on('SIGINT', async () => {
-        console.log('\nShutting down...');
+        reqLogger.info('Received SIGINT, shutting down...');
         await hub.shutdown();
         process.exit(0);
       });
 
       process.on('SIGTERM', async () => {
-        console.log('\nShutting down...');
+        reqLogger.info('Received SIGTERM, shutting down...');
         await hub.shutdown();
         process.exit(0);
       });
     } catch (error) {
-      const safeError = await sanitizeLog(String(error));
-      console.error('Failed to start server:', safeError);
+      const { logError, getGlobalLogger } = await import('../utils/logger.js');
+      const logger = getGlobalLogger();
+      logError(logger, error, 'Failed to start server');
       process.exit(1);
     }
   });
@@ -257,7 +331,10 @@ program
   .option('-o, --output <path>', 'Output path', '.hatago/config.jsonc')
   .action(async (options) => {
     try {
-      console.log(`Creating config file at: ${options.output}`);
+      const { createLogger } = await import('../utils/logger.js');
+      const logger = createLogger({ component: 'hatago-cli-init' });
+
+      logger.info({ path: options.output }, 'Creating config file');
 
       // サンプル設定を生成
       const sample = generateSampleConfig();
@@ -265,11 +342,13 @@ program
       // ファイルに書き込み
       await writeFile(options.output, sample, 'utf-8');
 
-      console.log('Config file created successfully');
-      console.log('Edit the file and then run: hatago serve');
+      logger.info('Config file created successfully');
+      logger.info('Edit the file and then run: hatago serve');
     } catch (error) {
-      const safeError = await sanitizeLog(String(error));
-      console.error('Failed to create config file:', safeError);
+      const { logError, createLogger } = await import('../utils/logger.js');
+      const logger = createLogger({ component: 'hatago-cli-init' });
+      const _safeError = await sanitizeLog(String(error));
+      logError(logger, error, 'Failed to create config file');
       process.exit(1);
     }
   });
@@ -284,43 +363,50 @@ program
   .option('-c, --config <path>', 'Path to config file')
   .action(async (options) => {
     try {
+      // Logger作成
+      const { createLogger, getLogLevel } = await import('../utils/logger.js');
+
+      const logger = createLogger({
+        level: getLogLevel({ quiet: false }),
+        component: 'hatago-cli-list',
+      });
+
       // 設定を読み込み
       const config = await loadConfig(options.config);
 
       // MCPハブを作成
-      const hub = new McpHub({ config });
+      const hub = new McpHub({ config, logger });
       await hub.initialize();
 
       // ツール一覧を取得
       const _tools = hub.getRegistry().getAllTools();
       const debugInfo = hub.getRegistry().getDebugInfo();
 
-      console.log('\n=== MCP Hub Status ===');
-      console.log(`Total servers: ${debugInfo.totalServers}`);
-      console.log(`Total tools: ${debugInfo.totalTools}`);
-      console.log(`Naming strategy: ${debugInfo.namingStrategy}`);
+      // 構造化ログとして出力
+      logger.info(
+        {
+          totalServers: debugInfo.totalServers,
+          totalTools: debugInfo.totalTools,
+          namingStrategy: debugInfo.namingStrategy,
+        },
+        'MCP Hub Status',
+      );
 
       if (debugInfo.collisions.length > 0) {
-        console.log('\n⚠️  Tool name collisions detected:');
-        for (const collision of debugInfo.collisions) {
-          console.log(
-            `  - ${collision.toolName}: ${collision.serverIds.join(', ')}`,
-          );
-        }
+        logger.warn(
+          { collisions: debugInfo.collisions },
+          'Tool name collisions detected',
+        );
       }
 
-      console.log('\n=== Available Tools ===');
-      for (const tool of debugInfo.tools) {
-        console.log(`  ${tool.publicName}`);
-        console.log(`    Server: ${tool.serverId}`);
-        console.log(`    Original: ${tool.originalName}`);
-      }
+      logger.info({ tools: debugInfo.tools }, 'Available tools');
 
       // クリーンアップ
       await hub.shutdown();
     } catch (error) {
-      const safeError = await sanitizeLog(String(error));
-      console.error('Failed to list tools:', safeError);
+      const { logError, createLogger } = await import('../utils/logger.js');
+      const logger = createLogger({ component: 'hatago-cli-list' });
+      logError(logger, error, 'Failed to list tools');
       process.exit(1);
     }
   });
