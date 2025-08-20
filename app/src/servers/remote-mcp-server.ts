@@ -223,7 +223,7 @@ export class RemoteMcpServer extends EventEmitter {
         `Connecting to ${this.config.id} using streamable-http transport`,
       );
       const connection = await this.connectWithTransport(baseUrl, headers);
-      console.log(`Successfully connected to ${this.config.id}`);
+      console.log(`🏮 Successfully connected to ${this.config.id}`);
 
       // Set up error handlers
       connection.client.onerror = (error) => {

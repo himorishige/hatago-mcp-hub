@@ -39,7 +39,7 @@ export function createSecretCommand(): Command {
           );
         } else {
           console.log(
-            chalk.green('✅ Secret storage initialized with encryption'),
+            chalk.green('🏮 Secret storage initialized with encryption'),
           );
           console.log(chalk.gray('   Master key stored in .hatago/master.key'));
           console.log(
@@ -89,7 +89,7 @@ export function createSecretCommand(): Command {
         });
 
         console.log(
-          chalk.green(`✅ Secret '${key}' stored`),
+          chalk.green(`🏮 Secret '${key}' stored`),
           options.plain ? chalk.yellow('(plain)') : chalk.gray('(encrypted)'),
         );
       } catch (error) {
@@ -216,7 +216,7 @@ export function createSecretCommand(): Command {
         const removed = await manager.remove(key);
 
         if (removed) {
-          console.log(chalk.green(`✅ Secret '${key}' removed`));
+          console.log(chalk.green(`🏮 Secret '${key}' removed`));
         } else {
           console.log(chalk.yellow(`Secret '${key}' not found`));
         }
@@ -249,7 +249,7 @@ export function createSecretCommand(): Command {
         await manager.initialize();
         await manager.clear();
 
-        console.log(chalk.green('✅ All secrets cleared'));
+        console.log(chalk.green('🏮 All secrets cleared'));
       } catch (error) {
         console.error(chalk.red('Failed to clear secrets:'), error);
         process.exit(1);
@@ -310,7 +310,7 @@ export function createSecretCommand(): Command {
           plain: options.plain,
         });
 
-        console.log(chalk.green(`✅ Imported ${count} secret(s)`));
+        console.log(chalk.green(`🏮 Imported ${count} secret(s)`));
       } catch (error) {
         console.error(chalk.red('Failed to import secrets:'), error);
         process.exit(1);
@@ -341,7 +341,7 @@ export function createSecretCommand(): Command {
         await manager.initialize();
         await manager.rotate();
 
-        console.log(chalk.green('✅ Encryption keys rotated successfully'));
+        console.log(chalk.green('🏮 Encryption keys rotated successfully'));
         console.log(
           chalk.gray('   New master key saved to .hatago/master.key'),
         );

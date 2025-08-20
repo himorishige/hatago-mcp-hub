@@ -647,7 +647,7 @@ export class ServerRegistry extends EventEmitter {
         serverId: registered.id,
       });
 
-      console.log(`Server ${registered.id} auto-restarted successfully`);
+      console.log(`🏮 Server ${registered.id} auto-restarted successfully`);
     } catch (error) {
       this.emit('server:auto-restart-failed', {
         serverId: registered.id,

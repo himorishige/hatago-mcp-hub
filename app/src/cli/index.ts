@@ -17,7 +17,7 @@ const program = new Command();
 
 program
   .name('hatago')
-  .description('Hatago MCP Hub - Unified MCP server management')
+  .description('🏮 Hatago MCP Hub - Unified MCP server management')
   .version('0.0.1');
 
 /**
@@ -71,7 +71,7 @@ program
         options.mode = 'http';
       }
 
-      reqLogger.info({ mode: options.mode }, 'Starting Hatago MCP Hub');
+      reqLogger.info({ mode: options.mode }, '🏮 Starting Hatago MCP Hub');
 
       // プロファイルに基づいて設定を読み込み
       const config = await loadConfig(options.config, {
@@ -112,7 +112,7 @@ program
         // STDIOモード
         reqLogger.info(
           { profile: options.profile },
-          `MCP Hub running in STDIO mode`,
+          `🏮 MCP Hub running in STDIO mode`,
         );
         const transport = new StdioServerTransport();
         await hub.getServer().connect(transport);
@@ -277,8 +277,8 @@ program
         app.get('/', (c) =>
           c.html(`<!doctype html>
 <meta charset="utf-8"/>
-<title>Hatago MCP Hub</title>
-<h1>Hatago MCP Hub v0.0.1</h1>
+<title>🏮 Hatago MCP Hub</title>
+<h1>🏮 Hatago MCP Hub v0.0.1</h1>
 <p>MCP endpoint: <code>POST /mcp</code></p>
 <p>Tools list: <code>GET /tools</code></p>
 <p>Health check: <code>GET /health</code></p>
@@ -296,7 +296,7 @@ program
           (info) => {
             reqLogger.info(
               { port: info.port, url: `http://localhost:${info.port}` },
-              `MCP Hub is running on http://localhost:${info.port}`,
+              `🏮 MCP Hub is running on http://localhost:${info.port}`,
             );
           },
         );
@@ -427,7 +427,7 @@ program
           totalTools: debugInfo.totalTools,
           namingStrategy: debugInfo.namingStrategy,
         },
-        'MCP Hub Status',
+        '🏮 MCP Hub Status',
       );
 
       if (debugInfo.collisions.length > 0) {
@@ -467,7 +467,7 @@ program
       });
 
       const newConfig = await watcher.reload();
-      console.log('Configuration reloaded successfully');
+      console.log('🏮 Configuration reloaded successfully');
       console.log('New config:', JSON.stringify(newConfig, null, 2));
 
       await watcher.stop();
@@ -501,7 +501,7 @@ program
 
       // ステータスを表示
       const status = configManager.getGenerationStatus();
-      console.log('\n=== Generation Status ===');
+      console.log('\n🏮 === Generation Status ===');
       for (const gen of status) {
         const current = gen.isCurrent ? ' [CURRENT]' : '';
         console.log(`Generation ${gen.id}${current}`);
@@ -541,7 +541,7 @@ program
       if (options.stats) {
         // 統計情報を表示
         const stats = policyGate.getStats();
-        console.log('\n=== Policy Statistics ===');
+        console.log('\n🏮 === Policy Statistics ===');
         console.log(`Enabled: ${stats.enabled}`);
         console.log(`Dry Run: ${stats.dryRun}`);
         console.log(`Rule Count: ${stats.ruleCount}`);
@@ -601,7 +601,7 @@ program
       if (options.list) {
         // アクティブセッション一覧
         const sessions = await sessionManager.getActiveSessions();
-        console.log('\n=== Active Sessions ===');
+        console.log('\n🏮 === Active Sessions ===');
         for (const { session, clients } of sessions) {
           const shared = clients.length > 1 ? ' [SHARED]' : '';
           console.log(`Session ${session.id}${shared}`);
@@ -615,7 +615,7 @@ program
 
         // 統計情報
         const stats = sessionManager.getStats();
-        console.log('\n=== Statistics ===');
+        console.log('\n🏮 === Statistics ===');
         console.log(`Total Sessions: ${stats.totalSessions}`);
         console.log(`Total Clients: ${stats.totalClients}`);
         console.log(`Shared Sessions: ${stats.sharedSessions}`);
@@ -686,7 +686,7 @@ program
       } else {
         // デフォルト: セッション統計を表示
         const stats = sessionManager.getStats();
-        console.log('\n=== Session Statistics ===');
+        console.log('\n🏮 === Session Statistics ===');
         console.log(`Total Sessions: ${stats.totalSessions}`);
         console.log(`Total Clients: ${stats.totalClients}`);
         console.log(`Shared Sessions: ${stats.sharedSessions}`);
@@ -712,7 +712,7 @@ program
   .option('-c, --config <path>', 'Path to config file')
   .action(async (generation, options) => {
     try {
-      console.log(`Draining generation ${generation}...`);
+      console.log(`🏮 Draining generation ${generation}...`);
 
       const config = await loadConfig(options.config);
 
@@ -731,7 +731,7 @@ program
       });
 
       // ドレイン処理を実行（実際の実装では該当世代のワーカーを探してドレイン）
-      console.log(`Generation ${generation} drain initiated`);
+      console.log(`🏮 Generation ${generation} drain initiated`);
 
       await rolloverManager.shutdown();
       await configManager.shutdown();
@@ -770,7 +770,7 @@ program
       }
 
       // ツールを実行
-      console.log(`Calling tool: ${tool}`);
+      console.log(`🏮 Calling tool: ${tool}`);
       const result = await hub.callTool({
         name: tool,
         arguments: input,

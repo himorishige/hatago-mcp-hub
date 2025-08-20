@@ -224,7 +224,9 @@ export class NpxMcpServer extends EventEmitter {
 
             // Check if this is an initialize response
             if (message.id === this.initRequestId && message.result) {
-              console.log(`Server ${this.config.id} initialized successfully`);
+              console.log(
+                `🏮 Server ${this.config.id} initialized successfully`,
+              );
               cleanup();
               resolve();
               return;
