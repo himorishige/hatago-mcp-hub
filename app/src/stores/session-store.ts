@@ -1,4 +1,4 @@
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 
 /**
  * ツール実行履歴

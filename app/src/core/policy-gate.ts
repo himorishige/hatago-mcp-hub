@@ -1,5 +1,5 @@
 import type { PolicyConfig, PolicyRule } from '../config/types.js';
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 
 /**
  * ポリシー評価結果

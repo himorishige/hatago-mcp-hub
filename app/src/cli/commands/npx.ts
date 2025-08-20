@@ -41,11 +41,14 @@ export function createNpxCommands(): Command {
     .option('-a, --args <args...>', 'Additional arguments')
     .option('--no-auto-restart', 'Disable automatic restart')
     .option('--max-restarts <number>', 'Maximum restart attempts', '3')
-    .action(async (packageName: string, options: unknown) => {
+    .action(async (packageName: string, options: Record<string, unknown>) => {
       try {
         const config = AddNpxSchema.parse({
           package: packageName,
           ...options,
+          maxRestarts: options.maxRestarts
+            ? parseInt(options.maxRestarts, 10)
+            : 3,
         });
 
         // Generate server ID if not provided

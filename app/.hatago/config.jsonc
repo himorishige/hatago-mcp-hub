@@ -8,7 +8,11 @@
   "toolNaming": {
     "strategy": "namespace",
     "separator": "_",
-    "format": "{serverId}_{toolName}"
+    "format": "{serverId}_{toolName}",
+    "aliases": {
+      "local_mcp_hello": "hello",
+      "remote_api_search": "search"
+    }
   },
   "session": {
     "ttlSeconds": 3600,
@@ -21,18 +25,67 @@
     "toolCallMs": 20000
   },
   "concurrency": {
-    "global": 8
+    "global": 8,
+    "perServer": {
+      "local_mcp": 3
+    }
   },
   "security": {
-    "redactKeys": ["password", "apiKey", "token", "secret"]
+    "redactKeys": [
+      "password",
+      "apiKey",
+      "token",
+      "secret"
+    ],
+    "allowNet": [
+      "mcp.deepwiki.com"
+    ]
   },
   "servers": [
     {
-      "id": "deepwiki",
+      "id": "local_mcp",
+      "type": "local",
+      "start": "eager",
+      "command": "node",
+      "args": [
+        "./examples/test-mcp-server.js"
+      ],
+      "transport": "stdio",
+      "tools": {
+        "include": [
+          "*"
+        ],
+        "exclude": [
+          "dangerous_delete"
+        ],
+        "prefix": "local"
+      }
+    },
+    {
+      "id": "remote_api",
       "type": "remote",
+      "start": "eager",
       "url": "https://mcp.deepwiki.com/mcp",
       "transport": "http",
-      "start": "eager"
+      "tools": {
+        "include": [
+          "*"
+        ],
+        "prefix": "api"
+      }
+    },
+    {
+      "id": "npx_everything",
+      "type": "npx",
+      "start": "eager",
+      "package": "@modelcontextprotocol/server-everything",
+      "transport": "stdio",
+      "tools": {
+        "include": [
+          "*"
+        ],
+        "prefix": "everything"
+      }
     }
   ]
 }

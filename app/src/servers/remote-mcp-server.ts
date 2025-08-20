@@ -4,9 +4,10 @@
 
 import { EventEmitter } from 'node:events';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { RemoteServerConfig } from '../config/types.js';
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 import { sanitizeLog } from '../utils/security.js';
 
 /**
@@ -25,7 +26,8 @@ export enum ServerState {
  */
 export interface RemoteConnection {
   client: Client;
-  transport: StreamableHTTPClientTransport;
+  transport: StreamableHTTPClientTransport | SSEClientTransport;
+  transportType?: 'streamable-http' | 'sse';
 }
 
 /**
@@ -190,7 +192,9 @@ export class RemoteMcpServer extends EventEmitter {
       });
 
       // Attempt auto-reconnect if configured
-      if (this.shouldAutoReconnect()) {
+      if (
+        this.shouldAutoReconnect(error instanceof Error ? error : undefined)
+      ) {
         await this.scheduleReconnect();
       }
 
@@ -239,7 +243,7 @@ export class RemoteMcpServer extends EventEmitter {
   }
 
   /**
-   * Connect using Streamable HTTP transport
+   * Connect using Streamable HTTP transport with SSE fallback
    */
   private async connectWithTransport(
     baseUrl: URL,
@@ -251,19 +255,63 @@ export class RemoteMcpServer extends EventEmitter {
       version: '0.0.1',
     });
 
-    const transport = new StreamableHTTPClientTransport(baseUrl, { headers });
+    // First try Streamable HTTP transport (newer protocol)
+    try {
+      console.log(`Trying Streamable HTTP transport for ${this.config.id}`);
+      const transport = new StreamableHTTPClientTransport(baseUrl, {
+        headers: {
+          ...headers,
+          Accept: 'application/json',
+        },
+      });
 
-    // Connect with timeout
-    await this.withTimeout(
-      client.connect(transport),
-      this.defaults.connectTimeoutMs,
-      'streamable-http connection',
-    );
+      // Connect with timeout
+      await this.withTimeout(
+        client.connect(transport),
+        this.defaults.connectTimeoutMs,
+        'streamable-http connection',
+      );
 
-    return {
-      client,
-      transport,
-    };
+      return {
+        client,
+        transport,
+        transportType: 'streamable-http',
+      };
+    } catch (error) {
+      // If Streamable HTTP fails, try SSE transport (older protocol)
+      console.log(
+        `Streamable HTTP failed for ${this.config.id}, trying SSE transport: ${error}`,
+      );
+
+      const sseClient = new Client({
+        name: 'hatago-hub',
+        version: '0.0.1',
+      });
+
+      const sseTransport = new SSEClientTransport(baseUrl, {
+        headers: {
+          ...headers,
+          Accept: 'application/json, text/event-stream',
+        },
+      });
+
+      // Connect with timeout
+      await this.withTimeout(
+        sseClient.connect(sseTransport),
+        this.defaults.connectTimeoutMs,
+        'sse connection',
+      );
+
+      console.log(
+        `🏮 Successfully connected to ${this.config.id} using SSE transport`,
+      );
+
+      return {
+        client: sseClient,
+        transport: sseTransport,
+        transportType: 'sse',
+      };
+    }
   }
 
   /**
@@ -296,6 +344,11 @@ export class RemoteMcpServer extends EventEmitter {
    * Handle connection error
    */
   private async handleConnectionError(error: Error): Promise<void> {
+    // Skip if shutdown was requested or if it's an abort error
+    if (this.shutdownRequested || error.message.includes('AbortError')) {
+      return;
+    }
+
     // Check recursion depth limits
     if (this.reconnectDepth >= this.MAX_RECONNECT_DEPTH) {
       console.error(
@@ -328,7 +381,7 @@ export class RemoteMcpServer extends EventEmitter {
       error: error.message,
     });
 
-    if (this.shouldAutoReconnect()) {
+    if (this.shouldAutoReconnect(error)) {
       // Use setImmediate to avoid synchronous recursion and reset depth
       setImmediate(() => {
         this.reconnectDepth = 0; // Reset depth for async continuation
@@ -414,8 +467,24 @@ export class RemoteMcpServer extends EventEmitter {
   /**
    * Check if server should auto-reconnect
    */
-  private shouldAutoReconnect(): boolean {
+  private shouldAutoReconnect(error?: Error): boolean {
     if (this.shutdownRequested) {
+      return false;
+    }
+
+    // Don't retry on 4xx errors (authentication/authorization failures)
+    if (error?.message.includes('401')) {
+      console.error(
+        `Authentication failed for ${this.config.id}, not retrying`,
+      );
+      return false;
+    }
+    if (error?.message.includes('403')) {
+      console.error(`Authorization failed for ${this.config.id}, not retrying`);
+      return false;
+    }
+    if (error?.message.includes('404')) {
+      console.error(`Endpoint not found for ${this.config.id}, not retrying`);
       return false;
     }
 
@@ -525,7 +594,17 @@ export class RemoteMcpServer extends EventEmitter {
 
     if (this.connection) {
       try {
-        await this.connection.transport.close();
+        // Handle different transport types
+        if (this.connection.transportType === 'sse') {
+          // SSEClientTransport might not have a close method
+          // Just clean up the connection
+          this.connection = null;
+        } else {
+          // StreamableHTTPClientTransport has close method
+          await (
+            this.connection.transport as StreamableHTTPClientTransport
+          ).close();
+        }
       } catch (error) {
         const safeError = await sanitizeLog(String(error));
         console.warn(

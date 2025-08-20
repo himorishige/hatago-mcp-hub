@@ -8,7 +8,7 @@ import type {
   RemoteServerConfig,
   ServerConfig,
 } from '../config/types.js';
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 import { sanitizeLog } from '../utils/security.js';
 import { NpxMcpServer, ServerState } from './npx-mcp-server.js';
 import { RemoteMcpServer } from './remote-mcp-server.js';
@@ -436,6 +436,7 @@ export class ServerRegistry extends EventEmitter {
           jsonrpc: '2.0',
           id: await runtime.idGenerator.generate(),
           method: 'tools/list',
+          params: {}, // MCPプロトコルではparamsが必須
         });
 
         await (registered.instance as NpxMcpServer).send(
@@ -501,7 +502,7 @@ export class ServerRegistry extends EventEmitter {
                 resolve(tools);
                 return;
               }
-            } catch {
+            } catch (_err) {
               // Not valid JSON, continue buffering
             }
           }

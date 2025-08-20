@@ -1,5 +1,5 @@
 import type { HatagoConfig } from '../config/types.js';
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 
 /**
  * 設定の世代を表すクラス

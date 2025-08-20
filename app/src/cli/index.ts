@@ -102,10 +102,52 @@ program
       }
 
       // MCPハブを作成
-      const hub = new McpHub({ config, logger: reqLogger });
+      let hub = new McpHub({ config, logger: reqLogger });
       await withDuration(reqLogger, 'hub initialization', async () => {
         await hub.initialize();
       });
+
+      // ホットリロード設定
+      let fileWatcher: FileWatcher | null = null;
+      if (config.generation?.autoReload) {
+        const { FileWatcher } = await import('../core/file-watcher.js');
+        fileWatcher = new FileWatcher({
+          watchPaths: config.generation.watchPaths || ['.hatago/config.jsonc'],
+          debounceMs: 2000,
+        });
+
+        fileWatcher.on('config:changed', async (event: { path: string }) => {
+          reqLogger.info(
+            { path: event.path },
+            '🔄 Config changed, reloading...',
+          );
+
+          try {
+            // 古いハブをシャットダウン
+            await hub.shutdown();
+
+            // 新しい設定を読み込み
+            const newConfig = await loadConfig(
+              configPath || '.hatago/config.jsonc',
+              options.profile,
+            );
+
+            // 新しいハブを作成
+            hub = new McpHub({ config: newConfig, logger: reqLogger });
+            await hub.initialize();
+
+            reqLogger.info('✅ Hub reloaded successfully');
+          } catch (error) {
+            reqLogger.error({ error }, '❌ Failed to reload hub');
+          }
+        });
+
+        await fileWatcher.start();
+        reqLogger.info(
+          { paths: fileWatcher.getWatchPaths() },
+          '👁️ Watching config files for changes',
+        );
+      }
 
       // トランスポートモードに応じて起動
       if (options.mode === 'stdio') {
@@ -115,6 +157,25 @@ program
           `🏮 MCP Hub running in STDIO mode`,
         );
         const transport = new StdioServerTransport();
+
+        // デバッグ: MCPサーバーのツール呼び出しをインターセプト
+        const server = hub.getServer();
+        const originalCallTool = server.callTool;
+        if (originalCallTool) {
+          server.callTool = async function (request: CallToolRequest) {
+            console.error(
+              `[DEBUG STDIO] Tool call request:`,
+              JSON.stringify(request),
+            );
+            const result = await originalCallTool.call(this, request);
+            console.error(
+              `[DEBUG STDIO] Tool call response:`,
+              JSON.stringify(result).substring(0, 200),
+            );
+            return result;
+          };
+        }
+
         await hub.getServer().connect(transport);
       } else {
         // HTTPモード
@@ -167,15 +228,38 @@ program
         });
 
         // MCPエンドポイント（ステートレスモード）
-        // セッションIDキャッシュ（MCP準拠のため）
-        let cachedSessionId: string | undefined;
+        // セッション管理をMapで実装（複数セッション対応）
+        const sessionMap = new Map<
+          string,
+          {
+            sessionId: string;
+            createdAt: Date;
+            lastUsedAt: Date;
+            clientId?: string;
+          }
+        >();
+
+        // セッションのクリーンアップ（30分のアイドルタイムアウト）
+        const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+        const cleanupSessions = () => {
+          const now = Date.now();
+          for (const [key, session] of sessionMap.entries()) {
+            if (now - session.lastUsedAt.getTime() > SESSION_IDLE_TIMEOUT_MS) {
+              sessionMap.delete(key);
+              console.log(`Session ${session.sessionId} expired and removed`);
+            }
+          }
+        };
+
+        // 定期的にセッションをクリーンアップ
+        setInterval(cleanupSessions, 5 * 60 * 1000); // Every 5 minutes
 
         // POSTエンドポイント（JSON-RPC）
         app.post('/mcp', async (c) => {
           // 各リクエストで新しいトランスポートを作成（ステートレス）
           const transport = new StreamableHTTPTransport({
-            sessionIdGenerator: undefined, // ステートレスモード（サーバーがセッションIDを返さない限り不要）
-            enableJsonResponse: false,
+            sessionIdGenerator: undefined, // ステートレスモード
+            enableJsonResponse: true, // JSONレスポンスを有効化
           });
 
           try {
@@ -187,32 +271,73 @@ program
             // MCP仕様: サーバーからMcp-Session-Idが返されたら、以降のリクエストに必須
             // クライアントから送られてきたセッションIDをチェック
             const clientSessionId = c.req.header('mcp-session-id');
-            if (cachedSessionId && clientSessionId !== cachedSessionId) {
-              // セッションIDが一致しない場合は404を返す（MCP仕様）
-              return c.json(
-                {
-                  jsonrpc: '2.0',
-                  error: {
-                    code: -32001,
-                    message: 'Session not found',
+
+            // セッション検証
+            let currentSession = null;
+            if (clientSessionId) {
+              // 既存セッションを検索
+              for (const session of sessionMap.values()) {
+                if (session.sessionId === clientSessionId) {
+                  currentSession = session;
+                  session.lastUsedAt = new Date(); // Update last used time
+                  break;
+                }
+              }
+
+              // セッションが見つからない場合はエラー
+              if (!currentSession) {
+                return c.json(
+                  {
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32001,
+                      message: 'Session not found',
+                    },
+                    id: null,
                   },
-                  id: null,
-                },
-                404,
-              );
+                  404,
+                );
+              }
             }
 
             const result = await transport.handleRequest(c, body);
 
+            // handleRequestがundefinedを返す場合は、すでにレスポンスが送信されている
+            if (!result) {
+              // レスポンスはすでに送信済み
+              return new Response(null, { status: 200 });
+            }
+
+            // MCP-Protocol-Versionヘッダーを追加
+            const headers = new Headers(result.headers);
+            headers.set('MCP-Protocol-Version', '2024-11-05');
+
             // レスポンスからMcp-Session-Idヘッダーをチェック
             if (result?.headers) {
               const serverSessionId = result.headers.get('mcp-session-id');
-              if (serverSessionId) {
-                cachedSessionId = serverSessionId;
+              if (serverSessionId && !currentSession) {
+                // 新しいセッションを作成
+                const newSession = {
+                  sessionId: serverSessionId,
+                  createdAt: new Date(),
+                  lastUsedAt: new Date(),
+                  clientId: c.req.header('x-client-id'), // Optional client identifier
+                };
+                sessionMap.set(serverSessionId, newSession);
+                headers.set('Mcp-Session-Id', serverSessionId);
+                console.log(`New session created: ${serverSessionId}`);
+              } else if (serverSessionId && currentSession) {
+                // 既存セッションを確認
+                headers.set('Mcp-Session-Id', serverSessionId);
               }
             }
 
-            return result;
+            // 新しいヘッダーでレスポンスを再構築
+            return new Response(result.body, {
+              status: result.status,
+              statusText: result.statusText,
+              headers,
+            });
           } catch (error) {
             // エラーハンドリング
             reqLogger.error({ error }, 'MCP request error');
@@ -227,13 +352,13 @@ program
               {
                 jsonrpc: '2.0',
                 error: {
-                  code: -32700,
-                  message: 'Parse error',
+                  code: -32603,
+                  message: 'Internal error',
                   data: error instanceof Error ? error.message : String(error),
                 },
                 id: null,
               },
-              400,
+              500,
             );
           } finally {
             // クリーンアップ
@@ -243,6 +368,42 @@ program
               // クローズエラーは無視
             }
           }
+        });
+
+        // DELETEエンドポイント（セッション終了）
+        app.delete('/mcp', async (c) => {
+          // セッションIDがあれば検証
+          const clientSessionId = c.req.header('mcp-session-id');
+
+          if (clientSessionId) {
+            // セッションを検索して削除
+            let found = false;
+            for (const [key, session] of sessionMap.entries()) {
+              if (session.sessionId === clientSessionId) {
+                sessionMap.delete(key);
+                found = true;
+                console.log(`Session ${clientSessionId} terminated`);
+                break;
+              }
+            }
+
+            if (!found) {
+              return c.json(
+                {
+                  jsonrpc: '2.0',
+                  error: {
+                    code: -32001,
+                    message: 'Session not found',
+                  },
+                  id: null,
+                },
+                404,
+              );
+            }
+          }
+
+          // 200 OK with empty body
+          return c.body(null, 200);
         });
 
         // GETエンドポイント（SSE - ステートレスモードでは非サポート）
@@ -305,12 +466,18 @@ program
       // シャットダウンハンドラ
       process.on('SIGINT', async () => {
         reqLogger.info('Received SIGINT, shutting down...');
+        if (fileWatcher) {
+          await fileWatcher.stop();
+        }
         await hub.shutdown();
         process.exit(0);
       });
 
       process.on('SIGTERM', async () => {
         reqLogger.info('Received SIGTERM, shutting down...');
+        if (fileWatcher) {
+          await fileWatcher.stop();
+        }
         await hub.shutdown();
         process.exit(0);
       });
@@ -624,7 +791,7 @@ program
         );
       } else if (options.share) {
         // セッション共有トークンを生成
-        const { getRuntime } = await import('../runtime/types.js');
+        const { getRuntime } = await import('../runtime/runtime-factory.js');
         const runtime = await getRuntime();
         const clientId = await runtime.idGenerator.generate(); // 仮のクライアントID
         await sessionManager.createSession(clientId);
@@ -644,7 +811,7 @@ program
         console.log(`  hatago session --join ${token}`);
       } else if (options.join) {
         // 共有セッションに参加
-        const { getRuntime } = await import('../runtime/types.js');
+        const { getRuntime } = await import('../runtime/runtime-factory.js');
         const runtime = await getRuntime();
         const clientId = await runtime.idGenerator.generate();
         const session = await sessionManager.joinSessionByToken(

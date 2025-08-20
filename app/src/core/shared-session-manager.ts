@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import type { SessionSharingConfig } from '../config/types.js';
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 import type {
   SharedSession,
   ToolCallHistory,

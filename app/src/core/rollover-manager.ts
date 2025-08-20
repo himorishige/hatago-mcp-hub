@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 import type { ConfigGeneration } from './config-generation.js';
 import type { ConfigManager } from './config-manager.js';
 import { McpHub } from './mcp-hub.js';

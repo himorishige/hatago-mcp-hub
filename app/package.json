@@ -3,15 +3,15 @@
   "version": "0.0.2",
   "description": "Hatago MCP Hub - Lightweight MCP server management",
   "type": "module",
-  "main": "./dist/index.mjs",
+  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "hatago": "./dist/cli/index.mjs"
+    "hatago": "./dist/cli/index.js"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs"
+      "import": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -25,7 +25,7 @@
   "scripts": {
     "dev": "tsx src/cli/index.ts serve",
     "build": "tsdown",
-    "start": "node dist/cli/index.mjs serve",
+    "start": "node dist/cli/index.js serve",
     "cli": "tsx src/cli/index.ts",
     "format": "biome format src --write",
     "lint": "biome lint src --write",
@@ -42,9 +42,10 @@
     "cli-table3": "^0.6.5",
     "commander": "^14.0.0",
     "hono": "^4.9.2",
+    "json-schema-to-zod": "^2.6.1",
     "jsonc-parser": "^3.3.1",
     "pino": "^9.9.0",
-    "zod": "^4.0.17"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",

@@ -10,12 +10,13 @@ import type {
   RemoteServerConfig,
   ServerConfig,
 } from '../config/types.js';
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
 import { StdioTransport } from '../transport/stdio.js';
+import { createZodLikeSchema } from '../utils/json-to-zod.js';
 import { ToolRegistry } from './tool-registry.js';
 
 // MCPサーバー接続情報
@@ -46,6 +47,7 @@ export class McpHub {
   private initialized = false;
   private workspaceManager?: WorkspaceManager;
   private serverRegistry?: ServerRegistry;
+  private registeredTools = new Set<string>(); // Track registered tools to avoid duplicates
 
   constructor(options: McpHubOptions) {
     this.config = options.config;
@@ -94,6 +96,9 @@ export class McpHub {
       if (hasNpxServers) {
         this.workspaceManager = new WorkspaceManager();
         await this.workspaceManager.initialize();
+
+        // Warm up NPX packages to populate cache
+        await this.warmupNpxPackages();
       }
 
       this.serverRegistry = new ServerRegistry(this.workspaceManager);
@@ -117,6 +122,88 @@ export class McpHub {
     }
 
     this.initialized = true;
+  }
+
+  /**
+   * Warm up NPX packages by pre-installing them
+   */
+  private async warmupNpxPackages(): Promise<void> {
+    const npxServers = this.config.servers.filter((s) => s.type === 'npx');
+
+    if (npxServers.length === 0) {
+      return;
+    }
+
+    console.log('🔥 Warming up NPX packages...');
+
+    // Run warmup in parallel for all NPX servers
+    const warmupPromises = npxServers.map(async (serverConfig) => {
+      try {
+        const npxConfig = serverConfig as NpxServerConfig;
+        const packageSpec = npxConfig.version
+          ? `${npxConfig.package}@${npxConfig.version}`
+          : npxConfig.package;
+
+        console.log(`  📦 Pre-caching ${packageSpec}...`);
+
+        // Run npx with --version flag just to trigger installation
+        const { spawn } = await import('node:child_process');
+        const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+
+        await new Promise<void>((resolve, _reject) => {
+          const warmupProcess = spawn(
+            command,
+            ['-y', packageSpec, '--version'],
+            {
+              stdio: 'pipe',
+              env: {
+                ...process.env,
+                NO_COLOR: '1',
+                FORCE_COLOR: '0',
+                npm_config_loglevel: 'silent',
+                npm_config_progress: 'false',
+              },
+            },
+          );
+
+          let _stderr = '';
+          warmupProcess.stderr?.on('data', (data) => {
+            _stderr += data.toString();
+          });
+
+          warmupProcess.on('error', (error) => {
+            console.warn(
+              `  ⚠️  Failed to warm up ${packageSpec}: ${error.message}`,
+            );
+            resolve(); // Don't fail the whole process
+          });
+
+          warmupProcess.on('exit', (code) => {
+            if (code === 0) {
+              console.log(`  ✅ ${packageSpec} cached`);
+            } else {
+              console.warn(
+                `  ⚠️  ${packageSpec} warmup exited with code ${code}`,
+              );
+            }
+            resolve();
+          });
+
+          // Set a timeout for warmup
+          setTimeout(() => {
+            warmupProcess.kill('SIGTERM');
+            console.warn(`  ⚠️  ${packageSpec} warmup timeout`);
+            resolve();
+          }, 30000); // 30 second timeout for warmup
+        });
+      } catch (error) {
+        console.warn(`  ⚠️  Failed to warm up ${serverConfig.id}: ${error}`);
+        // Don't fail the whole initialization
+      }
+    });
+
+    await Promise.all(warmupPromises);
+    console.log('✅ NPX package warmup complete');
   }
 
   /**
@@ -473,36 +560,68 @@ export class McpHub {
     const tools = this.registry.getAllTools();
     console.log(`Hub now has ${tools.length} total tools`);
 
-    // McpServerに動的ツール登録
+    // Track which tools are currently active
+    const currentToolNames = new Set(tools.map((t) => t.name));
+
+    // Remove tools that are no longer available
+    for (const toolName of this.registeredTools) {
+      if (!currentToolNames.has(toolName)) {
+        // Tool was removed, we can't unregister from MCP SDK but mark it as removed
+        this.registeredTools.delete(toolName);
+        console.log(`Tool ${toolName} removed from registry`);
+      }
+    }
+
+    // Register new or updated tools
     for (const tool of tools) {
-      // ツールが既に登録されていない場合のみ登録
+      // Skip if already registered (idempotent)
+      if (this.registeredTools.has(tool.name)) {
+        continue;
+      }
+
       try {
-        this.server.tool(
+        // JSON\u30b9\u30ad\u30fc\u30de\u3092Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u306b\u5909\u63db
+        const zodLikeSchema = createZodLikeSchema(tool.inputSchema);
+
+        // MCP SDK\u306eregisterTool\u30e1\u30bd\u30c3\u30c9\u3092\u4f7f\u7528
+        this.server.registerTool(
           tool.name,
-          tool.inputSchema || {},
-          async (args: Record<string, unknown>) => {
+          {
+            description: tool.description || `Tool ${tool.name}`,
+            inputSchema: zodLikeSchema as unknown, // Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u3092\u6e21\u3059
+          },
+          async (args: unknown, _extra: unknown) => {
+            // registerTool\u30e1\u30bd\u30c3\u30c9\u306f\u6b63\u3057\u304f\u5f15\u6570\u3092\u6e21\u3059\u306f\u305a\u306a\u306e\u3067\u3001
+            // args\u304cundefined\u306e\u5834\u5408\u306f\u7a7a\u30aa\u30d6\u30b8\u30a7\u30af\u30c8\u3092\u4f7f\u7528
+            const toolArgs = args || {};
             const result = await this.callTool({
               name: tool.name,
-              arguments: args,
+              arguments: toolArgs,
             });
             return result;
           },
         );
+
+        // Mark as registered
+        this.registeredTools.add(tool.name);
+        console.log(`✅ Tool ${tool.name} registered`);
       } catch (error) {
-        // ツールが既に登録されている場合はスキップ
+        // This should rarely happen now due to idempotent check
         console.debug(
-          `Tool ${tool.name} already registered or failed to register:`,
-          error,
+          `Failed to register tool ${tool.name}:`,
+          error instanceof Error ? error.message : error,
         );
       }
     }
+
+    console.log(`Total registered tools: ${this.registeredTools.size}`);
   }
 
   /**
    * ツールを実行
    */
   async callTool(request: CallToolRequest): Promise<CallToolResult> {
-    const { name: publicName, arguments: args } = request;
+    const { name: publicName, arguments: toolArgs } = request;
 
     // ツールを解決
     const resolved = this.registry.resolveTool(publicName);
@@ -576,7 +695,7 @@ export class McpHub {
         // ローカルサーバーの場合
         callPromise = connection.client.callTool({
           name: originalName,
-          arguments: args,
+          arguments: toolArgs,
         });
       } else if (connection.type === 'npx' && connection.npxServer) {
         // NPXサーバーの場合
@@ -589,7 +708,7 @@ export class McpHub {
           method: 'tools/call',
           params: {
             name: originalName,
-            arguments: args,
+            arguments: toolArgs,
           },
         });
 
@@ -602,7 +721,7 @@ export class McpHub {
         // リモートサーバーの場合
         callPromise = connection.remoteServer.callTool(
           originalName,
-          args,
+          toolArgs,
         ) as Promise<CallToolResult>;
       } else {
         throw new Error(`Unsupported connection type: ${connection.type}`);

@@ -5,7 +5,7 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import type { NpxServerConfig } from '../config/types.js';
-import { getRuntime } from '../runtime/types.js';
+import { getRuntime } from '../runtime/runtime-factory.js';
 
 /**
  * Server state enum
@@ -32,13 +32,19 @@ export class NpxMcpServer extends EventEmitter {
   private startPromise: Promise<void> | null = null;
   private stopPromise: Promise<void> | null = null;
   private initRequestId = '';
+  private isFirstRun = true; // Track if this is the first run for this package
+  private installPhase = false; // Track if we're in the install phase
 
-  // Default configuration
+  // Default configuration with separated timeouts
   private readonly defaults = {
     restartDelayMs: 1000,
     maxRestarts: 3,
+    // Separated timeouts for different phases
+    installTimeoutMs: 120000, // 120s for first-time npm install
+    processTimeoutMs: 30000, // 30s for process spawn
+    initTimeoutMs: 30000, // 30s for MCP initialization
+    // Legacy timeout for backward compatibility
     timeout: 30000,
-    initTimeoutMs: 10000, // MCP initialization timeout
   };
 
   constructor(config: NpxServerConfig) {
@@ -136,9 +142,12 @@ export class NpxMcpServer extends EventEmitter {
   private async spawnProcess(): Promise<void> {
     const runtime = await this.runtime;
 
-    // Build the npx command
-    const command = 'npx';
+    // Build the npx command (use npx.cmd on Windows)
+    const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
     const args: string[] = [];
+
+    // Add -y flag to auto-confirm package installation
+    args.push('-y');
 
     // Add version specifier if provided
     if (this.config.version) {
@@ -148,8 +157,19 @@ export class NpxMcpServer extends EventEmitter {
     }
 
     // Add additional arguments
-    if (this.config.args) {
+    if (this.config.args && this.config.args.length > 0) {
       args.push(...this.config.args);
+    } else {
+      // Default to stdio transport if no args specified
+      args.push('stdio');
+    }
+
+    console.log(`🚀 Starting NPX server ${this.config.id}`);
+    console.log(`  Command: ${command} ${args.join(' ')}`);
+    if (this.isFirstRun) {
+      console.log(
+        `  ⏳ First run detected - package installation may take longer`,
+      );
     }
 
     // Spawn the process
@@ -158,8 +178,14 @@ export class NpxMcpServer extends EventEmitter {
       env: {
         ...process.env,
         ...this.config.env,
+        // Suppress npm warnings and output
+        NO_COLOR: '1',
+        FORCE_COLOR: '0',
+        npm_config_loglevel: 'silent',
+        npm_config_progress: 'false',
+        npm_config_update_notifier: 'false',
       },
-      stdio: this.config.stdio || 'pipe',
+      stdio: 'pipe', // Always use pipe for better control
     });
 
     // Set up event handlers
@@ -171,10 +197,58 @@ export class NpxMcpServer extends EventEmitter {
       this.handleProcessExit(code, signal);
     });
 
-    // Set up timeout for startup
-    const timeout = this.config.timeout || this.defaults.timeout;
+    // Track installation progress via stderr
+    if (this.process.stderr) {
+      this.process.stderr.on('data', (data) => {
+        const message = data.toString();
+
+        // Detect installation phase
+        if (
+          message.includes('added') ||
+          message.includes('packages are looking') ||
+          message.includes('found 0 vulnerabilities')
+        ) {
+          if (!this.installPhase) {
+            this.installPhase = true;
+            console.log(`  📦 Installing ${this.config.package}...`);
+          }
+        }
+
+        // Detect installation completion
+        if (
+          this.installPhase &&
+          (message.includes('found 0 vulnerabilities') ||
+            message.includes('audited'))
+        ) {
+          this.installPhase = false;
+          this.isFirstRun = false; // Mark as cached for next run
+          console.log(`  ✅ Installation complete`);
+        }
+
+        // Only log actual errors, not npm warnings
+        if (!message.includes('npm warn') && !message.includes('npm notice')) {
+          if (message.trim()) {
+            console.debug(`[NPX ${this.config.id}] stderr:`, message.trim());
+          }
+        }
+      });
+    }
+
+    // Determine appropriate timeout based on phase
+    const timeout = this.isFirstRun
+      ? this.config.installTimeoutMs || this.defaults.installTimeoutMs
+      : this.config.processTimeoutMs ||
+        this.config.timeout ||
+        this.defaults.processTimeoutMs;
+
+    console.log(`  ⏱️  Process timeout: ${timeout / 1000}s`);
+
     const timeoutId = runtime.setTimeout(() => {
       if (this.state === ServerState.STARTING) {
+        const phase = this.installPhase ? 'installation' : 'startup';
+        console.error(
+          `❌ NPX server ${this.config.id} ${phase} timeout after ${timeout}ms`,
+        );
         this.handleStartupTimeout();
       }
     }, timeout);
@@ -275,8 +349,9 @@ export class NpxMcpServer extends EventEmitter {
           this.process?.stderr?.removeListener('data', onError);
       }
 
-      // Set timeout for initialization
-      const initTimeout = this.config.initTimeoutMs || 10000;
+      // Set timeout for initialization (use our separated timeout)
+      const initTimeout =
+        this.config.initTimeoutMs || this.defaults.initTimeoutMs;
       timeoutId = runtime.setTimeout(() => {
         cleanup();
         reject(new Error(`MCP initialization timeout after ${initTimeout}ms`));

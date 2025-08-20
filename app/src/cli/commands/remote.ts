@@ -40,7 +40,7 @@ export function createRemoteCommands(): Command {
     .option('-t, --transport <transport>', 'Transport type (http|sse)')
     .option('--auth-type <type>', 'Authentication type (bearer|basic)')
     .option('--auth-token <token>', 'Authentication token')
-    .action(async (url: string, options: unknown) => {
+    .action(async (url: string, options: Record<string, unknown>) => {
       try {
         const config = AddRemoteSchema.parse({
           url,
