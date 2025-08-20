@@ -35,6 +35,125 @@ export const CONFIG_SCHEMA = {
           },
           additionalProperties: false,
         },
+        mcpServers: {
+          type: 'object',
+          additionalProperties: {
+            type: 'object',
+            properties: {
+              command: {
+                type: 'string',
+              },
+              args: {
+                type: 'array',
+                items: {
+                  type: 'string',
+                },
+              },
+              env: {
+                type: 'object',
+                additionalProperties: {
+                  type: 'string',
+                },
+              },
+              url: {
+                type: 'string',
+              },
+              hatagoOptions: {
+                type: 'object',
+                properties: {
+                  start: {
+                    type: 'string',
+                    enum: ['eager', 'lazy'],
+                  },
+                  tools: {
+                    type: 'object',
+                    properties: {
+                      include: {
+                        type: 'array',
+                        items: {
+                          type: 'string',
+                        },
+                        default: ['*'],
+                      },
+                      exclude: {
+                        type: 'array',
+                        items: {
+                          type: 'string',
+                        },
+                      },
+                      prefix: {
+                        type: 'string',
+                      },
+                      aliases: {
+                        type: 'object',
+                        additionalProperties: {
+                          type: 'string',
+                        },
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                  concurrency: {
+                    type: 'number',
+                  },
+                  timeout: {
+                    type: 'number',
+                  },
+                  auth: {
+                    type: 'object',
+                    properties: {
+                      type: {
+                        type: 'string',
+                        enum: ['bearer', 'basic'],
+                      },
+                      token: {
+                        type: 'string',
+                      },
+                      username: {
+                        type: 'string',
+                      },
+                      password: {
+                        type: 'string',
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                  healthCheck: {
+                    type: 'object',
+                    properties: {
+                      enabled: {
+                        type: 'boolean',
+                        default: false,
+                      },
+                      intervalMs: {
+                        type: 'number',
+                      },
+                      timeoutMs: {
+                        type: 'number',
+                      },
+                      method: {
+                        type: 'string',
+                        enum: ['ping', 'tools/list'],
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                  autoRestart: {
+                    type: 'boolean',
+                  },
+                  maxRestarts: {
+                    type: 'number',
+                  },
+                  restartDelayMs: {
+                    type: 'number',
+                  },
+                },
+                additionalProperties: false,
+              },
+            },
+            additionalProperties: false,
+          },
+        },
         toolNaming: {
           type: 'object',
           properties: {

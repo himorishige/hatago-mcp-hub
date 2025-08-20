@@ -1,95 +1,191 @@
 {
+  // JSON Schema for IDE support (auto-completion, validation, etc.)
+  "$schema": "./schemas/config.schema.json",
+  
+  // Hatago MCP Hub Configuration File
+  // This file configures how Hatago manages and proxies MCP servers
+  
+  // Configuration format version (currently 1)
   "version": 1,
+  
+  // Logging level for the application
+  // Options: "error", "warn", "info", "debug", "trace"
   "logLevel": "info",
+  
+  // HTTP server configuration (optional)
   "http": {
+    // Port number for the HTTP server
+    // Default: 3000
     "port": 3000,
+    
+    // Host to bind the server to
+    // Use "0.0.0.0" to listen on all interfaces
     "host": "localhost"
   },
-  "toolNaming": {
-    "strategy": "namespace",
-    "separator": "_",
-    "format": "{serverId}_{toolName}",
-    "aliases": {
-      "local_mcp_hello": "hello",
-      "remote_api_search": "search"
+  
+  // ============================================
+  // MCP Server Configuration
+  // ============================================
+  // You can use either Claude Code compatible format (mcpServers)
+  // or Hatago's detailed format (servers), or both!
+  
+  // ---------------------------------------------
+  // Option 1: Claude Code Compatible Format (Recommended)
+  // ---------------------------------------------
+  // This format is compatible with Claude Code's .mcp.json
+  // You can copy your existing .mcp.json mcpServers section here
+  "mcpServers": {
+    // Local MCP server example
+    "example-local": {
+      "command": "node",
+      "args": ["./examples/mcp-server.js"],
+      "env": {
+        "DEBUG": "true"
+      },
+      
+      // Hatago-specific options (optional)
+      "hatagoOptions": {
+        "start": "lazy",  // "eager" to start immediately, "lazy" to start on first use
+        "tools": {
+          "exclude": ["dangerous_tool"]  // Exclude specific tools
+        }
+      }
+    },
+    
+    // NPX-based MCP server example
+    "filesystem": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem", "/tmp"],
+      
+      // hatagoOptions are optional - defaults will be used if not specified
+      "hatagoOptions": {
+        "start": "lazy",
+        "tools": {
+          "prefix": "fs"  // Add prefix to all tools from this server
+        }
+      }
+    },
+    
+    // Remote MCP server example (Hatago extension)
+    "remote-api": {
+      // URL indicates this is a remote server
+      "url": "https://mcp.example.com",
+      
+      "hatagoOptions": {
+        "auth": {
+          "type": "bearer",
+          "token": "${env:API_TOKEN}"  // Environment variable reference
+        },
+        "healthCheck": {
+          "enabled": true,
+          "intervalMs": 5000
+        }
+      }
     }
   },
-  "session": {
-    "ttlSeconds": 3600,
-    "persist": false,
-    "store": "memory"
-  },
-  "timeouts": {
-    "spawnMs": 8000,
-    "healthcheckMs": 2000,
-    "toolCallMs": 20000
-  },
-  "concurrency": {
-    "global": 8,
-    "perServer": {
-      "local_mcp": 3
-    }
-  },
-  "security": {
-    "redactKeys": [
-      "password",
-      "apiKey",
-      "token",
-      "secret"
-    ],
-    "allowNet": [
-      "api.example.com",
-      "mcp.deepwiki.com"
-    ]
-  },
+  
+  // ---------------------------------------------
+  // Option 2: Hatago Detailed Format (Advanced)
+  // ---------------------------------------------
+  // Use this format for full control over server configuration
+  // Uncomment the following section to use detailed configuration
+  /*
   "servers": [
     {
-      "id": "local_mcp",
+      "id": "advanced_server",
       "type": "local",
-      "start": "lazy",
-      "command": "node",
-      "args": [
-        "./examples/mcp-server.js"
-      ],
+      "command": "python",
+      "args": ["mcp_server.py"],
       "transport": "stdio",
-      "tools": {
-        "include": [
-          "*"
-        ],
-        "exclude": [
-          "dangerous_delete"
-        ],
-        "prefix": "local"
-      }
-    },
-    {
-      "id": "remote_api",
-      "type": "remote",
       "start": "eager",
-      "url": "https://mcp.deepwiki.com/mcp",
-      "transport": "http",
-      "auth": {
-        "type": "bearer",
-        "token": "${env:HATAGO_API_TOKEN}"
+      "tools": {
+        "include": ["*"],
+        "exclude": ["admin_*"],
+        "aliases": {
+          "very_long_tool_name": "short"
+        }
       },
-      "tools": {
-        "include": [
-          "*"
-        ],
-        "prefix": "api"
-      }
-    },
-    {
-      "id": "npx_everything",
-      "type": "npx",
-      "start": "lazy",
-      "package": "@modelcontextprotocol/server-everything",
-      "transport": "stdio",
-      "tools": {
-        "include": [
-          "*"
-        ]
+      "env": {
+        "PYTHON_ENV": "production"
       }
     }
-  ]
+  ],
+  */
+  
+  // ============================================
+  // Advanced Hatago Configuration (Optional)
+  // ============================================
+  
+  // Tool naming configuration
+  // Controls how tool names from different servers are handled
+  "toolNaming": {
+    // Strategy for handling name conflicts between servers
+    // "namespace": Prefix tool names with server ID (recommended)
+    // "error": Fail when conflicts are detected
+    "strategy": "namespace",
+    
+    // Separator character for namespaced tool names
+    // Example: "server_toolname" when separator is "_"
+    "separator": "_",
+    
+    // Format template for tool names
+    // Available variables: {serverId}, {toolName}
+    "format": "{serverId}_{toolName}",
+    
+    // Aliases for specific tools
+    // Map long namespaced names to shorter aliases
+    "aliases": {
+      // "filesystem_read_file": "read",
+      // "filesystem_write_file": "write"
+    }
+  },
+  
+  // Session management configuration
+  "session": {
+    // Session timeout in seconds
+    // Sessions are cleaned up after this period of inactivity
+    "ttlSeconds": 3600,
+    
+    // Whether to persist sessions across restarts
+    "persist": false,
+    
+    // Storage backend for sessions
+    // Options: "memory" (default), "redis" (future)
+    "store": "memory"
+  },
+  
+  // Timeout configuration (in milliseconds)
+  "timeouts": {
+    // Timeout for spawning new server processes
+    "spawnMs": 8000,
+    
+    // Timeout for health check operations
+    "healthcheckMs": 2000,
+    
+    // Timeout for individual tool calls
+    "toolCallMs": 20000
+  },
+  
+  // Concurrency limits
+  "concurrency": {
+    // Maximum concurrent operations across all servers
+    "global": 8,
+    
+    // Per-server concurrency limits
+    // Overrides global limit for specific servers
+    "perServer": {
+      // "example-local": 3
+    }
+  },
+  
+  // Security configuration
+  "security": {
+    // Keys to redact from logs and error messages
+    // Add any sensitive field names here
+    "redactKeys": ["password", "apiKey", "token", "secret"],
+    
+    // Allowed network destinations for remote servers
+    // Use ["*"] to allow all (not recommended for production)
+    "allowNet": []
+  }
 }

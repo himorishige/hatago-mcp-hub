@@ -241,10 +241,60 @@ export const ServerConfigSchema = z.discriminatedUnion('type', [
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 
 // メイン設定
+// Claude Code .mcp.json互換性のための型定義
+// Hatago独自オプション
+export const HatagoOptionsSchema = z.object({
+  start: z.enum(['eager', 'lazy']).optional(),
+  tools: ToolsConfigSchema.optional(),
+  concurrency: z.number().optional(),
+  timeout: z.number().optional(),
+  auth: z
+    .object({
+      type: z.enum(['bearer', 'basic']).optional(),
+      token: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+    })
+    .optional(),
+  healthCheck: z
+    .object({
+      enabled: z.boolean().default(false),
+      intervalMs: z.number().optional(),
+      timeoutMs: z.number().optional(),
+      method: z.enum(['ping', 'tools/list']).optional(),
+    })
+    .optional(),
+  autoRestart: z.boolean().optional(),
+  maxRestarts: z.number().optional(),
+  restartDelayMs: z.number().optional(),
+});
+export type HatagoOptions = z.infer<typeof HatagoOptionsSchema>;
+
+// Claude Code互換のMCPサーバー設定
+export const McpServerConfigSchema = z.object({
+  // Claude Code標準プロパティ
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string()).optional(),
+
+  // Hatago拡張（remoteサーバー用）
+  url: z.string().optional(),
+
+  // Hatago独自オプション
+  hatagoOptions: HatagoOptionsSchema.optional(),
+});
+export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
+
+// mcpServers形式（Claude Code互換）
+export const McpServersSchema = z.record(McpServerConfigSchema);
+export type McpServers = z.infer<typeof McpServersSchema>;
 export const HatagoConfigSchema = z.object({
   version: z.number().default(1),
   logLevel: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   http: HttpConfigSchema.optional(),
+
+  // Claude Code互換形式
+  mcpServers: McpServersSchema.optional(),
   toolNaming: ToolNamingConfigSchema.default({}),
   session: SessionConfigSchema.default({}),
   sessionSharing: SessionSharingConfigSchema.default({}),

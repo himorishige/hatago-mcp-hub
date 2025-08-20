@@ -7,7 +7,11 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { HatagoConfigSchema } from '../src/config/types.js';
+import {
+  HatagoConfigSchema,
+  McpServerConfigSchema,
+  McpServersSchema,
+} from '../src/config/types.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 

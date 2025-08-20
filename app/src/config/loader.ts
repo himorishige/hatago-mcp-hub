@@ -63,8 +63,12 @@ export async function loadConfigFile(
     // 環境変数を展開
     const expanded = expandEnvironmentVariables(parsed);
 
+    // mcpServers形式の変換（あれば）
+    const { mergeConfigWithMcpServers } = await import('./mcp-converter.js');
+    const merged = mergeConfigWithMcpServers(expanded);
+
     // バリデーション
-    const config = validateConfig(expanded);
+    const config = validateConfig(merged);
 
     if (!options?.quiet) {
       console.log(`Config loaded successfully`);
@@ -199,7 +203,7 @@ export function generateSampleConfig(): string {
   // Options: "error", "warn", "info", "debug", "trace"
   "logLevel": "info",
   
-  // HTTP server configuration
+  // HTTP server configuration (optional)
   "http": {
     // Port number for the HTTP server
     // Default: 3000
@@ -209,6 +213,99 @@ export function generateSampleConfig(): string {
     // Use "0.0.0.0" to listen on all interfaces
     "host": "localhost"
   },
+  
+  // ============================================
+  // MCP Server Configuration
+  // ============================================
+  // You can use either Claude Code compatible format (mcpServers)
+  // or Hatago's detailed format (servers), or both!
+  
+  // ---------------------------------------------
+  // Option 1: Claude Code Compatible Format (Recommended)
+  // ---------------------------------------------
+  // This format is compatible with Claude Code's .mcp.json
+  // You can copy your existing .mcp.json mcpServers section here
+  "mcpServers": {
+    // Local MCP server example
+    "example-local": {
+      "command": "node",
+      "args": ["./examples/mcp-server.js"],
+      "env": {
+        "DEBUG": "true"
+      },
+      
+      // Hatago-specific options (optional)
+      "hatagoOptions": {
+        "start": "lazy",  // "eager" to start immediately, "lazy" to start on first use
+        "tools": {
+          "exclude": ["dangerous_tool"]  // Exclude specific tools
+        }
+      }
+    },
+    
+    // NPX-based MCP server example
+    "filesystem": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem", "/tmp"],
+      
+      // hatagoOptions are optional - defaults will be used if not specified
+      "hatagoOptions": {
+        "start": "lazy",
+        "tools": {
+          "prefix": "fs"  // Add prefix to all tools from this server
+        }
+      }
+    },
+    
+    // Remote MCP server example (Hatago extension)
+    "remote-api": {
+      // URL indicates this is a remote server
+      "url": "https://mcp.example.com",
+      
+      "hatagoOptions": {
+        "auth": {
+          "type": "bearer",
+          "token": "\${env:API_TOKEN}"  // Environment variable reference
+        },
+        "healthCheck": {
+          "enabled": true,
+          "intervalMs": 5000
+        }
+      }
+    }
+  },
+  
+  // ---------------------------------------------
+  // Option 2: Hatago Detailed Format (Advanced)
+  // ---------------------------------------------
+  // Use this format for full control over server configuration
+  // Uncomment the following section to use detailed configuration
+  /*
+  "servers": [
+    {
+      "id": "advanced_server",
+      "type": "local",
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "transport": "stdio",
+      "start": "eager",
+      "tools": {
+        "include": ["*"],
+        "exclude": ["admin_*"],
+        "aliases": {
+          "very_long_tool_name": "short"
+        }
+      },
+      "env": {
+        "PYTHON_ENV": "production"
+      }
+    }
+  ],
+  */
+  
+  // ============================================
+  // Advanced Hatago Configuration (Optional)
+  // ============================================
   
   // Tool naming configuration
   // Controls how tool names from different servers are handled
@@ -229,8 +326,8 @@ export function generateSampleConfig(): string {
     // Aliases for specific tools
     // Map long namespaced names to shorter aliases
     "aliases": {
-      "local_mcp_hello": "hello",
-      "remote_api_search": "search"
+      // "filesystem_read_file": "read",
+      // "filesystem_write_file": "write"
     }
   },
   
@@ -268,7 +365,7 @@ export function generateSampleConfig(): string {
     // Per-server concurrency limits
     // Overrides global limit for specific servers
     "perServer": {
-      "local_mcp": 3
+      // "example-local": 3
     }
   },
   
@@ -280,91 +377,8 @@ export function generateSampleConfig(): string {
     
     // Allowed network destinations for remote servers
     // Use ["*"] to allow all (not recommended for production)
-    "allowNet": ["https://api.example.com"]
-  },
-  
-  // MCP server configurations
-  // Each server can be local, remote, or npx-based
-  "servers": [
-    {
-      // Unique identifier for this server
-      "id": "local_mcp",
-      
-      // Server type: "local", "remote", or "npx"
-      "type": "local",
-      
-      // When to start the server
-      // "eager": Start immediately on hub startup
-      // "lazy": Start when first tool is called
-      "start": "lazy",
-      
-      // Command to execute (for local servers)
-      "command": "node",
-      
-      // Command arguments
-      "args": ["./examples/mcp-server.js"],
-      
-      // Transport protocol: "stdio" or "http"
-      "transport": "stdio",
-      
-      // Tool filtering configuration
-      "tools": {
-        // Tools to include (["*"] for all)
-        "include": ["*"],
-        
-        // Tools to exclude (takes precedence over include)
-        "exclude": ["dangerous_delete"],
-        
-        // Optional prefix for all tools from this server
-        "prefix": "local"
-      }
-    },
-    {
-      // Remote MCP server example
-      "id": "remote_api",
-      "type": "remote",
-      "start": "eager",
-      
-      // URL of the remote MCP server
-      "url": "https://mcp.example.com",
-      
-      // Transport must be "http" for remote servers
-      "transport": "http",
-      
-      // Authentication configuration
-      "auth": {
-        // Auth type: "bearer", "basic", or "apikey"
-        "type": "bearer",
-        
-        // Token can reference environment variables
-        // Format: \${env:VARIABLE_NAME}
-        "token": "\${env:HATAGO_API_TOKEN}"
-      },
-      
-      "tools": {
-        "include": ["*"],
-        "prefix": "api"
-      }
-    },
-    {
-      // NPX-based MCP server example
-      "id": "npx_tool",
-      "type": "npx",
-      "start": "lazy",
-      
-      // NPM package name
-      "package": "@example/mcp-tool",
-      
-      // Package version (optional)
-      "version": "^1.0.0",
-      
-      "transport": "stdio",
-      
-      "tools": {
-        "include": ["*"]
-      }
-    }
-  ]
+    "allowNet": []
+  }
 }`;
 }
 
