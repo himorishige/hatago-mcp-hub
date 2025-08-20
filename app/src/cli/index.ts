@@ -336,6 +336,44 @@ program
 
       logger.info({ path: options.output }, 'Creating config file');
 
+      // Create .hatago directory if needed
+      const { dirname, join } = await import('node:path');
+      const { mkdir } = await import('node:fs/promises');
+      const hatagoDir = dirname(options.output);
+      await mkdir(hatagoDir, { recursive: true });
+
+      // Create .gitignore in .hatago directory
+      const gitignorePath = join(hatagoDir, '.gitignore');
+      const { existsSync } = await import('node:fs');
+      if (!existsSync(gitignorePath)) {
+        const gitignoreContent = `# SECURITY WARNING: Never commit these files!
+# They contain encryption keys and secrets
+
+# Master encryption key - NEVER share or commit this
+master.key
+
+# Salt for key derivation - Keep this secret
+master.salt
+
+# Encrypted secrets storage
+secrets.json
+
+# Secret management policy
+secrets.policy.json
+
+# Any backup files
+*.backup
+*.bak
+*~
+
+# Temporary files
+*.tmp
+*.temp
+`;
+        await writeFile(gitignorePath, gitignoreContent, 'utf-8');
+        logger.info('Created .gitignore for security');
+      }
+
       // サンプル設定を生成
       const sample = generateSampleConfig();
 
@@ -760,6 +798,20 @@ program.addCommand(createNpxCommands());
  * remoteコマンド - リモート MCPサーバー管理
  */
 program.addCommand(createRemoteCommands());
+
+/**
+ * doctorコマンド - 環境診断
+ */
+import { createDoctorCommand } from './commands/doctor.js';
+
+program.addCommand(createDoctorCommand());
+
+/**
+ * secretコマンド - シークレット管理
+ */
+import { createSecretCommand } from './commands/secret.js';
+
+program.addCommand(createSecretCommand());
 
 // コマンドを実行
 program.parse(process.argv);

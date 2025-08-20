@@ -1,0 +1,23 @@
+# SECURITY WARNING: Never commit these files!
+# They contain encryption keys and secrets
+
+# Master encryption key - NEVER share or commit this
+master.key
+
+# Salt for key derivation - Keep this secret
+master.salt
+
+# Encrypted secrets storage
+secrets.json
+
+# Secret management policy
+secrets.policy.json
+
+# Any backup files
+*.backup
+*.bak
+*~
+
+# Temporary files
+*.tmp
+*.temp
