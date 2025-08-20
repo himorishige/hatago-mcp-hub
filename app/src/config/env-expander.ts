@@ -2,6 +2,74 @@
  * Environment variable expansion utilities
  */
 
+import { detectThreats, isContentSafe } from '@himorishige/noren';
+
+/**
+ * Check if an environment variable name is safe
+ */
+async function isEnvVarNameSafe(name: string): Promise<boolean> {
+  // Dangerous environment variables that can affect program execution
+  const dangerousVars = [
+    'LD_PRELOAD',
+    'LD_LIBRARY_PATH',
+    'DYLD_INSERT_LIBRARIES',
+    'DYLD_LIBRARY_PATH',
+    'PATH',
+    'PYTHONPATH',
+    'NODE_PATH',
+    'PERL5LIB',
+    'RUBYLIB',
+  ];
+
+  if (dangerousVars.includes(name.toUpperCase())) {
+    return false;
+  }
+
+  // Check with noren for additional threats
+  const safe = await isContentSafe(name);
+  if (!safe) {
+    const threats = await detectThreats(name);
+    return threats.risk < 0.3;
+  }
+
+  return true;
+}
+
+/**
+ * Validate environment variable value for safety
+ */
+async function validateEnvVarValue(
+  value: string,
+): Promise<{ safe: boolean; sanitized?: string }> {
+  // Check for command injection patterns
+  const dangerousPatterns = [
+    /;.*&&/, // Command chaining
+    /\|/, // Pipe
+    /`[^`]+`/, // Command substitution
+    /\$\([^)]+\)/, // Command substitution
+    /\.\.\//, // Directory traversal
+    /^\/etc\//, // System config access
+    /^\/usr\/bin\//, // Direct binary execution
+  ];
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(value)) {
+      return { safe: false };
+    }
+  }
+
+  // Check with noren
+  const safe = await isContentSafe(value);
+  if (!safe) {
+    const threats = await detectThreats(value);
+    if (threats.risk > 0.5) {
+      return { safe: false };
+    }
+  }
+
+  return { safe: true, sanitized: value };
+}
+
 /**
  * Expand environment variables in configuration values
  * Supports ${VAR} and ${VAR:-default} syntax
@@ -98,9 +166,46 @@ export function validateEnvVars(requiredVars: string[]): void {
 }
 
 /**
- * Get environment variable with type checking
+ * Get environment variable with type checking and safety validation
  */
-export function getEnvVar(name: string, defaultValue?: string): string {
+export async function getEnvVar(
+  name: string,
+  defaultValue?: string,
+  options?: { skipSafetyCheck?: boolean },
+): Promise<string> {
+  // Check if variable name is safe
+  if (!options?.skipSafetyCheck) {
+    const nameSafe = await isEnvVarNameSafe(name);
+    if (!nameSafe) {
+      throw new Error(`Potentially unsafe environment variable name: ${name}`);
+    }
+  }
+
+  const value = process.env[name];
+  if (value === undefined) {
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+    throw new Error(`Environment variable ${name} is not set`);
+  }
+
+  // Validate value safety
+  if (!options?.skipSafetyCheck) {
+    const validation = await validateEnvVarValue(value);
+    if (!validation.safe) {
+      throw new Error(
+        `Environment variable ${name} contains potentially unsafe content`,
+      );
+    }
+  }
+
+  return value;
+}
+
+/**
+ * Get environment variable synchronously (legacy compatibility)
+ */
+export function getEnvVarSync(name: string, defaultValue?: string): string {
   const value = process.env[name];
   if (value === undefined) {
     if (defaultValue !== undefined) {

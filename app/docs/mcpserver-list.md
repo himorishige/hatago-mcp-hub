@@ -12,3 +12,35 @@
 
 - [DeepWiki HTTP](https://mcp.deepwiki.com/mcp)
 - [GitHub MCP](https://api.githubcopilot.com/mcp) needs Personal Access Token
+
+## そのほか
+
+Claude Codeで利用しているMCPサーバー例
+
+```json
+{
+  "mcpServers": {
+    "MCP_DOCKER": {
+      "command": "docker",
+      "args": ["mcp", "gateway", "run"]
+    },
+    "serena": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
+    },
+    "cloudflare": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://docs.mcp.cloudflare.com/sse",
+        "https://bindings.mcp.cloudflare.com/sse",
+        "https://builds.mcp.cloudflare.com/sse"
+      ]
+    },
+    "deepwiki": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://mcp.deepwiki.com/sse"]
+    }
+  }
+}
+```
