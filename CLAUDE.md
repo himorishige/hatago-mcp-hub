@@ -20,7 +20,7 @@ Hatago MCP Hub is a lightweight MCP (Model Context Protocol) Hub server built on
 
 ```
 /
-├── app/                 # Main application
+├── server/              # MCP Hub Server
 │   ├── src/
 │   │   └── index.ts    # Entry point (Hono server on port 3000)
 │   ├── package.json    
@@ -33,7 +33,7 @@ Hatago MCP Hub is a lightweight MCP (Model Context Protocol) Hub server built on
 
 ## Essential Development Commands
 
-All commands should be run in the `app/` directory:
+All commands should be run in the `server/` directory:
 
 ```bash
 # Development
