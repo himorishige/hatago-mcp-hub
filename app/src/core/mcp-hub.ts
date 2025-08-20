@@ -12,7 +12,7 @@ import type {
 } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
-import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
+import { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
 import type { StdioTransport } from '../transport/stdio.js';
@@ -94,7 +94,10 @@ export class McpHub {
 
     if (hasNpxServers || hasRemoteServers) {
       if (hasNpxServers) {
-        this.workspaceManager = new WorkspaceManager();
+        // Use .hatago/workspaces directory for workspace management
+        this.workspaceManager = new WorkspaceManager({
+          baseDir: '.hatago/workspaces',
+        });
         await this.workspaceManager.initialize();
 
         // Warm up NPX packages to populate cache

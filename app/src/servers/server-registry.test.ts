@@ -165,6 +165,8 @@ describe('ServerRegistry', () => {
   });
 
   describe('server unregistration', () => {
+    let mockServer: NpxMcpServer;
+
     beforeEach(async () => {
       const config: NpxServerConfig = {
         id: 'test-server',
@@ -173,7 +175,7 @@ describe('ServerRegistry', () => {
         start: 'lazy',
       };
 
-      const mockServer = new NpxMcpServer(config);
+      mockServer = new NpxMcpServer(config);
       vi.mocked(NpxMcpServer).mockImplementation(() => mockServer);
       vi.spyOn(mockServer, 'stop').mockResolvedValue();
 
@@ -196,11 +198,7 @@ describe('ServerRegistry', () => {
     });
 
     it('should stop server before unregistering', async () => {
-      const server = registry.getServer('test-server');
-      if (!server?.instance) {
-        throw new Error('Server or instance not found');
-      }
-      const stopSpy = vi.spyOn(server.instance, 'stop');
+      const stopSpy = vi.spyOn(mockServer, 'stop').mockResolvedValue();
 
       vi.mocked(mockWorkspaceManager.getWorkspaceByServerId).mockResolvedValue({
         id: 'workspace-1',
@@ -278,14 +276,22 @@ describe('ServerRegistry', () => {
         },
       ];
 
+      const mockServers: NpxMcpServer[] = [];
       const stopSpies: ReturnType<typeof vi.spyOn>[] = [];
 
       for (const config of configs) {
         const mockServer = new NpxMcpServer(config);
+        mockServers.push(mockServer);
         const stopSpy = vi.spyOn(mockServer, 'stop').mockResolvedValue();
         stopSpies.push(stopSpy);
         vi.mocked(NpxMcpServer).mockImplementationOnce(() => mockServer);
         await registry.registerNpxServer(config);
+
+        // Set server state to RUNNING to ensure stop will be called
+        const registered = registry.getServer(config.id);
+        if (registered) {
+          registered.state = ServerState.RUNNING;
+        }
       }
 
       await registry.shutdown();

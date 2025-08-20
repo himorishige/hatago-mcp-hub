@@ -190,6 +190,16 @@ function isValidUrl(url: string): boolean {
  * Check if a host is valid
  */
 function isValidHost(host: string): boolean {
+  // If it's a URL, extract the hostname
+  if (host.startsWith('http://') || host.startsWith('https://')) {
+    try {
+      const url = new URL(host);
+      host = url.hostname;
+    } catch {
+      return false;
+    }
+  }
+
   // Allow localhost, IP addresses, and domain names
   const patterns = [
     /^localhost$/i,

@@ -38,6 +38,7 @@
       "secret"
     ],
     "allowNet": [
+      "api.example.com",
       "mcp.deepwiki.com"
     ]
   },
@@ -45,10 +46,10 @@
     {
       "id": "local_mcp",
       "type": "local",
-      "start": "eager",
+      "start": "lazy",
       "command": "node",
       "args": [
-        "./examples/test-mcp-server.js"
+        "./examples/mcp-server.js"
       ],
       "transport": "stdio",
       "tools": {
@@ -67,6 +68,10 @@
       "start": "eager",
       "url": "https://mcp.deepwiki.com/mcp",
       "transport": "http",
+      "auth": {
+        "type": "bearer",
+        "token": "${env:HATAGO_API_TOKEN}"
+      },
       "tools": {
         "include": [
           "*"
@@ -77,14 +82,13 @@
     {
       "id": "npx_everything",
       "type": "npx",
-      "start": "eager",
+      "start": "lazy",
       "package": "@modelcontextprotocol/server-everything",
       "transport": "stdio",
       "tools": {
         "include": [
           "*"
-        ],
-        "prefix": "everything"
+        ]
       }
     }
   ]

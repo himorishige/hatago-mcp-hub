@@ -21,7 +21,10 @@ export async function initializeRegistry(config?: {
   autoStart?: boolean;
   healthCheckIntervalMs?: number;
 }): Promise<RegistryContext> {
-  const workspaceManager = new WorkspaceManager();
+  // Use .hatago/workspaces directory for workspace management
+  const workspaceManager = new WorkspaceManager({
+    baseDir: '.hatago/workspaces',
+  });
   await workspaceManager.initialize();
 
   const registry = new ServerRegistry(workspaceManager, config);

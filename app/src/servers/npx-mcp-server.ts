@@ -170,8 +170,8 @@ export class NpxMcpServer extends EventEmitter {
     // Add additional arguments
     if (this.config.args && this.config.args.length > 0) {
       args.push(...this.config.args);
-    } else {
-      // Default to stdio transport if no args specified
+    } else if (this.requiresStdioArg()) {
+      // Only add stdio argument for servers that need it
       args.push('stdio');
     }
 
@@ -490,6 +490,34 @@ export class NpxMcpServer extends EventEmitter {
 
     const maxRestarts = this.config.maxRestarts || this.defaults.maxRestarts;
     return this.restartCount < maxRestarts;
+  }
+
+  /**
+   * Check if this server requires stdio argument
+   */
+  private requiresStdioArg(): boolean {
+    // Known servers that need explicit stdio argument
+    const serversNeedingStdio = [
+      '@modelcontextprotocol/server-everything',
+      '@modelcontextprotocol/server-puppeteer',
+      '@modelcontextprotocol/server-github',
+    ];
+
+    // Known servers that should NOT have stdio argument
+    const serversNotNeedingStdio = ['@modelcontextprotocol/server-filesystem'];
+
+    // Check if this server is in the NOT needing list
+    if (
+      serversNotNeedingStdio.some((pkg) => this.config.package.includes(pkg))
+    ) {
+      return false;
+    }
+
+    // Check if this server is in the needing list or default to true for unknown servers
+    return (
+      serversNeedingStdio.some((pkg) => this.config.package.includes(pkg)) ||
+      !serversNotNeedingStdio.some((pkg) => this.config.package.includes(pkg))
+    );
   }
 
   /**
