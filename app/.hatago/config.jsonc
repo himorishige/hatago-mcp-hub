@@ -27,18 +27,12 @@
     "redactKeys": ["password", "apiKey", "token", "secret"]
   },
   "servers": [
-    // ローカルMCPサーバーの例
-    // {
-    //   "id": "local_mcp",
-    //   "type": "local",
-    //   "start": "lazy",
-    //   "command": "node",
-    //   "args": ["./examples/mcp-server.js"],
-    //   "transport": "stdio",
-    //   "tools": {
-    //     "include": ["*"],
-    //     "prefix": "local"
-    //   }
-    // }
+    {
+      "id": "deepwiki",
+      "type": "remote",
+      "url": "https://mcp.deepwiki.com/mcp",
+      "transport": "http",
+      "start": "eager"
+    }
   ]
 }

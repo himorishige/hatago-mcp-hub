@@ -27,6 +27,7 @@ program
   .command('serve')
   .description('Start the MCP Hub server')
   .option('-c, --config <path>', 'Path to config file')
+  .option('--profile <name>', 'Profile to use (default: "default")', 'default')
   .option('-p, --port <port>', 'HTTP port', '3000')
   .option('-m, --mode <mode>', 'Transport mode: stdio | http', 'stdio')
   .option('--http', 'Use HTTP mode instead of STDIO')
@@ -43,8 +44,24 @@ program
         console.log('Starting Hatago MCP Hub...');
       }
 
-      // 設定を読み込み（オプショナル）
-      const config = await loadConfig(options.config, { quiet: options.quiet });
+      // プロファイルに基づいて設定を読み込み
+      const config = await loadConfig(options.config, {
+        quiet: options.quiet,
+        profile: options.profile,
+      });
+
+      // プロファイル設定を検証
+      const { validateProfileConfig, printValidationResult } = await import(
+        '../config/validator.js'
+      );
+      const validationResult = validateProfileConfig(config);
+      if (!validationResult.valid) {
+        printValidationResult(validationResult);
+        throw new Error('Invalid configuration');
+      }
+      if (validationResult.warnings.length > 0 && !options.quiet) {
+        printValidationResult(validationResult);
+      }
 
       // ポートを上書き
       if (options.port && config.http) {
@@ -59,7 +76,9 @@ program
       if (options.mode === 'stdio') {
         // STDIOモード
         if (!options.quiet) {
-          console.error('MCP Hub running in STDIO mode');
+          console.error(
+            `MCP Hub running in STDIO mode${options.profile && options.profile !== 'default' ? ` with profile: ${options.profile}` : ''}`,
+          );
         }
         const transport = new StdioServerTransport();
         await hub.getServer().connect(transport);

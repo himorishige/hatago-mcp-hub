@@ -1,0 +1,68 @@
+{
+  // Backend Development Profile
+  // For API, database, and server-side development
+  "version": 1,
+  "logLevel": "info",
+  "http": {
+    "port": 3002,
+    "host": "localhost"
+  },
+  "toolNaming": {
+    "strategy": "namespace",
+    "separator": "_",
+    "format": "{serverId}_{toolName}"
+  },
+  "session": {
+    "ttlSeconds": 7200,
+    "persist": false,
+    "store": "memory"
+  },
+  "timeouts": {
+    "spawnMs": 10000,
+    "healthcheckMs": 2000,
+    "toolCallMs": 30000
+  },
+  "concurrency": {
+    "global": 10
+  },
+  "security": {
+    "redactKeys": ["password", "apiKey", "token", "secret", "database_url", "connection_string"]
+  },
+  "servers": [
+    // Filesystem server with write permissions for backend code
+    {
+      "id": "filesystem",
+      "type": "npx",
+      "package": "@modelcontextprotocol/server-filesystem",
+      "args": ["${HATAGO_WORKSPACE:-./}"],
+      "transport": "stdio",
+      "start": "eager",
+      "tools": {
+        "include": ["*"],
+        "exclude": []
+      }
+    },
+    // PostgreSQL server for database operations
+    {
+      "id": "postgres",
+      "type": "npx",
+      "package": "@modelcontextprotocol/server-postgres",
+      "transport": "stdio",
+      "start": "lazy",
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
+    },
+    // GitHub API for repository management
+    {
+      "id": "github",
+      "type": "npx",
+      "package": "@modelcontextprotocol/server-github",
+      "transport": "stdio",
+      "start": "lazy",
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  ]
+}

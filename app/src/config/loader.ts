@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parse as parseJsonc } from 'jsonc-parser';
+import { expandEnvironmentVariables } from './env-expander.js';
 import { type HatagoConfig, validateConfig } from './types.js';
 
 // 設定ファイルのパス候補
@@ -59,8 +60,11 @@ export async function loadConfigFile(
     // JSONCをパース
     const parsed = parseJsonc(content);
 
+    // 環境変数を展開
+    const expanded = expandEnvironmentVariables(parsed);
+
     // バリデーション
-    const config = validateConfig(parsed);
+    const config = validateConfig(expanded);
 
     if (!options?.quiet) {
       console.log(`Config loaded successfully`);
@@ -115,8 +119,46 @@ export function createDefaultConfig(): HatagoConfig {
  */
 export async function loadConfig(
   configPath?: string,
-  options?: { quiet?: boolean },
+  options?: { quiet?: boolean; profile?: string },
 ): Promise<HatagoConfig> {
+  // プロファイルが指定されている場合
+  if (options?.profile && options.profile !== 'default') {
+    // プロファイル名の検証（パストラバーサル攻撃を防ぐ）
+    const profileName = options.profile;
+    if (!/^[a-zA-Z0-9_-]+$/.test(profileName)) {
+      throw new Error(
+        `Invalid profile name: ${profileName}. Only alphanumeric characters, hyphens, and underscores are allowed.`,
+      );
+    }
+
+    const profilePath = join(
+      process.cwd(),
+      '.hatago',
+      'profiles',
+      `${profileName}.jsonc`,
+    );
+
+    // パスが期待されるディレクトリ内にあることを確認
+    const expectedDir = join(process.cwd(), '.hatago', 'profiles');
+    if (!profilePath.startsWith(expectedDir)) {
+      throw new Error(`Invalid profile path: ${profilePath}`);
+    }
+
+    if (existsSync(profilePath)) {
+      if (!options?.quiet) {
+        console.log(`Loading profile: ${profileName}`);
+      }
+      return await loadConfigFile(profilePath, options);
+    }
+
+    // プロファイルファイルが見つからない場合は警告
+    if (!options?.quiet) {
+      console.warn(
+        `Profile '${options.profile}' not found at ${profilePath}, falling back to default config`,
+      );
+    }
+  }
+
   // 明示的なパスが指定されている場合
   if (configPath) {
     const resolvedPath = resolve(configPath);

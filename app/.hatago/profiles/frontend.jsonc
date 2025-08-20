@@ -1,0 +1,59 @@
+{
+  // Frontend Development Profile
+  // For React, TypeScript, and UI development tasks
+  "version": 1,
+  "logLevel": "info",
+  "http": {
+    "port": 3001,
+    "host": "localhost"
+  },
+  "toolNaming": {
+    "strategy": "namespace",
+    "separator": "_",
+    "format": "{serverId}_{toolName}"
+  },
+  "session": {
+    "ttlSeconds": 3600,
+    "persist": false,
+    "store": "memory"
+  },
+  "timeouts": {
+    "spawnMs": 8000,
+    "healthcheckMs": 2000,
+    "toolCallMs": 20000
+  },
+  "concurrency": {
+    "global": 8
+  },
+  "security": {
+    "redactKeys": ["password", "apiKey", "token", "secret"],
+    // Allow only read operations and specific frontend tools
+    "allowNet": ["localhost", "127.0.0.1"]
+  },
+  "servers": [
+    // Filesystem server for reading source code
+    {
+      "id": "filesystem",
+      "type": "npx",
+      "package": "@modelcontextprotocol/server-filesystem",
+      "args": ["${HATAGO_WORKSPACE:-./}"],
+      "transport": "stdio",
+      "start": "eager",
+      "tools": {
+        "include": ["read_file", "read_multiple_files", "list_directory"],
+        "exclude": ["write_file", "create_directory", "move_file", "delete_file"]
+      }
+    },
+    // Brave search for documentation and API references
+    {
+      "id": "brave_search",
+      "type": "npx",
+      "package": "@modelcontextprotocol/server-brave-search",
+      "transport": "stdio",
+      "start": "lazy",
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      }
+    }
+  ]
+}
