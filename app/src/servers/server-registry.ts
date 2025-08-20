@@ -9,6 +9,7 @@ import type {
   ServerConfig,
 } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
+import type { RegistryStorage } from '../storage/registry-storage.js';
 import { sanitizeLog } from '../utils/security.js';
 import { NpxMcpServer, ServerState } from './npx-mcp-server.js';
 import { RemoteMcpServer } from './remote-mcp-server.js';
@@ -50,6 +51,7 @@ export class ServerRegistry extends EventEmitter {
   private config: ServerRegistryConfig;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private runtime = getRuntime();
+  private storage: RegistryStorage | null = null;
   private serverListeners = new WeakMap<
     NpxMcpServer | RemoteMcpServer,
     Map<string, (...args: unknown[]) => void>
@@ -67,6 +69,7 @@ export class ServerRegistry extends EventEmitter {
   constructor(
     workspaceManager: WorkspaceManager,
     config?: ServerRegistryConfig,
+    storage?: RegistryStorage,
   ) {
     super();
     this.workspaceManager = workspaceManager;
@@ -74,6 +77,7 @@ export class ServerRegistry extends EventEmitter {
       ...this.defaults,
       ...config,
     };
+    this.storage = storage || null;
   }
 
   /**
@@ -81,6 +85,19 @@ export class ServerRegistry extends EventEmitter {
    */
   async initialize(): Promise<void> {
     const runtime = await this.runtime;
+
+    // Initialize storage if available
+    if (this.storage) {
+      await this.storage.init();
+
+      // Restore server states
+      const savedStates = await this.storage.getAllServerStates();
+      for (const [serverId, state] of savedStates.entries()) {
+        console.log(`Restoring state for server ${serverId}: ${state.state}`);
+        // Store minimal state for recovery tracking
+        // Actual server instances will be created on demand
+      }
+    }
 
     // Start health check interval
     if (this.config.healthCheckIntervalMs) {
@@ -127,6 +144,17 @@ export class ServerRegistry extends EventEmitter {
     // Register the server
     this.servers.set(config.id, registered);
 
+    // Save to storage
+    if (this.storage) {
+      await this.storage.saveServerState(config.id, {
+        id: config.id,
+        type: config.type,
+        state: registered.state,
+        lastStartedAt: registered.state === 'running' ? new Date() : undefined,
+        discoveredTools: registered.tools,
+      });
+    }
+
     // Auto-start if configured
     if (this.config.autoStart) {
       await this.startServer(config.id);
@@ -165,6 +193,17 @@ export class ServerRegistry extends EventEmitter {
 
     // Register the server
     this.servers.set(config.id, registered);
+
+    // Save to storage
+    if (this.storage) {
+      await this.storage.saveServerState(config.id, {
+        id: config.id,
+        type: config.type,
+        state: registered.state,
+        lastStartedAt: registered.state === 'running' ? new Date() : undefined,
+        discoveredTools: registered.tools,
+      });
+    }
 
     // Auto-start if configured
     if (this.config.autoStart) {
@@ -321,6 +360,11 @@ export class ServerRegistry extends EventEmitter {
     // Remove from registry
     this.servers.delete(id);
 
+    // Remove from storage
+    if (this.storage) {
+      await this.storage.deleteServerState(id);
+    }
+
     this.emit('server:unregistered', { serverId: id });
   }
 
@@ -341,6 +385,17 @@ export class ServerRegistry extends EventEmitter {
     }
 
     await registered.instance.start();
+
+    // Update storage
+    if (this.storage) {
+      await this.storage.saveServerState(id, {
+        id,
+        type: registered.config.type,
+        state: ServerState.RUNNING,
+        lastStartedAt: new Date(),
+        discoveredTools: registered.tools,
+      });
+    }
   }
 
   /**
@@ -360,6 +415,17 @@ export class ServerRegistry extends EventEmitter {
     }
 
     await registered.instance.stop();
+
+    // Update storage
+    if (this.storage) {
+      await this.storage.saveServerState(id, {
+        id,
+        type: registered.config.type,
+        state: ServerState.STOPPED,
+        lastStoppedAt: new Date(),
+        discoveredTools: registered.tools,
+      });
+    }
   }
 
   /**
@@ -577,6 +643,19 @@ export class ServerRegistry extends EventEmitter {
       registered.lastHealthCheckError =
         error instanceof Error ? error.message : String(error);
 
+      // Save failure state to storage
+      if (this.storage) {
+        await this.storage.saveServerState(registered.id, {
+          id: registered.id,
+          type: registered.config.type,
+          state: registered.state,
+          failureCount: registered.healthCheckFailures,
+          lastFailureAt: new Date(),
+          lastFailureReason: registered.lastHealthCheckError,
+          discoveredTools: registered.tools,
+        });
+      }
+
       this.emit('server:health-check', {
         serverId: registered.id,
         healthy: false,
@@ -702,6 +781,48 @@ export class ServerRegistry extends EventEmitter {
   }
 
   /**
+   * Get all tools from all registered servers
+   */
+  getAllTools(): Array<{
+    name: string;
+    serverId: string;
+    description?: string;
+  }> {
+    const allTools: Array<{
+      name: string;
+      serverId: string;
+      description?: string;
+    }> = [];
+
+    for (const registered of this.servers.values()) {
+      if (registered.tools) {
+        for (const toolName of registered.tools) {
+          allTools.push({
+            name: toolName,
+            serverId: registered.id,
+          });
+        }
+      }
+    }
+
+    return allTools;
+  }
+
+  /**
+   * Register discovered tools for a server
+   */
+  registerServerTools(serverId: string, tools: string[]): void {
+    const registered = this.servers.get(serverId);
+    if (!registered) {
+      console.warn(`Server ${serverId} not found for tool registration`);
+      return;
+    }
+
+    registered.tools = tools;
+    this.emit('server:tools-discovered', { serverId, tools });
+  }
+
+  /**
    * Shutdown the registry
    */
   async shutdown(): Promise<void> {
@@ -727,5 +848,10 @@ export class ServerRegistry extends EventEmitter {
     // Clear registry
     this.servers.clear();
     this.removeAllListeners();
+
+    // Close storage
+    if (this.storage) {
+      await this.storage.close();
+    }
   }
 }

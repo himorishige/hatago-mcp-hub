@@ -10,7 +10,7 @@ import {
   randomBytes,
 } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 
 /**
  * Secret document base interface
@@ -246,7 +246,8 @@ export class MasterKeyManager {
   private salt?: Buffer;
 
   constructor(baseDir = '.hatago') {
-    this.baseDir = join(process.cwd(), baseDir);
+    // Use baseDir as-is if it's absolute, otherwise resolve from cwd
+    this.baseDir = isAbsolute(baseDir) ? baseDir : join(process.cwd(), baseDir);
     this.keyPath = join(this.baseDir, 'master.key');
     this.saltPath = join(this.baseDir, 'master.salt');
   }

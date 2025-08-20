@@ -12,7 +12,7 @@ import type {
 } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
-import { RemoteMcpServer } from '../servers/remote-mcp-server.js';
+import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
 import type { StdioTransport } from '../transport/stdio.js';
@@ -48,6 +48,7 @@ export class McpHub {
   private workspaceManager?: WorkspaceManager;
   private serverRegistry?: ServerRegistry;
   private registeredTools = new Set<string>(); // Track registered tools to avoid duplicates
+  private workDir: string = '.hatago'; // Default work directory
 
   constructor(options: McpHubOptions) {
     this.config = options.config;
@@ -95,8 +96,9 @@ export class McpHub {
     if (hasNpxServers || hasRemoteServers) {
       if (hasNpxServers) {
         // Use .hatago/workspaces directory for workspace management
+        this.workDir = '.hatago';
         this.workspaceManager = new WorkspaceManager({
-          baseDir: '.hatago/workspaces',
+          baseDir: `${this.workDir}/workspaces`,
         });
         await this.workspaceManager.initialize();
 
@@ -104,7 +106,20 @@ export class McpHub {
         await this.warmupNpxPackages();
       }
 
-      this.serverRegistry = new ServerRegistry(this.workspaceManager);
+      // Create storage based on config
+      let storage = null;
+      if (this.config.registry?.persist?.enabled) {
+        const { createRegistryStorage } = await import(
+          '../storage/registry-storage-factory.js'
+        );
+        storage = createRegistryStorage(this.config, this.workDir);
+      }
+
+      this.serverRegistry = new ServerRegistry(
+        this.workspaceManager,
+        undefined,
+        storage,
+      );
       await this.serverRegistry.initialize();
     }
 
@@ -149,14 +164,21 @@ export class McpHub {
 
         console.log(`  📦 Pre-caching ${packageSpec}...`);
 
-        // Run npx with --version flag just to trigger installation
+        // Run npx to trigger installation without executing the package
         const { spawn } = await import('node:child_process');
         const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+
+        // Use -p to install package and -c to run a harmless command
+        // This ensures package is cached without executing it
+        const nodeCommand =
+          process.platform === 'win32'
+            ? 'node -e "process.exit(0)"'
+            : "node -e 'process.exit(0)'";
 
         await new Promise<void>((resolve, reject) => {
           const warmupProcess = spawn(
             command,
-            ['-y', packageSpec, '--version'],
+            ['-y', '-p', packageSpec, '-c', nodeCommand],
             {
               stdio: 'pipe',
               env: {
@@ -193,6 +215,7 @@ export class McpHub {
                 console.log(`  ✅ ${packageSpec} cached`);
                 resolve();
               } else {
+                // With -p/-c approach, non-zero exit usually means npm error
                 console.warn(
                   `  ⚠️  ${packageSpec} warmup exited with code ${code}`,
                 );
@@ -266,11 +289,8 @@ export class McpHub {
 
         // サーバーを登録
         const npxConfig = serverConfig as NpxServerConfig;
-        const registered = this.serverRegistry.registerServer({
-          id: serverId,
-          type: 'npx',
-          instance: new NpxMcpServer(npxConfig),
-        });
+        const registered =
+          await this.serverRegistry.registerNpxServer(npxConfig);
 
         // イベントリスナーを設定
         const npxServer = registered.instance as NpxMcpServer;
@@ -300,7 +320,7 @@ export class McpHub {
         // 接続情報を保存
         const connection: McpConnection = {
           serverId,
-          npxServer: npxServer,
+          npxServer,
           connected: true,
           type: 'npx',
         };
@@ -318,11 +338,8 @@ export class McpHub {
 
         // サーバーを登録
         const remoteConfig = serverConfig as RemoteServerConfig;
-        const registered = this.serverRegistry.registerServer({
-          id: serverId,
-          type: 'remote',
-          instance: new RemoteMcpServer(remoteConfig),
-        });
+        const registered =
+          await this.serverRegistry.registerRemoteServer(remoteConfig);
 
         // イベントリスナーを設定
         const remoteServer = registered.instance as RemoteMcpServer;
@@ -357,7 +374,7 @@ export class McpHub {
         // 接続情報を保存
         const connection: McpConnection = {
           serverId,
-          remoteServer: registered.instance as RemoteMcpServer,
+          remoteServer,
           connected: true,
           type: 'remote',
         };
@@ -462,13 +479,63 @@ export class McpHub {
    * リモートサーバーのツールを更新
    */
   private async refreshRemoteServerTools(serverId: string): Promise<void> {
+    console.log(`[DEBUG] refreshRemoteServerTools called for ${serverId}`);
     if (!this.serverRegistry) {
       return;
     }
 
     const registered = this.serverRegistry.getServer(serverId);
+    console.log(`[DEBUG] Registered server:`, {
+      id: registered?.id,
+      state: registered?.state,
+      tools: registered?.tools,
+      hasInstance: !!registered?.instance,
+    });
+
+    // toolsが配列でない場合は修正
+    if (registered && !Array.isArray(registered.tools)) {
+      registered.tools = undefined;
+    }
+
     if (!registered?.tools) {
-      return;
+      console.log(
+        `[DEBUG] No tools found for ${serverId}, attempting discovery...`,
+      );
+
+      // リモートサーバーから直接ツールを取得
+      if (registered?.instance && 'discoverTools' in registered.instance) {
+        try {
+          const tools = await (
+            registered.instance as RemoteMcpServer
+          ).discoverTools();
+          console.log(
+            `[DEBUG] Discovered ${tools.length} tools from ${serverId}`,
+          );
+
+          // ツールをServerRegistryに登録
+          this.serverRegistry.registerServerTools(serverId, tools);
+
+          // 再度取得
+          const updatedRegistered = this.serverRegistry.getServer(serverId);
+          if (!updatedRegistered?.tools) {
+            console.log(
+              `[DEBUG] Still no tools after discovery for ${serverId}`,
+            );
+            return;
+          }
+        } catch (error) {
+          console.error(
+            `[DEBUG] Failed to discover tools for ${serverId}:`,
+            error,
+          );
+          return;
+        }
+      } else {
+        console.log(
+          `[DEBUG] Server ${serverId} doesn't support tool discovery`,
+        );
+        return;
+      }
     }
 
     try {

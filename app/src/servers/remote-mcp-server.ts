@@ -702,4 +702,35 @@ export class RemoteMcpServer extends EventEmitter {
       throw error;
     }
   }
+
+  /**
+   * Discover available tools from the remote server
+   */
+  async discoverTools(): Promise<string[]> {
+    const toolsResponse = await this.listTools();
+
+    // MCPのlistToolsレスポンスからツール名を抽出
+    if (
+      toolsResponse &&
+      typeof toolsResponse === 'object' &&
+      'tools' in toolsResponse
+    ) {
+      const response = toolsResponse as { tools: unknown };
+      if (Array.isArray(response.tools)) {
+        return response.tools
+          .map((tool) => {
+            if (tool && typeof tool === 'object' && 'name' in tool) {
+              const toolWithName = tool as { name: unknown };
+              return typeof toolWithName.name === 'string'
+                ? toolWithName.name
+                : '';
+            }
+            return '';
+          })
+          .filter(Boolean);
+      }
+    }
+
+    return [];
+  }
 }

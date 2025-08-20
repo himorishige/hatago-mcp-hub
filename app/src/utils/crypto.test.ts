@@ -122,6 +122,11 @@ describe('Crypto Utilities', () => {
     it('should encrypt and decrypt data correctly', () => {
       const data = { API_KEY: 'secret-value-123' };
       const key = generateRandomBytes(32);
+      const created_at = new Date().toISOString();
+
+      // Monkey-patch Date to return consistent timestamp for AAD
+      const originalToISOString = Date.prototype.toISOString;
+      Date.prototype.toISOString = () => created_at;
 
       const encrypted = encrypt(data, key);
       expect(encrypted.iv).toBeDefined();
@@ -135,11 +140,14 @@ describe('Crypto Utilities', () => {
         iv: encrypted.iv,
         tag: encrypted.tag,
         ct: encrypted.ct,
-        created_at: new Date().toISOString(),
+        created_at: created_at,
       };
 
       const decrypted = decrypt(doc, key);
       expect(decrypted).toEqual(data);
+
+      // Restore original Date.toISOString
+      Date.prototype.toISOString = originalToISOString;
     });
 
     it('should fail with wrong key', () => {

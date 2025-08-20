@@ -85,6 +85,24 @@ export const PolicyConfigSchema = z.object({
 });
 export type PolicyConfig = z.infer<typeof PolicyConfigSchema>;
 
+// Registry永続化設定
+export const RegistryPersistConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  type: z.enum(['memory', 'file']).default('memory'),
+  saveIntervalMs: z.number().default(5000), // 5秒ごとに保存
+  retainDays: z.number().default(7), // 7日間保持
+});
+export type RegistryPersistConfig = z.infer<typeof RegistryPersistConfigSchema>;
+
+// Registry設定
+export const RegistryConfigSchema = z.object({
+  persist: RegistryPersistConfigSchema.optional(),
+  healthCheckIntervalMs: z.number().default(30000), // 30秒ごとにヘルスチェック
+  maxRestarts: z.number().default(3),
+  restartDelayMs: z.number().default(5000),
+});
+export type RegistryConfig = z.infer<typeof RegistryConfigSchema>;
+
 // 世代管理設定
 export const GenerationConfigSchema = z.object({
   autoReload: z.boolean().default(true),
@@ -234,6 +252,7 @@ export const HatagoConfigSchema = z.object({
   concurrency: ConcurrencyConfigSchema.default({}),
   security: SecurityConfigSchema.default({}),
   policy: PolicyConfigSchema.default({}),
+  registry: RegistryConfigSchema.default({}),
   generation: GenerationConfigSchema.default({}),
   rollover: RolloverConfigSchema.default({}),
   replication: ReplicationConfigSchema.default({}),

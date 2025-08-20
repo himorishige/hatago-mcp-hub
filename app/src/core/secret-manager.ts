@@ -4,7 +4,7 @@
 
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import type { Logger } from 'pino';
 import {
   calculateIntegrity,
@@ -62,13 +62,16 @@ export class SecretManager {
   private storage?: SecretStorage;
 
   constructor(options: SecretManagerOptions = {}) {
-    this.baseDir = join(process.cwd(), options.baseDir || '.hatago');
+    const baseDir = options.baseDir || '.hatago';
+    // Use baseDir as-is if it's absolute, otherwise resolve from cwd
+    this.baseDir = isAbsolute(baseDir) ? baseDir : join(process.cwd(), baseDir);
     this.secretsPath = join(this.baseDir, 'secrets.json');
     this.policyPath = join(this.baseDir, 'secrets.policy.json');
     this.plainMode = options.plainMode || false;
     this.allowPlain = options.allowPlain !== false; // Default true
     this.logger = options.logger;
-    this.keyManager = new MasterKeyManager(options.baseDir);
+    // Pass the resolved baseDir to MasterKeyManager
+    this.keyManager = new MasterKeyManager(this.baseDir);
   }
 
   /**

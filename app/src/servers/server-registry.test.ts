@@ -180,6 +180,12 @@ describe('ServerRegistry', () => {
       vi.spyOn(mockServer, 'stop').mockResolvedValue();
 
       await registry.registerNpxServer(config);
+
+      // Set server state to RUNNING to ensure stop will be called
+      const registered = registry.getServer('test-server');
+      if (registered) {
+        registered.state = ServerState.RUNNING;
+      }
     });
 
     it('should unregister a server', async () => {
@@ -285,11 +291,13 @@ describe('ServerRegistry', () => {
         const stopSpy = vi.spyOn(mockServer, 'stop').mockResolvedValue();
         stopSpies.push(stopSpy);
         vi.mocked(NpxMcpServer).mockImplementationOnce(() => mockServer);
+
         await registry.registerNpxServer(config);
 
-        // Set server state to RUNNING to ensure stop will be called
+        // Get the registered server directly from the registry
         const registered = registry.getServer(config.id);
         if (registered) {
+          // Set state to RUNNING
           registered.state = ServerState.RUNNING;
         }
       }
