@@ -13,6 +13,9 @@ import { getRuntime } from '../runtime/runtime-factory.js';
 export enum ServerState {
   STOPPED = 'stopped',
   STARTING = 'starting',
+  INITIALIZED = 'initialized',
+  TOOLS_DISCOVERING = 'tools_discovering',
+  TOOLS_READY = 'tools_ready',
   RUNNING = 'running',
   STOPPING = 'stopping',
   CRASHED = 'crashed',
@@ -118,8 +121,15 @@ export class NpxMcpServer extends EventEmitter {
 
     try {
       await this.spawnProcess();
-      this.state = ServerState.RUNNING;
-      this.emit('started', { serverId: this.config.id });
+      // After spawnProcess, the state should be TOOLS_READY
+      // Transition to RUNNING
+      if (this.state === ServerState.TOOLS_READY) {
+        this.state = ServerState.RUNNING;
+        this.emit('started', { serverId: this.config.id });
+      } else {
+        // If not in expected state, something went wrong
+        throw new Error(`Unexpected state after initialization: ${this.state}`);
+      }
     } catch (error) {
       this.state = ServerState.CRASHED;
       this.emit('error', {
@@ -146,8 +156,9 @@ export class NpxMcpServer extends EventEmitter {
     const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
     const args: string[] = [];
 
-    // Add -y flag to auto-confirm package installation
-    args.push('-y');
+    // Add flags for automatic and offline-preferred execution
+    args.push('-y'); // auto-confirm package installation
+    args.push('--prefer-offline'); // use cache when available
 
     // Add version specifier if provided
     if (this.config.version) {
@@ -166,6 +177,7 @@ export class NpxMcpServer extends EventEmitter {
 
     console.log(`🚀 Starting NPX server ${this.config.id}`);
     console.log(`  Command: ${command} ${args.join(' ')}`);
+
     if (this.isFirstRun) {
       console.log(
         `  ⏳ First run detected - package installation may take longer`,
@@ -234,7 +246,8 @@ export class NpxMcpServer extends EventEmitter {
       });
     }
 
-    // Determine appropriate timeout based on phase
+    // Determine appropriate timeout based on cache status
+    // Use longer timeout for first-time installation
     const timeout = this.isFirstRun
       ? this.config.installTimeoutMs || this.defaults.installTimeoutMs
       : this.config.processTimeoutMs ||
@@ -298,9 +311,21 @@ export class NpxMcpServer extends EventEmitter {
 
             // Check if this is an initialize response
             if (message.id === this.initRequestId && message.result) {
+              // Update state to initialized
+              this.state = ServerState.INITIALIZED;
               console.log(
                 `🏮 Server ${this.config.id} initialized successfully`,
               );
+
+              // Move to tools discovering state
+              this.state = ServerState.TOOLS_DISCOVERING;
+              console.log(`  🔍 Discovering tools for ${this.config.id}...`);
+
+              // TODO: Implement actual tool discovery here
+              // For now, immediately transition to TOOLS_READY
+              this.state = ServerState.TOOLS_READY;
+              console.log(`  ✅ Tools ready for ${this.config.id}`);
+
               cleanup();
               resolve();
               return;

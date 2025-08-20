@@ -1,4 +1,5 @@
 import { getRuntime } from '../runtime/runtime-factory.js';
+import { KeyedMutex } from '../utils/mutex.js';
 
 /**
  * ツール実行履歴
@@ -82,58 +83,67 @@ export class MemorySessionStore implements ISessionStore {
   private sessions = new Map<string, SharedSession>();
   private tokenToSession = new Map<string, string>();
   private maxHistoryPerSession = 1000;
+  private sessionMutex = new KeyedMutex<string>();
 
   async create(session: SessionState): Promise<void> {
-    const sharedSession: SharedSession = {
-      ...session,
-      clients: new Set(),
-      history: [],
-      locks: new Map(),
-      version: 1,
-    };
-    this.sessions.set(session.id, sharedSession);
+    return this.sessionMutex.runExclusive(session.id, () => {
+      const sharedSession: SharedSession = {
+        ...session,
+        clients: new Set(),
+        history: [],
+        locks: new Map(),
+        version: 1,
+      };
+      this.sessions.set(session.id, sharedSession);
+    });
   }
 
   async get(id: string): Promise<SharedSession | null> {
-    const session = this.sessions.get(id);
-    if (!session) {
-      return null;
-    }
+    return this.sessionMutex.runExclusive(id, () => {
+      const session = this.sessions.get(id);
+      if (!session) {
+        return null;
+      }
 
-    // TTLチェック
-    if (this.isExpired(session)) {
-      await this.delete(id);
-      return null;
-    }
+      // TTLチェック
+      if (this.isExpired(session)) {
+        this.sessions.delete(id);
+        return null;
+      }
 
-    // 最終アクセス時刻を更新
-    session.lastAccessedAt = new Date();
-    return session;
+      // 最終アクセス時刻を更新
+      session.lastAccessedAt = new Date();
+      return session;
+    });
   }
 
   async update(id: string, updates: Partial<SharedSession>): Promise<void> {
-    const session = await this.get(id);
-    if (!session) {
-      throw new Error(`Session ${id} not found`);
-    }
+    return this.sessionMutex.runExclusive(id, async () => {
+      const session = this.sessions.get(id);
+      if (!session) {
+        throw new Error(`Session ${id} not found`);
+      }
 
-    // バージョンチェック（楽観的ロック）
-    if (updates.version && updates.version !== session.version) {
-      throw new Error(`Version conflict for session ${id}`);
-    }
+      // バージョンチェック（楽観的ロック）
+      if (updates.version && updates.version !== session.version) {
+        throw new Error(`Version conflict for session ${id}`);
+      }
 
-    // 更新を適用
-    Object.assign(session, updates);
-    session.version++;
-    session.lastAccessedAt = new Date();
+      // 更新を適用
+      Object.assign(session, updates);
+      session.version++;
+      session.lastAccessedAt = new Date();
+    });
   }
 
   async delete(id: string): Promise<void> {
-    const session = this.sessions.get(id);
-    if (session?.sharedToken) {
-      this.tokenToSession.delete(session.sharedToken);
-    }
-    this.sessions.delete(id);
+    return this.sessionMutex.runExclusive(id, () => {
+      const session = this.sessions.get(id);
+      if (session?.sharedToken) {
+        this.tokenToSession.delete(session.sharedToken);
+      }
+      this.sessions.delete(id);
+    });
   }
 
   async exists(id: string): Promise<boolean> {

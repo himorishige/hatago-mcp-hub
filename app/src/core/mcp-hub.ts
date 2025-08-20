@@ -1,4 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type {
   CallToolRequest,
@@ -15,7 +15,7 @@ import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
-import { StdioTransport } from '../transport/stdio.js';
+import type { StdioTransport } from '../transport/stdio.js';
 import { createZodLikeSchema } from '../utils/json-to-zod.js';
 import { ToolRegistry } from './tool-registry.js';
 
@@ -150,7 +150,7 @@ export class McpHub {
         const { spawn } = await import('node:child_process');
         const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
-        await new Promise<void>((resolve, _reject) => {
+        await new Promise<void>((resolve, reject) => {
           const warmupProcess = spawn(
             command,
             ['-y', packageSpec, '--version'],
@@ -166,34 +166,46 @@ export class McpHub {
             },
           );
 
+          let hasExited = false;
           let _stderr = '';
+
           warmupProcess.stderr?.on('data', (data) => {
             _stderr += data.toString();
           });
 
           warmupProcess.on('error', (error) => {
-            console.warn(
-              `  ⚠️  Failed to warm up ${packageSpec}: ${error.message}`,
-            );
-            resolve(); // Don't fail the whole process
+            if (!hasExited) {
+              hasExited = true;
+              console.warn(
+                `  ⚠️  Failed to warm up ${packageSpec}: ${error.message}`,
+              );
+              reject(error); // Reject on error for tracking
+            }
           });
 
           warmupProcess.on('exit', (code) => {
-            if (code === 0) {
-              console.log(`  ✅ ${packageSpec} cached`);
-            } else {
-              console.warn(
-                `  ⚠️  ${packageSpec} warmup exited with code ${code}`,
-              );
+            if (!hasExited) {
+              hasExited = true;
+              if (code === 0) {
+                console.log(`  ✅ ${packageSpec} cached`);
+                resolve();
+              } else {
+                console.warn(
+                  `  ⚠️  ${packageSpec} warmup exited with code ${code}`,
+                );
+                reject(new Error(`Warmup failed with code ${code}`));
+              }
             }
-            resolve();
           });
 
           // Set a timeout for warmup
           setTimeout(() => {
-            warmupProcess.kill('SIGTERM');
-            console.warn(`  ⚠️  ${packageSpec} warmup timeout`);
-            resolve();
+            if (!hasExited) {
+              hasExited = true;
+              warmupProcess.kill('SIGTERM');
+              console.warn(`  ⚠️  ${packageSpec} warmup timeout`);
+              reject(new Error('Warmup timeout'));
+            }
           }, 30000); // 30 second timeout for warmup
         });
       } catch (error) {
@@ -202,8 +214,35 @@ export class McpHub {
       }
     });
 
-    await Promise.all(warmupPromises);
-    console.log('✅ NPX package warmup complete');
+    // Use allSettled to track success/failure
+    const results = await Promise.allSettled(warmupPromises);
+
+    // Count failures
+    const failures = results.filter((r) => r.status === 'rejected');
+    const successCount = results.length - failures.length;
+    const totalServers = npxServers.length;
+
+    // Calculate strict majority threshold (more than half)
+    const majorityThreshold = Math.floor(totalServers / 2) + 1;
+    const hasMajorityFailure = failures.length >= majorityThreshold;
+
+    // Check if majority failed
+    if (hasMajorityFailure) {
+      console.error(
+        `⚠️  NPX warmup: ${failures.length}/${npxServers.length} servers failed - majority failure detected`,
+      );
+      console.error(
+        '   This may indicate network issues or npm registry problems',
+      );
+    } else if (failures.length > 0) {
+      console.warn(
+        `⚠️  NPX warmup: ${failures.length}/${npxServers.length} servers failed`,
+      );
+    }
+
+    console.log(
+      `✅ NPX package warmup complete (${successCount}/${npxServers.length} succeeded)`,
+    );
   }
 
   /**
@@ -212,59 +251,45 @@ export class McpHub {
   async connectServer(serverConfig: ServerConfig): Promise<void> {
     const { id: serverId, type } = serverConfig;
 
-    // 既に接続されている場合はスキップ
-    if (this.connections.has(serverId)) {
-      console.log(`Server ${serverId} is already connected`);
-      return;
-    }
-
-    console.log(`Connecting to server ${serverId} (${type})...`);
-
     try {
-      if (type === 'local') {
-        // ローカルサーバーの接続
-        const transport = new StdioTransport({
-          command: serverConfig.command,
-          args: serverConfig.args || [],
-          cwd: serverConfig.cwd,
-          env: serverConfig.env,
-        });
-
-        const client = new Client({
-          name: 'hatago-hub-client',
-          version: '0.0.1',
-        });
-
-        // トランスポートを開始
-        await transport.start();
-
-        // MCPクライアントを接続
-        await client.connect(transport.getClientTransport());
-
-        // 接続情報を保存
-        const connection: McpConnection = {
-          serverId,
-          client,
-          transport,
-          connected: true,
-          capabilities: client.getServerCapabilities?.(),
-          type: 'local',
-        };
-        this.connections.set(serverId, connection);
-
-        // ツールを取得して登録
-        await this.refreshServerTools(serverId);
-
-        console.log(`Connected to server ${serverId}`);
+      if (type === 'stdio') {
+        // STDIOサーバーは起動時に既に接続されている
+        return;
       } else if (type === 'npx') {
-        // NPXサーバーの接続
+        // NPXサーバーは起動と接続を同時に行う
         if (!this.serverRegistry) {
-          throw new Error('Server registry not initialized');
+          this.serverRegistry = new ServerRegistry();
         }
 
+        // サーバーを登録
         const npxConfig = serverConfig as NpxServerConfig;
-        const registered =
-          await this.serverRegistry.registerNpxServer(npxConfig);
+        const registered = this.serverRegistry.registerServer({
+          id: serverId,
+          type: 'npx',
+          instance: new NpxMcpServer(npxConfig),
+        });
+
+        // イベントリスナーを設定
+        const npxServer = registered.instance as NpxMcpServer;
+
+        // Started イベント
+        npxServer.on('started', async ({ serverId: startedId }) => {
+          if (startedId === serverId) {
+            console.log(`NPX server ${serverId} started, discovering tools...`);
+            // ツールを再発見
+            await this.refreshNpxServerTools(serverId);
+          }
+        });
+
+        // ツールの発見イベント
+        this.serverRegistry.on(
+          'server:tools-discovered',
+          async ({ serverId: discoveredId }) => {
+            if (discoveredId === serverId) {
+              await this.updateHubTools();
+            }
+          },
+        );
 
         // 起動
         await this.serverRegistry.startServer(serverId);
@@ -272,39 +297,56 @@ export class McpHub {
         // 接続情報を保存
         const connection: McpConnection = {
           serverId,
-          npxServer: registered.instance,
+          npxServer: npxServer,
           connected: true,
           type: 'npx',
         };
         this.connections.set(serverId, connection);
 
-        // ツールを取得して登録（NPXサーバーの場合はRegistryから取得）
+        // ツールを取得して登録
         await this.refreshNpxServerTools(serverId);
 
         console.log(`Connected to NPX server ${serverId}`);
       } else if (type === 'remote') {
-        // リモートサーバーの接続
+        // リモートサーバーは起動と接続を行う
         if (!this.serverRegistry) {
-          throw new Error('Server registry not initialized');
+          this.serverRegistry = new ServerRegistry();
         }
 
+        // サーバーを登録
         const remoteConfig = serverConfig as RemoteServerConfig;
-        const registered =
-          await this.serverRegistry.registerRemoteServer(remoteConfig);
+        const registered = this.serverRegistry.registerServer({
+          id: serverId,
+          type: 'remote',
+          instance: new RemoteMcpServer(remoteConfig),
+        });
 
-        // エラーリスナーを設定（Node.jsのunhandled errorを防ぐ）
-        if (registered.instance) {
-          const remoteServer = registered.instance as RemoteMcpServer;
+        // イベントリスナーを設定
+        const remoteServer = registered.instance as RemoteMcpServer;
 
-          // エラーハンドリングを改善
-          remoteServer.on('error', (event) => {
-            console.warn(`Remote server ${serverId} error:`, event.error);
-            // エラーイベントを処理済みとしてマーク
-          });
+        // Started イベント
+        remoteServer.on('started', async ({ serverId: startedId }) => {
+          if (startedId === serverId) {
+            console.log(
+              `Remote server ${serverId} started, discovering tools...`,
+            );
+            // ツールを再発見
+            await this.refreshRemoteServerTools(serverId);
+          }
+        });
 
-          // すべてのエラーイベントリスナーを確実に設定
-          remoteServer.setMaxListeners(10); // デフォルトの10を明示的に設定
-        }
+        // ツールの発見イベント
+        this.serverRegistry.on(
+          'server:tools-discovered',
+          async ({ serverId: discoveredId }) => {
+            if (discoveredId === serverId) {
+              await this.updateHubTools();
+            }
+          },
+        );
+
+        // すべてのエラーイベントリスナーを確実に設定
+        remoteServer.setMaxListeners(10); // デフォルトの10を明示的に設定
 
         // 起動
         await this.serverRegistry.startServer(serverId);
@@ -317,84 +359,6 @@ export class McpHub {
           type: 'remote',
         };
         this.connections.set(serverId, connection);
-
-        // サーバーが起動してツールが発見されるまで待つ
-        // ServerRegistryの'started'イベントがツール発見をトリガーする
-        const waitForToolsDiscovery = async (
-          timeoutMs = 5000,
-        ): Promise<{ success: boolean; partial?: boolean }> => {
-          const server = this.serverRegistry?.getServer(serverId);
-          if (server?.tools && server.tools.length > 0) {
-            return { success: true };
-          }
-
-          return new Promise<{ success: boolean; partial?: boolean }>(
-            (resolve) => {
-              const timeout = setTimeout(() => {
-                this.serverRegistry?.off('server:tools-discovered', handler);
-
-                // タイムアウト時の警告とpartialフラグ
-                const currentServer = this.serverRegistry?.getServer(serverId);
-                const hasPartialTools =
-                  currentServer?.tools && currentServer.tools.length > 0;
-
-                console.warn(
-                  `⚠️  Tool discovery timeout for ${serverId} (${timeoutMs}ms).`,
-                  hasPartialTools
-                    ? `Found ${currentServer.tools.length} tools so far.`
-                    : 'No tools discovered yet.',
-                );
-
-                resolve({
-                  success: false,
-                  partial: hasPartialTools,
-                });
-              }, timeoutMs);
-
-              const handler = ({
-                serverId: discoveredId,
-              }: {
-                serverId: string;
-              }) => {
-                if (discoveredId === serverId) {
-                  clearTimeout(timeout);
-                  this.serverRegistry?.off('server:tools-discovered', handler);
-                  resolve({ success: true });
-                }
-              };
-
-              this.serverRegistry?.on('server:tools-discovered', handler);
-            },
-          );
-        };
-
-        // ツール発見を待つ（リトライ機能付き）
-        let discoveryResult = await waitForToolsDiscovery();
-
-        // 初回タイムアウトの場合、指数バックオフでリトライ
-        if (!discoveryResult.success && !discoveryResult.partial) {
-          console.log(`Retrying tool discovery for ${serverId}...`);
-
-          // 指数バックオフでリトライ（最大3回）
-          const maxRetries = 3;
-          let retryDelay = 1000; // 初回1秒
-
-          for (let i = 0; i < maxRetries && !discoveryResult.success; i++) {
-            await new Promise((resolve) => setTimeout(resolve, retryDelay));
-
-            console.log(`Retry ${i + 1}/${maxRetries} for ${serverId}...`);
-            discoveryResult = await waitForToolsDiscovery(retryDelay * 2);
-
-            retryDelay *= 2; // 指数バックオフ
-          }
-
-          if (!discoveryResult.success) {
-            console.error(
-              `Failed to discover tools for ${serverId} after ${maxRetries} retries.`,
-              'Server will continue without tools.',
-            );
-          }
-        }
 
         // ツールを取得して登録（リモートサーバーの場合はRegistryから取得）
         await this.refreshRemoteServerTools(serverId);
@@ -452,32 +416,6 @@ export class McpHub {
       console.log(`Disconnected from server ${serverId}`);
     } catch (error) {
       console.error(`Error disconnecting from server ${serverId}:`, error);
-    }
-  }
-
-  /**
-   * サーバーのツールを更新
-   */
-  private async refreshServerTools(serverId: string): Promise<void> {
-    const connection = this.connections.get(serverId);
-    if (!connection?.connected || !connection.client) {
-      return;
-    }
-
-    try {
-      // サーバーからツール一覧を取得
-      const response = await connection.client.listTools();
-      const tools = response.tools || [];
-
-      console.log(`Server ${serverId} has ${tools.length} tools`);
-
-      // レジストリに登録
-      this.registry.registerServerTools(serverId, tools);
-
-      // ハブのツールを更新
-      this.updateHubTools();
-    } catch (error) {
-      console.error(`Failed to refresh tools for server ${serverId}:`, error);
     }
   }
 

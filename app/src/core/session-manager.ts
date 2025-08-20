@@ -1,3 +1,5 @@
+import { KeyedMutex } from '../utils/mutex.js';
+
 /**
  * セッション管理
  */
@@ -11,6 +13,7 @@ export interface Session {
 export class SessionManager {
   private sessions = new Map<string, Session>();
   private cleanupInterval: NodeJS.Timeout | undefined;
+  private sessionMutex = new KeyedMutex<string>();
 
   constructor(private ttlSeconds = 3600) {
     // 定期的にセッションをクリーンアップ
@@ -20,42 +23,48 @@ export class SessionManager {
   /**
    * セッションを作成
    */
-  createSession(id: string): Session {
-    const session: Session = {
-      id,
-      createdAt: new Date(),
-      lastAccessedAt: new Date(),
-      ttlSeconds: this.ttlSeconds,
-    };
-    this.sessions.set(id, session);
-    return session;
+  async createSession(id: string): Promise<Session> {
+    return this.sessionMutex.runExclusive(id, () => {
+      const session: Session = {
+        id,
+        createdAt: new Date(),
+        lastAccessedAt: new Date(),
+        ttlSeconds: this.ttlSeconds,
+      };
+      this.sessions.set(id, session);
+      return session;
+    });
   }
 
   /**
    * セッションを取得
    */
-  getSession(id: string): Session | undefined {
-    const session = this.sessions.get(id);
-    if (!session) {
-      return undefined;
-    }
+  async getSession(id: string): Promise<Session | undefined> {
+    return this.sessionMutex.runExclusive(id, () => {
+      const session = this.sessions.get(id);
+      if (!session) {
+        return undefined;
+      }
 
-    // セッションの有効期限をチェック
-    if (this.isExpired(session)) {
-      this.sessions.delete(id);
-      return undefined;
-    }
+      // セッションの有効期限をチェック
+      if (this.isExpired(session)) {
+        this.sessions.delete(id);
+        return undefined;
+      }
 
-    // 最終アクセス時刻を更新
-    session.lastAccessedAt = new Date();
-    return session;
+      // 最終アクセス時刻を更新
+      session.lastAccessedAt = new Date();
+      return session;
+    });
   }
 
   /**
    * セッションを削除
    */
-  deleteSession(id: string): void {
-    this.sessions.delete(id);
+  async deleteSession(id: string): Promise<void> {
+    return this.sessionMutex.runExclusive(id, () => {
+      this.sessions.delete(id);
+    });
   }
 
   /**
@@ -100,16 +109,16 @@ export class SessionManager {
   }
 
   /**
-   * アクティブなセッション数を取得
+   * Get active session count
    */
   getActiveSessionCount(): number {
-    // 期限切れセッションをクリーンアップしてから数を返す
+    // Clean up expired sessions first
     this.cleanup();
     return this.sessions.size;
   }
 
   /**
-   * すべてのセッションをクリア
+   * Clear all sessions
    */
   clear(): void {
     this.sessions.clear();
