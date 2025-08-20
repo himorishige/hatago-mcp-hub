@@ -37,3 +37,9 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+
+# hatago runtime
+.hatago/workspaces/
+.hatago/registries/
+.hatago/sessions/
+.hatago/*.log

@@ -3,6 +3,7 @@
  */
 
 import { EventEmitter } from 'node:events';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type {
   NpxServerConfig,
   RemoteServerConfig,
@@ -25,7 +26,7 @@ export interface RegisteredServer {
   state: ServerState;
   registeredAt: Date;
   lastHealthCheck?: Date;
-  tools?: string[]; // Discovered tools
+  tools?: Tool[]; // Discovered tools with full metadata
   healthCheckFailures?: number; // Consecutive health check failures
   lastHealthCheckError?: string; // Last health check error message
   autoRestartAttempts?: number; // Auto-restart attempt counter
@@ -472,7 +473,7 @@ export class ServerRegistry extends EventEmitter {
    * Discover tools from a server
    */
   private async discoverTools(serverId: string): Promise<void> {
-    const runtime = await this.runtime;
+    const _runtime = await this.runtime;
     const registered = this.servers.get(serverId);
 
     if (!registered || !registered.instance) {
@@ -480,40 +481,20 @@ export class ServerRegistry extends EventEmitter {
     }
 
     try {
-      let tools: string[] = [];
+      let tools: Tool[] = [];
 
       if (registered.instance instanceof RemoteMcpServer) {
         // For remote servers, use the direct API
         const result = await registered.instance.listTools();
         if (result && typeof result === 'object' && 'tools' in result) {
-          const toolsResult = result as { tools: unknown[] };
+          const toolsResult = result as { tools: Tool[] };
           if (Array.isArray(toolsResult.tools)) {
-            tools = toolsResult.tools.map((tool) => {
-              if (tool && typeof tool === 'object' && 'name' in tool) {
-                return String((tool as { name: unknown }).name);
-              }
-              return String(tool);
-            });
+            tools = toolsResult.tools;
           }
         }
-      } else {
-        // For NPX servers, use the JSON-RPC approach
-        const discoveryRequest = JSON.stringify({
-          jsonrpc: '2.0',
-          id: await runtime.idGenerator.generate(),
-          method: 'tools/list',
-          params: {}, // MCPプロトコルではparamsが必須
-        });
-
-        await (registered.instance as NpxMcpServer).send(
-          `${discoveryRequest}\n`,
-        );
-
-        // Wait for response with timeout
-        tools = await this.waitForDiscoveryResponse(
-          registered.instance as NpxMcpServer,
-          this.config.discoveryTimeoutMs || this.defaults.discoveryTimeoutMs,
-        );
+      } else if (registered.instance instanceof NpxMcpServer) {
+        // For NPX servers, use the getTools method
+        tools = registered.instance.getTools();
       }
 
       // Update registered server with discovered tools
@@ -530,66 +511,6 @@ export class ServerRegistry extends EventEmitter {
         safeError,
       );
     }
-  }
-
-  /**
-   * Wait for discovery response from server
-   */
-  private async waitForDiscoveryResponse(
-    server: NpxMcpServer,
-    timeoutMs: number,
-  ): Promise<string[]> {
-    const runtime = await this.runtime;
-
-    return new Promise((resolve, _reject) => {
-      let buffer = '';
-      const tools: string[] = [];
-      let cleanupStdout: (() => void) | null = null;
-
-      const onData = (data: Buffer) => {
-        buffer += data.toString();
-
-        // Try to parse JSON-RPC response
-        const lines = buffer.split('\n');
-
-        for (const line of lines) {
-          if (line.trim()) {
-            try {
-              const response = JSON.parse(line);
-
-              if (response.result && Array.isArray(response.result.tools)) {
-                for (const tool of response.result.tools) {
-                  if (tool.name) {
-                    tools.push(tool.name);
-                  }
-                }
-
-                cleanup();
-                resolve(tools);
-                return;
-              }
-            } catch (_err) {
-              // Not valid JSON, continue buffering
-            }
-          }
-        }
-      };
-
-      const cleanup = () => {
-        if (cleanupStdout) {
-          cleanupStdout();
-        }
-        runtime.clearTimeout(timeoutId);
-      };
-
-      const timeoutId = runtime.setTimeout(() => {
-        cleanup();
-        resolve(tools); // Return whatever we found
-      }, timeoutMs);
-
-      // Store cleanup function
-      cleanupStdout = server.onStdout(onData);
-    });
   }
 
   /**
@@ -787,19 +708,23 @@ export class ServerRegistry extends EventEmitter {
     name: string;
     serverId: string;
     description?: string;
+    inputSchema?: Record<string, unknown>;
   }> {
     const allTools: Array<{
       name: string;
       serverId: string;
       description?: string;
+      inputSchema?: Record<string, unknown>;
     }> = [];
 
     for (const registered of this.servers.values()) {
       if (registered.tools) {
-        for (const toolName of registered.tools) {
+        for (const tool of registered.tools) {
           allTools.push({
-            name: toolName,
+            name: tool.name,
             serverId: registered.id,
+            description: tool.description,
+            inputSchema: tool.inputSchema,
           });
         }
       }
@@ -811,7 +736,7 @@ export class ServerRegistry extends EventEmitter {
   /**
    * Register discovered tools for a server
    */
-  registerServerTools(serverId: string, tools: string[]): void {
+  registerServerTools(serverId: string, tools: Tool[]): void {
     const registered = this.servers.get(serverId);
     if (!registered) {
       console.warn(`Server ${serverId} not found for tool registration`);

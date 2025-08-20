@@ -10,7 +10,6 @@ import type {
   RemoteServerConfig,
   ServerConfig,
 } from '../config/types.js';
-import { getRuntime } from '../runtime/runtime-factory.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
@@ -72,9 +71,9 @@ export class McpHub {
    * ツール関連のハンドラーを設定
    */
   private setupToolHandlers(): void {
-    // McpServer で動的にツールを登録
-    // 実際のツール呼び出しは this.callTool を通して行う
-    // 初期化時は何もしない - connectServer でツールを動的に追加
+    // McpServerのAPIでは、ツールは動的に登録される
+    // connectServerでツールを追加するので、ここでは何もしない
+    // tools/listとtools/callはMcpServerが自動的に処理する
   }
 
   /**
@@ -454,10 +453,10 @@ export class McpHub {
 
     try {
       // ServerRegistryからツール情報を取得
-      const tools = registered.tools.map((name) => ({
-        name,
-        description: `Tool from NPX server ${serverId}`,
-        inputSchema: {},
+      const tools = registered.tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description || `Tool from NPX server ${serverId}`,
+        inputSchema: tool.inputSchema || {},
       }));
 
       console.log(`NPX Server ${serverId} has ${tools.length} tools`);
@@ -567,6 +566,10 @@ export class McpHub {
   private updateHubTools(): void {
     const tools = this.registry.getAllTools();
     console.log(`Hub now has ${tools.length} total tools`);
+    // Debug: Log the first tool to see its structure
+    if (tools.length > 0) {
+      console.log('First tool structure:', JSON.stringify(tools[0], null, 2));
+    }
 
     // Track which tools are currently active
     const currentToolNames = new Set(tools.map((t) => t.name));
@@ -589,7 +592,14 @@ export class McpHub {
 
       try {
         // JSON\u30b9\u30ad\u30fc\u30de\u3092Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u306b\u5909\u63db
-        const zodLikeSchema = createZodLikeSchema(tool.inputSchema);
+        // inputSchemaが空またはpropertiesが空の場合はundefinedを使用
+        let zodLikeSchema: unknown;
+        if (
+          tool.inputSchema?.properties &&
+          Object.keys(tool.inputSchema.properties).length > 0
+        ) {
+          zodLikeSchema = createZodLikeSchema(tool.inputSchema);
+        }
 
         // MCP SDK\u306eregisterTool\u30e1\u30bd\u30c3\u30c9\u3092\u4f7f\u7528
         this.server.registerTool(
@@ -707,24 +717,10 @@ export class McpHub {
         });
       } else if (connection.type === 'npx' && connection.npxServer) {
         // NPXサーバーの場合
-        const runtime = await getRuntime();
-        const toolId = await runtime.idGenerator.generate();
-
-        const toolRequest = JSON.stringify({
-          jsonrpc: '2.0',
-          id: toolId,
-          method: 'tools/call',
-          params: {
-            name: originalName,
-            arguments: toolArgs,
-          },
-        });
-
-        // リクエストを送信
-        await connection.npxServer.send(`${toolRequest}\n`);
-
-        // レスポンスを待つ
-        callPromise = this.waitForToolResponse(connection.npxServer, toolId);
+        callPromise = connection.npxServer.callTool(
+          originalName,
+          toolArgs,
+        ) as Promise<CallToolResult>;
       } else if (connection.type === 'remote' && connection.remoteServer) {
         // リモートサーバーの場合
         callPromise = connection.remoteServer.callTool(
@@ -769,50 +765,6 @@ export class McpHub {
         isError: true,
       };
     }
-  }
-
-  /**
-   * NPXサーバーからのツール実行レスポンスを待つ
-   */
-  private async waitForToolResponse(
-    server: NpxMcpServer,
-    requestId: string,
-  ): Promise<CallToolResult> {
-    return new Promise((resolve, reject) => {
-      let buffer = '';
-      let cleanupStdout: (() => void) | null = null;
-
-      const onData = (data: Buffer) => {
-        buffer += data.toString();
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-
-          try {
-            const message = JSON.parse(line);
-
-            if (message.id === requestId) {
-              if (cleanupStdout) cleanupStdout();
-
-              if (message.result) {
-                resolve(message.result);
-              } else if (message.error) {
-                reject(new Error(message.error.message));
-              }
-              return;
-            }
-          } catch {
-            // Not valid JSON, continue
-          }
-        }
-      };
-
-      cleanupStdout = server.onStdout(onData);
-
-      // タイムアウトは呼び出し側で設定される
-    });
   }
 
   /**

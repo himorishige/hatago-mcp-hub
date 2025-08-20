@@ -17,7 +17,6 @@ import {
   isJSONRPCError,
   isJSONRPCRequest,
   isJSONRPCResponse,
-  JSONRPCMessageSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -254,9 +253,11 @@ export class StreamableHTTPTransport implements Transport {
 
       // handle batch and single messages
       if (Array.isArray(rawMessage)) {
-        messages = rawMessage.map((msg) => JSONRPCMessageSchema.parse(msg));
+        // Temporarily bypass schema validation due to Zod version conflict
+        messages = rawMessage as JSONRPCMessage[];
       } else {
-        messages = [JSONRPCMessageSchema.parse(rawMessage)];
+        // Temporarily bypass schema validation due to Zod version conflict
+        messages = [rawMessage as JSONRPCMessage];
       }
 
       // Check if this is an initialization request
