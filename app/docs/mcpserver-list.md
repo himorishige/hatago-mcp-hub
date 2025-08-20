@@ -24,10 +24,6 @@ Claude Codeで利用しているMCPサーバー例
       "command": "docker",
       "args": ["mcp", "gateway", "run"]
     },
-    "serena": {
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
-    },
     "cloudflare": {
       "command": "npx",
       "args": [
