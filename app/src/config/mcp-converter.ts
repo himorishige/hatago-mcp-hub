@@ -17,6 +17,11 @@ import type {
  * サーバータイプを推論
  */
 function inferServerType(config: McpServerConfig): 'local' | 'remote' | 'npx' {
+  // typeフィールドが明示的に指定されている場合
+  if (config.type === 'sse' || config.type === 'http') {
+    return 'remote';
+  }
+
   // URLがある場合はremote
   if (config.url) {
     return 'remote';
@@ -27,7 +32,7 @@ function inferServerType(config: McpServerConfig): 'local' | 'remote' | 'npx' {
     return 'npx';
   }
 
-  // それ以外はlocal
+  // それ以外はlocal（stdioまたは未指定）
   return 'local';
 }
 
@@ -136,13 +141,34 @@ export function convertMcpServerToInternal(
       if (!config.url) {
         throw new Error(`Remote server ${id} requires a URL`);
       }
+
+      // headersからauth情報を抽出
+      let auth: RemoteServerConfig['auth'];
+      if (config.headers?.Authorization) {
+        const authHeader = config.headers.Authorization;
+        if (authHeader.startsWith('Bearer ')) {
+          auth = {
+            type: 'bearer',
+            token: authHeader.substring(7),
+          };
+        } else if (authHeader.startsWith('Basic ')) {
+          // Basic認証の場合はbase64デコードが必要だが、
+          // 今回はtokenとして保持
+          auth = {
+            type: 'basic',
+            token: authHeader.substring(6),
+          };
+        }
+      }
+
       baseConfig = {
         id,
         type: 'remote',
         url: config.url,
-        transport: 'http',
+        transport: config.type === 'sse' ? 'http' : 'http', // SSEもHTTPトランスポートを使用
         start: 'lazy',
         env: config.env,
+        ...(auth && { auth }),
       } as RemoteServerConfig;
       break;
     }

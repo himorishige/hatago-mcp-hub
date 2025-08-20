@@ -272,6 +272,31 @@ export function generateSampleConfig(): string {
           "intervalMs": 5000
         }
       }
+    },
+    
+    // SSE (Server-Sent Events) server example
+    "sse-server": {
+      "type": "sse",  // Explicit transport type
+      "url": "\${API_BASE_URL:-https://api.example.com}/mcp",  // With default value
+      "headers": {
+        "Authorization": "Bearer \${API_KEY}"  // Will be converted to auth config
+      }
+    },
+    
+    // HTTP server example  
+    "http-server": {
+      "type": "http",  // Standard HTTP transport
+      "url": "\${SERVICE_URL:?Service URL is required}",  // Required env var
+      "headers": {
+        "Authorization": "Bearer \${SERVICE_TOKEN:-default-token}",
+        "X-Custom-Header": "value"
+      },
+      "hatagoOptions": {
+        "healthCheck": {
+          "enabled": true,
+          "method": "ping"
+        }
+      }
     }
   },
   

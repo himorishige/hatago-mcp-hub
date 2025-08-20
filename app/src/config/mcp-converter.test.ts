@@ -103,6 +103,56 @@ describe('MCP Converter', () => {
         env: undefined,
       });
     });
+
+    it('should convert SSE server config', () => {
+      const mcpConfig: McpServerConfig = {
+        type: 'sse',
+        url: 'https://sse.example.com/events',
+        headers: {
+          Authorization: 'Bearer my-token',
+        },
+      };
+
+      const result = convertMcpServerToInternal('test-sse', mcpConfig);
+
+      expect(result).toEqual({
+        id: 'test-sse',
+        type: 'remote',
+        url: 'https://sse.example.com/events',
+        transport: 'http',
+        start: 'lazy',
+        env: undefined,
+        auth: {
+          type: 'bearer',
+          token: 'my-token',
+        },
+      });
+    });
+
+    it('should convert HTTP server config', () => {
+      const mcpConfig: McpServerConfig = {
+        type: 'http',
+        url: 'https://api.example.com/mcp',
+        headers: {
+          Authorization: 'Basic dXNlcjpwYXNz',
+        },
+      };
+
+      const result = convertMcpServerToInternal('test-http', mcpConfig);
+
+      expect(result).toEqual({
+        id: 'test-http',
+        type: 'remote',
+        url: 'https://api.example.com/mcp',
+        transport: 'http',
+        start: 'lazy',
+        env: undefined,
+        auth: {
+          type: 'basic',
+          token: 'dXNlcjpwYXNz',
+        },
+      });
+    });
   });
 
   describe('convertMcpServersToInternal', () => {

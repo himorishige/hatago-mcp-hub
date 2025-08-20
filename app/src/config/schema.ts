@@ -40,6 +40,10 @@ export const CONFIG_SCHEMA = {
           additionalProperties: {
             type: 'object',
             properties: {
+              type: {
+                type: 'string',
+                enum: ['stdio', 'sse', 'http'],
+              },
               command: {
                 type: 'string',
               },
@@ -57,6 +61,12 @@ export const CONFIG_SCHEMA = {
               },
               url: {
                 type: 'string',
+              },
+              headers: {
+                type: 'object',
+                additionalProperties: {
+                  type: 'string',
+                },
               },
               hatagoOptions: {
                 type: 'object',

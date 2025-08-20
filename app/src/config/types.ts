@@ -273,12 +273,14 @@ export type HatagoOptions = z.infer<typeof HatagoOptionsSchema>;
 // Claude Code互換のMCPサーバー設定
 export const McpServerConfigSchema = z.object({
   // Claude Code標準プロパティ
+  type: z.enum(['stdio', 'sse', 'http']).optional(), // SSE/HTTP transport types
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string()).optional(),
 
-  // Hatago拡張（remoteサーバー用）
+  // SSE/HTTP用
   url: z.string().optional(),
+  headers: z.record(z.string()).optional(), // Authentication headers for SSE/HTTP
 
   // Hatago独自オプション
   hatagoOptions: HatagoOptionsSchema.optional(),
