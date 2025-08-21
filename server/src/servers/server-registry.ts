@@ -3,7 +3,11 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { Resource, Tool } from '@modelcontextprotocol/sdk/types.js';
+import type {
+  Prompt,
+  Resource,
+  Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 import type {
   NpxServerConfig,
   RemoteServerConfig,
@@ -28,6 +32,7 @@ export interface RegisteredServer {
   lastHealthCheck?: Date;
   tools?: Tool[]; // Discovered tools with full metadata
   resources?: Resource[]; // Discovered resources with full metadata
+  prompts?: Prompt[]; // Discovered prompts with full metadata
   healthCheckFailures?: number; // Consecutive health check failures
   lastHealthCheckError?: string; // Last health check error message
   autoRestartAttempts?: number; // Auto-restart attempt counter
@@ -361,6 +366,23 @@ export class ServerRegistry extends EventEmitter {
     };
     listeners.set('resources-discovered', resourcesDiscoveredListener);
     server.on('resources-discovered', resourcesDiscoveredListener);
+
+    // Prompts discovered event listener
+    const promptsDiscoveredListener = ({
+      serverId,
+      prompts,
+    }: {
+      serverId: string;
+      prompts: Prompt[];
+    }) => {
+      const registered = this.servers.get(serverId);
+      if (registered) {
+        registered.prompts = prompts;
+        this.emit('server:prompts-discovered', { serverId, prompts });
+      }
+    };
+    listeners.set('prompts-discovered', promptsDiscoveredListener);
+    server.on('prompts-discovered', promptsDiscoveredListener);
 
     // Store listeners map for cleanup (WeakMap prevents memory leaks)
     this.serverListeners.set(server, listeners);
@@ -859,6 +881,20 @@ export class ServerRegistry extends EventEmitter {
 
     registered.resources = resources;
     this.emit('server:resources-discovered', { serverId, resources });
+  }
+
+  /**
+   * Register discovered prompts for a server
+   */
+  registerServerPrompts(serverId: string, prompts: Prompt[]): void {
+    const registered = this.servers.get(serverId);
+    if (!registered) {
+      console.warn(`Server ${serverId} not found for prompt registration`);
+      return;
+    }
+
+    registered.prompts = prompts;
+    this.emit('server:prompts-discovered', { serverId, prompts });
   }
 
   /**

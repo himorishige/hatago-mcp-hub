@@ -6,6 +6,7 @@ import { EventEmitter } from 'node:events';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import type {
+  Prompt,
   ReadResourceResult,
   Resource,
   Tool,
@@ -43,6 +44,7 @@ export class NpxMcpServer extends EventEmitter {
   private stopPromise: Promise<void> | null = null;
   private tools: Tool[] = []; // Store discovered tools
   private resources: Resource[] = []; // Store discovered resources
+  private prompts: Prompt[] = []; // Store discovered prompts
 
   // Default configuration with separated timeouts
   private readonly defaults = {
@@ -90,6 +92,13 @@ export class NpxMcpServer extends EventEmitter {
    */
   getResources(): Resource[] {
     return this.resources;
+  }
+
+  /**
+   * Get discovered prompts
+   */
+  getPrompts(): Prompt[] {
+    return this.prompts;
   }
 
   /**
@@ -157,6 +166,9 @@ export class NpxMcpServer extends EventEmitter {
 
       // Discover resources (optional, don't fail if not supported)
       await this.discoverResources();
+
+      // Discover prompts (optional, don't fail if not supported)
+      await this.discoverPrompts();
 
       // Transition to RUNNING
       this.state = ServerState.RUNNING;
@@ -302,6 +314,47 @@ export class NpxMcpServer extends EventEmitter {
       // Don't throw - resources are optional
       this.resources = [];
     }
+  }
+
+  /**
+   * Discover available prompts from the server
+   */
+  private async discoverPrompts(): Promise<void> {
+    if (!this.client) {
+      throw new Error('Client not connected');
+    }
+
+    try {
+      console.log(`  💡 Discovering prompts for ${this.config.id}...`);
+      const response = await this.client.listPrompts();
+      this.prompts = response.prompts;
+      console.log(
+        `  ✅ Found ${this.prompts.length} prompts for ${this.config.id}`,
+      );
+
+      // Emit prompts discovered event
+      this.emit('prompts-discovered', {
+        serverId: this.config.id,
+        prompts: this.prompts,
+      });
+    } catch (error) {
+      console.error(`Failed to discover prompts for ${this.config.id}:`, error);
+      // Don't throw - prompts are optional
+      this.prompts = [];
+    }
+  }
+
+  /**
+   * Get a specific prompt with arguments
+   */
+  async getPrompt(
+    name: string,
+    args?: Record<string, unknown>,
+  ): Promise<unknown> {
+    if (!this.client) {
+      throw new Error('Client not connected');
+    }
+    return await this.client.getPrompt({ name, arguments: args });
   }
 
   /**

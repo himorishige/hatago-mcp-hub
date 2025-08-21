@@ -3,6 +3,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type {
   CallToolRequest,
   CallToolResult,
+  GetPromptRequest,
+  GetPromptResult,
+  ListPromptsRequest,
+  ListPromptsResult,
   ListResourcesRequest,
   ListResourcesResult,
   ReadResourceRequest,
@@ -10,6 +14,8 @@ import type {
   Resource,
 } from '@modelcontextprotocol/sdk/types.js';
 import {
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
@@ -25,6 +31,10 @@ import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
 import type { StdioTransport } from '../transport/stdio.js';
 import { createZodLikeSchema } from '../utils/json-to-zod.js';
+import {
+  createPromptRegistry,
+  type PromptRegistry,
+} from './prompt-registry.js';
 import {
   createResourceRegistry,
   type ResourceRegistry,
@@ -55,6 +65,7 @@ export class McpHub {
   private server: McpServer;
   private registry: ToolRegistry;
   private resourceRegistry: ResourceRegistry;
+  private promptRegistry: PromptRegistry;
   private connections = new Map<string, McpConnection>();
   private config: HatagoConfig;
   private initialized = false;
@@ -82,9 +93,17 @@ export class McpHub {
       namingConfig: this.config.toolNaming, // リソースも同じ命名戦略を使用
     });
 
-    // リソース機能を登録（transportに接続する前に行う必要がある）
+    // プロンプトレジストリを初期化
+    this.promptRegistry = createPromptRegistry({
+      namingConfig: this.config.toolNaming, // プロンプトも同じ命名戦略を使用
+    });
+
+    // リソースとプロンプト機能を登録（transportに接続する前に行う必要がある）
     this.server.server.registerCapabilities({
       resources: {
+        listChanged: true,
+      },
+      prompts: {
         listChanged: true,
       },
     });
@@ -166,6 +185,68 @@ export class McpHub {
   }
 
   /**
+   * プロンプト関連のハンドラーを設定
+   */
+  private setupPromptHandlers(): void {
+    // prompts/listハンドラーを設定
+    this.server.server.setRequestHandler(
+      ListPromptsRequestSchema,
+      async (_request: ListPromptsRequest): Promise<ListPromptsResult> => {
+        const allPrompts = this.promptRegistry.getAllPrompts();
+
+        // TODO: ページネーション対応（cursorパラメータ）
+        return {
+          prompts: allPrompts,
+        };
+      },
+    );
+
+    // prompts/getハンドラーを設定
+    this.server.server.setRequestHandler(
+      GetPromptRequestSchema,
+      async (request: GetPromptRequest): Promise<GetPromptResult> => {
+        const { name, arguments: args } = request.params;
+
+        // プロンプトを解決
+        const resolved = this.promptRegistry.resolvePrompt(name);
+        if (!resolved) {
+          throw new Error(`Prompt not found: ${name}`);
+        }
+
+        const { serverId, originalName } = resolved;
+
+        // サーバー接続を取得
+        const connection = this.connections.get(serverId);
+        if (!connection?.connected) {
+          throw new Error(`Server not connected: ${serverId}`);
+        }
+
+        // 接続タイプに応じてプロンプトを取得
+        if (connection.type === 'local' && connection.client) {
+          // ローカルサーバーの場合
+          const result = await connection.client.getPrompt({
+            name: originalName,
+            arguments: args,
+          });
+          return result;
+        } else if (connection.type === 'npx' && connection.npxServer) {
+          // NPXサーバーの場合
+          const result = await connection.npxServer.getPrompt(
+            originalName,
+            args,
+          );
+          return result as GetPromptResult;
+        } else if (connection.type === 'remote' && connection.remoteServer) {
+          // リモートサーバーの場合（未実装）
+          throw new Error('Remote server prompts not yet implemented');
+        } else {
+          throw new Error(`Unsupported connection type: ${connection.type}`);
+        }
+      },
+    );
+  }
+
+  /**
    * MCPハブを初期化
    */
   async initialize(): Promise<void> {
@@ -177,6 +258,9 @@ export class McpHub {
 
     // リソースハンドラーを設定（initializeの時点で行う）
     this.setupResourceHandlers();
+
+    // プロンプトハンドラーを設定（initializeの時点で行う）
+    this.setupPromptHandlers();
 
     // NPXサーバーやリモートサーバーサポートの初期化
     const hasNpxServers = this.config.servers.some((s) => s.type === 'npx');
@@ -396,6 +480,8 @@ export class McpHub {
             await this.refreshNpxServerTools(serverId);
             // リソースを再発見
             await this.refreshNpxServerResources(serverId);
+            // プロンプトを再発見
+            await this.refreshNpxServerPrompts(serverId);
           }
         });
 
@@ -419,6 +505,16 @@ export class McpHub {
           },
         );
 
+        // プロンプトの発見イベント
+        this.serverRegistry.on(
+          'server:prompts-discovered',
+          async ({ serverId: discoveredId }) => {
+            if (discoveredId === serverId) {
+              await this.updateHubPrompts();
+            }
+          },
+        );
+
         // 起動
         await this.serverRegistry.startServer(serverId);
 
@@ -435,6 +531,8 @@ export class McpHub {
         await this.refreshNpxServerTools(serverId);
         // リソースを取得して登録
         await this.refreshNpxServerResources(serverId);
+        // プロンプトを取得して登録
+        await this.refreshNpxServerPrompts(serverId);
 
         console.log(`Connected to NPX server ${serverId}`);
       } else if (type === 'remote') {
@@ -550,6 +648,12 @@ export class McpHub {
 
       // ツールをレジストリから削除
       this.registry.clearServerTools(serverId);
+
+      // リソースをレジストリから削除
+      this.resourceRegistry.clearServerResources(serverId);
+
+      // プロンプトをレジストリから削除
+      this.promptRegistry.clearServerPrompts(serverId);
 
       // 接続情報を削除
       this.connections.delete(serverId);
@@ -718,6 +822,41 @@ export class McpHub {
   }
 
   /**
+   * NPXサーバーのプロンプトを更新
+   */
+  private async refreshNpxServerPrompts(serverId: string): Promise<void> {
+    if (!this.serverRegistry) {
+      return;
+    }
+
+    const registered = this.serverRegistry.getServer(serverId);
+    if (!registered?.instance) {
+      return;
+    }
+
+    try {
+      const npxServer = registered.instance as NpxMcpServer;
+      const prompts = npxServer.getPrompts();
+
+      console.log(`NPX Server ${serverId} has ${prompts.length} prompts`);
+
+      // ServerRegistryにプロンプトを登録
+      this.serverRegistry.registerServerPrompts(serverId, prompts);
+
+      // レジストリに登録
+      this.promptRegistry.registerServerPrompts(serverId, prompts);
+
+      // ハブのプロンプトを更新
+      this.updateHubPrompts();
+    } catch (error) {
+      console.error(
+        `Failed to refresh prompts for NPX server ${serverId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
    * リモートサーバーのリソースを更新
    */
   private async refreshRemoteServerResources(serverId: string): Promise<void> {
@@ -825,6 +964,69 @@ export class McpHub {
         'Failed to check resources/list_changed capability:',
         error,
       );
+    }
+  }
+
+  /**
+   * ハブのプロンプトを更新
+   */
+  private updateHubPrompts(): void {
+    const prompts = this.promptRegistry.getAllPrompts();
+    console.log(`Hub now has ${prompts.length} total prompts`);
+
+    // Debug: Log the first prompt to see its structure
+    if (prompts.length > 0) {
+      console.log(
+        'First prompt structure:',
+        JSON.stringify(prompts[0], null, 2),
+      );
+    }
+
+    // Notify clients that prompt list has changed (if capability is registered)
+    this.notifyPromptsChanged();
+  }
+
+  /**
+   * Notify clients that the prompt list has changed
+   * This implements the MCP prompts/list_changed notification
+   */
+  private notifyPromptsChanged(): void {
+    // Don't send notifications during startup or if no client is connected
+    // This prevents errors when NPX servers discover prompts before a client connects
+    if (!this.initialized) {
+      return;
+    }
+
+    try {
+      // Check if server is connected before sending notification
+      if (!this.server?.server) {
+        return;
+      }
+
+      // Check if we have registered the listChanged capability
+      const capabilities = this.server.server.getCapabilities();
+      if (capabilities?.prompts?.listChanged) {
+        // Wrap in try-catch to handle "Not connected" errors gracefully
+        try {
+          this.server.server.notification({
+            method: 'notifications/prompts/list_changed',
+            params: {},
+          });
+          console.log('Sent prompts/list_changed notification');
+        } catch (notificationError) {
+          // Silently ignore "Not connected" errors - this is expected during startup
+          // or when prompts are discovered before client connection
+          const errorMessage = String(notificationError);
+          if (!errorMessage.includes('Not connected')) {
+            console.error(
+              'Failed to send prompts/list_changed notification:',
+              notificationError,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check prompts/list_changed capability:', error);
     }
   }
 
@@ -1071,6 +1273,7 @@ export class McpHub {
     // レジストリのクリーンアップ
     this.registry.clear();
     this.resourceRegistry.clear();
+    this.promptRegistry.clear();
 
     // NPXサーバー関連のシャットダウン
     if (this.serverRegistry) {
