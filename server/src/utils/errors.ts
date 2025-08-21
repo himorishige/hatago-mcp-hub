@@ -81,6 +81,61 @@ export interface ErrorContext {
 }
 
 /**
+ * Pure functions for creating HatagoError instances
+ */
+
+/**
+ * Create a critical error
+ */
+export function createCriticalError(
+  code: ErrorCode,
+  message: string,
+  context?: ErrorContext,
+): HatagoError {
+  return new HatagoError(code, message, {
+    severity: ErrorSeverity.CRITICAL,
+    context,
+    recoverable: false,
+  });
+}
+
+/**
+ * Create a warning-level error
+ */
+export function createWarningError(
+  code: ErrorCode,
+  message: string,
+  context?: ErrorContext,
+): HatagoError {
+  return new HatagoError(code, message, {
+    severity: ErrorSeverity.WARNING,
+    context,
+    recoverable: true,
+  });
+}
+
+/**
+ * Wrap a native error into HatagoError
+ */
+export function createErrorFromUnknown(
+  error: Error | unknown,
+  code: ErrorCode = ErrorCode.E_SYSTEM_NETWORK_ERROR,
+  context?: ErrorContext,
+): HatagoError {
+  if (error instanceof HatagoError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  const cause = error instanceof Error ? error : undefined;
+
+  return new HatagoError(code, message, {
+    context,
+    cause,
+  });
+}
+
+/**
  * Hatago Hub custom error class
  */
 export class HatagoError extends Error {
@@ -180,11 +235,7 @@ export class HatagoError extends Error {
     message: string,
     context?: ErrorContext,
   ): HatagoError {
-    return new HatagoError(code, message, {
-      severity: ErrorSeverity.CRITICAL,
-      context,
-      recoverable: false,
-    });
+    return createCriticalError(code, message, context);
   }
 
   /**
@@ -195,11 +246,7 @@ export class HatagoError extends Error {
     message: string,
     context?: ErrorContext,
   ): HatagoError {
-    return new HatagoError(code, message, {
-      severity: ErrorSeverity.WARNING,
-      context,
-      recoverable: true,
-    });
+    return createWarningError(code, message, context);
   }
 
   /**
@@ -210,17 +257,7 @@ export class HatagoError extends Error {
     code: ErrorCode = ErrorCode.E_SYSTEM_NETWORK_ERROR,
     context?: ErrorContext,
   ): HatagoError {
-    if (error instanceof HatagoError) {
-      return error;
-    }
-
-    const message = error instanceof Error ? error.message : String(error);
-    const cause = error instanceof Error ? error : undefined;
-
-    return new HatagoError(code, message, {
-      context,
-      cause,
-    });
+    return createErrorFromUnknown(error, code, context);
   }
 }
 
@@ -244,7 +281,7 @@ export function registerErrorHandler(
  */
 export function handleError(error: Error | HatagoError): void {
   const hatagoError =
-    error instanceof HatagoError ? error : HatagoError.from(error);
+    error instanceof HatagoError ? error : createErrorFromUnknown(error);
 
   // Call specific handler if registered
   const handler = errorHandlers.get(hatagoError.code);
