@@ -3,7 +3,7 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Resource, Tool } from '@modelcontextprotocol/sdk/types.js';
 import type {
   NpxServerConfig,
   RemoteServerConfig,
@@ -27,6 +27,7 @@ export interface RegisteredServer {
   registeredAt: Date;
   lastHealthCheck?: Date;
   tools?: Tool[]; // Discovered tools with full metadata
+  resources?: Resource[]; // Discovered resources with full metadata
   healthCheckFailures?: number; // Consecutive health check failures
   lastHealthCheckError?: string; // Last health check error message
   autoRestartAttempts?: number; // Auto-restart attempt counter
@@ -66,6 +67,10 @@ export class ServerRegistry extends EventEmitter {
     maxHealthCheckFailures: 3, // 3 consecutive failures
     autoRestartOnHealthFailure: true, // Auto-restart by default
   };
+
+  // Circuit breaker for resource discovery (track consecutive failures)
+  private resourceDiscoveryFailures = new Map<string, number>();
+  private readonly maxConsecutiveFailures = 3;
 
   constructor(
     workspaceManager: WorkspaceManager,
@@ -264,8 +269,9 @@ export class ServerRegistry extends EventEmitter {
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.RUNNING;
-        // Discover tools after startup
+        // Discover tools and resources after startup
         await this.discoverTools(serverId);
+        await this.discoverResources(serverId);
       }
       this.emit('server:started', { serverId });
     };
@@ -321,6 +327,40 @@ export class ServerRegistry extends EventEmitter {
     };
     listeners.set('error', errorListener);
     server.on('error', errorListener);
+
+    // Tools discovered event listener
+    const toolsDiscoveredListener = ({
+      serverId,
+      tools,
+    }: {
+      serverId: string;
+      tools: Tool[];
+    }) => {
+      const registered = this.servers.get(serverId);
+      if (registered) {
+        registered.tools = tools;
+        this.emit('server:tools-discovered', { serverId, tools });
+      }
+    };
+    listeners.set('tools-discovered', toolsDiscoveredListener);
+    server.on('tools-discovered', toolsDiscoveredListener);
+
+    // Resources discovered event listener
+    const resourcesDiscoveredListener = ({
+      serverId,
+      resources,
+    }: {
+      serverId: string;
+      resources: Resource[];
+    }) => {
+      const registered = this.servers.get(serverId);
+      if (registered) {
+        registered.resources = resources;
+        this.emit('server:resources-discovered', { serverId, resources });
+      }
+    };
+    listeners.set('resources-discovered', resourcesDiscoveredListener);
+    server.on('resources-discovered', resourcesDiscoveredListener);
 
     // Store listeners map for cleanup (WeakMap prevents memory leaks)
     this.serverListeners.set(server, listeners);
@@ -510,6 +550,66 @@ export class ServerRegistry extends EventEmitter {
         `Failed to discover tools for server ${serverId}:`,
         safeError,
       );
+    }
+  }
+
+  /**
+   * Discover resources from a server with Circuit Breaker pattern
+   */
+  private async discoverResources(serverId: string): Promise<void> {
+    const _runtime = await this.runtime;
+    const registered = this.servers.get(serverId);
+
+    if (!registered || !registered.instance) {
+      return;
+    }
+
+    // Check circuit breaker
+    const failures = this.resourceDiscoveryFailures.get(serverId) || 0;
+    if (failures >= this.maxConsecutiveFailures) {
+      console.warn(
+        `Circuit breaker open for ${serverId}: skipping resource discovery after ${failures} consecutive failures`,
+      );
+      registered.resources = [];
+      return;
+    }
+
+    try {
+      let resources: Resource[] = [];
+
+      if (registered.instance instanceof RemoteMcpServer) {
+        // For remote servers, use the discoverResources method
+        const result = await registered.instance.discoverResources();
+        if (Array.isArray(result)) {
+          resources = result as Resource[];
+        }
+      } else if (registered.instance instanceof NpxMcpServer) {
+        // For NPX servers, use the getResources method
+        resources = registered.instance.getResources();
+      }
+
+      // Update registered server with discovered resources
+      registered.resources = resources;
+
+      // Reset failure counter on success
+      this.resourceDiscoveryFailures.delete(serverId);
+
+      this.emit('server:resources-discovered', {
+        serverId,
+        resources,
+      });
+    } catch (error) {
+      // Increment failure counter
+      const currentFailures = this.resourceDiscoveryFailures.get(serverId) || 0;
+      this.resourceDiscoveryFailures.set(serverId, currentFailures + 1);
+
+      const safeError = await sanitizeLog(String(error));
+      console.error(
+        `Failed to discover resources for server ${serverId} (failure ${currentFailures + 1}/${this.maxConsecutiveFailures}):`,
+        safeError,
+      );
+      // Don't throw - resources are optional
+      registered.resources = [];
     }
   }
 
@@ -745,6 +845,20 @@ export class ServerRegistry extends EventEmitter {
 
     registered.tools = tools;
     this.emit('server:tools-discovered', { serverId, tools });
+  }
+
+  /**
+   * Register discovered resources for a server
+   */
+  registerServerResources(serverId: string, resources: Resource[]): void {
+    const registered = this.servers.get(serverId);
+    if (!registered) {
+      console.warn(`Server ${serverId} not found for resource registration`);
+      return;
+    }
+
+    registered.resources = resources;
+    this.emit('server:resources-discovered', { serverId, resources });
   }
 
   /**

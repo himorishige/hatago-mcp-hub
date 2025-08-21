@@ -6,6 +6,7 @@ import { EventEmitter } from 'node:events';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 import type { RemoteServerConfig } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
 import { sanitizeLog } from '../utils/security.js';
@@ -701,6 +702,82 @@ export class RemoteMcpServer extends EventEmitter {
       }
       throw error;
     }
+  }
+
+  /**
+   * List available resources
+   */
+  async listResources(): Promise<unknown> {
+    if (!this.connection || this.state !== ServerState.RUNNING) {
+      throw new Error(`Server ${this.config.id} is not connected`);
+    }
+
+    try {
+      return await this.connection.client.listResources();
+    } catch (error) {
+      // Handle connection errors during resource listing
+      if (
+        error instanceof Error &&
+        (error.message.includes('disconnected') ||
+          error.message.includes('Connection closed'))
+      ) {
+        console.error(
+          `Connection lost while listing resources for ${this.config.id}:`,
+          error.message,
+        );
+        await this.handleDisconnection();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Read a specific resource
+   */
+  async readResource(uri: string): Promise<ReadResourceResult> {
+    if (!this.connection || this.state !== ServerState.RUNNING) {
+      throw new Error(`Server ${this.config.id} is not connected`);
+    }
+
+    try {
+      return await this.connection.client.readResource({ uri });
+    } catch (error) {
+      // Handle connection errors during resource reading
+      if (
+        error instanceof Error &&
+        (error.message.includes('disconnected') ||
+          error.message.includes('Connection closed'))
+      ) {
+        console.error(
+          `Connection lost while reading resource for ${this.config.id}:`,
+          error.message,
+        );
+        await this.handleDisconnection();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Discover available resources from the remote server
+   */
+  async discoverResources(): Promise<unknown[]> {
+    const resourcesResponse = await this.listResources();
+
+    // MCPのlistResourcesレスポンスからリソースを抽出
+    if (
+      resourcesResponse &&
+      typeof resourcesResponse === 'object' &&
+      'resources' in resourcesResponse
+    ) {
+      const resources = (resourcesResponse as { resources: unknown[] })
+        .resources;
+      if (Array.isArray(resources)) {
+        return resources;
+      }
+    }
+
+    return [];
   }
 
   /**
