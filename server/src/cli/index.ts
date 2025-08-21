@@ -46,6 +46,23 @@ program
         withDuration,
       } = await import('../utils/logger.js');
 
+      // STDIOモードでは標準出力を使用しないため、console.logをstderrにリダイレクト
+      // This must happen BEFORE any code that might use console.log
+      if (options.mode === 'stdio') {
+        const originalConsoleError = console.error;
+        console.log = (...args: unknown[]) => {
+          originalConsoleError('[STDIO-REDIRECT]', ...args);
+        };
+        console.warn = (...args: unknown[]) => {
+          originalConsoleError('[STDIO-REDIRECT-WARN]', ...args);
+        };
+        // Keep console.error as is since it already goes to stderr
+
+        // Set log level to silent in STDIO mode to prevent any log output
+        options.quiet = true;
+        options.logLevel = 'silent';
+      }
+
       const logLevel = getLogLevel({
         verbose: options.verbose,
         quiet: options.quiet,
@@ -57,6 +74,7 @@ program
         format: options.logFormat,
         profile: options.profile,
         component: 'hatago-cli',
+        destination: options.mode === 'stdio' ? process.stderr : process.stdout,
       });
 
       setGlobalLogger(logger);
@@ -156,7 +174,10 @@ program
           { profile: options.profile },
           `🏮 MCP Hub running in STDIO mode`,
         );
+
+        process.stderr.write('[DEBUG] Creating StdioServerTransport...\n');
         const transport = new StdioServerTransport();
+        process.stderr.write('[DEBUG] Transport created\n');
 
         // デバッグ: MCPサーバーのツール呼び出しをインターセプト
         const server = hub.getServer();
@@ -176,7 +197,10 @@ program
           };
         }
 
-        await hub.getServer().connect(transport);
+        // Connect the underlying SDK server instance to the transport
+        process.stderr.write('[DEBUG] Connecting transport to server...\n');
+        await hub.getServer().server.connect(transport);
+        process.stderr.write('[DEBUG] Transport connected successfully\n');
       } else {
         // HTTPモード
         const app = new Hono();
@@ -264,7 +288,10 @@ program
 
           try {
             // 一時的にサーバーに接続
-            await hub.getServer().connect(transport);
+            // Connect the underlying SDK server instance to the transport
+            process.stderr.write('[DEBUG] Connecting transport to server...\n');
+            await hub.getServer().server.connect(transport);
+            process.stderr.write('[DEBUG] Transport connected successfully\n');
 
             const body = await c.req.json();
 

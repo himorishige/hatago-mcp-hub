@@ -12,6 +12,7 @@ export interface LoggerOptions {
   profile?: string;
   reqId?: string;
   component?: string;
+  destination?: NodeJS.WritableStream; // Add destination option for STDIO mode
 }
 
 /**
@@ -20,6 +21,7 @@ export interface LoggerOptions {
 export function createLogger(options: LoggerOptions = {}): Logger {
   const isDev = process.env.NODE_ENV === 'development';
   const format = options.format || (isDev ? 'pretty' : 'json');
+  const destination = options.destination || process.stdout;
 
   const baseOptions: pino.LoggerOptions = {
     level: options.level || process.env.LOG_LEVEL || 'info',
@@ -85,21 +87,34 @@ export function createLogger(options: LoggerOptions = {}): Logger {
 
   // Use pino-pretty in development or when explicitly requested
   if (format === 'pretty') {
-    return pino({
-      ...baseOptions,
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'HH:MM:ss.l',
-          ignore: 'pid,hostname',
-          messageFormat: '{component} | {req_id} | {msg}',
+    // For pretty format with stderr, we need to use the stream directly
+    // because pino-pretty transport doesn't properly respect destination
+    if (destination === process.stderr) {
+      const prettyStream = require('pino-pretty')({
+        colorize: true,
+        translateTime: 'HH:MM:ss.l',
+        ignore: 'pid,hostname',
+        messageFormat: '{component} | {req_id} | {msg}',
+        destination: process.stderr,
+      });
+      return pino(baseOptions, prettyStream);
+    } else {
+      return pino({
+        ...baseOptions,
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            translateTime: 'HH:MM:ss.l',
+            ignore: 'pid,hostname',
+            messageFormat: '{component} | {req_id} | {msg}',
+          },
         },
-      },
-    });
+      });
+    }
   }
 
-  return pino(baseOptions);
+  return pino(baseOptions, destination);
 }
 
 /**

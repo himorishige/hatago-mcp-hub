@@ -29,8 +29,8 @@ export class ToolRegistry {
   private serverTools = new Map<string, Set<string>>();
   private namingConfig: ToolNamingConfig;
 
-  constructor(options: ToolRegistryOptions) {
-    this.namingConfig = options.namingConfig;
+  constructor(options: ToolRegistryOptions = {}) {
+    this.namingConfig = options.namingConfig || {};
   }
 
   /**
@@ -244,5 +244,13 @@ export class ToolRegistry {
         originalName: metadata.originalName,
       })),
     };
+  }
+
+  /**
+   * すべてのツールとサーバー情報をクリア
+   */
+  clear(): void {
+    this.tools.clear();
+    this.serverTools.clear();
   }
 }

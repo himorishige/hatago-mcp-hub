@@ -3,8 +3,14 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parse as parseJsonc } from 'jsonc-parser';
+import { createLogger } from '../utils/logger.js';
 import { expandEnvironmentVariables } from './env-expander.js';
 import { type HatagoConfig, validateConfig } from './types.js';
+
+const logger = createLogger({
+  component: 'config-loader',
+  destination: process.stderr, // Always use stderr to avoid stdout contamination
+});
 
 // 設定ファイルのパス候補
 const CONFIG_FILENAMES = [
@@ -51,7 +57,7 @@ export async function loadConfigFile(
 ): Promise<HatagoConfig> {
   try {
     if (!options?.quiet) {
-      console.log(`Loading config from: ${filepath}`);
+      logger.info(`Loading config from: ${filepath}`);
     }
 
     // ファイルを読み込み
@@ -71,12 +77,12 @@ export async function loadConfigFile(
     const config = validateConfig(merged);
 
     if (!options?.quiet) {
-      console.log(`Config loaded successfully`);
+      logger.info(`Config loaded successfully`);
     }
     return config;
   } catch (error) {
     if (!options?.quiet) {
-      console.error(`Failed to load config from ${filepath}:`, error);
+      logger.error(`Failed to load config from ${filepath}:`, error);
     }
     throw error;
   }
@@ -150,14 +156,14 @@ export async function loadConfig(
 
     if (existsSync(profilePath)) {
       if (!options?.quiet) {
-        console.log(`Loading profile: ${profileName}`);
+        logger.info(`Loading profile: ${profileName}`);
       }
       return await loadConfigFile(profilePath, options);
     }
 
     // プロファイルファイルが見つからない場合は警告
     if (!options?.quiet) {
-      console.warn(
+      logger.warn(
         `Profile '${options.profile}' not found at ${profilePath}, falling back to default config`,
       );
     }
@@ -180,7 +186,7 @@ export async function loadConfig(
 
   // デフォルト設定を使用
   if (!options?.quiet) {
-    console.log('No config file found, using default configuration');
+    logger.info('No config file found, using default configuration');
   }
   return createDefaultConfig();
 }

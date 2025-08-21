@@ -14,11 +14,14 @@ import type {
   Resource,
 } from '@modelcontextprotocol/sdk/types.js';
 import {
+  CallToolRequestSchema,
   GetPromptRequestSchema,
   ListPromptsRequestSchema,
   ListResourcesRequestSchema,
+  ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import type { Logger } from 'pino';
 import type {
   HatagoConfig,
   NpxServerConfig,
@@ -31,6 +34,7 @@ import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
 import type { StdioTransport } from '../transport/stdio.js';
 import { createZodLikeSchema } from '../utils/json-to-zod.js';
+import { createLogger } from '../utils/logger.js';
 import {
   createPromptRegistry,
   type PromptRegistry,
@@ -73,9 +77,16 @@ export class McpHub {
   private serverRegistry?: ServerRegistry;
   private registeredTools = new Set<string>(); // Track registered tools to avoid duplicates
   private workDir: string = '.hatago'; // Default work directory
+  private logger: Logger;
 
   constructor(options: McpHubOptions) {
     this.config = options.config;
+
+    // Create logger for McpHub
+    this.logger = createLogger({
+      component: 'mcp-hub',
+      destination: process.stderr, // Always use stderr to avoid stdout contamination
+    });
 
     // MCPサーバーを作成
     this.server = new McpServer({
@@ -98,8 +109,11 @@ export class McpHub {
       namingConfig: this.config.toolNaming, // プロンプトも同じ命名戦略を使用
     });
 
-    // リソースとプロンプト機能を登録（transportに接続する前に行う必要がある）
+    // ツール、リソース、プロンプト機能を登録（transportに接続する前に行う必要がある）
     this.server.server.registerCapabilities({
+      tools: {
+        listChanged: false, // ツール一覧の変更通知はサポートしない
+      },
       resources: {
         listChanged: true,
       },
@@ -116,9 +130,25 @@ export class McpHub {
    * ツール関連のハンドラーを設定
    */
   private setupToolHandlers(): void {
-    // McpServerのAPIでは、ツールは動的に登録される
-    // connectServerでツールを追加するので、ここでは何もしない
-    // tools/listとtools/callはMcpServerが自動的に処理する
+    // tools/listハンドラーを明示的に設定
+    this.server.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      const tools = this.registry.getAllTools();
+      return {
+        tools: tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema || {},
+        })),
+      };
+    });
+
+    // tools/callハンドラーも明示的に設定
+    this.server.server.setRequestHandler(
+      CallToolRequestSchema,
+      async (request: CallToolRequest) => {
+        return await this.callTool(request.params);
+      },
+    );
   }
 
   /**
@@ -254,7 +284,7 @@ export class McpHub {
       return;
     }
 
-    console.log('Initializing MCP Hub...');
+    this.logger.info('Initializing MCP Hub...');
 
     // リソースハンドラーを設定（initializeの時点で行う）
     this.setupResourceHandlers();
@@ -299,16 +329,18 @@ export class McpHub {
     }
 
     // 設定されたサーバーを接続
-    console.log(`Found ${this.config.servers.length} servers in config`);
+    this.logger.info(`Found ${this.config.servers.length} servers in config`);
     for (const serverConfig of this.config.servers) {
-      console.log(
+      this.logger.debug(
         `Checking server ${serverConfig.id} with start: ${serverConfig.start}`,
       );
       if (serverConfig.start === 'eager') {
         try {
           await this.connectServer(serverConfig);
         } catch (error) {
-          console.error(`Failed to connect server ${serverConfig.id}:`, error);
+          this.logger.error(
+            `Failed to connect server ${serverConfig.id}: ${error}`,
+          );
           // エラーが発生しても続行
         }
       }
@@ -327,7 +359,7 @@ export class McpHub {
       return;
     }
 
-    console.log('🔥 Warming up NPX packages...');
+    this.logger.info('🔥 Warming up NPX packages...');
 
     // Run warmup in parallel for all NPX servers
     const warmupPromises = npxServers.map(async (serverConfig) => {
@@ -337,7 +369,7 @@ export class McpHub {
           ? `${npxConfig.package}@${npxConfig.version}`
           : npxConfig.package;
 
-        console.log(`  📦 Pre-caching ${packageSpec}...`);
+        this.logger.info(`  📦 Pre-caching ${packageSpec}...`);
 
         // Run npx to trigger installation without executing the package
         const { spawn } = await import('node:child_process');
@@ -376,7 +408,7 @@ export class McpHub {
           warmupProcess.on('error', (error) => {
             if (!hasExited) {
               hasExited = true;
-              console.warn(
+              this.logger.info(
                 `  ⚠️  Failed to warm up ${packageSpec}: ${error.message}`,
               );
               reject(error); // Reject on error for tracking
@@ -387,11 +419,11 @@ export class McpHub {
             if (!hasExited) {
               hasExited = true;
               if (code === 0) {
-                console.log(`  ✅ ${packageSpec} cached`);
+                this.logger.info(`  ✅ ${packageSpec} cached`);
                 resolve();
               } else {
                 // With -p/-c approach, non-zero exit usually means npm error
-                console.warn(
+                this.logger.info(
                   `  ⚠️  ${packageSpec} warmup exited with code ${code}`,
                 );
                 reject(new Error(`Warmup failed with code ${code}`));
@@ -404,13 +436,13 @@ export class McpHub {
             if (!hasExited) {
               hasExited = true;
               warmupProcess.kill('SIGTERM');
-              console.warn(`  ⚠️  ${packageSpec} warmup timeout`);
+              this.logger.info(`  ⚠️  ${packageSpec} warmup timeout`);
               reject(new Error('Warmup timeout'));
             }
           }, 30000); // 30 second timeout for warmup
         });
       } catch (error) {
-        console.warn(`  ⚠️  Failed to warm up ${serverConfig.id}: ${error}`);
+        this.logger.info(`  ⚠️  Failed to warm up ${serverConfig.id}: ${error}`);
         // Don't fail the whole initialization
       }
     });
@@ -429,19 +461,19 @@ export class McpHub {
 
     // Check if majority failed
     if (hasMajorityFailure) {
-      console.error(
+      this.logger.info(
         `⚠️  NPX warmup: ${failures.length}/${npxServers.length} servers failed - majority failure detected`,
       );
-      console.error(
+      this.logger.info(
         '   This may indicate network issues or npm registry problems',
       );
     } else if (failures.length > 0) {
-      console.warn(
+      this.logger.info(
         `⚠️  NPX warmup: ${failures.length}/${npxServers.length} servers failed`,
       );
     }
 
-    console.log(
+    this.logger.info(
       `✅ NPX package warmup complete (${successCount}/${npxServers.length} succeeded)`,
     );
   }
@@ -473,7 +505,7 @@ export class McpHub {
         // Started イベント
         npxServer.on('started', async ({ serverId: startedId }) => {
           if (startedId === serverId) {
-            console.log(
+            this.logger.info(
               `NPX server ${serverId} started, discovering tools and resources...`,
             );
             // ツールを再発見
@@ -534,7 +566,7 @@ export class McpHub {
         // プロンプトを取得して登録
         await this.refreshNpxServerPrompts(serverId);
 
-        console.log(`Connected to NPX server ${serverId}`);
+        this.logger.info(`Connected to NPX server ${serverId}`);
       } else if (type === 'remote') {
         // リモートサーバーは起動と接続を行う
         if (!this.serverRegistry) {
@@ -552,7 +584,7 @@ export class McpHub {
         // Started イベント
         remoteServer.on('started', async ({ serverId: startedId }) => {
           if (startedId === serverId) {
-            console.log(
+            this.logger.info(
               `Remote server ${serverId} started, discovering tools and resources...`,
             );
             // ツールを再発見
@@ -602,12 +634,12 @@ export class McpHub {
         // リソースを取得して登録
         await this.refreshRemoteServerResources(serverId);
 
-        console.log(`Connected to remote server ${serverId}`);
+        this.logger.info(`Connected to remote server ${serverId}`);
       } else {
-        console.warn(`Server type ${type} is not yet supported`);
+        this.logger.info(`Server type ${type} is not yet supported`);
       }
     } catch (error) {
-      console.error(`Failed to connect to server ${serverId}:`, error);
+      this.logger.error({ error }, `Failed to connect to server ${serverId}`);
       throw error;
     }
   }
@@ -621,7 +653,7 @@ export class McpHub {
       return;
     }
 
-    console.log(`Disconnecting from server ${serverId}...`);
+    this.logger.info(`Disconnecting from server ${serverId}...`);
 
     try {
       if (connection.type === 'local') {
@@ -658,9 +690,12 @@ export class McpHub {
       // 接続情報を削除
       this.connections.delete(serverId);
 
-      console.log(`Disconnected from server ${serverId}`);
+      this.logger.info(`Disconnected from server ${serverId}`);
     } catch (error) {
-      console.error(`Error disconnecting from server ${serverId}:`, error);
+      this.logger.error(
+        { error },
+        `Error disconnecting from server ${serverId}`,
+      );
     }
   }
 
@@ -685,7 +720,7 @@ export class McpHub {
         inputSchema: tool.inputSchema || {},
       }));
 
-      console.log(`NPX Server ${serverId} has ${tools.length} tools`);
+      this.logger.info(`NPX Server ${serverId} has ${tools.length} tools`);
 
       // レジストリに登録
       this.registry.registerServerTools(serverId, tools);
@@ -693,10 +728,7 @@ export class McpHub {
       // ハブのツールを更新
       this.updateHubTools();
     } catch (error) {
-      console.error(
-        `Failed to refresh tools for NPX server ${serverId}:`,
-        error,
-      );
+      this.logger.error({ error }, `$2`);
     }
   }
 
@@ -704,18 +736,23 @@ export class McpHub {
    * リモートサーバーのツールを更新
    */
   private async refreshRemoteServerTools(serverId: string): Promise<void> {
-    console.log(`[DEBUG] refreshRemoteServerTools called for ${serverId}`);
+    this.logger.info(`[DEBUG] refreshRemoteServerTools called for ${serverId}`);
     if (!this.serverRegistry) {
       return;
     }
 
     const registered = this.serverRegistry.getServer(serverId);
-    console.log(`[DEBUG] Registered server:`, {
-      id: registered?.id,
-      state: registered?.state,
-      tools: registered?.tools,
-      hasInstance: !!registered?.instance,
-    });
+    this.logger.debug(
+      {
+        server: {
+          id: registered?.id,
+          state: registered?.state,
+          tools: registered?.tools,
+          hasInstance: !!registered?.instance,
+        },
+      },
+      `[DEBUG] Registered server`,
+    );
 
     // toolsが配列でない場合は修正
     if (registered && !Array.isArray(registered.tools)) {
@@ -723,7 +760,7 @@ export class McpHub {
     }
 
     if (!registered?.tools) {
-      console.log(
+      this.logger.info(
         `[DEBUG] No tools found for ${serverId}, attempting discovery...`,
       );
 
@@ -733,7 +770,7 @@ export class McpHub {
           const tools = await (
             registered.instance as RemoteMcpServer
           ).discoverTools();
-          console.log(
+          this.logger.info(
             `[DEBUG] Discovered ${tools.length} tools from ${serverId}`,
           );
 
@@ -743,20 +780,17 @@ export class McpHub {
           // 再度取得
           const updatedRegistered = this.serverRegistry.getServer(serverId);
           if (!updatedRegistered?.tools) {
-            console.log(
+            this.logger.info(
               `[DEBUG] Still no tools after discovery for ${serverId}`,
             );
             return;
           }
         } catch (error) {
-          console.error(
-            `[DEBUG] Failed to discover tools for ${serverId}:`,
-            error,
-          );
+          this.logger.error({ error }, `$2`);
           return;
         }
       } else {
-        console.log(
+        this.logger.info(
           `[DEBUG] Server ${serverId} doesn't support tool discovery`,
         );
         return;
@@ -771,7 +805,7 @@ export class McpHub {
         inputSchema: {},
       }));
 
-      console.log(`Remote Server ${serverId} has ${tools.length} tools`);
+      this.logger.info(`Remote Server ${serverId} has ${tools.length} tools`);
 
       // レジストリに登録
       this.registry.registerServerTools(serverId, tools);
@@ -779,10 +813,7 @@ export class McpHub {
       // ハブのツールを更新
       this.updateHubTools();
     } catch (error) {
-      console.error(
-        `Failed to refresh tools for remote server ${serverId}:`,
-        error,
-      );
+      this.logger.error({ error }, `$2`);
     }
   }
 
@@ -803,7 +834,9 @@ export class McpHub {
       const npxServer = registered.instance as NpxMcpServer;
       const resources = npxServer.getResources();
 
-      console.log(`NPX Server ${serverId} has ${resources.length} resources`);
+      this.logger.info(
+        `NPX Server ${serverId} has ${resources.length} resources`,
+      );
 
       // ServerRegistryにリソースを登録
       this.serverRegistry.registerServerResources(serverId, resources);
@@ -814,10 +847,7 @@ export class McpHub {
       // ハブのリソースを更新
       this.updateHubResources();
     } catch (error) {
-      console.error(
-        `Failed to refresh resources for NPX server ${serverId}:`,
-        error,
-      );
+      this.logger.error({ error }, `$2`);
     }
   }
 
@@ -838,7 +868,7 @@ export class McpHub {
       const npxServer = registered.instance as NpxMcpServer;
       const prompts = npxServer.getPrompts();
 
-      console.log(`NPX Server ${serverId} has ${prompts.length} prompts`);
+      this.logger.info(`NPX Server ${serverId} has ${prompts.length} prompts`);
 
       // ServerRegistryにプロンプトを登録
       this.serverRegistry.registerServerPrompts(serverId, prompts);
@@ -849,10 +879,7 @@ export class McpHub {
       // ハブのプロンプトを更新
       this.updateHubPrompts();
     } catch (error) {
-      console.error(
-        `Failed to refresh prompts for NPX server ${serverId}:`,
-        error,
-      );
+      this.logger.error({ error }, `$2`);
     }
   }
 
@@ -860,7 +887,9 @@ export class McpHub {
    * リモートサーバーのリソースを更新
    */
   private async refreshRemoteServerResources(serverId: string): Promise<void> {
-    console.log(`[DEBUG] refreshRemoteServerResources called for ${serverId}`);
+    this.logger.info(
+      `[DEBUG] refreshRemoteServerResources called for ${serverId}`,
+    );
     if (!this.serverRegistry) {
       return;
     }
@@ -875,7 +904,7 @@ export class McpHub {
 
       // リモートサーバーから直接リソースを取得
       const resources = await remoteServer.discoverResources();
-      console.log(
+      this.logger.info(
         `[DEBUG] Discovered ${resources.length} resources from ${serverId}`,
       );
 
@@ -894,10 +923,7 @@ export class McpHub {
       // ハブのリソースを更新
       this.updateHubResources();
     } catch (error) {
-      console.error(
-        `[DEBUG] Failed to discover resources for ${serverId}:`,
-        error,
-      );
+      this.logger.error({ error }, `$2`);
     }
   }
 
@@ -906,14 +932,11 @@ export class McpHub {
    */
   private updateHubResources(): void {
     const resources = this.resourceRegistry.getAllResources();
-    console.log(`Hub now has ${resources.length} total resources`);
+    this.logger.info(`Hub now has ${resources.length} total resources`);
 
     // Debug: Log the first resource to see its structure
     if (resources.length > 0) {
-      console.log(
-        'First resource structure:',
-        JSON.stringify(resources[0], null, 2),
-      );
+      this.logger.debug({ resource: resources[0] }, 'First resource structure');
     }
 
     // Notify clients that resource list has changed (if capability is registered)
@@ -946,21 +969,21 @@ export class McpHub {
             method: 'notifications/resources/list_changed',
             params: {},
           });
-          console.log('Sent resources/list_changed notification');
+          this.logger.info('Sent resources/list_changed notification');
         } catch (notificationError) {
           // Silently ignore "Not connected" errors - this is expected during startup
           // or when resources are discovered before client connection
           const errorMessage = String(notificationError);
           if (!errorMessage.includes('Not connected')) {
-            console.error(
-              'Failed to send resources/list_changed notification:',
-              notificationError,
+            this.logger.error(
+              { error: notificationError },
+              'Failed to send resources/list_changed notification',
             );
           }
         }
       }
     } catch (error) {
-      console.error(
+      this.logger.info(
         'Failed to check resources/list_changed capability:',
         error,
       );
@@ -972,14 +995,11 @@ export class McpHub {
    */
   private updateHubPrompts(): void {
     const prompts = this.promptRegistry.getAllPrompts();
-    console.log(`Hub now has ${prompts.length} total prompts`);
+    this.logger.info(`Hub now has ${prompts.length} total prompts`);
 
     // Debug: Log the first prompt to see its structure
     if (prompts.length > 0) {
-      console.log(
-        'First prompt structure:',
-        JSON.stringify(prompts[0], null, 2),
-      );
+      this.logger.debug({ prompt: prompts[0] }, 'First prompt structure');
     }
 
     // Notify clients that prompt list has changed (if capability is registered)
@@ -1012,21 +1032,24 @@ export class McpHub {
             method: 'notifications/prompts/list_changed',
             params: {},
           });
-          console.log('Sent prompts/list_changed notification');
+          this.logger.info('Sent prompts/list_changed notification');
         } catch (notificationError) {
           // Silently ignore "Not connected" errors - this is expected during startup
           // or when prompts are discovered before client connection
           const errorMessage = String(notificationError);
           if (!errorMessage.includes('Not connected')) {
-            console.error(
-              'Failed to send prompts/list_changed notification:',
-              notificationError,
+            this.logger.error(
+              { error: notificationError },
+              'Failed to send prompts/list_changed notification',
             );
           }
         }
       }
     } catch (error) {
-      console.error('Failed to check prompts/list_changed capability:', error);
+      this.logger.info(
+        'Failed to check prompts/list_changed capability:',
+        error,
+      );
     }
   }
 
@@ -1035,10 +1058,10 @@ export class McpHub {
    */
   private updateHubTools(): void {
     const tools = this.registry.getAllTools();
-    console.log(`Hub now has ${tools.length} total tools`);
+    this.logger.info(`Hub now has ${tools.length} total tools`);
     // Debug: Log the first tool to see its structure
     if (tools.length > 0) {
-      console.log('First tool structure:', JSON.stringify(tools[0], null, 2));
+      this.logger.debug({ tool: tools[0] }, 'First tool structure');
     }
 
     // Track which tools are currently active
@@ -1049,7 +1072,7 @@ export class McpHub {
       if (!currentToolNames.has(toolName)) {
         // Tool was removed, we can't unregister from MCP SDK but mark it as removed
         this.registeredTools.delete(toolName);
-        console.log(`Tool ${toolName} removed from registry`);
+        this.logger.info(`Tool ${toolName} removed from registry`);
       }
     }
 
@@ -1092,17 +1115,17 @@ export class McpHub {
 
         // Mark as registered
         this.registeredTools.add(tool.name);
-        console.log(`✅ Tool ${tool.name} registered`);
+        this.logger.info(`✅ Tool ${tool.name} registered`);
       } catch (error) {
         // This should rarely happen now due to idempotent check
-        console.debug(
-          `Failed to register tool ${tool.name}:`,
-          error instanceof Error ? error.message : error,
+        this.logger.debug(
+          { error: error instanceof Error ? error.message : error },
+          `Failed to register tool ${tool.name}`,
         );
       }
     }
 
-    console.log(`Total registered tools: ${this.registeredTools.size}`);
+    this.logger.info(`Total registered tools: ${this.registeredTools.size}`);
   }
 
   /**
@@ -1262,7 +1285,7 @@ export class McpHub {
    * シャットダウン
    */
   async shutdown(): Promise<void> {
-    console.log('Shutting down MCP Hub...');
+    this.logger.info('Shutting down MCP Hub...');
 
     // すべてのサーバーから切断
     const serverIds = Array.from(this.connections.keys());
@@ -1287,6 +1310,6 @@ export class McpHub {
     this.connections.clear();
     this.registeredTools.clear();
 
-    console.log('MCP Hub shutdown complete');
+    this.logger.info('MCP Hub shutdown complete');
   }
 }

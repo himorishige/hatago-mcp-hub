@@ -2,7 +2,13 @@
  * Configuration validation utilities
  */
 
+import { createLogger } from '../utils/logger.js';
 import type { HatagoConfig, ServerConfig } from './types.js';
+
+const logger = createLogger({
+  component: 'config-validator',
+  destination: process.stderr, // Always use stderr to avoid stdout contamination
+});
 
 export interface ValidationError {
   path: string;
@@ -217,22 +223,22 @@ function isValidHost(host: string): boolean {
  */
 export function printValidationResult(result: ValidationResult): void {
   if (result.errors.length > 0) {
-    console.error('Configuration errors:');
+    logger.error('Configuration errors:');
     result.errors.forEach((error) => {
-      console.error(`  - ${error.path}: ${error.message}`);
+      logger.error(`  - ${error.path}: ${error.message}`);
     });
   }
 
   if (result.warnings.length > 0) {
-    console.warn('Configuration warnings:');
+    logger.warn('Configuration warnings:');
     result.warnings.forEach((warning) => {
-      console.warn(`  - ${warning.path}: ${warning.message}`);
+      logger.warn(`  - ${warning.path}: ${warning.message}`);
     });
   }
 
   if (result.valid) {
-    console.log('Configuration is valid');
+    logger.info('Configuration is valid');
   } else {
-    console.error('Configuration is invalid');
+    logger.error('Configuration is invalid');
   }
 }

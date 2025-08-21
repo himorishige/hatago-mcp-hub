@@ -1,6 +1,6 @@
 # Hatago MCP Hub 検証結果レポート
 
-日付: 2025-08-20
+日付: 2025-08-21
 バージョン: v0.0.3
 
 ## 概要
@@ -41,7 +41,7 @@ Hatago MCP Hubの実装状況確認と機能検証を実施。Phase 0-2の実装
 | 機能 | 状態 | 備考 |
 |------|------|------|
 | /mcp エンドポイント | ❌ 未実装 | handleRequestメソッド未実装 |
-| STDIO モード | 未検証 | - |
+| STDIO モード | ❌ 失敗 | 標準出力問題、MCPメソッド未実装 |
 | セッション管理 | 未検証 | - |
 
 ### 2.3 サーバー管理機能 ⚠️
@@ -63,6 +63,11 @@ Hatago MCP Hubの実装状況確認と機能検証を実施。Phase 0-2の実装
 2. **NPXサーバー初期化失敗**
    - MCP initializeリクエストのレスポンス待ちでタイムアウト
    - STDIOトランスポートの実装確認が必要
+
+3. **STDIOモード実装不完全**
+   - 標準出力への書き込みによるEPIPEエラー
+   - tools/listなどのMCPメソッドが未実装
+   - 設定ローダーでconsole.log使用による問題
 
 ### 3.2 中優先度
 1. **allowNetバリデーション**
@@ -90,6 +95,8 @@ Hatago MCP Hubの実装状況確認と機能検証を実施。Phase 0-2の実装
 ### 即座に対応が必要
 1. StreamableHTTPTransport.handleRequestメソッドの実装
 2. NPXサーバーの初期化シーケンス修正
+3. STDIOモードでの標準出力制御（console.log→stderr）
+4. MCPプロトコルメソッドの完全実装
 
 ### 今後の改善点
 1. エンドツーエンドテストの追加
@@ -121,10 +128,13 @@ curl -s http://localhost:3000/readyz | jq .
 node dist/cli/index.js npx list
 node dist/cli/index.js npx add <package> --id <id>
 
+# STDIOモード起動
+node dist/cli/index.js serve --mode stdio --config .hatago/test-stdio.jsonc
+
 # 設定生成
 node dist/cli/index.js init
 ```
 
 ## まとめ
 
-Hatago MCP Hubの基本的な構造とインフラストラクチャは正常に動作している。MCPプロトコルの実装部分（特にHTTPトランスポート）に追加作業が必要だが、全体的な完成度は高い。
+Hatago MCP Hubの基本的な構造とインフラストラクチャは正常に動作している。MCPプロトコルの実装部分（HTTPトランスポートおよびSTDIOモード）に追加作業が必要。STDIOモードは標準出力制御とMCPメソッド実装が必要で、現状では動作しない。
