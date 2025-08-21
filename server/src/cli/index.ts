@@ -218,34 +218,36 @@ program
 
         // Readinessチェックエンドポイント
         const {
-          HealthCheckManager,
+          createHealthCheckState,
+          registerHealthCheck,
+          runAllHealthChecks,
           createConfigCheck,
           createWorkspaceCheck,
           createHatagoDirectoryCheck,
           createMCPServersCheck,
           createSystemResourcesCheck,
         } = await import('../utils/health.js');
-        const healthManager = new HealthCheckManager(reqLogger);
+        
+        // ヘルスチェック状態を作成
+        let healthState = createHealthCheckState(reqLogger);
 
         // ヘルスチェックを登録
-        healthManager.register(createConfigCheck(() => !!config));
-        healthManager.register(createWorkspaceCheck(config.workspace));
-        healthManager.register(createHatagoDirectoryCheck());
-        healthManager.register(
-          createMCPServersCheck(() => {
-            // MCPハブから接続情報を取得
-            const connections = Array.from(hub.getConnections().entries());
-            return connections.map(([id, conn]) => ({
-              id,
-              state: conn.connected ? 'running' : 'stopped',
-              type: conn.type,
-            }));
-          }),
-        );
-        healthManager.register(createSystemResourcesCheck());
+        healthState = registerHealthCheck(healthState, createConfigCheck(() => !!config));
+        healthState = registerHealthCheck(healthState, createWorkspaceCheck(config.workspace));
+        healthState = registerHealthCheck(healthState, createHatagoDirectoryCheck());
+        healthState = registerHealthCheck(healthState, createMCPServersCheck(() => {
+          // MCPハブから接続情報を取得
+          const connections = Array.from(hub.getConnections().entries());
+          return connections.map(([id, conn]) => ({
+            id,
+            state: conn.connected ? 'running' : 'stopped',
+            type: conn.type,
+          }));
+        }));
+        healthState = registerHealthCheck(healthState, createSystemResourcesCheck());
 
         app.get('/readyz', async (c) => {
-          const status = await healthManager.runAll();
+          const status = await runAllHealthChecks(healthState);
           const httpStatus = status.status === 'ready' ? 200 : 503;
 
           return c.json(status, httpStatus);

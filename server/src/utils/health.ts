@@ -27,104 +27,140 @@ export interface HealthStatus {
 }
 
 /**
- * Health check manager
+ * Health check state interface
  */
-export class HealthCheckManager {
-  private checks = new Map<string, HealthCheck>();
-  private logger?: Logger;
+export interface HealthCheckState {
+  readonly checks: ReadonlyMap<string, HealthCheck>;
+  readonly logger?: Logger;
+}
 
-  constructor(logger?: Logger) {
-    this.logger = logger;
-  }
+/**
+ * Create initial health check state
+ */
+export function createHealthCheckState(logger?: Logger): HealthCheckState {
+  return {
+    checks: new Map(),
+    logger,
+  };
+}
 
-  /**
-   * Register a health check
-   */
-  register(check: HealthCheck): void {
-    this.checks.set(check.name, check);
-    this.logger?.debug(
-      { check: check.name, critical: check.critical },
-      'Health check registered',
-    );
-  }
+/**
+ * Register a health check (pure function)
+ */
+export function registerHealthCheck(
+  state: HealthCheckState,
+  check: HealthCheck,
+): HealthCheckState {
+  const newChecks = new Map(state.checks);
+  newChecks.set(check.name, check);
+  
+  state.logger?.debug(
+    { check: check.name, critical: check.critical },
+    'Health check registered',
+  );
 
-  /**
-   * Run all health checks
-   */
-  async runAll(): Promise<HealthStatus> {
-    const results: Record<string, HealthCheckResult> = {};
-    const errors: string[] = [];
-    let hasCriticalFailure = false;
+  return {
+    ...state,
+    checks: newChecks,
+  };
+}
 
-    for (const [name, check] of this.checks) {
-      try {
-        const result = await this.runCheck(check);
-        results[name] = result;
+/**
+ * Run all health checks (pure function)
+ */
+export async function runAllHealthChecks(state: HealthCheckState): Promise<HealthStatus> {
+  const results: Record<string, HealthCheckResult> = {};
+  const errors: string[] = [];
+  let hasCriticalFailure = false;
 
-        if (!result.ok) {
-          const errorMsg = `${name}: ${result.message || 'Check failed'}`;
-          if (check.critical) {
-            hasCriticalFailure = true;
-            errors.push(`[CRITICAL] ${errorMsg}`);
-          } else {
-            errors.push(errorMsg);
-          }
-        }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        results[name] = {
-          ok: false,
-          message: errorMsg,
-        };
+  for (const [name, check] of state.checks) {
+    try {
+      const result = await runSingleHealthCheck(check);
+      results[name] = result;
 
+      if (!result.ok) {
+        const errorMsg = `${name}: ${result.message || 'Check failed'}`;
         if (check.critical) {
           hasCriticalFailure = true;
-          errors.push(`[CRITICAL] ${name}: ${errorMsg}`);
+          errors.push(`[CRITICAL] ${errorMsg}`);
         } else {
-          errors.push(`${name}: ${errorMsg}`);
+          errors.push(errorMsg);
         }
       }
-    }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      results[name] = {
+        ok: false,
+        message: errorMsg,
+      };
 
-    const status: HealthStatus = {
-      status: hasCriticalFailure ? 'not ready' : 'ready',
-      timestamp: new Date().toISOString(),
-      checks: results,
-    };
-
-    if (errors.length > 0) {
-      status.errors = errors;
-    }
-
-    return status;
-  }
-
-  /**
-   * Run a single health check with timeout
-   */
-  private async runCheck(
-    check: HealthCheck,
-    timeoutMs = 5000,
-  ): Promise<HealthCheckResult> {
-    let timeoutId: NodeJS.Timeout | undefined;
-    const timeoutPromise = new Promise<HealthCheckResult>((resolve) => {
-      timeoutId = setTimeout(
-        () =>
-          resolve({
-            ok: false,
-            message: `Check timed out after ${timeoutMs}ms`,
-          }),
-        timeoutMs,
-      );
-    });
-
-    try {
-      return await Promise.race([check.check(), timeoutPromise]);
-    } finally {
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
+      if (check.critical) {
+        hasCriticalFailure = true;
+        errors.push(`[CRITICAL] ${name}: ${errorMsg}`);
+      } else {
+        errors.push(`${name}: ${errorMsg}`);
       }
     }
+  }
+
+  const status: HealthStatus = {
+    status: hasCriticalFailure ? 'not ready' : 'ready',
+    timestamp: new Date().toISOString(),
+    checks: results,
+  };
+
+  if (errors.length > 0) {
+    status.errors = errors;
+  }
+
+  return status;
+}
+
+/**
+ * Run a single health check with timeout (pure function)
+ */
+async function runSingleHealthCheck(
+  check: HealthCheck,
+  timeoutMs = 5000,
+): Promise<HealthCheckResult> {
+  let timeoutId: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<HealthCheckResult>((resolve) => {
+    timeoutId = setTimeout(
+      () =>
+        resolve({
+          ok: false,
+          message: `Check timed out after ${timeoutMs}ms`,
+        }),
+      timeoutMs,
+    );
+  });
+
+  try {
+    return await Promise.race([check.check(), timeoutPromise]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+/**
+ * Legacy HealthCheckManager class for backward compatibility
+ * @deprecated Use functional approach with createHealthCheckState, registerHealthCheck, and runAllHealthChecks
+ */
+export class HealthCheckManager {
+  private state: HealthCheckState;
+
+  constructor(logger?: Logger) {
+    this.state = createHealthCheckState(logger);
+  }
+
+  register(check: HealthCheck): void {
+    this.state = registerHealthCheck(this.state, check);
+  }
+
+  async runAll(): Promise<HealthStatus> {
+    return runAllHealthChecks(this.state);
   }
 }
 
