@@ -177,6 +177,34 @@ export class HatagoError extends Error {
   }
 
   /**
+   * Convert to JSON format
+   */
+  toJSON(): {
+    code: ErrorCode;
+    message: string;
+    severity: ErrorSeverity;
+    recoverable: boolean;
+    context?: ErrorContext;
+    stack?: string;
+  } {
+    return {
+      code: this.code,
+      message: this.message,
+      severity: this.severity,
+      recoverable: this.recoverable,
+      context: this.context,
+      stack: this.stack,
+    };
+  }
+
+  /**
+   * Convert to string representation
+   */
+  toString(): string {
+    return `[${this.code}] ${this.message}`;
+  }
+
+  /**
    * Convert to JSON-RPC error format
    */
   toJsonRpcError(): {
