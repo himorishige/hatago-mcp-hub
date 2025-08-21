@@ -208,25 +208,52 @@ export class NpxMcpServer extends EventEmitter {
   private async connectToServer(): Promise<void> {
     const _runtime = await this.runtime;
 
-    // Build the npx command
-    const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-    const args: string[] = [];
+    let command: string;
+    let args: string[] = [];
 
-    // Add flags for automatic and offline-preferred execution
-    args.push('-y'); // auto-confirm package installation
-    args.push('--prefer-offline'); // use cache when available
+    // Check if this is a generic command (LocalServerConfig disguised as NpxServerConfig)
+    // or an actual NPX server
+    const isActualNpx =
+      this.config.type === 'npx' &&
+      ![
+        'node',
+        'python',
+        'deno',
+        'bun',
+        'uvx',
+        'pipx',
+        'yarn',
+        'pnpm',
+      ].includes(this.config.package);
 
-    // Add version specifier if provided
-    if (this.config.version) {
-      args.push(`${this.config.package}@${this.config.version}`);
+    if (isActualNpx) {
+      // Build the npx command
+      command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+
+      // Add flags for automatic and offline-preferred execution
+      args.push('-y'); // auto-confirm package installation
+      args.push('--prefer-offline'); // use cache when available
+
+      // Add version specifier if provided
+      if (this.config.version) {
+        args.push(`${this.config.package}@${this.config.version}`);
+      } else {
+        args.push(this.config.package);
+      }
+
+      // Add additional arguments if provided
+      // User has full control over arguments
+      if (this.config.args && this.config.args.length > 0) {
+        args.push(...this.config.args);
+      }
     } else {
-      args.push(this.config.package);
-    }
+      // This is a generic command (e.g., node, python, etc.)
+      command = this.config.package; // package field contains the actual command
 
-    // Add additional arguments if provided
-    // User has full control over arguments
-    if (this.config.args && this.config.args.length > 0) {
-      args.push(...this.config.args);
+      // Add arguments directly
+      if (this.config.args && this.config.args.length > 0) {
+        args = [...this.config.args];
+      }
     }
 
     console.log(`🚀 Starting NPX server ${this.config.id}`);

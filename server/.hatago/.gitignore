@@ -21,3 +21,13 @@ secrets.policy.json
 # Temporary files
 *.tmp
 *.temp
+
+# hatago runtime
+workspaces/
+registries/
+sessions/
+*.log
+cli-registry.json
+
+# misc
+.DS_Store

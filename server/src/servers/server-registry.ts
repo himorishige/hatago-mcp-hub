@@ -9,6 +9,7 @@ import type {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type {
+  LocalServerConfig,
   NpxServerConfig,
   RemoteServerConfig,
   ServerConfig,
@@ -227,6 +228,80 @@ export class ServerRegistry extends EventEmitter {
   }
 
   /**
+   * Register a new Local server
+   */
+  async registerLocalServer(
+    config: LocalServerConfig,
+  ): Promise<RegisteredServer> {
+    // Check if server already exists
+    if (this.servers.has(config.id)) {
+      throw new Error(`Server ${config.id} is already registered`);
+    }
+
+    // Create workspace for the server
+    const workspace = await this.workspaceManager.createWorkspace(config.id);
+
+    // Update config with workspace directory
+    const serverConfig: LocalServerConfig = {
+      ...config,
+      workDir: workspace.path,
+    };
+
+    // Create server instance using NpxMcpServer (which can handle any command)
+    // We'll pass the config as if it were an NPX server but with a different command
+    const npxLikeConfig: NpxServerConfig = {
+      id: config.id,
+      type: 'npx',
+      package: config.command, // Use command as package name
+      args: config.args || [],
+      transport: config.transport || 'stdio',
+      start: config.start || 'lazy',
+      env: config.env,
+      workDir: workspace.path,
+      autoRestart: config.autoRestart,
+      maxRestarts: config.maxRestarts,
+      restartDelayMs: config.restartDelayMs,
+    };
+
+    const server = new NpxMcpServer(npxLikeConfig);
+
+    // Set up event listeners
+    this.setupServerListeners(server);
+
+    // Create registered server entry
+    const registered: RegisteredServer = {
+      id: config.id,
+      config: serverConfig,
+      instance: server,
+      state: ServerState.STOPPED,
+      registeredAt: new Date(),
+    };
+
+    // Register the server
+    this.servers.set(config.id, registered);
+
+    // Save to storage
+    if (this.storage) {
+      await this.storage.saveServerState(config.id, {
+        id: config.id,
+        type: config.type,
+        state: registered.state,
+        lastStartedAt: registered.state === 'running' ? new Date() : undefined,
+        discoveredTools: registered.tools,
+      });
+    }
+
+    // Auto-start if configured
+    if (this.config.autoStart) {
+      await this.startServer(config.id);
+    }
+
+    this.emit('server:registered', { serverId: config.id });
+
+    return registered;
+  }
+
+  /**
    * Register a server from config
    */
   async registerServer(config: ServerConfig): Promise<RegisteredServer> {
@@ -236,6 +311,10 @@ export class ServerRegistry extends EventEmitter {
 
     if (config.type === 'remote') {
       return this.registerRemoteServer(config as RemoteServerConfig);
+    }
+
+    if (config.type === 'local') {
+      return this.registerLocalServer(config as LocalServerConfig);
     }
 
     // For local servers, just register without instance (handled by MCP Hub directly)

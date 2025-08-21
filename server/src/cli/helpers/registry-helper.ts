@@ -3,8 +3,10 @@
  */
 
 import chalk from 'chalk';
+import { loadConfig } from '../../config/loader.js';
 import { ServerRegistry } from '../../servers/server-registry.js';
 import { WorkspaceManager } from '../../servers/workspace-manager.js';
+import { CliRegistryStorage } from '../../storage/cli-registry-storage.js';
 
 /**
  * Registry context for CLI operations
@@ -12,6 +14,7 @@ import { WorkspaceManager } from '../../servers/workspace-manager.js';
 export interface RegistryContext {
   workspaceManager: WorkspaceManager;
   registry: ServerRegistry;
+  cliStorage: CliRegistryStorage;
 }
 
 /**
@@ -27,10 +30,50 @@ export async function initializeRegistry(config?: {
   });
   await workspaceManager.initialize();
 
+  // Create CLI storage
+  const cliStorage = new CliRegistryStorage('.hatago/cli-registry.json');
+  await cliStorage.initialize();
+
+  // Create server registry
   const registry = new ServerRegistry(workspaceManager, config);
   await registry.initialize();
 
-  return { workspaceManager, registry };
+  // Load servers from CLI registry
+  const cliServers = await cliStorage.getServers();
+
+  // Load servers from config file
+  const configData = await loadConfig(undefined, { quiet: true });
+
+  // Register config servers first (they have priority)
+  for (const server of configData.servers) {
+    try {
+      await registry.registerServer(server);
+    } catch (_error) {
+      // Server might already be registered or other error
+      // Continue with next server
+    }
+  }
+
+  // Then register CLI servers (skip if name conflict)
+  for (const server of cliServers) {
+    try {
+      await registry.registerServer(server);
+    } catch (error) {
+      // Skip if server already exists (name conflict)
+      if (
+        error instanceof Error &&
+        error.message.includes('already registered')
+      ) {
+        console.warn(
+          chalk.yellow(
+            `⚠ CLI server '${server.id}' skipped (name conflict with config)`,
+          ),
+        );
+      }
+    }
+  }
+
+  return { workspaceManager, registry, cliStorage };
 }
 
 /**

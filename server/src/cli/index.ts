@@ -10,6 +10,7 @@ import { generateSampleConfig, loadConfig } from '../config/loader.js';
 import { McpHub } from '../core/mcp-hub.js';
 import { StreamableHTTPTransport } from '../hono-mcp/index.js';
 import { sanitizeLog } from '../utils/security.js';
+import { createMcpCommands } from './commands/mcp.js';
 import { createNpxCommands } from './commands/npx.js';
 import { createRemoteCommands } from './commands/remote.js';
 
@@ -117,6 +118,27 @@ program
       // ポートを上書き
       if (options.port && config.http) {
         config.http.port = parseInt(options.port, 10);
+      }
+
+      // Load CLI registry servers and merge with config
+      const { CliRegistryStorage } = await import(
+        '../storage/cli-registry-storage.js'
+      );
+      const cliStorage = new CliRegistryStorage('.hatago/cli-registry.json');
+      await cliStorage.initialize();
+      const cliServers = await cliStorage.getServers();
+
+      // Merge servers (config has priority)
+      const configServerIds = new Set(config.servers.map((s) => s.id));
+      for (const cliServer of cliServers) {
+        if (!configServerIds.has(cliServer.id)) {
+          config.servers.push(cliServer);
+          reqLogger.info(`Added CLI server: ${cliServer.id}`);
+        } else {
+          reqLogger.warn(
+            `CLI server '${cliServer.id}' skipped (name conflict with config)`,
+          );
+        }
       }
 
       // MCPハブを作成
@@ -1008,6 +1030,11 @@ program
       process.exit(1);
     }
   });
+
+/**
+ * mcpコマンド - Claude Code互換のMCPサーバー管理
+ */
+program.addCommand(createMcpCommands());
 
 /**
  * npxコマンド - NPX MCPサーバー管理
