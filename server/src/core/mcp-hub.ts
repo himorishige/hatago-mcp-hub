@@ -3,6 +3,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type {
   CallToolRequest,
   CallToolResult,
+  ListResourcesRequest,
+  ListResourcesResult,
+  ReadResourceRequest,
+  ReadResourceResult,
+  Resource,
+} from '@modelcontextprotocol/sdk/types.js';
+import {
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type {
   HatagoConfig,
@@ -16,6 +25,10 @@ import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
 import type { StdioTransport } from '../transport/stdio.js';
 import { createZodLikeSchema } from '../utils/json-to-zod.js';
+import {
+  createResourceRegistry,
+  type ResourceRegistry,
+} from './resource-registry.js';
 import { ToolRegistry } from './tool-registry.js';
 
 // MCPサーバー接続情報
@@ -41,6 +54,7 @@ export interface McpHubOptions {
 export class McpHub {
   private server: McpServer;
   private registry: ToolRegistry;
+  private resourceRegistry: ResourceRegistry;
   private connections = new Map<string, McpConnection>();
   private config: HatagoConfig;
   private initialized = false;
@@ -63,6 +77,18 @@ export class McpHub {
       namingConfig: this.config.toolNaming,
     });
 
+    // リソースレジストリを初期化
+    this.resourceRegistry = createResourceRegistry({
+      namingConfig: this.config.toolNaming, // リソースも同じ命名戦略を使用
+    });
+
+    // リソース機能を登録（transportに接続する前に行う必要がある）
+    this.server.server.registerCapabilities({
+      resources: {
+        listChanged: true,
+      },
+    });
+
     // MCPサーバーにツールハンドラーを設定
     this.setupToolHandlers();
   }
@@ -77,6 +103,69 @@ export class McpHub {
   }
 
   /**
+   * リソース関連のハンドラーを設定
+   */
+  private setupResourceHandlers(): void {
+    // resources/listハンドラーを設定
+    this.server.server.setRequestHandler(
+      ListResourcesRequestSchema,
+      async (_request: ListResourcesRequest): Promise<ListResourcesResult> => {
+        const allResources = this.resourceRegistry.getAllResources();
+
+        // TODO: ページネーション対応（cursorパラメータ）
+        return {
+          resources: allResources,
+        };
+      },
+    );
+
+    // resources/readハンドラーを設定
+    this.server.server.setRequestHandler(
+      ReadResourceRequestSchema,
+      async (request: ReadResourceRequest): Promise<ReadResourceResult> => {
+        const { uri } = request.params;
+
+        // リソースを解決
+        const resolved = this.resourceRegistry.resolveResource(uri);
+        if (!resolved) {
+          throw new Error(`Resource not found: ${uri}`);
+        }
+
+        const { serverId, originalUri } = resolved;
+
+        // サーバー接続を取得
+        const connection = this.connections.get(serverId);
+        if (!connection?.connected) {
+          throw new Error(`Server not connected: ${serverId}`);
+        }
+
+        // 接続タイプに応じてリソースを読み取り
+        if (connection.type === 'local' && connection.client) {
+          // ローカルサーバーの場合
+          const result = await connection.client.readResource({
+            uri: originalUri,
+          });
+          return result;
+        } else if (connection.type === 'npx' && connection.npxServer) {
+          // NPXサーバーの場合
+          const result = await connection.npxServer.readResource(originalUri);
+          return result as ReadResourceResult;
+        } else if (connection.type === 'remote' && connection.remoteServer) {
+          // リモートサーバーの場合
+          const result =
+            await connection.remoteServer.readResource(originalUri);
+          return result as ReadResourceResult;
+        } else {
+          throw new Error(`Unsupported connection type: ${connection.type}`);
+        }
+      },
+    );
+
+    // resources/templates/listハンドラーを設定（将来対応）
+    // this.server.server.setRequestHandler('resources/templates/list', ...);
+  }
+
+  /**
    * MCPハブを初期化
    */
   async initialize(): Promise<void> {
@@ -85,6 +174,9 @@ export class McpHub {
     }
 
     console.log('Initializing MCP Hub...');
+
+    // リソースハンドラーを設定（initializeの時点で行う）
+    this.setupResourceHandlers();
 
     // NPXサーバーやリモートサーバーサポートの初期化
     const hasNpxServers = this.config.servers.some((s) => s.type === 'npx');
@@ -297,9 +389,13 @@ export class McpHub {
         // Started イベント
         npxServer.on('started', async ({ serverId: startedId }) => {
           if (startedId === serverId) {
-            console.log(`NPX server ${serverId} started, discovering tools...`);
+            console.log(
+              `NPX server ${serverId} started, discovering tools and resources...`,
+            );
             // ツールを再発見
             await this.refreshNpxServerTools(serverId);
+            // リソースを再発見
+            await this.refreshNpxServerResources(serverId);
           }
         });
 
@@ -309,6 +405,16 @@ export class McpHub {
           async ({ serverId: discoveredId }) => {
             if (discoveredId === serverId) {
               await this.updateHubTools();
+            }
+          },
+        );
+
+        // リソースの発見イベント
+        this.serverRegistry.on(
+          'server:resources-discovered',
+          async ({ serverId: discoveredId }) => {
+            if (discoveredId === serverId) {
+              await this.updateHubResources();
             }
           },
         );
@@ -327,6 +433,8 @@ export class McpHub {
 
         // ツールを取得して登録
         await this.refreshNpxServerTools(serverId);
+        // リソースを取得して登録
+        await this.refreshNpxServerResources(serverId);
 
         console.log(`Connected to NPX server ${serverId}`);
       } else if (type === 'remote') {
@@ -347,10 +455,12 @@ export class McpHub {
         remoteServer.on('started', async ({ serverId: startedId }) => {
           if (startedId === serverId) {
             console.log(
-              `Remote server ${serverId} started, discovering tools...`,
+              `Remote server ${serverId} started, discovering tools and resources...`,
             );
             // ツールを再発見
             await this.refreshRemoteServerTools(serverId);
+            // リソースを再発見
+            await this.refreshRemoteServerResources(serverId);
           }
         });
 
@@ -360,6 +470,16 @@ export class McpHub {
           async ({ serverId: discoveredId }) => {
             if (discoveredId === serverId) {
               await this.updateHubTools();
+            }
+          },
+        );
+
+        // リソースの発見イベント
+        this.serverRegistry.on(
+          'server:resources-discovered',
+          async ({ serverId: discoveredId }) => {
+            if (discoveredId === serverId) {
+              await this.updateHubResources();
             }
           },
         );
@@ -381,6 +501,8 @@ export class McpHub {
 
         // ツールを取得して登録（リモートサーバーの場合はRegistryから取得）
         await this.refreshRemoteServerTools(serverId);
+        // リソースを取得して登録
+        await this.refreshRemoteServerResources(serverId);
 
         console.log(`Connected to remote server ${serverId}`);
       } else {
@@ -555,6 +677,152 @@ export class McpHub {
     } catch (error) {
       console.error(
         `Failed to refresh tools for remote server ${serverId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * NPXサーバーのリソースを更新
+   */
+  private async refreshNpxServerResources(serverId: string): Promise<void> {
+    if (!this.serverRegistry) {
+      return;
+    }
+
+    const registered = this.serverRegistry.getServer(serverId);
+    if (!registered?.instance) {
+      return;
+    }
+
+    try {
+      const npxServer = registered.instance as NpxMcpServer;
+      const resources = npxServer.getResources();
+
+      console.log(`NPX Server ${serverId} has ${resources.length} resources`);
+
+      // ServerRegistryにリソースを登録
+      this.serverRegistry.registerServerResources(serverId, resources);
+
+      // レジストリに登録
+      this.resourceRegistry.registerServerResources(serverId, resources);
+
+      // ハブのリソースを更新
+      this.updateHubResources();
+    } catch (error) {
+      console.error(
+        `Failed to refresh resources for NPX server ${serverId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * リモートサーバーのリソースを更新
+   */
+  private async refreshRemoteServerResources(serverId: string): Promise<void> {
+    console.log(`[DEBUG] refreshRemoteServerResources called for ${serverId}`);
+    if (!this.serverRegistry) {
+      return;
+    }
+
+    const registered = this.serverRegistry.getServer(serverId);
+    if (!registered?.instance) {
+      return;
+    }
+
+    try {
+      const remoteServer = registered.instance as RemoteMcpServer;
+
+      // リモートサーバーから直接リソースを取得
+      const resources = await remoteServer.discoverResources();
+      console.log(
+        `[DEBUG] Discovered ${resources.length} resources from ${serverId}`,
+      );
+
+      // ServerRegistryにリソースを登録
+      this.serverRegistry.registerServerResources(
+        serverId,
+        resources as Resource[],
+      );
+
+      // レジストリに登録
+      this.resourceRegistry.registerServerResources(
+        serverId,
+        resources as Resource[],
+      );
+
+      // ハブのリソースを更新
+      this.updateHubResources();
+    } catch (error) {
+      console.error(
+        `[DEBUG] Failed to discover resources for ${serverId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * ハブのリソースを更新
+   */
+  private updateHubResources(): void {
+    const resources = this.resourceRegistry.getAllResources();
+    console.log(`Hub now has ${resources.length} total resources`);
+
+    // Debug: Log the first resource to see its structure
+    if (resources.length > 0) {
+      console.log(
+        'First resource structure:',
+        JSON.stringify(resources[0], null, 2),
+      );
+    }
+
+    // Notify clients that resource list has changed (if capability is registered)
+    this.notifyResourcesChanged();
+  }
+
+  /**
+   * Notify clients that the resource list has changed
+   * This implements the MCP resources/list_changed notification
+   */
+  private notifyResourcesChanged(): void {
+    // Don't send notifications during startup or if no client is connected
+    // This prevents errors when NPX servers discover resources before a client connects
+    if (!this.initialized) {
+      return;
+    }
+
+    try {
+      // Check if server is connected before sending notification
+      if (!this.server?.server) {
+        return;
+      }
+
+      // Check if we have registered the listChanged capability
+      const capabilities = this.server.server.getCapabilities();
+      if (capabilities?.resources?.listChanged) {
+        // Wrap in try-catch to handle "Not connected" errors gracefully
+        try {
+          this.server.server.notification({
+            method: 'notifications/resources/list_changed',
+            params: {},
+          });
+          console.log('Sent resources/list_changed notification');
+        } catch (notificationError) {
+          // Silently ignore "Not connected" errors - this is expected during startup
+          // or when resources are discovered before client connection
+          const errorMessage = String(notificationError);
+          if (!errorMessage.includes('Not connected')) {
+            console.error(
+              'Failed to send resources/list_changed notification:',
+              notificationError,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error(
+        'Failed to check resources/list_changed capability:',
         error,
       );
     }
@@ -800,6 +1068,10 @@ export class McpHub {
       await this.disconnectServer(serverId);
     }
 
+    // レジストリのクリーンアップ
+    this.registry.clear();
+    this.resourceRegistry.clear();
+
     // NPXサーバー関連のシャットダウン
     if (this.serverRegistry) {
       await this.serverRegistry.shutdown();
@@ -807,6 +1079,10 @@ export class McpHub {
     if (this.workspaceManager) {
       await this.workspaceManager.shutdown();
     }
+
+    // 接続マップをクリア
+    this.connections.clear();
+    this.registeredTools.clear();
 
     console.log('MCP Hub shutdown complete');
   }

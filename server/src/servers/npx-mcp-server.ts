@@ -5,7 +5,11 @@
 import { EventEmitter } from 'node:events';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type {
+  ReadResourceResult,
+  Resource,
+  Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 import type { NpxServerConfig } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
 
@@ -38,6 +42,7 @@ export class NpxMcpServer extends EventEmitter {
   private startPromise: Promise<void> | null = null;
   private stopPromise: Promise<void> | null = null;
   private tools: Tool[] = []; // Store discovered tools
+  private resources: Resource[] = []; // Store discovered resources
 
   // Default configuration with separated timeouts
   private readonly defaults = {
@@ -78,6 +83,13 @@ export class NpxMcpServer extends EventEmitter {
    */
   getTools(): Tool[] {
     return this.tools;
+  }
+
+  /**
+   * Get discovered resources
+   */
+  getResources(): Resource[] {
+    return this.resources;
   }
 
   /**
@@ -142,6 +154,9 @@ export class NpxMcpServer extends EventEmitter {
 
       // Discover tools
       await this.discoverTools();
+
+      // Discover resources (optional, don't fail if not supported)
+      await this.discoverResources();
 
       // Transition to RUNNING
       this.state = ServerState.RUNNING;
@@ -256,6 +271,47 @@ export class NpxMcpServer extends EventEmitter {
       console.error(`Failed to discover tools for ${this.config.id}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Discover available resources from the server
+   */
+  private async discoverResources(): Promise<void> {
+    if (!this.client) {
+      throw new Error('Client not connected');
+    }
+
+    try {
+      console.log(`  📚 Discovering resources for ${this.config.id}...`);
+      const response = await this.client.listResources();
+      this.resources = response.resources;
+      console.log(
+        `  ✅ Found ${this.resources.length} resources for ${this.config.id}`,
+      );
+
+      // Emit resources discovered event
+      this.emit('resources-discovered', {
+        serverId: this.config.id,
+        resources: this.resources,
+      });
+    } catch (error) {
+      console.error(
+        `Failed to discover resources for ${this.config.id}:`,
+        error,
+      );
+      // Don't throw - resources are optional
+      this.resources = [];
+    }
+  }
+
+  /**
+   * Read a specific resource
+   */
+  async readResource(uri: string): Promise<ReadResourceResult> {
+    if (!this.client) {
+      throw new Error('Client not connected');
+    }
+    return await this.client.readResource({ uri });
   }
 
   /**
