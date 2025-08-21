@@ -1,26 +1,26 @@
-# allowNet Configuration Guide
+# allowNet 設定ガイド
 
-## Overview
+## 概要
 
-The `allowNet` configuration in Hatago Hub controls which network destinations are allowed for remote MCP servers. This is a security feature to prevent unauthorized network access.
+Hatago Hubの`allowNet`設定は、リモートMCPサーバーが接続可能なネットワーク宛先を制御します。これは不正なネットワークアクセスを防ぐためのセキュリティ機能です。
 
-## Important Notes
+## 重要な注意事項
 
-⚠️ **The `allowNet` field expects hostnames, not full URLs.**
+⚠️ **`allowNet`フィールドには完全なURLではなく、ホスト名を指定してください。**
 
-## Configuration Format
+## 設定フォーマット
 
 ```json
 {
   "security": {
-    "allowNet": ["hostname1", "hostname2", "..."]
+    "allowNet": ["ホスト名1", "ホスト名2", "..."]
   }
 }
 ```
 
-## Examples
+## 設定例
 
-### Allow Specific Hosts
+### 特定のホストを許可
 
 ```json
 {
@@ -35,7 +35,7 @@ The `allowNet` configuration in Hatago Hub controls which network destinations a
 }
 ```
 
-### Allow All Hosts (Not Recommended for Production)
+### すべてのホストを許可（本番環境では非推奨）
 
 ```json
 {
@@ -45,9 +45,9 @@ The `allowNet` configuration in Hatago Hub controls which network destinations a
 }
 ```
 
-### Common MCP Server Hosts
+### 一般的なMCPサーバーのホスト名
 
-Here are common hostnames used by popular MCP servers:
+人気のあるMCPサーバーで使用される一般的なホスト名：
 
 ```json
 {
@@ -59,44 +59,45 @@ Here are common hostnames used by popular MCP servers:
       "mcp.deepwiki.com",         // DeepWiki MCP
       "api.slack.com",            // Slack MCP Server
       "www.googleapis.com",       // Google Drive MCP
-      "graph.microsoft.com"       // Microsoft Graph MCP
+      "graph.microsoft.com",      // Microsoft Graph MCP
+      "localhost"                 // ローカルテスト用
     ]
   }
 }
 ```
 
-## How It Works
+## 動作の仕組み
 
-1. When a remote MCP server is configured with a URL like `https://api.github.com/mcp`
-2. Hatago extracts the hostname: `api.github.com`
-3. It checks if this hostname is in the `allowNet` list
-4. If not found and not `*`, the connection is blocked
+1. リモートMCPサーバーがURL（例：`https://api.github.com/mcp`）で設定されている場合
+2. Hatagoはホスト名を抽出：`api.github.com`
+3. このホスト名が`allowNet`リストに含まれているか確認
+4. 見つからず、かつ`*`でない場合、接続はブロックされます
 
-## Validation Examples
+## 検証例
 
-| URL in Config | Required allowNet Entry | Valid? |
-|--------------|-------------------------|---------|
+| 設定のURL | 必要なallowNetエントリ | 有効？ |
+|----------|----------------------|--------|
 | `https://api.github.com/mcp` | `api.github.com` | ✅ |
 | `https://api.github.com/mcp` | `github.com` | ❌ |
 | `http://localhost:3000/mcp` | `localhost` | ✅ |
 | `https://192.168.1.100:8080/mcp` | `192.168.1.100` | ✅ |
-| Any URL | `*` | ✅ |
+| 任意のURL | `*` | ✅ |
 
-## Security Best Practices
+## セキュリティのベストプラクティス
 
-1. **Be Specific**: Only allow the exact hosts you need
-2. **Avoid Wildcards**: Never use `*` in production environments
-3. **Use HTTPS**: Always prefer HTTPS URLs for remote servers
-4. **Regular Review**: Periodically review and remove unused hosts
-5. **Environment-Specific**: Use different allowNet lists for dev/staging/production
+1. **具体的に指定**: 必要なホストのみを正確に許可
+2. **ワイルドカードを避ける**: 本番環境では`*`を使用しない
+3. **HTTPSを使用**: リモートサーバーには常にHTTPS URLを優先
+4. **定期的なレビュー**: 使用していないホストを定期的に確認・削除
+5. **環境別設定**: 開発/ステージング/本番で異なるallowNetリストを使用
 
-## Troubleshooting
+## トラブルシューティング
 
-### Error: "Invalid host"
+### エラー: "Invalid host"
 
-This means you've configured a URL instead of a hostname:
+URLをホスト名の代わりに設定している場合に発生：
 
-❌ **Wrong:**
+❌ **誤り:**
 ```json
 {
   "security": {
@@ -105,7 +106,7 @@ This means you've configured a URL instead of a hostname:
 }
 ```
 
-✅ **Correct:**
+✅ **正しい:**
 ```json
 {
   "security": {
@@ -114,16 +115,16 @@ This means you've configured a URL instead of a hostname:
 }
 ```
 
-### Error: "Host not allowed"
+### エラー: "Host not allowed"
 
-The hostname is not in your allowNet list. Check:
-1. The exact hostname in the error message
-2. Add it to your allowNet configuration
-3. Restart the Hatago server
+ホスト名がallowNetリストに含まれていません。確認事項：
+1. エラーメッセージに表示される正確なホスト名を確認
+2. allowNet設定に追加
+3. Hatagoサーバーを再起動
 
-## Integration with Remote Servers
+## リモートサーバーとの統合
 
-When configuring remote servers, ensure the hostnames are allowed:
+リモートサーバーを設定する際は、ホスト名が許可されていることを確認：
 
 ```json
 {
@@ -133,32 +134,32 @@ When configuring remote servers, ensure the hostnames are allowed:
       "api.service.com"
     ]
   },
-  "servers": {
-    "example": {
+  "servers": [
+    {
       "id": "example",
       "type": "remote",
       "url": "https://mcp.example.com/sse",
-      "transport": "sse"
+      "transport": "http"
     },
-    "api": {
+    {
       "id": "api",
       "type": "remote", 
       "url": "https://api.service.com/mcp",
       "transport": "http"
     }
-  }
+  ]
 }
 ```
 
-## Default Behavior
+## デフォルトの動作
 
-- If `allowNet` is not specified, no remote connections are allowed
-- Empty array `[]` means no hosts are allowed
-- Array with `["*"]` allows all hosts (use with caution)
+- `allowNet`が指定されていない場合、リモート接続は許可されません
+- 空の配列`[]`はホストが許可されないことを意味します
+- `["*"]`を含む配列はすべてのホストを許可します（注意して使用）
 
-## Environment Variables
+## 環境変数
 
-You can also use environment variables for dynamic configuration:
+動的な設定のために環境変数も使用できます：
 
 ```json
 {
@@ -168,8 +169,47 @@ You can also use environment variables for dynamic configuration:
 }
 ```
 
-Then set:
+環境変数の設定：
 ```bash
 export ALLOWED_HOST_1=api.github.com
 export ALLOWED_HOST_2=mcp.deepwiki.com
 ```
+
+## CLIでの設定
+
+CLIコマンドでリモートサーバーを追加する場合、自動的にホスト名が抽出されますが、allowNetへの手動追加が必要です：
+
+```bash
+# リモートサーバーを追加
+hatago mcp add github --transport http -- https://api.github.com/mcp
+
+# 設定ファイルでallowNetを更新
+# .hatago/config.jsonc
+{
+  "security": {
+    "allowNet": ["api.github.com"]
+  }
+}
+```
+
+## 関連ドキュメント
+
+- [セキュリティガイド](../../docs/security.md) - Hatagoのセキュリティ機能の詳細
+- [MCP統合ガイド](../../docs/mcp-integration.md) - MCPサーバーの統合方法
+- [実装状況](../../docs/implementation-status.md) - セキュリティ機能の実装状況
+
+## よくある質問
+
+### Q: ローカル開発でallowNetを無効にできますか？
+
+A: 開発環境では`["*"]`を使用できますが、本番環境では必ず具体的なホスト名を指定してください。
+
+### Q: サブドメインのワイルドカードは使用できますか？
+
+A: 現在はサポートされていません。各サブドメインを個別に指定する必要があります。
+
+### Q: IPアドレスの範囲指定は可能ですか？
+
+A: 現在はサポートされていません。個別のIPアドレスを指定してください。
+
+……まあ、セキュリティの設定も魔法の防御結界みたいなものだね。

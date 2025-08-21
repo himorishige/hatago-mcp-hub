@@ -1,6 +1,10 @@
-# Hatago MCP Integration Guide
+# 📚 Hatago MCP Integration Guide（ユーザー向け）
 
 Hatagoを既存プロジェクトでMCPサーバーとして使用する方法について説明します。
+
+> **Note**: このドキュメントはユーザー向けです。開発者向け情報は以下を参照してください：
+> - [Implementation Status](./implementation-status.md) - 実装状況
+> - [Remaining Tasks](./remaining-tasks.md) - 残存タスク一覧
 
 ## 特徴
 

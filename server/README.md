@@ -94,6 +94,17 @@ hatago npx start filesystem
 hatago npx stop filesystem
 ```
 
+## 📚 Documentation
+
+### ユーザー向け
+- [MCP統合ガイド](../docs/mcp-integration.md) - プロジェクトへの統合方法
+- [README](README.md) - 基本的な使い方（このドキュメント）
+
+### 開発者向け  
+- [実装状況](../docs/implementation-status.md) - 機能の実装状況
+- [残存タスク](../docs/remaining-tasks.md) - 技術的課題と改善項目
+- [テストガイド](docs/testing-guide.md) - テスト環境構築
+
 ## 🔐 Security & Environment Variables
 
 Hatagoは以下の環境変数でセキュリティと動作をカスタマイズできます：

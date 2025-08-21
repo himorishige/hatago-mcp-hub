@@ -1,8 +1,10 @@
-# 🏮 Hatago MCP Hub 実装状況 (v0.0.3)
+# 🏮 Hatago MCP Hub 実装状況 (v0.0.6)
 
 実装日: 2025-08-19  
 基準仕様: docs/spec-v0.0.1.md  
-最終更新: 2025-08-19 (プロファイル機能追加)
+最終更新: 2025-08-21 (CLI persistence, コード改善)
+
+> **Note**: このドキュメントは開発者向けです。ユーザー向けガイドは [MCP Integration Guide](./mcp-integration.md) を参照してください。
 
 ## 基本機能の実装状況
 
@@ -131,6 +133,12 @@
   - [x] `hatago secret list` - 一覧表示
   - [x] `hatago secret export/import` - エクスポート/インポート
   - [x] `hatago secret rotate` - キーローテーション
+
+### ✅ 実装済み（v0.0.6で追加 - Claude Code互換）
+- [x] `hatago mcp add <name> -- <command> [args...]` - MCPサーバー追加
+- [x] `hatago mcp remove <name>` - MCPサーバー削除  
+- [x] `hatago mcp list` - MCPサーバー一覧
+- [x] CLI Registryによる設定の永続化（.hatago/cli-registry.json）
 
 ### ⚠️ 未実装
 - [ ] `hatago inspect` - Inspector 起動
@@ -301,6 +309,20 @@
 - [x] **ステップ数制限**: 最大10,000ステップ
 - [x] **非同期リセット**: setImmediateによる安全な継続
 
+## v0.0.6 新機能（2025-08-21）
+
+### ✅ Claude Code互換CLIコマンド
+- [x] **`hatago mcp` コマンド群**: Claude Codeと同じ構文でMCPサーバー管理
+- [x] **CLI Registry永続化**: .hatago/cli-registry.jsonで設定を保存
+- [x] **設定とCLIの優先順位**: 設定ファイル > CLIレジストリ
+- [x] **Git共有対応**: cli-registry.jsonをコミット可能
+
+### ✅ コード品質改善
+- [x] **JSON検証強化**: Zodスキーマによる型安全な検証
+- [x] **コード重複削減**: Factory patternでCLIコマンドをリファクタリング
+- [x] **ファイルロック実装**: 並行アクセス時の安全性確保
+- [x] **型安全性向上**: any型の削減、non-null assertionの改善
+
 ## 最終評価
 
 ### 全体的な実装完了度: **98%**
@@ -312,12 +334,18 @@
 - **補足要件**: 95% 完了（暗号化実装済み、メトリクス・レート制限が未実装）
 - **v0.0.2改善**: 100% 完了
 - **v0.0.3新機能**: 100% 完了
+- **v0.0.6改善**: 100% 完了
 
 ### 実用性評価: **非常に高**
 - Claude Code での NPX/リモート MCP サーバー管理が完全実装
+- Claude Code互換CLIコマンドで使いやすさ向上
 - MCP最新仕様（SSE非推奨）に完全準拠
 - メモリリーク対策済みで長時間稼働に対応
 - セキュリティ強化により本番環境での使用も可能
 - コードベースがシンプル化され、メンテナンス性が向上
 - プロファイル機能により複数AIツール・プロジェクトの同時利用が可能
 - セキュアなシークレット管理により本番環境での利用も安心
+
+## 残存課題
+
+詳細は [remaining-tasks.md](./remaining-tasks.md) を参照してください。
