@@ -4,34 +4,36 @@
 
 import type { RegistryStorage, ServerState } from './registry-storage.js';
 
-export class MemoryRegistryStorage implements RegistryStorage {
-  private states: Map<string, ServerState> = new Map();
+export function createMemoryRegistryStorage(): RegistryStorage {
+  const states: Map<string, ServerState> = new Map();
 
-  async init(): Promise<void> {
-    // No initialization needed for memory storage
-  }
+  return {
+    async init(): Promise<void> {
+      // No initialization needed for memory storage
+    },
 
-  async saveServerState(serverId: string, state: ServerState): Promise<void> {
-    this.states.set(serverId, state);
-  }
+    async saveServerState(serverId: string, state: ServerState): Promise<void> {
+      states.set(serverId, state);
+    },
 
-  async getServerState(serverId: string): Promise<ServerState | null> {
-    return this.states.get(serverId) || null;
-  }
+    async getServerState(serverId: string): Promise<ServerState | null> {
+      return states.get(serverId) || null;
+    },
 
-  async getAllServerStates(): Promise<Map<string, ServerState>> {
-    return new Map(this.states);
-  }
+    async getAllServerStates(): Promise<Map<string, ServerState>> {
+      return new Map(states);
+    },
 
-  async deleteServerState(serverId: string): Promise<void> {
-    this.states.delete(serverId);
-  }
+    async deleteServerState(serverId: string): Promise<void> {
+      states.delete(serverId);
+    },
 
-  async clear(): Promise<void> {
-    this.states.clear();
-  }
+    async clear(): Promise<void> {
+      states.clear();
+    },
 
-  async close(): Promise<void> {
-    // No cleanup needed for memory storage
-  }
+    async close(): Promise<void> {
+      // No cleanup needed for memory storage
+    },
+  };
 }
