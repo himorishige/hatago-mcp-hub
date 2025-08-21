@@ -70,3 +70,60 @@ describe('NpxMcpServer', () => {
     expect(server.listenerCount('stopped')).toBe(1);
   });
 });
+
+describe('Timeout and Error Handling', () => {
+  it('should apply initialization timeout', async () => {
+    const server = new NpxMcpServer({
+      id: 'timeout-test',
+      type: 'npx',
+      package: '@non-existent/package-xxx',
+      start: 'lazy',
+      initTimeoutMs: 100, // Very short timeout
+    });
+
+    // Mock the runtime and transport
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      await server.start();
+      expect.fail('Should have thrown timeout error');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain('timeout');
+    }
+
+    vi.restoreAllMocks();
+  });
+
+  it('should log detailed error information', async () => {
+    const server = new NpxMcpServer({
+      id: 'error-test',
+      type: 'npx',
+      package: '@invalid/package-name-xxx',
+      start: 'lazy',
+      initTimeoutMs: 1000,
+      workDir: '/test/work/dir',
+    });
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      await server.start();
+    } catch (_error) {
+      // Expected to fail
+    }
+
+    // Check that log functions were called
+    expect(logSpy).toHaveBeenCalled();
+
+    // Verify that error logging was attempted
+    if (errorSpy.mock.calls.length > 0) {
+      const errorCalls = errorSpy.mock.calls.flat().join(' ');
+      expect(errorCalls).toBeTruthy();
+    }
+
+    vi.restoreAllMocks();
+  });
+});

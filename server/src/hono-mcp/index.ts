@@ -59,7 +59,8 @@ export class StreamableHTTPTransport implements Transport {
 
   constructor(options?: StreamableHTTPServerTransportOptions) {
     this.#sessionIdGenerator = options?.sessionIdGenerator;
-    this.#enableJsonResponse = options?.enableJsonResponse ?? false;
+    // Enable JSON response mode by default since SSE is deprecated
+    this.#enableJsonResponse = options?.enableJsonResponse ?? true;
     this.#eventStore = options?.eventStore;
     this.#onsessioninitialized = options?.onsessioninitialized;
   }
@@ -563,7 +564,8 @@ export class StreamableHTTPTransport implements Transport {
           response.ctx.json(responses.length === 1 ? responses[0] : responses);
           return;
         }
-        response.stream?.close();
+        // Streaming response is not supported in the current implementation
+        // All responses are sent as JSON when enableJsonResponse is true
         // Clean up
         for (const id of relatedIds) {
           this.#requestResponseMap.delete(id);

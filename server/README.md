@@ -119,7 +119,9 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
 4. `.hatago/config.jsonc`
 5. `~/.hatago/config.jsonc` (ユーザーホーム)
 
-### 最小設定例
+### 設定例
+
+#### 最小設定例
 
 `.hatago.json`:
 ```json
@@ -132,6 +134,93 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
       "transport": "sse"
     }
   ]
+}
+```
+
+#### NPXサーバー設定例
+
+```json
+{
+  "servers": {
+    "filesystem": {
+      "id": "filesystem",
+      "type": "npx",
+      "package": "@modelcontextprotocol/server-filesystem",
+      "start": "immediate",
+      "initTimeoutMs": 30000,
+      "args": ["/Users/username/projects"]
+    },
+    "github": {
+      "id": "github",
+      "type": "npx",
+      "package": "@modelcontextprotocol/server-github",
+      "start": "lazy",
+      "args": ["stdio"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+#### セキュリティ設定例
+
+```json
+{
+  "security": {
+    "allowNet": [
+      "api.github.com",
+      "mcp.deepwiki.com",
+      "localhost"
+    ],
+    "maskedEnvVars": ["GITHUB_TOKEN", "API_KEY", "SECRET"]
+  },
+  "servers": {
+    "remote-api": {
+      "id": "remote-api",
+      "type": "remote",
+      "url": "https://api.example.com/mcp",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer ${API_KEY}"
+      }
+    }
+  }
+}
+```
+
+#### 完全な設定例
+
+```json
+{
+  "http": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "session": {
+    "ttl": 3600000,
+    "maxSessions": 100
+  },
+  "security": {
+    "allowNet": ["*"]
+  },
+  "servers": {
+    "filesystem": {
+      "id": "filesystem",
+      "type": "npx",
+      "package": "@modelcontextprotocol/server-filesystem",
+      "start": "immediate",
+      "initTimeoutMs": 30000
+    },
+    "remote": {
+      "id": "remote",
+      "type": "remote",
+      "url": "https://mcp.example.com/sse",
+      "transport": "sse",
+      "start": "lazy"
+    }
+  }
 }
 ```
 
@@ -148,6 +237,38 @@ pnpm build
 # テスト
 pnpm test
 ```
+
+## 🧪 Testing
+
+### Local Testing
+
+```bash
+# Run unit tests
+pnpm test
+
+# Run tests with coverage
+pnpm coverage
+
+# Run E2E tests with mock server
+pnpm test:e2e
+```
+
+### Testing with Mock MCP Server
+
+A mock MCP server is provided for testing:
+
+```bash
+# Start mock server (port 4001)
+pnpm tsx test/fixtures/mock-mcp-server.ts
+
+# In another terminal, add it to your config
+hatago remote add http://localhost:4001/mcp --id mock-test
+
+# Test the connection
+hatago remote test mock-test
+```
+
+For detailed testing instructions, see [Testing Guide](./docs/testing-guide.md).
 
 ## 📄 License
 

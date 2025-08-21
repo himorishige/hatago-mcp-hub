@@ -41,6 +41,26 @@ export function createNpxCommands(): Command {
     .option('-a, --args <args...>', 'Additional arguments')
     .option('--no-auto-restart', 'Disable automatic restart')
     .option('--max-restarts <number>', 'Maximum restart attempts', '3')
+    .addHelpText(
+      'after',
+      `
+Examples:
+  # File system server (requires directory path)
+  hatago npx add @modelcontextprotocol/server-filesystem --args "/path/to/dir"
+  
+  # GitHub server (requires stdio argument)
+  hatago npx add @modelcontextprotocol/server-github --args "stdio"
+  
+  # SQLite server (requires database file)
+  hatago npx add @modelcontextprotocol/server-sqlite --args "database.db"
+  
+  # Everything server (requires stdio)
+  hatago npx add @modelcontextprotocol/server-everything --args "stdio"
+  
+  # With custom ID and version
+  hatago npx add @modelcontextprotocol/server-puppeteer --id browser --version latest --args "stdio"
+`,
+    )
     .action(async (packageName: string, options: Record<string, unknown>) => {
       try {
         const config = AddNpxSchema.parse({

@@ -81,6 +81,20 @@
           "intervalMs": 5000
         }
       }
+    },
+    
+    // Local test server example (for development/testing)
+    "local-mock": {
+      // Connect to locally running mock MCP server
+      "url": "http://localhost:4001/mcp",
+      
+      "hatagoOptions": {
+        "start": "lazy",
+        "transport": "http",  // Use HTTP transport
+        "tools": {
+          "prefix": "mock"  // Prefix all tools with "mock_"
+        }
+      }
     }
   },
   

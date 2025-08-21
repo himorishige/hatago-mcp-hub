@@ -159,7 +159,20 @@ export class NpxMcpServer extends EventEmitter {
     this.emit('starting', { serverId: this.config.id });
 
     try {
-      await this.connectToServer();
+      // Set up initialization timeout
+      const initTimeoutMs = this.config.initTimeoutMs || 30000; // Default 30 seconds
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              `NPX server ${this.config.id} initialization timeout after ${initTimeoutMs}ms`,
+            ),
+          );
+        }, initTimeoutMs);
+      });
+
+      // Race between connection and timeout
+      await Promise.race([this.connectToServer(), timeoutPromise]);
 
       // Discover tools
       await this.discoverTools();
@@ -210,16 +223,16 @@ export class NpxMcpServer extends EventEmitter {
       args.push(this.config.package);
     }
 
-    // Add additional arguments
+    // Add additional arguments if provided
+    // User has full control over arguments
     if (this.config.args && this.config.args.length > 0) {
       args.push(...this.config.args);
-    } else if (this.requiresStdioArg()) {
-      // Only add stdio argument for servers that need it
-      args.push('stdio');
     }
 
     console.log(`🚀 Starting NPX server ${this.config.id}`);
     console.log(`  Command: ${command} ${args.join(' ')}`);
+    console.log(`  Working directory: ${this.config.workDir || process.cwd()}`);
+    console.log(`  Timeout: ${this.config.initTimeoutMs || 30000}ms`);
 
     // Create StdioClientTransport
     this.transport = new StdioClientTransport({
@@ -238,6 +251,13 @@ export class NpxMcpServer extends EventEmitter {
       },
     });
 
+    // Handle transport errors
+    this.transport.on('error', (error) => {
+      console.error(`❌ Transport error for ${this.config.id}:`, error.message);
+      console.error(`  Package: ${this.config.package}`);
+      console.error(`  Error details:`, error);
+    });
+
     // Create MCP client
     this.client = new Client(
       {
@@ -254,8 +274,43 @@ export class NpxMcpServer extends EventEmitter {
     );
 
     // Connect to the server
-    await this.client.connect(this.transport);
-    console.log(`🏮 Server ${this.config.id} initialized successfully`);
+    try {
+      console.log(`🔄 Connecting to ${this.config.id}...`);
+      await this.client.connect(this.transport);
+      console.log(`🏢 Server ${this.config.id} initialized successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to connect to ${this.config.id}`);
+      console.error(`  Package: ${this.config.package}`);
+      if (error instanceof Error) {
+        console.error(`  Error: ${error.message}`);
+
+        // Provide helpful suggestions based on error type
+        if (
+          error.message.includes('ENOENT') ||
+          error.message.includes('spawn')
+        ) {
+          console.error(`\n💡 Possible solutions:`);
+          console.error(`  - Add required arguments: --args "stdio"`);
+          console.error(`  - Check if the package name is correct`);
+          console.error(`  - Ensure the package is available on npm`);
+        } else if (error.message.includes('timeout')) {
+          console.error(`\n💡 Possible solutions:`);
+          console.error(`  - Increase timeout: --init-timeout 60000`);
+          console.error(`  - Check network connectivity`);
+        } else if (error.message.includes('Cannot find module')) {
+          console.error(`\n💡 Possible solutions:`);
+          console.error(`  - Verify package name: ${this.config.package}`);
+          console.error(`  - Try with explicit version: --version latest`);
+        }
+
+        console.error(`\nFor more details, run with DEBUG=1`);
+
+        if (error.stack && process.env.DEBUG) {
+          console.error(`\nStack trace:`, error.stack);
+        }
+      }
+      throw error;
+    }
   }
 
   /**
@@ -381,34 +436,6 @@ export class NpxMcpServer extends EventEmitter {
 
     const maxRestarts = this.config.maxRestarts || this.defaults.maxRestarts;
     return this.restartCount < maxRestarts;
-  }
-
-  /**
-   * Check if this server requires stdio argument
-   */
-  private requiresStdioArg(): boolean {
-    // Known servers that need explicit stdio argument
-    const serversNeedingStdio = [
-      '@modelcontextprotocol/server-everything',
-      '@modelcontextprotocol/server-puppeteer',
-      '@modelcontextprotocol/server-github',
-    ];
-
-    // Known servers that should NOT have stdio argument
-    const serversNotNeedingStdio = ['@modelcontextprotocol/server-filesystem'];
-
-    // Check if this server is in the NOT needing list
-    if (
-      serversNotNeedingStdio.some((pkg) => this.config.package.includes(pkg))
-    ) {
-      return false;
-    }
-
-    // Check if this server is in the needing list or default to true for unknown servers
-    return (
-      serversNeedingStdio.some((pkg) => this.config.package.includes(pkg)) ||
-      !serversNotNeedingStdio.some((pkg) => this.config.package.includes(pkg))
-    );
   }
 
   /**

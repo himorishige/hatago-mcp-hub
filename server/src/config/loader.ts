@@ -250,6 +250,8 @@ export function generateSampleConfig(): string {
     },
     
     // NPX-based MCP server example
+    // Note: Some packages require "stdio" argument, others don't
+    // See docs/npx-compatibility.json for package-specific requirements
     "filesystem": {
       "command": "npx",
       "args": ["@modelcontextprotocol/server-filesystem", "/tmp"],
@@ -310,6 +312,11 @@ export function generateSampleConfig(): string {
   // Option 2: Hatago Detailed Format (Advanced)
   // ---------------------------------------------
   // Use this format for full control over server configuration
+  // NPX Server Tips:
+  // - initTimeoutMs: Increase for slow networks (default: 30000ms)
+  // - Some packages need "stdio" arg: @modelcontextprotocol/server-github
+  // - Some don't: @modelcontextprotocol/server-filesystem
+  // - See src/servers/npx-compatibility.json for full list
   // Uncomment the following section to use detailed configuration
   /*
   "servers": [
@@ -407,7 +414,10 @@ export function generateSampleConfig(): string {
     "redactKeys": ["password", "apiKey", "token", "secret"],
     
     // Allowed network destinations for remote servers
-    // Use ["*"] to allow all (not recommended for production)
+    // IMPORTANT: Use hostnames only, not full URLs!
+    // Examples: ["api.github.com", "localhost", "192.168.1.100"]
+    // Use ["*"] to allow all hosts (NOT recommended for production)
+    // See docs/allownet-configuration.md for detailed configuration guide
     "allowNet": []
   }
 }`;
