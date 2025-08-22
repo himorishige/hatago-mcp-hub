@@ -1,5 +1,5 @@
 import { getRuntime } from '../runtime/runtime-factory.js';
-import { KeyedMutex } from '../utils/mutex.js';
+import { KeyedMutex, createKeyedMutex } from '../utils/mutex.js';
 
 /**
  * ツール実行履歴
@@ -83,7 +83,7 @@ export class MemorySessionStore implements ISessionStore {
   private sessions = new Map<string, SharedSession>();
   private tokenToSession = new Map<string, string>();
   private maxHistoryPerSession = 1000;
-  private sessionMutex = new KeyedMutex<string>();
+  private sessionMutex = createKeyedMutex<string>();
 
   async create(session: SessionState): Promise<void> {
     return this.sessionMutex.runExclusive(session.id, () => {

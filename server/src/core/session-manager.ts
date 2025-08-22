@@ -1,4 +1,4 @@
-import { KeyedMutex } from '../utils/mutex.js';
+import { KeyedMutex, createKeyedMutex } from '../utils/mutex.js';
 
 /**
  * セッション管理
@@ -13,7 +13,7 @@ export interface Session {
 export class SessionManager {
   private sessions = new Map<string, Session>();
   private cleanupInterval: NodeJS.Timeout | undefined;
-  private sessionMutex = new KeyedMutex<string>();
+  private sessionMutex = createKeyedMutex<string>();
 
   constructor(private ttlSeconds = 3600) {
     // 定期的にセッションをクリーンアップ
