@@ -105,9 +105,11 @@ export function parseContentLength(buffer: Buffer): ParseResult {
 }
 
 /**
- * Find the end of headers (looking for \r\n\r\n)
+ * Find the end of headers (looking for 
+
+)
  */
-function findHeaderEnd(buffer: Buffer): number {
+export function findHeaderEnd(buffer: Buffer): number {
   const delimiter = Buffer.from('\r\n\r\n');
   const index = buffer.indexOf(delimiter);
   return index === -1 ? -1 : index;
@@ -116,7 +118,7 @@ function findHeaderEnd(buffer: Buffer): number {
 /**
  * Extract Content-Length value from headers
  */
-function extractContentLength(headers: string): number {
+export function extractContentLength(headers: string): number {
   const match = headers.match(/Content-Length:\s*(\d+)/i);
   if (!match) {
     return -1;
@@ -155,7 +157,7 @@ export function detectFormat(
   const str = buffer
     .subarray(0, Math.min(100, buffer.length))
     .toString('utf-8');
-  if (str.includes('Content-Length:')) {
+  if (str.match(/Content-Length:/i)) {
     return 'content-length';
   }
 

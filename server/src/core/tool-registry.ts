@@ -125,6 +125,11 @@ export class ToolRegistry {
       return `${serverId}_${toolName}`.replace(/\./g, '_');
     }
 
+    // エラー戦略の場合、ツール名をそのまま返す（衝突検出用）
+    if (this.namingConfig.strategy === 'error') {
+      return toolName;
+    }
+
     // デフォルトは名前空間付き
     return `${serverId}_${toolName}`.replace(/\./g, '_');
   }
