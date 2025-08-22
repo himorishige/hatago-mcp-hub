@@ -82,19 +82,27 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 - ❌ CLIコマンド関連
 - ❌ ツール/リソース/プロンプトレジストリの個別テスト
 
-### 4. エラーコード標準化 ✅ **実装完了**
+### 4. エラーコード標準化 ✅ **完全実装完了**
 
 **実装済み（2025-08-22）**:
-- ✅ ErrorCode enum定義済み（20種類以上）
-- ✅ HatagoErrorクラス実装済み
-- ✅ ErrorHelpers実装済み（80個以上のヘルパー関数）
-- ✅ 主要モジュールの移行完了（合計80箇所以上）
-  - mcp-hub.ts, npx-mcp-server.ts, tool-registry.ts
-  - remote-mcp-server.ts, custom-stdio-transport.ts
-  - server-registry.ts, secret-manager.ts
-  - session-store.ts, shared-session-manager.ts
-  - config-manager.ts, env-expander.ts, mcp-converter.ts
-  - loader.ts, file-watcher.ts, workspace-manager.ts
+- ✅ ErrorCode enum定義済み（27種類）
+- ✅ HatagoErrorクラス実装済み（severity、context、recoverable対応）
+- ✅ ErrorHelpers実装済み（**100個以上**のヘルパー関数）
+- ✅ **全モジュールの移行完了**（**110箇所以上**）
+  - コア機能: mcp-hub.ts, npx-mcp-server.ts, tool-registry.ts
+  - サーバー: remote-mcp-server.ts, custom-stdio-transport.ts, server-registry.ts
+  - セッション: session-store.ts, shared-session-manager.ts, secret-manager.ts
+  - 設定: config-manager.ts, env-expander.ts, mcp-converter.ts, loader.ts
+  - システム: file-watcher.ts, workspace-manager.ts, crypto.ts, system-check.ts
+  - トランスポート: protocol-negotiator.ts, stdio.ts, mcp-initializer.ts
+  - ランタイム: runtime-factory.ts, node.ts, cloudflare-workers.ts
+  - CLI/API: cli/index.ts, cli/commands/mcp.ts, hono-mcp/index.ts
+
+**Hatago Code Reviewerレビュー済み**:
+- ✅ Hatago原則に高度に準拠
+- ✅ MCP仕様準拠（JSON-RPC 2.0エラーフォーマット）
+- ✅ 関数型設計（純粋関数によるエラー生成）
+- ✅ セキュリティ考慮（PII情報マスキング機能）
 
 ### 5. メトリクス・可観測性
 

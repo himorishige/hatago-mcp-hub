@@ -55,6 +55,9 @@ export enum ErrorCode {
   E_SYSTEM_FILE_NOT_FOUND = 'E_SYSTEM_FILE_NOT_FOUND',
   E_SYSTEM_PERMISSION_DENIED = 'E_SYSTEM_PERMISSION_DENIED',
   E_SYSTEM_NETWORK_ERROR = 'E_SYSTEM_NETWORK_ERROR',
+  E_SYSTEM_SECURITY_ERROR = 'E_SYSTEM_SECURITY_ERROR',
+  E_SYSTEM_FS_ERROR = 'E_SYSTEM_FS_ERROR',
+  E_SYSTEM_UNKNOWN = 'E_SYSTEM_UNKNOWN',
 }
 
 /**
@@ -800,6 +803,18 @@ export const ErrorHelpers = {
         severity: ErrorSeverity.ERROR,
         context: { feature, runtime },
         recoverable: false,
+      },
+    ),
+
+  // Lock & Concurrency Errors
+  lockAcquisitionFailed: (resource: string, timeout: number) =>
+    new HatagoError(
+      ErrorCode.E_SESSION_LOCK_TIMEOUT,
+      `Failed to acquire lock for ${resource} after ${timeout}ms`,
+      {
+        severity: ErrorSeverity.ERROR,
+        context: { resource, timeout },
+        recoverable: true,
       },
     ),
 
