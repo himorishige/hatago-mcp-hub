@@ -795,6 +795,17 @@ export const ErrorHelpers = {
       },
     ),
 
+  runtimeLoadFailed: (runtime: string, error: unknown) =>
+    new HatagoError(
+      ErrorCode.E_SYSTEM_UNKNOWN,
+      `Failed to load ${runtime} runtime: ${String(error)}`,
+      {
+        severity: ErrorSeverity.ERROR,
+        context: { runtime, error: String(error) },
+        recoverable: false,
+      },
+    ),
+
   featureNotAvailable: (feature: string, runtime: string) =>
     new HatagoError(
       ErrorCode.E_SYSTEM_UNKNOWN,
@@ -1066,4 +1077,11 @@ export const ErrorHelpers = {
       context: {},
       recoverable: false,
     }),
+
+  // Generic error creation from unknown type
+  createErrorFromUnknown: (
+    error: Error | unknown,
+    code: ErrorCode = ErrorCode.E_SYSTEM_UNKNOWN,
+    context?: ErrorContext,
+  ) => createErrorFromUnknown(error, code, context),
 };
