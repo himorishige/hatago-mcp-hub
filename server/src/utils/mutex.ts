@@ -1,95 +1,89 @@
 /**
- * Simple Mutex implementation for exclusive execution
+ * Simple Mutex implementation using closures for state management
  * Ensures proper lock release even on errors
  */
-export class Mutex {
-  private queue: Array<() => void> = [];
-  private locked = false;
+export type Mutex = {
+  acquire(): Promise<() => void>;
+  runExclusive<T>(fn: () => Promise<T> | T): Promise<T>;
+};
 
-  /**
-   * Acquire the lock
-   * Returns a release function that must be called to release the lock
-   */
-  async acquire(): Promise<() => void> {
-    return new Promise<() => void>((resolve) => {
-      const tryAcquire = () => {
-        if (!this.locked) {
-          this.locked = true;
-          resolve(() => this.release());
-        } else {
-          this.queue.push(tryAcquire);
-        }
-      };
-      tryAcquire();
-    });
-  }
+export function createMutex(): Mutex {
+  let queue: Array<() => void> = [];
+  let locked = false;
 
-  /**
-   * Release the lock
-   * Automatically allows the next queued operation to proceed
-   */
-  private release(): void {
-    const next = this.queue.shift();
+  const release = (): void => {
+    const next = queue.shift();
     if (next) {
       // Let the next waiter acquire the lock
       next();
     } else {
-      this.locked = false;
+      locked = false;
     }
-  }
+  };
 
-  /**
-   * Execute a function exclusively (with automatic lock management)
-   * The lock is automatically released after the function completes or throws
-   */
-  async runExclusive<T>(fn: () => Promise<T> | T): Promise<T> {
-    const release = await this.acquire();
+  const acquire = async (): Promise<() => void> => {
+    return new Promise<() => void>((resolve) => {
+      const tryAcquire = () => {
+        if (!locked) {
+          locked = true;
+          resolve(() => release());
+        } else {
+          queue.push(tryAcquire);
+        }
+      };
+      tryAcquire();
+    });
+  };
+
+  const runExclusive = async <T>(fn: () => Promise<T> | T): Promise<T> => {
+    const releaseLock = await acquire();
     try {
       return await fn();
     } finally {
-      release(); // Always release, even on error
+      releaseLock(); // Always release, even on error
     }
-  }
+  };
+
+  return { acquire, runExclusive };
 }
 
 /**
  * Keyed Mutex for managing multiple independent locks
  * Each key has its own mutex
  */
-export class KeyedMutex<K = string> {
-  private mutexes = new Map<K, Mutex>();
+export type KeyedMutex<K = string> = {
+  runExclusive<T>(key: K, fn: () => Promise<T> | T): Promise<T>;
+  delete(key: K): void;
+  clear(): void;
+};
 
-  /**
-   * Get or create a mutex for the given key
-   */
-  private getMutex(key: K): Mutex {
-    let mutex = this.mutexes.get(key);
+export function createKeyedMutex<K = string>(): KeyedMutex<K> {
+  const mutexes = new Map<K, Mutex>();
+
+  const getMutex = (key: K): Mutex => {
+    let mutex = mutexes.get(key);
     if (!mutex) {
-      mutex = new Mutex();
-      this.mutexes.set(key, mutex);
+      mutex = createMutex();
+      mutexes.set(key, mutex);
     }
     return mutex;
-  }
+  };
 
-  /**
-   * Execute a function exclusively for a given key
-   */
-  async runExclusive<T>(key: K, fn: () => Promise<T> | T): Promise<T> {
-    const mutex = this.getMutex(key);
+  const runExclusive = async <T>(
+    key: K,
+    fn: () => Promise<T> | T,
+  ): Promise<T> => {
+    const mutex = getMutex(key);
     return mutex.runExclusive(fn);
-  }
+  };
 
-  /**
-   * Clean up mutex for a key (optional, for memory management)
-   */
-  delete(key: K): void {
-    this.mutexes.delete(key);
-  }
+  const del = (key: K): void => {
+    mutexes.delete(key);
+  };
 
-  /**
-   * Clear all mutexes
-   */
-  clear(): void {
-    this.mutexes.clear();
-  }
+  const clear = (): void => {
+    mutexes.clear();
+  };
+
+  return { runExclusive, delete: del, clear };
 }
