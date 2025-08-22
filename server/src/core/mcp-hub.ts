@@ -960,32 +960,29 @@ export class McpHub {
         return;
       }
 
+      // Use SDK's isConnected() method to reliably check connection state
+      // This prevents "Not connected" errors when resources are discovered
+      // before client connection or during server restarts
+      if (!this.server.server.isConnected()) {
+        // Connection not established yet, skip notification
+        return;
+      }
+
       // Check if we have registered the listChanged capability
       const capabilities = this.server.server.getCapabilities();
       if (capabilities?.resources?.listChanged) {
-        // Wrap in try-catch to handle "Not connected" errors gracefully
-        try {
-          this.server.server.notification({
-            method: 'notifications/resources/list_changed',
-            params: {},
-          });
-          this.logger.info('Sent resources/list_changed notification');
-        } catch (notificationError) {
-          // Silently ignore "Not connected" errors - this is expected during startup
-          // or when resources are discovered before client connection
-          const errorMessage = String(notificationError);
-          if (!errorMessage.includes('Not connected')) {
-            this.logger.error(
-              { error: notificationError },
-              'Failed to send resources/list_changed notification',
-            );
-          }
-        }
+        // Safe to send notification - we've verified connection is active
+        this.server.server.notification({
+          method: 'notifications/resources/list_changed',
+          params: {},
+        });
+        this.logger.info('Sent resources/list_changed notification');
       }
     } catch (error) {
-      this.logger.info(
-        'Failed to check resources/list_changed capability:',
-        error,
+      // Log unexpected errors, but don't crash
+      this.logger.debug(
+        { error },
+        'Failed to send resources/list_changed notification',
       );
     }
   }

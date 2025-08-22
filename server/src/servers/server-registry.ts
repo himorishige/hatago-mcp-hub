@@ -37,6 +37,8 @@ export interface RegisteredServer {
   healthCheckFailures?: number; // Consecutive health check failures
   lastHealthCheckError?: string; // Last health check error message
   autoRestartAttempts?: number; // Auto-restart attempt counter
+  isRestarting?: boolean; // Flag to prevent health checks during restart
+  lastRestartAt?: Date; // Track when last restart occurred
 }
 
 /**
@@ -721,7 +723,15 @@ export class ServerRegistry extends EventEmitter {
     const promises: Promise<void>[] = [];
 
     for (const registered of this.servers.values()) {
-      if (registered.instance && registered.state === ServerState.RUNNING) {
+      // Skip health check for servers that are:
+      // - Not running
+      // - Currently restarting
+      // - Already crashed
+      if (
+        registered.instance &&
+        registered.state === ServerState.RUNNING &&
+        !registered.isRestarting
+      ) {
         promises.push(this.checkServerHealth(registered));
       }
     }
@@ -810,7 +820,7 @@ export class ServerRegistry extends EventEmitter {
   private async attemptAutoRestart(
     registered: RegisteredServer,
   ): Promise<void> {
-    if (!registered.instance) {
+    if (!registered.instance || registered.isRestarting) {
       return;
     }
 
@@ -826,7 +836,25 @@ export class ServerRegistry extends EventEmitter {
       return;
     }
 
+    // Implement exponential backoff for restart attempts
+    // First attempt: immediate, second: 5s, third: 15s
+    const backoffMs =
+      autoRestartAttempts === 0
+        ? 0
+        : Math.min(5000 * 2 ** (autoRestartAttempts - 1), 30000);
+
+    if (backoffMs > 0) {
+      console.log(
+        `Waiting ${backoffMs / 1000}s before restart attempt ${autoRestartAttempts + 1} for server ${registered.id}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    }
+
     try {
+      // Set restarting flag to prevent health checks during restart
+      registered.isRestarting = true;
+      registered.lastRestartAt = new Date();
+
       this.emit('server:auto-restart', {
         serverId: registered.id,
         reason: 'health_check_failure',
@@ -840,7 +868,8 @@ export class ServerRegistry extends EventEmitter {
       // Restart the server
       await registered.instance.restart();
 
-      // Reset failure count and attempt counter after successful restart
+      // Clear restarting flag and reset counters after successful restart
+      registered.isRestarting = false;
       registered.healthCheckFailures = 0;
       delete registered.lastHealthCheckError;
       delete registered.autoRestartAttempts;
@@ -851,6 +880,8 @@ export class ServerRegistry extends EventEmitter {
 
       console.log(`🏮 Server ${registered.id} auto-restarted successfully`);
     } catch (error) {
+      // Clear restarting flag even on failure
+      registered.isRestarting = false;
       this.emit('server:auto-restart-failed', {
         serverId: registered.id,
         error: error instanceof Error ? error.message : String(error),
