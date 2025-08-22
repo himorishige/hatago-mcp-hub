@@ -165,9 +165,13 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 - ジェネリクスの活用不足
 - 型推論の改善余地
 
-### 循環依存
-- runtime-factory.jsで部分的に解決
-- 完全な解決には追加のリファクタリングが必要
+### 循環依存 ✅ **完全解決済み（2025-01-22）**
+- runtime-factory.jsでの動的インポート: **解決済み**
+- CLIモジュールの分割: **完了** 
+  - 850行以上のcli/index.tsを機能別に分割
+  - 各コマンドハンドラーを独立したファイルに移動（14ファイル）
+  - 共通ユーティリティをcli/utils/cli-helpers.tsに抽出
+  - 循環依存テストを追加して検証済み
 
 ### コード重複
 - CLI commandsの重複コード（今回修正で改善）

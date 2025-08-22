@@ -11,7 +11,7 @@ import { createLogger } from '../../utils/logger.js';
 /**
  * Create secret command
  */
-export function createSecretCommand(): Command {
+export function createSecretCommands(program: Command): void {
   const secret = new Command('secret').description('Manage secrets');
 
   /**
@@ -351,5 +351,5 @@ export function createSecretCommand(): Command {
       }
     });
 
-  return secret;
+  program.addCommand(secret);
 }
