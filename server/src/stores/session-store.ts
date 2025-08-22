@@ -1,5 +1,5 @@
 import { getRuntime } from '../runtime/runtime-factory.js';
-import { KeyedMutex, createKeyedMutex } from '../utils/mutex.js';
+import { createKeyedMutex } from '../utils/mutex.js';
 
 /**
  * ツール実行履歴

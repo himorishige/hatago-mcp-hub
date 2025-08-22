@@ -104,7 +104,7 @@ app.post('/mcp', async (c) => {
         });
         
         const result: InitializeResult = {
-          protocolVersion: '1.0.0',
+          protocolVersion: '0.1.0',
           serverInfo: {
             name: 'mock-mcp-server',
             version: '1.0.0'
@@ -276,3 +276,17 @@ setInterval(() => {
 }, 60 * 1000); // Check every minute
 
 export default app;
+
+// Start server if run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const { serve } = await import('@hono/node-server');
+  const port = 4001;
+  
+  serve({
+    fetch: app.fetch,
+    port,
+  });
+  
+  console.log(`🎭 Mock MCP Server running on http://localhost:${port}`);
+  console.log(`  MCP endpoint: http://localhost:${port}/mcp`);
+}

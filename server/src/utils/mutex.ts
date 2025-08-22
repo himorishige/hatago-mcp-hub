@@ -8,7 +8,7 @@ export type Mutex = {
 };
 
 export function createMutex(): Mutex {
-  let queue: Array<() => void> = [];
+  const queue: Array<() => void> = [];
   let locked = false;
 
   const release = (): void => {

@@ -3,11 +3,13 @@
  */
 
 import { EventEmitter } from 'node:events';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 import type { RemoteServerConfig } from '../config/types.js';
+import { MCPClientFacade } from '../core/mcp-client-facade.js';
+import type { NegotiatedProtocol } from '../core/protocol-negotiator.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
 import { sanitizeLog } from '../utils/security.js';
 
@@ -27,8 +29,10 @@ export enum ServerState {
  */
 export interface RemoteConnection {
   client: Client;
+  facade: MCPClientFacade;
   transport: StreamableHTTPClientTransport | SSEClientTransport;
   transportType?: 'streamable-http' | 'sse';
+  protocol?: NegotiatedProtocol;
 }
 
 /**
@@ -251,9 +255,19 @@ export class RemoteMcpServer extends EventEmitter {
     headers: Record<string, string>,
   ): Promise<RemoteConnection> {
     const _runtime = await this.runtime;
-    const client = new Client({
+
+    // Create client facade for protocol negotiation
+    const facade = new MCPClientFacade({
       name: 'hatago-hub',
-      version: '0.0.1',
+      version: '0.0.2',
+      initializerOptions: {
+        isFirstRun: false,
+        timeouts: {
+          normalMs: this.defaults.connectTimeoutMs,
+        },
+        debug: process.env.DEBUG === 'true',
+      },
+      debug: process.env.DEBUG === 'true',
     });
 
     // First try Streamable HTTP transport (newer protocol)
@@ -266,17 +280,23 @@ export class RemoteMcpServer extends EventEmitter {
         },
       });
 
-      // Connect with timeout
-      await this.withTimeout(
-        client.connect(transport),
+      // Connect with protocol negotiation
+      const protocol = await this.withTimeout(
+        facade.connect(transport),
         this.defaults.connectTimeoutMs,
         'streamable-http connection',
       );
 
+      console.log(
+        `🏮 Connected to ${this.config.id} with protocol: ${protocol.protocol}`,
+      );
+
       return {
-        client,
+        client: facade.getClient(),
+        facade,
         transport,
         transportType: 'streamable-http',
+        protocol,
       };
     } catch (error) {
       // If Streamable HTTP fails, try SSE transport (older protocol)
@@ -284,9 +304,18 @@ export class RemoteMcpServer extends EventEmitter {
         `Streamable HTTP failed for ${this.config.id}, trying SSE transport: ${error}`,
       );
 
-      const sseClient = new Client({
+      // Create a new facade for SSE attempt
+      const sseFacade = new MCPClientFacade({
         name: 'hatago-hub',
-        version: '0.0.1',
+        version: '0.0.2',
+        initializerOptions: {
+          isFirstRun: false,
+          timeouts: {
+            normalMs: this.defaults.connectTimeoutMs,
+          },
+          debug: process.env.DEBUG === 'true',
+        },
+        debug: process.env.DEBUG === 'true',
       });
 
       const sseTransport = new SSEClientTransport(baseUrl, {
@@ -296,21 +325,23 @@ export class RemoteMcpServer extends EventEmitter {
         },
       });
 
-      // Connect with timeout
-      await this.withTimeout(
-        sseClient.connect(sseTransport),
+      // Connect with protocol negotiation
+      const protocol = await this.withTimeout(
+        sseFacade.connect(sseTransport),
         this.defaults.connectTimeoutMs,
         'sse connection',
       );
 
       console.log(
-        `🏮 Successfully connected to ${this.config.id} using SSE transport`,
+        `🏮 Successfully connected to ${this.config.id} using SSE transport with protocol: ${protocol.protocol}`,
       );
 
       return {
-        client: sseClient,
+        client: sseFacade.getClient(),
+        facade: sseFacade,
         transport: sseTransport,
         transportType: 'sse',
+        protocol,
       };
     }
   }

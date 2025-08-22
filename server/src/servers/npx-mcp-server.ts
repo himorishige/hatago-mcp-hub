@@ -13,6 +13,7 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { NpxServerConfig } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
+import { CustomStdioTransport } from './custom-stdio-transport.js';
 
 /**
  * Server state enum
@@ -241,10 +242,33 @@ export class NpxMcpServer extends EventEmitter {
         args.push(this.config.package);
       }
 
-      // Add additional arguments if provided
-      // User has full control over arguments
-      if (this.config.args && this.config.args.length > 0) {
-        args.push(...this.config.args);
+      // Add additional arguments if provided first
+      // But handle filesystem server specially
+      if (this.config.package.includes('filesystem')) {
+        // Filesystem server needs directory paths BEFORE stdio argument
+        const hasDirectoryArg = this.config.args?.some(
+          (arg) =>
+            arg &&
+            (arg.startsWith('/') || arg.startsWith('.') || arg.startsWith('~')),
+        );
+
+        if (!hasDirectoryArg) {
+          // Add default directory
+          args.push(this.config.workDir || '/tmp');
+        }
+
+        // Add configured args (filesystem server doesn't use 'stdio' argument)
+        if (this.config.args && this.config.args.length > 0) {
+          args.push(...this.config.args);
+        }
+      } else {
+        // For other servers, add args but filter out 'stdio' (it's not a server argument)
+        if (this.config.args && this.config.args.length > 0) {
+          const filteredArgs = this.config.args.filter(
+            (arg) => arg !== 'stdio',
+          );
+          args.push(...filteredArgs);
+        }
       }
     } else {
       // This is a generic command (e.g., node, python, etc.)
@@ -261,22 +285,45 @@ export class NpxMcpServer extends EventEmitter {
     console.log(`  Working directory: ${this.config.workDir || process.cwd()}`);
     console.log(`  Timeout: ${this.config.initTimeoutMs || 30000}ms`);
 
-    // Create StdioClientTransport
-    this.transport = new StdioClientTransport({
-      command,
-      args,
-      cwd: this.config.workDir || process.cwd(),
-      env: {
-        ...process.env,
-        ...this.config.env,
-        // Suppress npm warnings and output
-        NO_COLOR: '1',
-        FORCE_COLOR: '0',
-        npm_config_loglevel: 'silent',
-        npm_config_progress: 'false',
-        npm_config_update_notifier: 'false',
-      },
-    });
+    // Check if this is the first run (for extended timeout)
+    const isFirstRun = !this.restartCount && !this.lastStartTime;
+
+    // Use custom transport for better control over initialization
+    const useCustomTransport =
+      process.env.HATAGO_USE_CUSTOM_TRANSPORT !== 'false';
+
+    if (useCustomTransport) {
+      console.log(
+        `  Using custom STDIO transport for better initialization control`,
+      );
+      this.transport = new CustomStdioTransport({
+        command,
+        args,
+        cwd: this.config.workDir || process.cwd(),
+        env: {
+          ...this.config.env,
+        },
+        initTimeoutMs: this.config.initTimeoutMs || 30000,
+        isFirstRun,
+      });
+    } else {
+      // Fallback to SDK transport
+      this.transport = new StdioClientTransport({
+        command,
+        args,
+        cwd: this.config.workDir || process.cwd(),
+        env: {
+          ...process.env,
+          ...this.config.env,
+          // Suppress npm warnings and output
+          NO_COLOR: '1',
+          FORCE_COLOR: '0',
+          npm_config_loglevel: 'silent',
+          npm_config_progress: 'false',
+          npm_config_update_notifier: 'false',
+        },
+      });
+    }
 
     // Handle transport errors
     this.transport.on('error', (error) => {

@@ -1,4 +1,4 @@
-import { KeyedMutex, createKeyedMutex } from '../utils/mutex.js';
+import { createKeyedMutex } from '../utils/mutex.js';
 
 /**
  * セッション管理
