@@ -25,6 +25,15 @@ export class SessionManager {
    */
   async createSession(id: string): Promise<Session> {
     return this.sessionMutex.runExclusive(id, () => {
+      // Check if session already exists
+      const existing = this.sessions.get(id);
+      if (existing && !this.isExpired(existing)) {
+        // Return existing session if not expired
+        existing.lastAccessedAt = new Date();
+        return existing;
+      }
+
+      // Create new session
       const session: Session = {
         id,
         createdAt: new Date(),

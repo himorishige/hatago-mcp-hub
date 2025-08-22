@@ -28,6 +28,7 @@ import type {
   RemoteServerConfig,
   ServerConfig,
 } from '../config/types.js';
+import { getNpxCacheManager } from '../servers/npx-cache-manager.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
@@ -35,6 +36,7 @@ import { WorkspaceManager } from '../servers/workspace-manager.js';
 import type { StdioTransport } from '../transport/stdio.js';
 import { createZodLikeSchema } from '../utils/json-to-zod.js';
 import { createLogger } from '../utils/logger.js';
+import { createMutex } from '../utils/mutex.js';
 import {
   createPromptRegistry,
   type PromptRegistry,
@@ -77,6 +79,7 @@ export class McpHub {
   private workspaceManager?: WorkspaceManager;
   private serverRegistry?: ServerRegistry;
   private registeredTools = new Set<string>(); // Track registered tools to avoid duplicates
+  private toolRegistrationMutex = createMutex(); // Mutex for tool registration
   private sessionManager: SessionManager;
   private workDir: string = '.hatago'; // Default work directory
   private logger: Logger;
@@ -370,6 +373,9 @@ export class McpHub {
 
     this.logger.info('🔥 Warming up NPX packages...');
 
+    // Get cache manager instance
+    const cacheManager = getNpxCacheManager();
+
     // Run warmup in parallel for all NPX servers
     const warmupPromises = npxServers.map(async (serverConfig) => {
       try {
@@ -420,6 +426,8 @@ export class McpHub {
               this.logger.info(
                 `  ⚠️  Failed to warm up ${packageSpec}: ${error.message}`,
               );
+              // Record cache failure
+              cacheManager.recordWarmupResult(packageSpec, false);
               reject(error); // Reject on error for tracking
             }
           });
@@ -429,12 +437,16 @@ export class McpHub {
               hasExited = true;
               if (code === 0) {
                 this.logger.info(`  ✅ ${packageSpec} cached`);
+                // Record successful cache
+                cacheManager.recordWarmupResult(packageSpec, true);
                 resolve();
               } else {
                 // With -p/-c approach, non-zero exit usually means npm error
                 this.logger.info(
                   `  ⚠️  ${packageSpec} warmup exited with code ${code}`,
                 );
+                // Record cache failure
+                cacheManager.recordWarmupResult(packageSpec, false);
                 reject(new Error(`Warmup failed with code ${code}`));
               }
             }
@@ -446,6 +458,8 @@ export class McpHub {
               hasExited = true;
               warmupProcess.kill('SIGTERM');
               this.logger.info(`  ⚠️  ${packageSpec} warmup timeout`);
+              // Record cache failure on timeout
+              cacheManager.recordWarmupResult(packageSpec, false);
               reject(new Error('Warmup timeout'));
             }
           }, 30000); // 30 second timeout for warmup
@@ -735,7 +749,7 @@ export class McpHub {
       this.registry.registerServerTools(serverId, tools);
 
       // ハブのツールを更新
-      this.updateHubTools();
+      await this.updateHubTools();
     } catch (error) {
       this.logger.error({ error }, `$2`);
     }
@@ -820,7 +834,7 @@ export class McpHub {
       this.registry.registerServerTools(serverId, tools);
 
       // ハブのツールを更新
-      this.updateHubTools();
+      await this.updateHubTools();
     } catch (error) {
       this.logger.error({ error }, `$2`);
     }
@@ -1059,76 +1073,79 @@ export class McpHub {
   /**
    * ハブのツールを更新
    */
-  private updateHubTools(): void {
-    const tools = this.registry.getAllTools();
-    this.logger.info(`Hub now has ${tools.length} total tools`);
-    // Debug: Log the first tool to see its structure
-    if (tools.length > 0) {
-      this.logger.debug({ tool: tools[0] }, 'First tool structure');
-    }
-
-    // Track which tools are currently active
-    const currentToolNames = new Set(tools.map((t) => t.name));
-
-    // Remove tools that are no longer available
-    for (const toolName of this.registeredTools) {
-      if (!currentToolNames.has(toolName)) {
-        // Tool was removed, we can't unregister from MCP SDK but mark it as removed
-        this.registeredTools.delete(toolName);
-        this.logger.info(`Tool ${toolName} removed from registry`);
-      }
-    }
-
-    // Register new or updated tools
-    for (const tool of tools) {
-      // Skip if already registered (idempotent)
-      if (this.registeredTools.has(tool.name)) {
-        continue;
+  private async updateHubTools(): Promise<void> {
+    // Use mutex to prevent concurrent tool registration
+    await this.toolRegistrationMutex.runExclusive(async () => {
+      const tools = this.registry.getAllTools();
+      this.logger.info(`Hub now has ${tools.length} total tools`);
+      // Debug: Log the first tool to see its structure
+      if (tools.length > 0) {
+        this.logger.debug({ tool: tools[0] }, 'First tool structure');
       }
 
-      try {
-        // JSON\u30b9\u30ad\u30fc\u30de\u3092Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u306b\u5909\u63db
-        // inputSchemaが空またはpropertiesが空の場合はundefinedを使用
-        let zodLikeSchema: unknown;
-        if (
-          tool.inputSchema?.properties &&
-          Object.keys(tool.inputSchema.properties).length > 0
-        ) {
-          zodLikeSchema = createZodLikeSchema(tool.inputSchema);
+      // Track which tools are currently active
+      const currentToolNames = new Set(tools.map((t) => t.name));
+
+      // Remove tools that are no longer available
+      for (const toolName of this.registeredTools) {
+        if (!currentToolNames.has(toolName)) {
+          // Tool was removed, we can't unregister from MCP SDK but mark it as removed
+          this.registeredTools.delete(toolName);
+          this.logger.info(`Tool ${toolName} removed from registry`);
+        }
+      }
+
+      // Register new or updated tools
+      for (const tool of tools) {
+        // Skip if already registered (idempotent)
+        if (this.registeredTools.has(tool.name)) {
+          continue;
         }
 
-        // MCP SDK\u306eregisterTool\u30e1\u30bd\u30c3\u30c9\u3092\u4f7f\u7528
-        this.server.registerTool(
-          tool.name,
-          {
-            description: tool.description || `Tool ${tool.name}`,
-            inputSchema: zodLikeSchema as unknown, // Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u3092\u6e21\u3059
-          },
-          async (args: unknown, _extra: unknown) => {
-            // registerTool\u30e1\u30bd\u30c3\u30c9\u306f\u6b63\u3057\u304f\u5f15\u6570\u3092\u6e21\u3059\u306f\u305a\u306a\u306e\u3067\u3001
-            // args\u304cundefined\u306e\u5834\u5408\u306f\u7a7a\u30aa\u30d6\u30b8\u30a7\u30af\u30c8\u3092\u4f7f\u7528
-            const toolArgs = args || {};
-            const result = await this.callTool({
-              name: tool.name,
-              arguments: toolArgs,
-            });
-            return result;
-          },
-        );
+        try {
+          // JSON\u30b9\u30ad\u30fc\u30de\u3092Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u306b\u5909\u63db
+          // inputSchemaが空またはpropertiesが空の場合はundefinedを使用
+          let zodLikeSchema: unknown;
+          if (
+            tool.inputSchema?.properties &&
+            Object.keys(tool.inputSchema.properties).length > 0
+          ) {
+            zodLikeSchema = createZodLikeSchema(tool.inputSchema);
+          }
 
-        // Mark as registered
-        this.registeredTools.add(tool.name);
-        this.logger.info(`✅ Tool ${tool.name} registered`);
-      } catch (error) {
-        // This should rarely happen now due to idempotent check
-        this.logger.debug(
-          { error: error instanceof Error ? error.message : error },
-          `Failed to register tool ${tool.name}`,
-        );
+          // MCP SDK\u306eregisterTool\u30e1\u30bd\u30c3\u30c9\u3092\u4f7f\u7528
+          this.server.registerTool(
+            tool.name,
+            {
+              description: tool.description || `Tool ${tool.name}`,
+              inputSchema: zodLikeSchema as unknown, // Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u3092\u6e21\u3059
+            },
+            async (args: unknown, _extra: unknown) => {
+              // registerTool\u30e1\u30bd\u30c3\u30c9\u306f\u6b63\u3057\u304f\u5f15\u6570\u3092\u6e21\u3059\u306f\u305a\u306a\u306e\u3067\u3001
+              // args\u304cundefined\u306e\u5834\u5408\u306f\u7a7a\u30aa\u30d6\u30b8\u30a7\u30af\u30c8\u3092\u4f7f\u7528
+              const toolArgs = args || {};
+              const result = await this.callTool({
+                name: tool.name,
+                arguments: toolArgs,
+              });
+              return result;
+            },
+          );
+
+          // Mark as registered - this is now protected by mutex
+          this.registeredTools.add(tool.name);
+          this.logger.info(`✅ Tool ${tool.name} registered`);
+        } catch (error) {
+          // This should rarely happen now due to idempotent check
+          this.logger.debug(
+            { error: error instanceof Error ? error.message : error },
+            `Failed to register tool ${tool.name}`,
+          );
+        }
       }
-    }
 
-    this.logger.info(`Total registered tools: ${this.registeredTools.size}`);
+      this.logger.info(`Total registered tools: ${this.registeredTools.size}`);
+    });
   }
 
   /**

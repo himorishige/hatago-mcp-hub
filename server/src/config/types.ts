@@ -229,6 +229,13 @@ export const NpxServerConfigSchema = BaseServerConfigSchema.extend({
   shutdownTimeoutMs: z.number().optional(),
   initTimeoutMs: z.number().optional(), // MCP initialization timeout
   workDir: z.string().optional(), // Working directory
+  cache: z
+    .object({
+      preferOffline: z.boolean().default(true), // Use cache when available
+      checkIntervalMs: z.number().default(300000), // 5 minutes
+      forceRefresh: z.boolean().default(false), // Force refresh cache on start
+    })
+    .optional(),
 });
 export type NpxServerConfig = z.infer<typeof NpxServerConfigSchema>;
 
@@ -309,6 +316,14 @@ export const HatagoConfigSchema = z.object({
   rollover: RolloverConfigSchema.default({}),
   replication: ReplicationConfigSchema.default({}),
   servers: z.array(ServerConfigSchema).default([]),
+  npxCache: z
+    .object({
+      enabled: z.boolean().default(true),
+      warmupOnStart: z.boolean().default(true),
+      cacheCheckIntervalMs: z.number().default(300000), // 5 minutes
+      verifyCacheIntegrity: z.boolean().default(false),
+    })
+    .optional(),
 });
 export type HatagoConfig = z.infer<typeof HatagoConfigSchema>;
 

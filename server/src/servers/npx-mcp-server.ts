@@ -14,6 +14,7 @@ import type {
 import type { NpxServerConfig } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
 import { CustomStdioTransport } from './custom-stdio-transport.js';
+import { getNpxCacheManager } from './npx-cache-manager.js';
 
 /**
  * Server state enum
@@ -160,8 +161,27 @@ export class NpxMcpServer extends EventEmitter {
     this.emit('starting', { serverId: this.config.id });
 
     try {
-      // Set up initialization timeout
-      const initTimeoutMs = this.config.initTimeoutMs || 30000; // Default 30 seconds
+      // Check if package is cached and adjust timeout accordingly
+      const cacheManager = getNpxCacheManager();
+      const packageSpec = this.config.version
+        ? `${this.config.package}@${this.config.version}`
+        : this.config.package;
+
+      const isCached = await cacheManager.isCached(packageSpec);
+
+      // Use shorter timeout for cached packages, longer for uncached
+      const baseTimeout = this.config.initTimeoutMs || 30000;
+      const initTimeoutMs = isCached
+        ? Math.min(baseTimeout, 15000) // 15s max for cached packages
+        : Math.max(baseTimeout, 60000); // 60s min for uncached packages
+
+      if (!isCached) {
+        this.emit('info', {
+          serverId: this.config.id,
+          message: `Package ${packageSpec} not cached, using extended timeout (${initTimeoutMs}ms)`,
+        });
+      }
+
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(
@@ -189,10 +209,34 @@ export class NpxMcpServer extends EventEmitter {
       this.emit('started', { serverId: this.config.id });
     } catch (error) {
       this.state = ServerState.CRASHED;
-      this.emit('error', {
-        serverId: this.config.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+
+      // Check if this was a cache miss error
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const isCacheMissError =
+        errorMessage.includes('npm ERR!') ||
+        errorMessage.includes('network') ||
+        errorMessage.includes('ENOTFOUND') ||
+        errorMessage.includes('ETIMEDOUT');
+
+      if (isCacheMissError) {
+        // Try to refresh cache for future attempts
+        const packageSpec = this.config.version
+          ? `${this.config.package}@${this.config.version}`
+          : this.config.package;
+        const cacheManager = getNpxCacheManager();
+        cacheManager.clearStatus(packageSpec);
+
+        this.emit('error', {
+          serverId: this.config.id,
+          error: `Cache miss or network error for ${packageSpec}: ${errorMessage}`,
+        });
+      } else {
+        this.emit('error', {
+          serverId: this.config.id,
+          error: errorMessage,
+        });
+      }
 
       // Attempt auto-restart if configured
       if (this.shouldAutoRestart()) {

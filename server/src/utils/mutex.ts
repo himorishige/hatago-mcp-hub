@@ -14,9 +14,10 @@ export function createMutex(): Mutex {
   const release = (): void => {
     const next = queue.shift();
     if (next) {
-      // Let the next waiter acquire the lock
+      // The lock remains locked, just transfer to next waiter
       next();
     } else {
+      // No more waiters, release the lock
       locked = false;
     }
   };
@@ -24,14 +25,17 @@ export function createMutex(): Mutex {
   const acquire = async (): Promise<() => void> => {
     return new Promise<() => void>((resolve) => {
       const tryAcquire = () => {
-        if (!locked) {
-          locked = true;
-          resolve(() => release());
-        } else {
-          queue.push(tryAcquire);
-        }
+        locked = true;
+        resolve(() => release());
       };
-      tryAcquire();
+
+      if (!locked) {
+        // Immediately acquire if not locked
+        tryAcquire();
+      } else {
+        // Queue the acquisition
+        queue.push(tryAcquire);
+      }
     });
   };
 
