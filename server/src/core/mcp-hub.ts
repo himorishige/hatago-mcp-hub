@@ -43,6 +43,7 @@ import {
   createResourceRegistry,
   type ResourceRegistry,
 } from './resource-registry.js';
+import { SessionManager } from './session-manager.js';
 import { ToolRegistry } from './tool-registry.js';
 
 // MCPサーバー接続情報
@@ -76,6 +77,7 @@ export class McpHub {
   private workspaceManager?: WorkspaceManager;
   private serverRegistry?: ServerRegistry;
   private registeredTools = new Set<string>(); // Track registered tools to avoid duplicates
+  private sessionManager: SessionManager;
   private workDir: string = '.hatago'; // Default work directory
   private logger: Logger;
 
@@ -103,6 +105,10 @@ export class McpHub {
     this.resourceRegistry = createResourceRegistry({
       namingConfig: this.config.toolNaming, // リソースも同じ命名戦略を使用
     });
+
+    // セッションマネージャーを初期化
+    const sessionTtl = this.config.session?.ttlSeconds ?? 3600;
+    this.sessionManager = new SessionManager(sessionTtl);
 
     // プロンプトレジストリを初期化
     this.promptRegistry = createPromptRegistry({
@@ -345,6 +351,9 @@ export class McpHub {
         }
       }
     }
+
+    // セッションマネージャーのクリーンアップを開始
+    this.sessionManager.startCleanup();
 
     this.initialized = true;
   }
@@ -1020,32 +1029,29 @@ export class McpHub {
         return;
       }
 
+      // Use SDK's isConnected() method to reliably check connection state
+      // This prevents "Not connected" errors when prompts are discovered
+      // before client connection or during server restarts
+      if (!this.server.server.isConnected()) {
+        // Connection not established yet, skip notification
+        return;
+      }
+
       // Check if we have registered the listChanged capability
       const capabilities = this.server.server.getCapabilities();
       if (capabilities?.prompts?.listChanged) {
-        // Wrap in try-catch to handle "Not connected" errors gracefully
-        try {
-          this.server.server.notification({
-            method: 'notifications/prompts/list_changed',
-            params: {},
-          });
-          this.logger.info('Sent prompts/list_changed notification');
-        } catch (notificationError) {
-          // Silently ignore "Not connected" errors - this is expected during startup
-          // or when prompts are discovered before client connection
-          const errorMessage = String(notificationError);
-          if (!errorMessage.includes('Not connected')) {
-            this.logger.error(
-              { error: notificationError },
-              'Failed to send prompts/list_changed notification',
-            );
-          }
-        }
+        // Safe to send notification - we've verified connection is active
+        this.server.server.notification({
+          method: 'notifications/prompts/list_changed',
+          params: {},
+        });
+        this.logger.info('Sent prompts/list_changed notification');
       }
     } catch (error) {
-      this.logger.info(
-        'Failed to check prompts/list_changed capability:',
-        error,
+      // Log unexpected errors, but don't crash
+      this.logger.debug(
+        { error },
+        'Failed to send prompts/list_changed notification',
       );
     }
   }
@@ -1279,6 +1285,13 @@ export class McpHub {
   }
 
   /**
+   * セッションマネージャーを取得
+   */
+  getSessionManager(): SessionManager {
+    return this.sessionManager;
+  }
+
+  /**
    * シャットダウン
    */
   async shutdown(): Promise<void> {
@@ -1294,6 +1307,10 @@ export class McpHub {
     this.registry.clear();
     this.resourceRegistry.clear();
     this.promptRegistry.clear();
+
+    // セッションマネージャーのクリーンアップ
+    this.sessionManager.stop();
+    this.sessionManager.clear();
 
     // NPXサーバー関連のシャットダウン
     if (this.serverRegistry) {

@@ -273,32 +273,8 @@ program
           return c.json(status, httpStatus);
         });
 
-        // MCPエンドポイント（ステートレスモード）
-        // セッション管理をMapで実装（複数セッション対応）
-        const sessionMap = new Map<
-          string,
-          {
-            sessionId: string;
-            createdAt: Date;
-            lastUsedAt: Date;
-            clientId?: string;
-          }
-        >();
-
-        // セッションのクリーンアップ（30分のアイドルタイムアウト）
-        const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-        const cleanupSessions = () => {
-          const now = Date.now();
-          for (const [key, session] of sessionMap.entries()) {
-            if (now - session.lastUsedAt.getTime() > SESSION_IDLE_TIMEOUT_MS) {
-              sessionMap.delete(key);
-              console.log(`Session ${session.sessionId} expired and removed`);
-            }
-          }
-        };
-
-        // 定期的にセッションをクリーンアップ
-        setInterval(cleanupSessions, 5 * 60 * 1000); // Every 5 minutes
+        // MCPエンドポイント（セッション管理は中央のSessionManagerを使用）
+        const sessionManager = hub.getSessionManager();
 
         // POSTエンドポイント（JSON-RPC）
         app.post('/mcp', async (c) => {
@@ -324,14 +300,8 @@ program
             // セッション検証
             let currentSession = null;
             if (clientSessionId) {
-              // 既存セッションを検索
-              for (const session of sessionMap.values()) {
-                if (session.sessionId === clientSessionId) {
-                  currentSession = session;
-                  session.lastUsedAt = new Date(); // Update last used time
-                  break;
-                }
-              }
+              // 既存セッションを取得（最終アクセス時刻も自動更新）
+              currentSession = await sessionManager.getSession(clientSessionId);
 
               // セッションが見つからない場合はエラー
               if (!currentSession) {
@@ -365,19 +335,13 @@ program
             if (result?.headers) {
               const serverSessionId = result.headers.get('mcp-session-id');
               if (serverSessionId && !currentSession) {
-                // 新しいセッションを作成
-                const newSession = {
-                  sessionId: serverSessionId,
-                  createdAt: new Date(),
-                  lastUsedAt: new Date(),
-                  clientId: c.req.header('x-client-id'), // Optional client identifier
-                };
-                sessionMap.set(serverSessionId, newSession);
+                // 新しいセッションを作成（中央のSessionManagerを使用）
+                await sessionManager.createSession(serverSessionId);
                 headers.set('Mcp-Session-Id', serverSessionId);
-                console.log(`New session created: ${serverSessionId}`);
+                reqLogger.info(`New session created: ${serverSessionId}`);
               } else if (serverSessionId && currentSession) {
                 // 既存セッションを確認
-                headers.set('Mcp-Session-Id', serverSessionId);
+                headers.set('Mcp-Session-Id', currentSession.id);
               }
             }
 
@@ -425,18 +389,10 @@ program
           const clientSessionId = c.req.header('mcp-session-id');
 
           if (clientSessionId) {
-            // セッションを検索して削除
-            let found = false;
-            for (const [key, session] of sessionMap.entries()) {
-              if (session.sessionId === clientSessionId) {
-                sessionMap.delete(key);
-                found = true;
-                console.log(`Session ${clientSessionId} terminated`);
-                break;
-              }
-            }
+            // セッションを取得して削除（中央のSessionManagerを使用）
+            const session = await sessionManager.getSession(clientSessionId);
 
-            if (!found) {
+            if (!session) {
               return c.json(
                 {
                   jsonrpc: '2.0',
@@ -449,6 +405,10 @@ program
                 404,
               );
             }
+
+            // セッションを削除
+            await sessionManager.deleteSession(clientSessionId);
+            reqLogger.info(`Session ${clientSessionId} terminated`);
           }
 
           // 200 OK with empty body
