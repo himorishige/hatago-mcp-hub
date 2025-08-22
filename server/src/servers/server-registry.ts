@@ -16,6 +16,7 @@ import type {
 } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
 import type { RegistryStorage } from '../storage/registry-storage.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import { sanitizeLog } from '../utils/security.js';
 import { NpxMcpServer, ServerState } from './npx-mcp-server.js';
 import { RemoteMcpServer } from './remote-mcp-server.js';
@@ -128,7 +129,7 @@ export class ServerRegistry extends EventEmitter {
   async registerNpxServer(config: NpxServerConfig): Promise<RegisteredServer> {
     // Check if server already exists
     if (this.servers.has(config.id)) {
-      throw new Error(`Server ${config.id} is already registered`);
+      throw ErrorHelpers.serverAlreadyRegistered(config.id);
     }
 
     // Create workspace for the server
@@ -187,7 +188,7 @@ export class ServerRegistry extends EventEmitter {
   ): Promise<RegisteredServer> {
     // Check if server already exists
     if (this.servers.has(config.id)) {
-      throw new Error(`Server ${config.id} is already registered`);
+      throw ErrorHelpers.serverAlreadyRegistered(config.id);
     }
 
     // Create server instance
@@ -237,7 +238,7 @@ export class ServerRegistry extends EventEmitter {
   ): Promise<RegisteredServer> {
     // Check if server already exists
     if (this.servers.has(config.id)) {
-      throw new Error(`Server ${config.id} is already registered`);
+      throw ErrorHelpers.serverAlreadyRegistered(config.id);
     }
 
     // Create workspace for the server
@@ -476,7 +477,7 @@ export class ServerRegistry extends EventEmitter {
     const registered = this.servers.get(id);
 
     if (!registered) {
-      throw new Error(`Server ${id} is not registered`);
+      throw ErrorHelpers.serverNotRegistered(id);
     }
 
     // Clean up event listeners
@@ -519,11 +520,12 @@ export class ServerRegistry extends EventEmitter {
     const registered = this.servers.get(id);
 
     if (!registered) {
-      throw new Error(`Server ${id} is not registered`);
+      throw ErrorHelpers.serverNotRegistered(id);
     }
 
     if (!registered.instance) {
-      throw new Error(
+      throw ErrorHelpers.invalidInput(
+        'server',
         `Server ${id} does not have an instance (non-NPX server)`,
       );
     }
@@ -549,11 +551,12 @@ export class ServerRegistry extends EventEmitter {
     const registered = this.servers.get(id);
 
     if (!registered) {
-      throw new Error(`Server ${id} is not registered`);
+      throw ErrorHelpers.serverNotRegistered(id);
     }
 
     if (!registered.instance) {
-      throw new Error(
+      throw ErrorHelpers.invalidInput(
+        'server',
         `Server ${id} does not have an instance (non-NPX server)`,
       );
     }
@@ -579,11 +582,12 @@ export class ServerRegistry extends EventEmitter {
     const registered = this.servers.get(id);
 
     if (!registered) {
-      throw new Error(`Server ${id} is not registered`);
+      throw ErrorHelpers.serverNotRegistered(id);
     }
 
     if (!registered.instance) {
-      throw new Error(
+      throw ErrorHelpers.invalidInput(
+        'server',
         `Server ${id} does not have an instance (non-NPX server)`,
       );
     }

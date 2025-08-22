@@ -7,6 +7,7 @@ import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { z } from 'zod';
 import { type ServerConfig, ServerConfigSchema } from '../config/types.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger({
@@ -92,9 +93,7 @@ export class CliRegistryStorage {
       }
     }
 
-    throw new Error(
-      `Failed to acquire lock for ${this.filePath} after ${this.lockTimeout}ms`,
-    );
+    throw ErrorHelpers.lockAcquisitionFailed(this.filePath, this.lockTimeout);
   }
 
   /**

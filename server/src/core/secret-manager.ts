@@ -17,6 +17,7 @@ import {
   validateSecretDocument,
   verifyIntegrity,
 } from '../utils/crypto.js';
+import { ErrorHelpers } from '../utils/errors.js';
 
 /**
  * Secret storage format
@@ -118,13 +119,13 @@ export class SecretManager {
       const parsed = JSON.parse(data);
 
       if (parsed.version !== 1) {
-        throw new Error(`Unsupported storage version: ${parsed.version}`);
+        throw ErrorHelpers.unsupportedStorageVersion(String(parsed.version));
       }
 
       // Validate all secrets
       for (const [key, secret] of Object.entries(parsed.secrets)) {
         if (!validateSecretDocument(secret)) {
-          throw new Error(`Invalid secret format for key: ${key}`);
+          throw ErrorHelpers.invalidSecretFormat(key);
         }
       }
 
@@ -147,7 +148,7 @@ export class SecretManager {
    */
   private async saveStorage(): Promise<void> {
     if (!this.storage) {
-      throw new Error('Storage not initialized');
+      throw ErrorHelpers.storageNotInitialized();
     }
 
     await writeFile(this.secretsPath, JSON.stringify(this.storage, null, 2), {
@@ -217,7 +218,7 @@ secrets.policy.json
 
       // Apply policy
       if (!policy.allowPlain && this.plainMode) {
-        throw new Error('Plain mode is not allowed by policy');
+        throw ErrorHelpers.plainModeNotAllowed();
       }
 
       this.allowPlain = policy.allowPlain;
@@ -241,16 +242,16 @@ secrets.policy.json
     } = {},
   ): Promise<void> {
     if (!this.storage) {
-      throw new Error('Secret manager not initialized');
+      throw ErrorHelpers.secretManagerNotInitialized();
     }
 
     // Validate key
     if (!key || typeof key !== 'string') {
-      throw new Error('Invalid key');
+      throw ErrorHelpers.invalidKey();
     }
 
     if (!value || typeof value !== 'string') {
-      throw new Error('Invalid value');
+      throw ErrorHelpers.invalidValue();
     }
 
     const now = new Date().toISOString();
@@ -258,7 +259,7 @@ secrets.policy.json
 
     // Check if plain mode is allowed
     if (usePlain && !this.allowPlain) {
-      throw new Error('Plain text storage is not allowed');
+      throw ErrorHelpers.plainTextStorageNotAllowed();
     }
 
     let secret: PlainSecret | EncryptedSecret;
@@ -279,7 +280,7 @@ secrets.policy.json
     } else {
       // Create encrypted secret
       if (!this.encryptionKey) {
-        throw new Error('Encryption key not available');
+        throw ErrorHelpers.encryptionKeyNotAvailable();
       }
 
       const data = { [key]: value };
@@ -310,7 +311,7 @@ secrets.policy.json
    */
   async get(key: string): Promise<string | undefined> {
     if (!this.storage) {
-      throw new Error('Secret manager not initialized');
+      throw ErrorHelpers.secretManagerNotInitialized();
     }
 
     const secret = this.storage.secrets[key];
@@ -326,7 +327,7 @@ secrets.policy.json
       // Verify integrity if present
       if (plainSecret.integrity) {
         if (!verifyIntegrity(plainSecret.data, plainSecret.integrity)) {
-          throw new Error('Integrity check failed');
+          throw ErrorHelpers.integrityCheckFailed();
         }
       }
 
@@ -334,7 +335,7 @@ secrets.policy.json
     } else {
       // Decrypt
       if (!this.encryptionKey) {
-        throw new Error('Encryption key not available');
+        throw ErrorHelpers.encryptionKeyNotAvailable();
       }
 
       const encryptedSecret = secret as EncryptedSecret;
@@ -356,7 +357,7 @@ secrets.policy.json
     }>
   > {
     if (!this.storage) {
-      throw new Error('Secret manager not initialized');
+      throw ErrorHelpers.secretManagerNotInitialized();
     }
 
     return Object.keys(this.storage.secrets).map((key) => {
@@ -376,7 +377,7 @@ secrets.policy.json
    */
   async remove(key: string): Promise<boolean> {
     if (!this.storage) {
-      throw new Error('Secret manager not initialized');
+      throw ErrorHelpers.secretManagerNotInitialized();
     }
 
     if (!this.storage.secrets[key]) {
@@ -395,7 +396,7 @@ secrets.policy.json
    */
   async clear(): Promise<void> {
     if (!this.storage) {
-      throw new Error('Secret manager not initialized');
+      throw ErrorHelpers.secretManagerNotInitialized();
     }
 
     this.storage.secrets = {};
@@ -411,7 +412,7 @@ secrets.policy.json
     options: { plain?: boolean; format?: 'json' | 'env' } = {},
   ): Promise<string> {
     if (!this.storage) {
-      throw new Error('Secret manager not initialized');
+      throw ErrorHelpers.secretManagerNotInitialized();
     }
 
     const secrets: Record<string, string> = {};
@@ -480,11 +481,11 @@ secrets.policy.json
    */
   async rotate(): Promise<void> {
     if (!this.storage) {
-      throw new Error('Secret manager not initialized');
+      throw ErrorHelpers.secretManagerNotInitialized();
     }
 
     if (this.plainMode) {
-      throw new Error('Cannot rotate keys in plain mode');
+      throw ErrorHelpers.cannotRotateKeysInPlainMode();
     }
 
     // Generate new master key

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type { HatagoConfig } from '../config/types.js';
 import { validateConfig } from '../config/types.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import {
   type ConfigDiff,
   ConfigGeneration,
@@ -101,20 +102,22 @@ export class ConfigManager extends EventEmitter {
   async switchToGeneration(generationId: string): Promise<void> {
     // ロックチェック（並行切り替えを防ぐ）
     if (this.switchLock) {
-      throw new Error('Generation switch already in progress');
+      throw ErrorHelpers.generationSwitchInProgress();
     }
 
     this.switchLock = true;
     try {
       const newGeneration = this.generations.get(generationId);
       if (!newGeneration) {
-        throw new Error(`Generation ${generationId} not found`);
+        throw ErrorHelpers.generationNotFound(generationId);
       }
 
       const transition = this.transitions.get(generationId);
       if (transition !== GenerationTransition.ACTIVE) {
-        throw new Error(
-          `Generation ${generationId} is not active (current: ${transition})`,
+        throw ErrorHelpers.stateInvalidTransition(
+          String(transition),
+          'ACTIVE',
+          `Generation ${generationId}`,
         );
       }
 
@@ -235,7 +238,7 @@ export class ConfigManager extends EventEmitter {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     if (generations.length < 2) {
-      throw new Error('No previous generation available for rollback');
+      throw ErrorHelpers.noPreviousGeneration();
     }
 
     const previousGeneration = generations[1];

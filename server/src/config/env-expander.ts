@@ -3,6 +3,7 @@
  */
 
 import { detectThreats, isContentSafe } from '@himorishige/noren';
+import { ErrorHelpers } from '../utils/errors.js';
 
 /**
  * Check if an environment variable name is safe
@@ -138,7 +139,9 @@ function expandString(str: string): string {
 
     if (operator === ':?' && operand !== null) {
       // Throw error with custom message
-      throw new Error(operand || `Environment variable ${varName} is not set`);
+      throw operand
+        ? ErrorHelpers.operationFailed('Environment expansion', operand)
+        : ErrorHelpers.envVariableNotSet(varName);
     }
 
     // Return empty string if no operator
@@ -159,7 +162,8 @@ export function validateEnvVars(requiredVars: string[]): void {
   }
 
   if (missing.length > 0) {
-    throw new Error(
+    throw ErrorHelpers.operationFailed(
+      'Environment validation',
       `Missing required environment variables: ${missing.join(', ')}`,
     );
   }
@@ -177,7 +181,7 @@ export async function getEnvVar(
   if (!options?.skipSafetyCheck) {
     const nameSafe = await isEnvVarNameSafe(name);
     if (!nameSafe) {
-      throw new Error(`Potentially unsafe environment variable name: ${name}`);
+      throw ErrorHelpers.unsafeEnvVariableName(name);
     }
   }
 
@@ -186,15 +190,16 @@ export async function getEnvVar(
     if (defaultValue !== undefined) {
       return defaultValue;
     }
-    throw new Error(`Environment variable ${name} is not set`);
+    throw ErrorHelpers.envVariableNotSet(name);
   }
 
   // Validate value safety
   if (!options?.skipSafetyCheck) {
     const validation = await validateEnvVarValue(value);
     if (!validation.safe) {
-      throw new Error(
-        `Environment variable ${name} contains potentially unsafe content`,
+      throw ErrorHelpers.operationFailed(
+        'Environment variable validation',
+        `${name} contains potentially unsafe content`,
       );
     }
   }
@@ -211,7 +216,7 @@ export function getEnvVarSync(name: string, defaultValue?: string): string {
     if (defaultValue !== undefined) {
       return defaultValue;
     }
-    throw new Error(`Environment variable ${name} is not set`);
+    throw ErrorHelpers.envVariableNotSet(name);
   }
   return value;
 }
@@ -236,13 +241,14 @@ export function getEnvNumber(name: string, defaultValue?: number): number {
     if (defaultValue !== undefined) {
       return defaultValue;
     }
-    throw new Error(`Environment variable ${name} is not set`);
+    throw ErrorHelpers.envVariableNotSet(name);
   }
 
   const num = Number(value);
   if (Number.isNaN(num)) {
-    throw new Error(
-      `Environment variable ${name} is not a valid number: ${value}`,
+    throw ErrorHelpers.invalidInput(
+      `Environment variable ${name}`,
+      `Not a valid number: ${value}`,
     );
   }
   return num;

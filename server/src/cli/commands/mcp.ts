@@ -13,6 +13,7 @@ import type {
 } from '../../config/types.js';
 import type { ServerRegistry } from '../../servers/server-registry.js';
 import type { CliRegistryStorage } from '../../storage/cli-registry-storage.js';
+import { ErrorHelpers } from '../../utils/errors.js';
 import { handleCliError, withRegistry } from '../helpers/registry-helper.js';
 
 /**
@@ -299,7 +300,7 @@ Examples (Claude Code compatible):
           }
 
           if (!actualCommand) {
-            throw new Error('Command or URL is required');
+            throw ErrorHelpers.commandOrUrlRequired();
           }
 
           const config = {

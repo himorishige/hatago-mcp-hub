@@ -34,6 +34,7 @@ import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
 import { WorkspaceManager } from '../servers/workspace-manager.js';
 import type { StdioTransport } from '../transport/stdio.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import { createZodLikeSchema } from '../utils/json-to-zod.js';
 import { createLogger } from '../utils/logger.js';
 import { createMutex } from '../utils/mutex.js';
@@ -186,7 +187,7 @@ export class McpHub {
         // リソースを解決
         const resolved = this.resourceRegistry.resolveResource(uri);
         if (!resolved) {
-          throw new Error(`Resource not found: ${uri}`);
+          throw ErrorHelpers.resourceNotFound(uri);
         }
 
         const { serverId, originalUri } = resolved;
@@ -194,7 +195,7 @@ export class McpHub {
         // サーバー接続を取得
         const connection = this.connections.get(serverId);
         if (!connection?.connected) {
-          throw new Error(`Server not connected: ${serverId}`);
+          throw ErrorHelpers.serverNotConnected(serverId);
         }
 
         // 接続タイプに応じてリソースを読み取り
@@ -214,7 +215,7 @@ export class McpHub {
             await connection.remoteServer.readResource(originalUri);
           return result as ReadResourceResult;
         } else {
-          throw new Error(`Unsupported connection type: ${connection.type}`);
+          throw ErrorHelpers.unsupportedConnectionType(connection.type);
         }
       },
     );
@@ -249,7 +250,7 @@ export class McpHub {
         // プロンプトを解決
         const resolved = this.promptRegistry.resolvePrompt(name);
         if (!resolved) {
-          throw new Error(`Prompt not found: ${name}`);
+          throw ErrorHelpers.promptNotFound(name);
         }
 
         const { serverId, originalName } = resolved;
@@ -257,7 +258,7 @@ export class McpHub {
         // サーバー接続を取得
         const connection = this.connections.get(serverId);
         if (!connection?.connected) {
-          throw new Error(`Server not connected: ${serverId}`);
+          throw ErrorHelpers.serverNotConnected(serverId);
         }
 
         // 接続タイプに応じてプロンプトを取得
@@ -277,9 +278,9 @@ export class McpHub {
           return result as GetPromptResult;
         } else if (connection.type === 'remote' && connection.remoteServer) {
           // リモートサーバーの場合（未実装）
-          throw new Error('Remote server prompts not yet implemented');
+          throw ErrorHelpers.notImplemented('Remote server prompts');
         } else {
-          throw new Error(`Unsupported connection type: ${connection.type}`);
+          throw ErrorHelpers.unsupportedConnectionType(connection.type);
         }
       },
     );
@@ -1157,11 +1158,12 @@ export class McpHub {
     // ツールを解決
     const resolved = this.registry.resolveTool(publicName);
     if (!resolved) {
+      const error = ErrorHelpers.toolNotFound(publicName);
       return {
         content: [
           {
             type: 'text',
-            text: `Tool not found: ${publicName}`,
+            text: error.message,
           },
         ],
         isError: true,
@@ -1184,7 +1186,8 @@ export class McpHub {
             content: [
               {
                 type: 'text',
-                text: `Failed to connect to server ${serverId}: ${error}`,
+                text: ErrorHelpers.mcpConnectionFailed(serverId, String(error))
+                  .message,
               },
             ],
             isError: true,
@@ -1195,7 +1198,7 @@ export class McpHub {
           content: [
             {
               type: 'text',
-              text: `Server not connected: ${serverId}`,
+              text: ErrorHelpers.serverNotConnected(serverId).message,
             },
           ],
           isError: true,
@@ -1208,7 +1211,7 @@ export class McpHub {
         content: [
           {
             type: 'text',
-            text: `Failed to establish connection to server: ${serverId}`,
+            text: ErrorHelpers.mcpConnectionFailed(serverId).message,
           },
         ],
         isError: true,
@@ -1241,12 +1244,14 @@ export class McpHub {
           toolArgs,
         ) as Promise<CallToolResult>;
       } else {
-        throw new Error(`Unsupported connection type: ${connection.type}`);
+        throw ErrorHelpers.unsupportedConnectionType(connection.type);
       }
 
       const timeoutPromise = new Promise<CallToolResult>((_, reject) => {
         timeoutId = setTimeout(() => {
-          reject(new Error('Tool call timeout'));
+          reject(
+            ErrorHelpers.toolExecutionFailed(publicName, 'Tool call timeout'),
+          );
         }, timeoutMs);
       });
 
@@ -1272,7 +1277,7 @@ export class McpHub {
         content: [
           {
             type: 'text',
-            text: `Tool execution failed: ${error}`,
+            text: ErrorHelpers.toolExecutionFailed(publicName, error).message,
           },
         ],
         isError: true,

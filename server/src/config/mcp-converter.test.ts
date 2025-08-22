@@ -190,7 +190,7 @@ describe('MCP Converter', () => {
       };
 
       expect(() => convertMcpServersToInternal(mcpServers)).toThrow(
-        "Failed to convert mcpServer 'invalid'",
+        "Convert mcpServer 'invalid' failed",
       );
     });
   });

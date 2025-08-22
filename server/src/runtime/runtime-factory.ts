@@ -2,6 +2,7 @@
  * Runtime factory - separated to avoid circular dependencies
  */
 
+import { ErrorHelpers } from '../utils/errors.js';
 import type { Runtime, RuntimeEnvironment } from './types.js';
 
 /**
@@ -72,11 +73,11 @@ async function createRuntime(): Promise<Runtime> {
 
     case 'deno':
       // Deno runtime not yet implemented
-      throw new Error('Deno runtime is not yet implemented');
+      throw ErrorHelpers.runtimeNotImplemented('Deno');
 
     case 'bun':
       // Bun runtime not yet implemented
-      throw new Error('Bun runtime is not yet implemented');
+      throw ErrorHelpers.runtimeNotImplemented('Bun');
     default: {
       const { NodeRuntime } = await import('./node.js');
       return new NodeRuntime();

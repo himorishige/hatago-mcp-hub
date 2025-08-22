@@ -6,6 +6,8 @@
  */
 
 // Supported protocol versions in priority order (newest first)
+import { ErrorHelpers } from '../utils/errors.js';
+
 export const SUPPORTED_PROTOCOLS = [
   '2025-06-18', // Latest date-based version
   '0.1.0', // Legacy semantic version
@@ -99,7 +101,8 @@ export class ProtocolNegotiator {
 
         // Verify the accepted version is one we support
         if (!this.isSupported(acceptedVersion)) {
-          throw new Error(
+          throw ErrorHelpers.operationFailed(
+            'Protocol negotiation',
             `Server returned unsupported protocol version: ${acceptedVersion}`,
           );
         }
@@ -130,11 +133,11 @@ export class ProtocolNegotiator {
     }
 
     // All versions failed
-    const errorDetails = errors
+    const _errorDetails = errors
       .map((e) => `${e.version}: ${e.error}`)
       .join(', ');
-    throw new Error(
-      `Failed to negotiate protocol version. Tried: ${errorDetails}`,
+    throw ErrorHelpers.protocolNegotiationFailed(
+      this.errors.map((e) => e.version),
     );
   }
 

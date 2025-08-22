@@ -20,6 +20,14 @@ Phase 2: NPXプロキシ        100% ✅
 全体完了率: 100% ✅
 ```
 
+### 🔄 最新更新 (2025-08-22)
+- ✅ 並行処理の競合状態: **完全解決済み** - Mutex実装完了
+- ✅ NPXキャッシュ判定: **解決済み** - 正確な判定ロジック実装
+- ✅ テストカバレッジ: **改善中** - `mcp-hub.test.ts`追加（18テスト）
+  - McpHubクラス（1345行）の基本テスト作成
+  - Hatago Code Reviewerによるレビュー実施
+  - 統合テストレベルのカバレッジ拡充が必要
+
 ## ~~🔴 Critical - 重大な技術的課題~~ ✅ すべて解決済み
 
 ### 1. NPXキャッシュ判定 ✅ **解決済み**
@@ -53,8 +61,8 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 
 ### 3. テストカバレッジの向上
 
-**現状（実測値）**: 
-- ユニットテスト: **60-70%** ✅（16ファイル、164/167テスト成功）
+**現状（2025-08-22更新）**: 
+- ユニットテスト: **65-75%** ✅（17ファイル、182/185テスト成功）
 - E2Eテスト: **5%** ⚠️（1ファイルのみ）
 - 統合テスト: **0%** ❌
 
@@ -63,25 +71,30 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 - ✅ エラーハンドリング、暗号化、パス検証
 - ✅ サーバーレジストリ、ワークスペース管理
 - ✅ NPXキャッシュ管理、メモリストレージ
+- ✅ **mcp-hub.ts** - メインハブクラス（基本テスト18個追加）
 
-**未テストの重要モジュール**:
-- ❌ **mcp-hub.ts** - メインハブクラス（1345行）
+**テストカバレッジ不足の領域**（Hatago Code Reviewerより）:
+- ⚠️ NPX/Remote/Localサーバー接続フローの統合テスト
+- ⚠️ リソース/プロンプト管理の詳細テスト
+- ⚠️ エラーリカバリーシナリオ
+- ⚠️ 遅延接続（lazy connection）の動作検証
 - ❌ remote-mcp-server.ts
 - ❌ CLIコマンド関連
-- ❌ ツール/リソース/プロンプトレジストリ
+- ❌ ツール/リソース/プロンプトレジストリの個別テスト
 
-### 4. エラーコード標準化
+### 4. エラーコード標準化 ✅ **実装完了**
 
-**提案実装**:
-```typescript
-enum ErrorCode {
-  E_MCP_INIT_TIMEOUT = 'E_MCP_INIT_TIMEOUT',
-  E_MCP_TOOL_DISCOVERY_EMPTY = 'E_MCP_TOOL_DISCOVERY_EMPTY',
-  E_NPX_INSTALL_FAILED = 'E_NPX_INSTALL_FAILED',
-  E_SESSION_NOT_FOUND = 'E_SESSION_NOT_FOUND',
-  E_SESSION_EXPIRED = 'E_SESSION_EXPIRED',
-}
-```
+**実装済み（2025-08-22）**:
+- ✅ ErrorCode enum定義済み（20種類以上）
+- ✅ HatagoErrorクラス実装済み
+- ✅ ErrorHelpers実装済み（80個以上のヘルパー関数）
+- ✅ 主要モジュールの移行完了（合計80箇所以上）
+  - mcp-hub.ts, npx-mcp-server.ts, tool-registry.ts
+  - remote-mcp-server.ts, custom-stdio-transport.ts
+  - server-registry.ts, secret-manager.ts
+  - session-store.ts, shared-session-manager.ts
+  - config-manager.ts, env-expander.ts, mcp-converter.ts
+  - loader.ts, file-watcher.ts, workspace-manager.ts
 
 ### 5. メトリクス・可観測性
 

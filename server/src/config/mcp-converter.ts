@@ -2,6 +2,7 @@
  * Claude Code .mcp.json形式からHatago内部形式への変換
  */
 
+import { ErrorHelpers } from '../utils/errors.js';
 import type {
   HatagoConfig,
   HatagoOptions,
@@ -44,8 +45,9 @@ function extractNpxPackageInfo(args: string[] = []): {
   args: string[];
 } {
   if (args.length === 0) {
-    throw new Error(
-      'npx command requires at least one argument (package name)',
+    throw ErrorHelpers.invalidInput(
+      'npx command',
+      'Requires at least one argument (package name)',
     );
   }
 
@@ -139,7 +141,10 @@ export function convertMcpServerToInternal(
 
     case 'remote': {
       if (!config.url) {
-        throw new Error(`Remote server ${id} requires a URL`);
+        throw ErrorHelpers.invalidInput(
+          'Remote server',
+          `${id} requires a URL`,
+        );
       }
 
       // headersからauth情報を抽出
@@ -174,7 +179,10 @@ export function convertMcpServerToInternal(
     }
     default: {
       if (!config.command) {
-        throw new Error(`Local server ${id} requires a command`);
+        throw ErrorHelpers.invalidInput(
+          'Local server',
+          `${id} requires a command`,
+        );
       }
       baseConfig = {
         id,
@@ -205,10 +213,9 @@ export function convertMcpServersToInternal(
     try {
       servers.push(convertMcpServerToInternal(id, config));
     } catch (error) {
-      throw new Error(
-        `Failed to convert mcpServer '${id}': ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+      throw ErrorHelpers.operationFailed(
+        `Convert mcpServer '${id}'`,
+        error instanceof Error ? error.message : String(error),
       );
     }
   }
@@ -236,7 +243,7 @@ export function mergeConfigWithMcpServers(
   const seenIds = new Set<string>();
   for (const server of mergedServers) {
     if (seenIds.has(server.id)) {
-      throw new Error(`Duplicate server ID: ${server.id}`);
+      throw ErrorHelpers.duplicateServerId(server.id);
     }
     seenIds.add(server.id);
   }

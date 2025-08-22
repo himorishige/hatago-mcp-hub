@@ -1,4 +1,5 @@
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { ErrorHelpers } from '../utils/errors.js';
 
 // STDIOトランスポートのオプション
 export interface StdioTransportOptions {
@@ -25,7 +26,7 @@ export class StdioTransport {
    */
   async start(): Promise<void> {
     if (this.connected) {
-      throw new Error('Transport is already started');
+      throw ErrorHelpers.transportAlreadyStarted();
     }
 
     console.log(
@@ -80,7 +81,7 @@ export class StdioTransport {
    */
   getClientTransport(): StdioClientTransport {
     if (!this.clientTransport) {
-      throw new Error('Transport not started');
+      throw ErrorHelpers.transportNotStarted();
     }
     return this.clientTransport;
   }

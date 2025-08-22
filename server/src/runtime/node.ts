@@ -5,6 +5,7 @@
 import { spawn } from 'node:child_process';
 import { randomBytes as nodeRandomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
+import { ErrorHelpers } from '../utils/errors.js';
 import type {
   FileSystem,
   IdGenerator,
@@ -59,7 +60,7 @@ class WebCryptoIdGenerator implements IdGenerator {
     }
 
     if (id.length < length) {
-      throw new Error('Failed to generate ID after maximum attempts');
+      throw ErrorHelpers.idGenerationFailed(10);
     }
 
     return id;
@@ -405,7 +406,7 @@ export class NodeRuntime implements Runtime {
     }
     const store = this.kvStores.get(namespace);
     if (!store) {
-      throw new Error(`Failed to get KV store for namespace: ${namespace}`);
+      throw ErrorHelpers.kvStoreAccessFailed(namespace);
     }
     return store;
   }

@@ -1,5 +1,6 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolNamingConfig, ToolNamingStrategy } from '../config/types.js';
+import { ErrorHelpers } from '../utils/errors.js';
 
 // ツールのメタデータ
 export interface ToolMetadata {
@@ -56,8 +57,10 @@ export class ToolRegistry {
         const existing = this.tools.get(publicName);
         if (!existing) continue;
         if (existing.serverId !== serverId) {
-          throw new Error(
-            `Tool name collision: ${publicName} already exists from server ${existing.serverId}`,
+          throw ErrorHelpers.toolNameCollision(
+            publicName,
+            existing.serverId,
+            serverId,
           );
         }
       }

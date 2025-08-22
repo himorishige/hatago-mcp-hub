@@ -5,6 +5,7 @@
 
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import {
   adaptRequest,
   adaptResponse,
@@ -93,9 +94,7 @@ export class SimplifiedProtocolNegotiator {
       }
     }
 
-    throw new Error(
-      `Failed to negotiate protocol. Supported versions: ${SUPPORTED_PROTOCOLS.join(', ')}`,
-    );
+    throw ErrorHelpers.protocolNegotiationFailed(SUPPORTED_PROTOCOLS);
   }
 
   /**

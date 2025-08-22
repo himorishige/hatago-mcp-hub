@@ -9,6 +9,7 @@ import { HTTPException } from 'hono/http-exception';
 import { generateSampleConfig, loadConfig } from '../config/loader.js';
 import { McpHub } from '../core/mcp-hub.js';
 import { StreamableHTTPTransport } from '../hono-mcp/index.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import { sanitizeLog } from '../utils/security.js';
 import { createMcpCommands } from './commands/mcp.js';
 import { createNpxCommands } from './commands/npx.js';
@@ -106,7 +107,7 @@ program
         validationResult.errors.forEach((error) => {
           reqLogger.error({ path: error.path }, error.message);
         });
-        throw new Error('Invalid configuration');
+        throw ErrorHelpers.invalidConfiguration();
       }
 
       if (validationResult.warnings.length > 0) {

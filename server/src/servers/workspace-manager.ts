@@ -6,6 +6,7 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { getRuntime } from '../runtime/runtime-factory.js';
+import { ErrorHelpers } from '../utils/errors.js';
 
 /**
  * Workspace information
@@ -171,7 +172,7 @@ export class WorkspaceManager {
       }
     }
 
-    throw new Error(`Failed to create workspace after ${maxAttempts} attempts`);
+    throw ErrorHelpers.workspaceCreationFailed(maxAttempts);
   }
 
   /**
@@ -296,7 +297,7 @@ export class WorkspaceManager {
     const workspace = await this.getWorkspace(workspaceId);
 
     if (!workspace) {
-      throw new Error(`Workspace ${workspaceId} not found`);
+      throw ErrorHelpers.workspaceNotFound(workspaceId);
     }
 
     // Sanitize package name for directory

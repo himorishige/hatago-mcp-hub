@@ -11,6 +11,7 @@ import {
 } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
+import { ErrorHelpers } from './errors.js';
 
 /**
  * Secret document base interface
@@ -212,7 +213,7 @@ export function decrypt(
     return JSON.parse(decrypted.toString('utf8'));
   } catch (_error) {
     // Return generic error to avoid timing attacks
-    throw new Error('Failed to decrypt data');
+    throw ErrorHelpers.decryptionFailed();
   }
 }
 

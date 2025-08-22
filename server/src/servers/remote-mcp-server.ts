@@ -11,6 +11,7 @@ import type { RemoteServerConfig } from '../config/types.js';
 import { MCPClientFacade } from '../core/mcp-client-facade.js';
 import type { NegotiatedProtocol } from '../core/protocol-negotiator.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
+import { ErrorCode, ErrorHelpers, HatagoError } from '../utils/errors.js';
 import { sanitizeLog } from '../utils/security.js';
 
 /**
@@ -97,16 +98,25 @@ export class RemoteMcpServer extends EventEmitter {
         process.env.NODE_ENV === 'production' &&
         parsed.protocol !== 'https:'
       ) {
-        throw new Error('HTTPS is required in production environment');
+        throw new HatagoError(
+          ErrorCode.E_SECURITY_POLICY_DENIED,
+          'HTTPS is required in production environment',
+          { severity: 'critical', context: { url }, recoverable: false },
+        );
       }
 
       // Only allow HTTP/HTTPS protocols
       if (!['http:', 'https:'].includes(parsed.protocol)) {
-        throw new Error(`Unsupported protocol: ${parsed.protocol}`);
+        throw ErrorHelpers.mcpProtocolError(
+          'remote',
+          `Unsupported protocol: ${parsed.protocol}`,
+        );
       }
     } catch (error) {
       if (error instanceof TypeError) {
-        throw new Error(`Invalid URL format: ${url}`);
+        throw ErrorHelpers.configInvalid('remote-server-url', [
+          `Invalid URL format: ${url}`,
+        ]);
       }
       throw error;
     }
@@ -159,7 +169,11 @@ export class RemoteMcpServer extends EventEmitter {
       this.state !== ServerState.STOPPED &&
       this.state !== ServerState.CRASHED
     ) {
-      throw new Error(`Cannot start server in state: ${this.state}`);
+      throw ErrorHelpers.stateInvalidTransition(
+        this.state,
+        'running',
+        this.config.id,
+      );
     }
 
     // Start the server with proper concurrency control
@@ -243,7 +257,7 @@ export class RemoteMcpServer extends EventEmitter {
     } catch (error) {
       const safeError = await sanitizeLog(String(error));
       console.log(`Failed to connect to ${this.config.id}: ${safeError}`);
-      throw new Error(`Failed to connect to remote server: ${error}`);
+      throw ErrorHelpers.mcpConnectionFailed(this.config.id, String(error));
     }
   }
 
@@ -692,7 +706,7 @@ export class RemoteMcpServer extends EventEmitter {
     args: Record<string, unknown>,
   ): Promise<unknown> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
-      throw new Error(`Server ${this.config.id} is not connected`);
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
@@ -716,7 +730,7 @@ export class RemoteMcpServer extends EventEmitter {
    */
   async listTools(): Promise<unknown> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
-      throw new Error(`Server ${this.config.id} is not connected`);
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
@@ -740,7 +754,7 @@ export class RemoteMcpServer extends EventEmitter {
    */
   async listResources(): Promise<unknown> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
-      throw new Error(`Server ${this.config.id} is not connected`);
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
@@ -767,7 +781,7 @@ export class RemoteMcpServer extends EventEmitter {
    */
   async readResource(uri: string): Promise<ReadResourceResult> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
-      throw new Error(`Server ${this.config.id} is not connected`);
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {

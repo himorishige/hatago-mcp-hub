@@ -12,6 +12,7 @@ import {
   type NegotiableTransport,
 } from '../core/mcp-initializer.js';
 import type { NegotiatedProtocol } from '../core/protocol-negotiator.js';
+import { ErrorHelpers } from '../utils/errors.js';
 
 export interface CustomStdioTransportOptions {
   command: string;
@@ -53,7 +54,7 @@ export class CustomStdioTransport
 
   async start(): Promise<void> {
     if (this.child) {
-      throw new Error('Transport already started');
+      throw ErrorHelpers.stateAlreadyRunning('Transport');
     }
 
     // Prepare spawn options with optimized environment
@@ -255,7 +256,7 @@ export class CustomStdioTransport
         );
       }
     } catch (error) {
-      throw new Error(`Failed to initialize server: ${error}`);
+      throw ErrorHelpers.mcpInitTimeout(this.options.command, String(error));
     }
   }
 
@@ -282,7 +283,7 @@ export class CustomStdioTransport
 
   private sendFrame(message: JSONRPCMessage): void {
     if (!this.child || !this.child.stdin) {
-      throw new Error('Transport not started');
+      throw ErrorHelpers.stateInvalidTransition('Transport not started');
     }
 
     // MCP uses newline-delimited JSON, not Content-Length headers
@@ -293,7 +294,7 @@ export class CustomStdioTransport
 
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this.child || !this.child.stdin) {
-      throw new Error('Transport not started');
+      throw ErrorHelpers.stateInvalidTransition('Transport not started');
     }
 
     // Assign ID if needed

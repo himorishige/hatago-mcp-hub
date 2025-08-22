@@ -1,5 +1,6 @@
 import type { HatagoConfig } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
+import { ErrorHelpers } from '../utils/errors.js';
 
 /**
  * 設定の世代を表すクラス
@@ -36,7 +37,7 @@ export class ConfigGeneration {
    */
   addReference(): void {
     if (this.disposed) {
-      throw new Error(`Generation ${this.id} is already disposed`);
+      throw ErrorHelpers.generationAlreadyDisposed(this.id);
     }
     this.referenceCount++;
   }
@@ -76,8 +77,9 @@ export class ConfigGeneration {
    */
   dispose(): void {
     if (this.referenceCount > 0) {
-      throw new Error(
-        `Cannot dispose generation ${this.id} with ${this.referenceCount} active references`,
+      throw ErrorHelpers.operationFailed(
+        'Dispose generation',
+        `Generation ${this.id} has ${this.referenceCount} active references`,
       );
     }
     this.disposed = true;

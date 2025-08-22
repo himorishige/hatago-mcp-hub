@@ -7,6 +7,7 @@
 
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import {
   createInitializeRequest,
   type InitializeResult,
@@ -147,14 +148,18 @@ export class MCPInitializer {
     // Check for error response
     if ('error' in response) {
       const error = response.error as { message?: string };
-      throw new Error(
-        `Initialize failed: ${error.message || JSON.stringify(error)}`,
+      throw ErrorHelpers.operationFailed(
+        'MCP initialization',
+        error.message || JSON.stringify(error),
       );
     }
 
     // Extract result
     if (!('result' in response)) {
-      throw new Error('Initialize response missing result');
+      throw ErrorHelpers.operationFailed(
+        'MCP initialization',
+        'Initialize response missing result',
+      );
     }
 
     return response.result as InitializeResult;

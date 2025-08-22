@@ -344,7 +344,7 @@ describe('McpHub', () => {
       });
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('timeout');
+      expect(result.content[0].text.toLowerCase()).toContain('timeout');
     });
   });
 

@@ -6,6 +6,7 @@ import type {
   ToolCallHistory,
 } from '../stores/session-store.js';
 import { MemorySessionStore } from '../stores/session-store.js';
+import { ErrorHelpers } from '../utils/errors.js';
 
 /**
  * クライアント情報
@@ -99,12 +100,12 @@ export class SharedSessionManager extends EventEmitter {
   ): Promise<void> {
     const session = await this.store.get(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
+      throw ErrorHelpers.sessionNotFound(sessionId);
     }
 
     // 最大クライアント数チェック
     if (session.clients.size >= this.config.maxClientsPerSession) {
-      throw new Error(`Session ${sessionId} has reached maximum client limit`);
+      throw ErrorHelpers.sessionLimitReached(sessionId);
     }
 
     // クライアント情報を作成
@@ -178,7 +179,7 @@ export class SharedSessionManager extends EventEmitter {
   ): Promise<string> {
     const session = await this.store.get(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
+      throw ErrorHelpers.sessionNotFound(sessionId);
     }
 
     // トークンを生成（実際の実装では署名付きJWTなどを使用）
@@ -204,7 +205,7 @@ export class SharedSessionManager extends EventEmitter {
     const session = sessions.find((s) => s.sharedToken === token);
 
     if (!session) {
-      throw new Error('Invalid or expired token');
+      throw ErrorHelpers.invalidToken();
     }
 
     await this.connectClient(session.id, clientId, metadata);
@@ -224,7 +225,7 @@ export class SharedSessionManager extends EventEmitter {
   ): Promise<void> {
     const session = await this.store.get(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
+      throw ErrorHelpers.sessionNotFound(sessionId);
     }
 
     const runtime = await this.runtime;
@@ -270,7 +271,7 @@ export class SharedSessionManager extends EventEmitter {
   ): Promise<boolean> {
     const session = await this.store.get(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
+      throw ErrorHelpers.sessionNotFound(sessionId);
     }
 
     const existingLock = session.locks.get(resourceId);

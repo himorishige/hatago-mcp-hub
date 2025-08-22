@@ -8,6 +8,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import {
   type InitializerOptions,
   MCPInitializer,
@@ -65,7 +66,7 @@ export class MCPClientFacade {
    */
   async connect(transport: Transport): Promise<NegotiatedProtocol> {
     if (this.connected) {
-      throw new Error('Client already connected');
+      throw ErrorHelpers.stateAlreadyRunning('Client connection');
     }
 
     this.log('Connecting with protocol negotiation...');

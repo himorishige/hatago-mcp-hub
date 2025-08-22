@@ -1,4 +1,5 @@
 import { getRuntime } from '../runtime/runtime-factory.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import { createKeyedMutex } from '../utils/mutex.js';
 
 /**
@@ -121,12 +122,16 @@ export class MemorySessionStore implements ISessionStore {
     return this.sessionMutex.runExclusive(id, async () => {
       const session = this.sessions.get(id);
       if (!session) {
-        throw new Error(`Session ${id} not found`);
+        throw ErrorHelpers.sessionNotFound(id);
       }
 
       // バージョンチェック（楽観的ロック）
       if (updates.version && updates.version !== session.version) {
-        throw new Error(`Version conflict for session ${id}`);
+        throw ErrorHelpers.sessionVersionConflict(
+          id,
+          session.version + 1,
+          session.version,
+        );
       }
 
       // 更新を適用
@@ -156,7 +161,7 @@ export class MemorySessionStore implements ISessionStore {
   ): Promise<string> {
     const session = await this.get(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
+      throw ErrorHelpers.sessionNotFound(sessionId);
     }
 
     // 既存のトークンを削除
@@ -203,7 +208,7 @@ export class MemorySessionStore implements ISessionStore {
   async addClient(sessionId: string, clientId: string): Promise<void> {
     const session = await this.get(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
+      throw ErrorHelpers.sessionNotFound(sessionId);
     }
     session.clients.add(clientId);
   }
@@ -226,7 +231,7 @@ export class MemorySessionStore implements ISessionStore {
   async addHistory(sessionId: string, history: ToolCallHistory): Promise<void> {
     const session = await this.get(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
+      throw ErrorHelpers.sessionNotFound(sessionId);
     }
 
     session.history.push(history);
@@ -259,7 +264,7 @@ export class MemorySessionStore implements ISessionStore {
   ): Promise<boolean> {
     const session = await this.get(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
+      throw ErrorHelpers.sessionNotFound(sessionId);
     }
 
     // ロックが既に取得されている場合

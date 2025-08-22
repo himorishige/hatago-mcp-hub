@@ -20,6 +20,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import { ErrorHelpers } from '../utils/errors.js';
 
 export class StreamableHTTPTransport implements Transport {
   #started = false;
@@ -71,7 +72,7 @@ export class StreamableHTTPTransport implements Transport {
    */
   async start(): Promise<void> {
     if (this.#started) {
-      throw new Error('Transport already started');
+      throw ErrorHelpers.transportAlreadyStarted();
     }
     this.#started = true;
 
@@ -527,7 +528,8 @@ export class StreamableHTTPTransport implements Transport {
     const streamId = this.#requestToStreamMapping.get(requestId);
     const response = streamId ? this.#streamMapping.get(streamId) : undefined;
     if (!streamId) {
-      throw new Error(
+      throw ErrorHelpers.operationFailed(
+        'Connection lookup',
         `No connection established for request ID: ${String(requestId)}`,
       );
     }
@@ -547,7 +549,8 @@ export class StreamableHTTPTransport implements Transport {
 
       if (allResponsesReady) {
         if (!response) {
-          throw new Error(
+          throw ErrorHelpers.operationFailed(
+            'Connection lookup',
             `No connection established for request ID: ${String(requestId)}`,
           );
         }

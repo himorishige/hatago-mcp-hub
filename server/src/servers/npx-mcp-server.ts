@@ -13,6 +13,7 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { NpxServerConfig } from '../config/types.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
+import { ErrorHelpers } from '../utils/errors.js';
 import { CustomStdioTransport } from './custom-stdio-transport.js';
 import { getNpxCacheManager } from './npx-cache-manager.js';
 
@@ -108,7 +109,7 @@ export class NpxMcpServer extends EventEmitter {
    */
   async callTool(name: string, args: unknown): Promise<unknown> {
     if (!this.client) {
-      throw new Error('Client not connected');
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
     return await this.client.callTool({ name, arguments: args });
   }
@@ -139,7 +140,11 @@ export class NpxMcpServer extends EventEmitter {
       this.state !== ServerState.STOPPED &&
       this.state !== ServerState.CRASHED
     ) {
-      throw new Error(`Cannot start server in state: ${this.state}`);
+      throw ErrorHelpers.stateInvalidTransition(
+        this.state,
+        'running',
+        this.config.id,
+      );
     }
 
     // Start the server with proper concurrency control
@@ -436,7 +441,7 @@ export class NpxMcpServer extends EventEmitter {
    */
   private async discoverTools(): Promise<void> {
     if (!this.client) {
-      throw new Error('Client not connected');
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
@@ -463,7 +468,7 @@ export class NpxMcpServer extends EventEmitter {
    */
   private async discoverResources(): Promise<void> {
     if (!this.client) {
-      throw new Error('Client not connected');
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
@@ -494,7 +499,7 @@ export class NpxMcpServer extends EventEmitter {
    */
   private async discoverPrompts(): Promise<void> {
     if (!this.client) {
-      throw new Error('Client not connected');
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
@@ -525,7 +530,7 @@ export class NpxMcpServer extends EventEmitter {
     args?: Record<string, unknown>,
   ): Promise<unknown> {
     if (!this.client) {
-      throw new Error('Client not connected');
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
     return await this.client.getPrompt({ name, arguments: args });
   }
@@ -535,7 +540,7 @@ export class NpxMcpServer extends EventEmitter {
    */
   async readResource(uri: string): Promise<ReadResourceResult> {
     if (!this.client) {
-      throw new Error('Client not connected');
+      throw ErrorHelpers.serverNotConnected(this.config.id);
     }
     return await this.client.readResource({ uri });
   }

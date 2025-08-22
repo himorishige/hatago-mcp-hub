@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import { type FSWatcher, watch } from 'chokidar';
 import { parse } from 'jsonc-parser';
+import { ErrorHelpers } from '../utils/errors.js';
 
 /**
  * 設定ファイルの変更を監視するクラス
@@ -107,7 +108,7 @@ export class FileWatcher extends EventEmitter {
    */
   async reload(): Promise<unknown> {
     if (this.watchPaths.length === 0) {
-      throw new Error('No watch paths configured');
+      throw ErrorHelpers.noWatchPaths();
     }
 
     const configs: Array<{ path: string; config: unknown }> = [];
@@ -124,7 +125,7 @@ export class FileWatcher extends EventEmitter {
     }
 
     if (configs.length === 0) {
-      throw new Error('Failed to load any configuration files');
+      throw ErrorHelpers.configLoadFailed();
     }
 
     // 最初の設定を返す（将来的には複数設定のマージを考慮）

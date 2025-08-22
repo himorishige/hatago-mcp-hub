@@ -8,6 +8,7 @@ import { access } from 'node:fs/promises';
 import * as net from 'node:net';
 import { freemem, platform, release, totalmem } from 'node:os';
 import { join } from 'node:path';
+import { ErrorHelpers } from './errors.js';
 
 export interface CheckResult {
   name: string;
@@ -131,7 +132,7 @@ export async function checkDiskSpace(): Promise<CheckResult> {
     const output = execSync(`df -k "${cwd}"`, { encoding: 'utf-8' });
     const lines = output.trim().split('\n');
     if (lines.length < 2) {
-      throw new Error('Invalid df output');
+      throw ErrorHelpers.invalidDfOutput();
     }
 
     const parts = lines[1].split(/\s+/);

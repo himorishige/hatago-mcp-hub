@@ -2,6 +2,7 @@
  * Cloudflare Workers runtime implementation
  */
 
+import { ErrorHelpers } from '../utils/errors.js';
 import type {
   FileSystem,
   IdGenerator,
@@ -53,7 +54,7 @@ class WorkersIdGenerator implements IdGenerator {
     }
 
     if (id.length < length) {
-      throw new Error('Failed to generate ID after maximum attempts');
+      throw ErrorHelpers.idGenerationFailed(10);
     }
 
     return id;
@@ -197,7 +198,8 @@ class CloudflareKVStore implements KVStore {
 
   async get<T = unknown>(key: string): Promise<T | null> {
     if (!this.kv) {
-      throw new Error(
+      throw ErrorHelpers.operationFailed(
+        'KV access',
         'KV namespace not configured. Add KV binding to wrangler.toml',
       );
     }
@@ -211,7 +213,8 @@ class CloudflareKVStore implements KVStore {
     ttlSeconds?: number,
   ): Promise<void> {
     if (!this.kv) {
-      throw new Error(
+      throw ErrorHelpers.operationFailed(
+        'KV access',
         'KV namespace not configured. Add KV binding to wrangler.toml',
       );
     }
@@ -222,7 +225,8 @@ class CloudflareKVStore implements KVStore {
 
   async delete(key: string): Promise<boolean> {
     if (!this.kv) {
-      throw new Error(
+      throw ErrorHelpers.operationFailed(
+        'KV access',
         'KV namespace not configured. Add KV binding to wrangler.toml',
       );
     }
@@ -237,7 +241,8 @@ class CloudflareKVStore implements KVStore {
 
   async list(prefix?: string): Promise<string[]> {
     if (!this.kv) {
-      throw new Error(
+      throw ErrorHelpers.operationFailed(
+        'KV access',
         'KV namespace not configured. Add KV binding to wrangler.toml',
       );
     }
@@ -247,7 +252,8 @@ class CloudflareKVStore implements KVStore {
 
   async clear(): Promise<void> {
     if (!this.kv) {
-      throw new Error(
+      throw ErrorHelpers.operationFailed(
+        'KV access',
         'KV namespace not configured. Add KV binding to wrangler.toml',
       );
     }
@@ -289,17 +295,20 @@ export class CloudflareWorkersRuntime implements Runtime {
     }
     const store = this.kvStores.get(namespace);
     if (!store) {
-      throw new Error(`Failed to get KV store for namespace: ${namespace}`);
+      throw ErrorHelpers.kvStoreAccessFailed(namespace);
     }
     return store;
   }
 
   getFileSystem?(): FileSystem {
-    throw new Error('File system is not available in Cloudflare Workers');
+    throw ErrorHelpers.featureNotAvailable('File system', 'Cloudflare Workers');
   }
 
   getProcessSpawner?(): ProcessSpawner {
-    throw new Error('Process spawning is not available in Cloudflare Workers');
+    throw ErrorHelpers.featureNotAvailable(
+      'Process spawning',
+      'Cloudflare Workers',
+    );
   }
 
   now(): number {

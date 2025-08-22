@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parse as parseJsonc } from 'jsonc-parser';
+import { ErrorHelpers } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
 import { expandEnvironmentVariables } from './env-expander.js';
 import { type HatagoConfig, validateConfig } from './types.js';
@@ -136,8 +137,9 @@ export async function loadConfig(
     // プロファイル名の検証（パストラバーサル攻撃を防ぐ）
     const profileName = options.profile;
     if (!/^[a-zA-Z0-9_-]+$/.test(profileName)) {
-      throw new Error(
-        `Invalid profile name: ${profileName}. Only alphanumeric characters, hyphens, and underscores are allowed.`,
+      throw ErrorHelpers.invalidInput(
+        'profile name',
+        `${profileName} - Only alphanumeric characters, hyphens, and underscores are allowed`,
       );
     }
 
@@ -151,7 +153,7 @@ export async function loadConfig(
     // パスが期待されるディレクトリ内にあることを確認
     const expectedDir = join(process.cwd(), '.hatago', 'profiles');
     if (!profilePath.startsWith(expectedDir)) {
-      throw new Error(`Invalid profile path: ${profilePath}`);
+      throw ErrorHelpers.invalidProfilePath(profilePath);
     }
 
     if (existsSync(profilePath)) {
@@ -173,7 +175,7 @@ export async function loadConfig(
   if (configPath) {
     const resolvedPath = resolve(configPath);
     if (!existsSync(resolvedPath)) {
-      throw new Error(`Config file not found: ${resolvedPath}`);
+      throw ErrorHelpers.configNotFound(resolvedPath);
     }
     return await loadConfigFile(resolvedPath, options);
   }
