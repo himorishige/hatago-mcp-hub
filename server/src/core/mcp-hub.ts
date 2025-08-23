@@ -97,7 +97,7 @@ export class McpHub {
     // MCPサーバーを作成
     this.server = new McpServer({
       name: 'hatago-hub',
-      version: '0.0.1',
+      version: '0.0.2',
     });
 
     // ツールレジストリを初期化

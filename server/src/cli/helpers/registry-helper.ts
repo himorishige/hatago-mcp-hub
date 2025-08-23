@@ -32,10 +32,10 @@ export async function initializeRegistry(config?: {
 
   // Create CLI storage
   const cliStorage = new CliRegistryStorage('.hatago/cli-registry.json');
-  await cliStorage.initialize();
+  await cliStorage.init();
 
-  // Create server registry
-  const registry = new ServerRegistry(workspaceManager, config);
+  // Create server registry with CLI storage for persistence
+  const registry = new ServerRegistry(workspaceManager, config, cliStorage);
   await registry.initialize();
 
   // Load servers from CLI registry

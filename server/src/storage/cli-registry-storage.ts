@@ -7,6 +7,7 @@ import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { z } from 'zod';
 import { type ServerConfig, ServerConfigSchema } from '../config/types.js';
+import type { ServerState } from './registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -125,7 +126,7 @@ export class CliRegistryStorage {
   /**
    * Initialize storage and create directory if needed
    */
-  async initialize(): Promise<void> {
+  async init(): Promise<void> {
     const dir = dirname(this.filePath);
     await mkdir(dir, { recursive: true });
 
@@ -202,7 +203,7 @@ export class CliRegistryStorage {
    */
   async addServer(config: ServerConfig): Promise<void> {
     if (!this.registry) {
-      await this.initialize();
+      await this.init();
     }
 
     await this.withLock(async () => {
@@ -255,7 +256,7 @@ export class CliRegistryStorage {
    */
   async removeServer(id: string): Promise<boolean> {
     if (!this.registry) {
-      await this.initialize();
+      await this.init();
     }
 
     return await this.withLock(async () => {
@@ -289,7 +290,7 @@ export class CliRegistryStorage {
    */
   async getServers(): Promise<ServerConfig[]> {
     if (!this.registry) {
-      await this.initialize();
+      await this.init();
     }
 
     return this.registry?.servers.map((s) => s.config);
@@ -300,7 +301,7 @@ export class CliRegistryStorage {
    */
   async getServer(id: string): Promise<ServerConfig | undefined> {
     if (!this.registry) {
-      await this.initialize();
+      await this.init();
     }
 
     const entry = this.registry?.servers.find((s) => s.id === id);
@@ -312,7 +313,7 @@ export class CliRegistryStorage {
    */
   async hasServer(id: string): Promise<boolean> {
     if (!this.registry) {
-      await this.initialize();
+      await this.init();
     }
 
     return this.registry?.servers.some((s) => s.id === id);
@@ -340,7 +341,7 @@ export class CliRegistryStorage {
     lastModified: string;
   }> {
     if (!this.registry) {
-      await this.initialize();
+      await this.init();
     }
 
     return {
@@ -348,5 +349,43 @@ export class CliRegistryStorage {
       serverCount: this.registry?.servers.length,
       lastModified: this.registry?.lastModified,
     };
+  }
+
+  /**
+   * Save server state - not used in CLI registry
+   */
+  async saveServerState(_serverId: string, _state: ServerState): Promise<void> {
+    // CLI registry doesn't track runtime state
+    // This is handled by the ServerRegistry itself
+  }
+
+  /**
+   * Get server state - not used in CLI registry
+   */
+  async getServerState(_serverId: string): Promise<ServerState | null> {
+    // CLI registry doesn't track runtime state
+    return null;
+  }
+
+  /**
+   * Get all server states - not used in CLI registry
+   */
+  async getAllServerStates(): Promise<Map<string, ServerState>> {
+    // CLI registry doesn't track runtime state
+    return new Map();
+  }
+
+  /**
+   * Delete server state - not used in CLI registry
+   */
+  async deleteServerState(_serverId: string): Promise<void> {
+    // CLI registry doesn't track runtime state
+  }
+
+  /**
+   * Close storage connection - not used in CLI registry
+   */
+  async close(): Promise<void> {
+    // No persistent connection to close
   }
 }

@@ -27,7 +27,7 @@ const program = new Command();
 program
   .name('hatago')
   .description('🏨 Hatago MCP Hub - Unified MCP server management')
-  .version('0.0.1');
+  .version('0.0.2');
 
 // Register all commands
 createServeCommand(program);
@@ -41,9 +41,9 @@ createDrainCommand(program);
 createCallCommand(program);
 
 // Register existing sub-command groups
-createMcpCommands(program);
-createNpxCommands(program);
-createRemoteCommands(program);
+program.addCommand(createMcpCommands());
+program.addCommand(createNpxCommands());
+program.addCommand(createRemoteCommands());
 createSecretCommands(program);
 createDoctorCommand(program);
 

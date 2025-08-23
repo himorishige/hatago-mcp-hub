@@ -78,9 +78,11 @@ hatago npx start/stop <id>   # Start/stop server
 hatago npx status <id>       # Server details
 
 # MCP Configuration (Claude Code Compatible)
-hatago mcp list              # List MCP configs (Claude Code format)
-hatago mcp add <name> <cmd>  # Add MCP config
-hatago mcp remove <name>     # Remove MCP config
+hatago mcp list                              # List MCP servers
+hatago mcp add <name> -- <cmd> [args...]     # Add MCP server (Claude Code format)
+hatago mcp add --transport sse <name> <url>  # Add remote SSE server
+hatago mcp add --transport http <name> <url> # Add remote HTTP server
+hatago mcp remove <name>                      # Remove MCP server
 
 # Session Management
 hatago session list          # List active sessions

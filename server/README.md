@@ -67,10 +67,47 @@ hatago serve --quiet
 hatago serve --config ./my-config.json
 ```
 
+### MCPサーバー管理（Claude Code互換）
+
+```bash
+# ローカルSTDIOサーバー（NPX）
+hatago mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /path/to/dir
+
+# ローカルNode.jsサーバー
+hatago mcp add myserver -- node ./server.js arg1 arg2
+
+# Pythonサーバー（uvx）
+hatago mcp add serena -- uvx --from serena-mcp serena-mcp /project/path
+
+# リモートSSEサーバー
+hatago mcp add --transport sse linear https://mcp.linear.app/sse
+
+# リモートHTTPサーバー（認証付き）
+hatago mcp add --transport http --header "Authorization:Bearer TOKEN" api https://api.example.com/mcp
+
+# 環境変数の設定
+hatago mcp add --env API_KEY=secret --env DB_URL=postgres://localhost db -- node ./db-server.js
+
+# サーバー一覧表示
+hatago mcp list
+
+# サーバー削除
+hatago mcp remove filesystem
+```
+
+#### 後方互換性
+
+以前の形式もサポートされています：
+
+```bash
+# 引用符で囲む形式（非推奨だが動作する）
+hatago mcp add filesystem "npx @modelcontextprotocol/server-filesystem /tmp"
+```
+
 ### リモートサーバー管理
 
 ```bash
-# リモートサーバーを追加
+# リモートサーバーを追加（個別コマンド）
 hatago remote add https://mcp.example.com/sse --id example
 
 # リモートサーバー一覧
@@ -83,7 +120,7 @@ hatago remote remove example
 ### NPXサーバー管理
 
 ```bash
-# NPXサーバーを追加
+# NPXサーバーを追加（個別コマンド）
 hatago npx add @modelcontextprotocol/server-filesystem
 
 # NPXサーバー一覧

@@ -23,7 +23,7 @@ export function createHttpApp(
     c.json({
       ok: true,
       name: 'hatago-hub',
-      version: '0.0.1',
+      version: '0.0.2',
       timestamp: new Date().toISOString(),
     }),
   );
@@ -45,7 +45,7 @@ export function createHttpApp(
     c.html(`<!doctype html>
 <meta charset="utf-8"/>
 <title>🏨 Hatago MCP Hub</title>
-<h1>🏨 Hatago MCP Hub v0.0.1</h1>
+<h1>🏨 Hatago MCP Hub v0.0.2</h1>
 <p>MCP endpoint: <code>POST /mcp</code></p>
 <p>Tools list: <code>GET /tools</code></p>
 <p>Health check: <code>GET /health</code></p>

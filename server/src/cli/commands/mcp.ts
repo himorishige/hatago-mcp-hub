@@ -241,8 +241,13 @@ export function createMcpCommands(): Command {
 
   // Add command - Claude Code compatible syntax
   mcp
-    .command('add <name> [commandOrUrl] [args...]')
+    .command('add <name> [command...]')
     .description('Add a new MCP server')
+    .option(
+      '--scope <scope>',
+      'Server scope (local|project|user)',
+      'local',
+    )
     .option(
       '-t, --transport <type>',
       'Transport type (http|sse) for remote servers',
@@ -259,44 +264,54 @@ export function createMcpCommands(): Command {
       'after',
       `
 Examples (Claude Code compatible):
-  # NPX package server
-  hatago mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /path/to/dir
-  
-  # Python package with uvx
-  hatago mcp add serena -- uvx --from serena-mcp serena-mcp /project/path
+  # Local stdio server with NPX
+  $ pnpm cli mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /tmp
   
   # Local Node.js server
-  hatago mcp add myserver -- node ./server.js
+  $ pnpm cli mcp add myserver -- node ./server.js arg1 arg2
   
   # Local Python server
-  hatago mcp add pyserver -- python ./server.py
+  $ pnpm cli mcp add pyserver -- python ./server.py --config config.json
+  
+  # Python package with uvx  
+  $ pnpm cli mcp add serena -- uvx --from serena-mcp serena-mcp /project/path
   
   # Remote SSE server
-  hatago mcp add --transport sse linear https://mcp.linear.app/sse
+  $ pnpm cli mcp add --transport sse linear https://mcp.linear.app/sse
   
-  # Remote HTTP server with auth
-  hatago mcp add --transport http --header "Authorization:Bearer TOKEN" api https://api.example.com/mcp
+  # Remote HTTP server with authentication
+  $ pnpm cli mcp add --transport http --header "Authorization:Bearer TOKEN" api https://api.example.com/mcp
   
   # With environment variables
-  hatago mcp add --env API_KEY=secret database -- node ./db-server.js
+  $ pnpm cli mcp add --env API_KEY=secret --env DB_URL=postgres://localhost db -- node ./db-server.js
+  
+  # Backward compatible format (quoted command)
+  $ pnpm cli mcp add filesystem "npx @modelcontextprotocol/server-filesystem /tmp"
 `,
     )
     .action(
       async (
         name: string,
-        commandOrUrl?: string,
-        args?: string[],
+        command?: string[],
         options?: Record<string, unknown>,
       ) => {
         try {
-          // Handle the case where commandOrUrl might be in args due to -- separator
-          let actualCommand = commandOrUrl;
-          let actualArgs = args || [];
+          // Process the command array
+          let actualCommand: string | undefined;
+          let actualArgs: string[] = [];
 
-          // If no commandOrUrl but args exist, first arg is the command
-          if (!actualCommand && actualArgs.length > 0) {
-            actualCommand = actualArgs[0];
-            actualArgs = actualArgs.slice(1);
+          if (command && command.length > 0) {
+            // Check if first element contains spaces (old format with quotes)
+            if (command.length === 1 && command[0].includes(' ')) {
+              // Handle quoted command string for backward compatibility
+              const parts = command[0].split(' ');
+              actualCommand = parts[0];
+              actualArgs = parts.slice(1);
+            } else {
+              // Claude Code format: command is an array
+              actualCommand = command[0];
+              actualArgs = command.slice(1);
+            }
           }
 
           if (!actualCommand) {

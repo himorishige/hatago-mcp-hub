@@ -27,7 +27,7 @@ const program = new Command();
 program
   .name('hatago')
   .description('🏨 Hatago MCP Hub - Unified MCP server management')
-  .version('0.0.1');
+  .version('0.0.2');
 
 // Register all commands
 createServeCommand(program);

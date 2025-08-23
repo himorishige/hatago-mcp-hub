@@ -54,14 +54,20 @@ npx @himorishige/hatago serve
 ### MCPサーバーの追加
 
 ```bash
-# Claude Code互換コマンド
+# Claude Code互換コマンド（推奨）
 hatago mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /path/to/dir
 
-# リモートサーバーの追加
-hatago mcp add deepwiki --transport http -- https://mcp.deepwiki.com
+# リモートサーバーの追加（SSE）
+hatago mcp add --transport sse linear https://mcp.linear.app/sse
+
+# リモートサーバーの追加（HTTP）
+hatago mcp add --transport http deepwiki https://mcp.deepwiki.com
 
 # 登録済みサーバーの確認
 hatago mcp list
+
+# サーバーの削除
+hatago mcp remove filesystem
 ```
 
 ## 📚 ドキュメント

@@ -27,8 +27,22 @@ export function createListCommand(program: Command): void {
         // 設定を読み込み
         const config = await loadConfig(options.config);
 
+        // CLIレジストリから設定をマージ
+        const { CliRegistryStorage } = await import(
+          '../../storage/cli-registry-storage.js'
+        );
+        const cliStorage = new CliRegistryStorage();
+        await cliStorage.init();
+        const cliServers = await cliStorage.getServers();
+
+        // マージされた設定を作成
+        const mergedConfig = {
+          ...config,
+          servers: [...(config.servers || []), ...(cliServers || [])],
+        };
+
         // MCPハブを作成
-        const hub = new McpHub({ config, logger });
+        const hub = new McpHub({ config: mergedConfig, logger });
         await hub.initialize();
 
         // ツール一覧を取得

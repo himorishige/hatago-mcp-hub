@@ -45,80 +45,107 @@ pnpm coverage
 
 ### サーバー管理
 ```bash
-# MCP Hubサーバー起動
-hatago serve
+# MCP Hubサーバー起動（STDIOモード）
+pnpm cli serve
+
+# HTTPモードで起動
+pnpm cli serve --mode http --port 3000
 
 # サーバーステータス確認
-hatago status
+pnpm cli status
 
 # 設定リロード
-hatago reload
+pnpm cli reload
 ```
 
-### NPX MCPサーバー管理
+### MCPサーバー管理（Claude Code互換）
+```bash
+# ローカルSTDIOサーバー（NPX） - Claude Code形式
+pnpm cli mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /tmp
+
+# ローカルNode.jsサーバー - Claude Code形式
+pnpm cli mcp add myserver -- node ./server.js arg1 arg2
+
+# リモートSSEサーバー
+pnpm cli mcp add --transport sse linear https://mcp.linear.app/sse
+
+# リモートHTTPサーバー（認証付き）
+pnpm cli mcp add --transport http --header "Authorization:Bearer TOKEN" api https://api.example.com/mcp
+
+# 環境変数付き
+pnpm cli mcp add --env API_KEY=secret db -- node ./db-server.js
+
+# サーバー一覧表示
+pnpm cli mcp list
+
+# サーバー削除
+pnpm cli mcp remove filesystem
+
+# 後方互換形式（引用符で囲む）
+pnpm cli mcp add old-format "npx @modelcontextprotocol/server-everything"
+```
+
+### NPXサーバー管理（個別コマンド）
 ```bash
 # NPXサーバー追加
-hatago npx add <package>
+pnpm cli npx add @modelcontextprotocol/server-filesystem
 
 # NPXサーバー一覧
-hatago npx list
+pnpm cli npx list
 
 # NPXサーバー削除
-hatago npx remove <id>
+pnpm cli npx remove <id>
 
 # サーバー起動/停止/再起動
-hatago npx start <id>
-hatago npx stop <id>
-hatago npx restart <id>
+pnpm cli npx start <id>
+pnpm cli npx stop <id>
+pnpm cli npx restart <id>
 
 # サーバー詳細状態
-hatago npx status <id>
+pnpm cli npx status <id>
 ```
 
-### MCP設定管理（Claude Code互換）
+### リモートサーバー管理（個別コマンド）
 ```bash
-# MCP設定一覧（Claude Codeと同じ形式）
-hatago mcp list
+# リモートサーバー追加
+pnpm cli remote add https://mcp.example.com/sse --id example
 
-# MCP設定追加（Claude Code互換）
-hatago mcp add <name> <command>
+# リモートサーバー一覧
+pnpm cli remote list
 
-# MCP設定削除（Claude Code互換）
-hatago mcp remove <name>
-
-# 注: これらのコマンドはClaude Codeの設定ファイル形式と互換性があり、
-# 既存のClaude Code設定をそのまま利用できます
+# リモートサーバー削除
+pnpm cli remote remove example
 ```
 
 ### セッション管理
 ```bash
 # セッション一覧
-hatago session list
+pnpm cli session list
 
 # セッション削除
-hatago session delete <id>
+pnpm cli session delete <id>
 
 # 全セッション削除
-hatago session clear
+pnpm cli session clear
 ```
 
 ### その他の管理コマンド
 ```bash
 # 秘密情報管理
-hatago secret list
-hatago secret set <key> <value>
-hatago secret delete <key>
+pnpm cli secret list
+pnpm cli secret set <key> <value>
+pnpm cli secret delete <key>
 
 # ポリシー管理
-hatago policy list
-hatago policy enable <policy>
-hatago policy disable <policy>
+pnpm cli policy list
+pnpm cli policy enable <policy>
+pnpm cli policy disable <policy>
 
 # システム診断
-hatago doctor
+pnpm cli doctor
 
 # 初期設定生成
-hatago init
+pnpm cli init
 ```
 
 ## パッケージ管理
@@ -148,3 +175,6 @@ git log --oneline -10
 2. `pnpm lint` - リントチェック  
 3. `pnpm test` - テスト実行（テストが存在する場合）
 4. `pnpm build` - ビルドエラーチェック
+
+## 最終更新日
+2025-08-23

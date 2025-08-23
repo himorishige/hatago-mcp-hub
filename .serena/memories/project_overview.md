@@ -47,7 +47,17 @@ Hatago MCP Hub は Hono と hono/mcp を薄くラップした高速・軽量・�
 - Phase 1: ✅ 完了（リモートMCPプロキシ（HTTP/SSE）、CLI管理）
 - Phase 2: ✅ 完了（npx経由MCPプロキシ対応）
 
+## 主要機能
+- **Claude Code互換MCPコマンド**: `hatago mcp add <name> -- <command> [args...]`
+- **CLIレジストリ**: `.hatago/cli-registry.json` でサーバー設定を永続化
+- **マルチトランスポート**: STDIO / HTTP / SSE 対応
+- **セッション管理**: `mcp-session-id` ヘッダーによるクライアント分離
+- **自動再起動**: NPXサーバーの障害時自動復旧
+
 ## パッケージ情報
 - **name**: @himorishige/hatago
 - **version**: 0.0.2
 - **bin**: hatago CLI コマンド
+
+## 最終更新日
+2025-08-23

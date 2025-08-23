@@ -75,7 +75,7 @@ export class WorkspaceManager extends RuntimeDependentService {
     const runtime = this.requireRuntime();
     const fileSystem = runtime.getFileSystem();
     const baseDir = this.config.baseDir ?? this.defaults.baseDir;
-    await fileSystem.mkdir(baseDir, { recursive: true });
+    await fileSystem.mkdir(baseDir, true);
   }
 
   /**
@@ -130,7 +130,7 @@ export class WorkspaceManager extends RuntimeDependentService {
     const workspacePath = path.join(baseDir, id);
 
     // Create workspace directory
-    await fileSystem.mkdir(workspacePath, { recursive: true });
+    await fileSystem.mkdir(workspacePath, true);
 
     const workspace: Workspace = {
       id,
@@ -261,12 +261,12 @@ export class WorkspaceManager extends RuntimeDependentService {
     const runtime = this.requireRuntime();
     const fileSystem = runtime.getFileSystem();
     const cacheDir = path.join(workspace.path, '.cache');
-    await fileSystem.mkdir(cacheDir, { recursive: true });
+    await fileSystem.mkdir(cacheDir, true);
 
     // Create subdirectories for different package managers
-    await fileSystem.mkdir(path.join(cacheDir, 'npm'), { recursive: true });
-    await fileSystem.mkdir(path.join(cacheDir, 'yarn'), { recursive: true });
-    await fileSystem.mkdir(path.join(cacheDir, 'pnpm'), { recursive: true });
+    await fileSystem.mkdir(path.join(cacheDir, 'npm'), true);
+    await fileSystem.mkdir(path.join(cacheDir, 'yarn'), true);
+    await fileSystem.mkdir(path.join(cacheDir, 'pnpm'), true);
   }
 
   /**
