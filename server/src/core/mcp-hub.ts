@@ -140,7 +140,10 @@ export class McpHub {
    * ツール関連のハンドラーを設定
    */
   private setupToolHandlers(): void {
-    // tools/listハンドラーを明示的に設定
+    // Note: shutdown handler is handled internally by MCP SDK
+    // We don't need to explicitly register it
+
+    // tools/list handler
     this.server.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = this.registry.getAllTools();
       return {
@@ -303,10 +306,9 @@ export class McpHub {
     this.setupPromptHandlers();
 
     // NPXサーバーやリモートサーバーサポートの初期化
-    const hasNpxServers = this.config.servers.some((s) => s.type === 'npx');
-    const hasRemoteServers = this.config.servers.some(
-      (s) => s.type === 'remote',
-    );
+    const servers = this.config.servers || [];
+    const hasNpxServers = servers.some((s) => s.type === 'npx');
+    const hasRemoteServers = servers.some((s) => s.type === 'remote');
 
     if (hasNpxServers || hasRemoteServers) {
       if (hasNpxServers) {
@@ -339,8 +341,8 @@ export class McpHub {
     }
 
     // 設定されたサーバーを接続
-    this.logger.info(`Found ${this.config.servers.length} servers in config`);
-    for (const serverConfig of this.config.servers) {
+    this.logger.info(`Found ${servers.length} servers in config`);
+    for (const serverConfig of servers) {
       this.logger.debug(
         `Checking server ${serverConfig.id} with start: ${serverConfig.start}`,
       );

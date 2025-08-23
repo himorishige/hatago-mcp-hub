@@ -315,7 +315,7 @@ export const HatagoConfigSchema = z.object({
   generation: GenerationConfigSchema.default({}),
   rollover: RolloverConfigSchema.default({}),
   replication: ReplicationConfigSchema.default({}),
-  servers: z.array(ServerConfigSchema).default([]),
+  servers: z.array(ServerConfigSchema).optional(),
   npxCache: z
     .object({
       enabled: z.boolean().default(true),

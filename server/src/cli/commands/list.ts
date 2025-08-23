@@ -56,6 +56,9 @@ export function createListCommand(program: Command): void {
 
         // クリーンアップ
         await hub.shutdown();
+
+        // Force process exit to avoid hanging
+        process.exit(0);
       } catch (error) {
         const { logError, createLogger } = await import(
           '../../utils/logger.js'

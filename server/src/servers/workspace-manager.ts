@@ -2,11 +2,9 @@
  * Workspace manager for isolated NPX server environments
  */
 
-import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { getRuntime } from '../runtime/runtime-factory.js';
-import { ErrorHelpers } from '../utils/errors.js';
 
 /**
  * Workspace information
@@ -36,7 +34,7 @@ export class WorkspaceManager {
   private config: WorkspaceManagerConfig;
   private workspaces = new Map<string, Workspace>();
   private cleanupInterval: NodeJS.Timeout | null = null;
-  private runtime = getRuntime();
+  private runtime: Runtime | null = null;
 
   // Default configuration
   private readonly defaults = {
@@ -57,209 +55,203 @@ export class WorkspaceManager {
    * Initialize the workspace manager
    */
   async initialize(): Promise<void> {
-    const runtime = await this.runtime;
+    // Get runtime instance at initialization
+    this.runtime = await getRuntime();
 
-    // Ensure base directory exists
     await this.ensureBaseDir();
+    await this.loadExistingWorkspaces();
 
     // Start cleanup interval
-    if (this.config.cleanupIntervalMs) {
-      this.cleanupInterval = runtime.setInterval(
-        () => this.cleanup(),
-        this.config.cleanupIntervalMs,
-      );
-    }
-
-    // Load existing workspaces
-    await this.loadExistingWorkspaces();
+    const cleanupInterval =
+      this.config.cleanupIntervalMs ?? this.defaults.cleanupIntervalMs;
+    this.cleanupInterval = this.runtime.setInterval(() => {
+      void this.cleanup();
+    }, cleanupInterval);
   }
 
   /**
    * Ensure base directory exists
    */
   private async ensureBaseDir(): Promise<void> {
-    const baseDir = this.config.baseDir || this.defaults.baseDir;
-
-    try {
-      await fs.access(baseDir);
-    } catch {
-      await fs.mkdir(baseDir, { recursive: true });
+    if (!this.runtime) {
+      throw new Error('Runtime not initialized');
     }
+
+    const fileSystem = this.runtime.getFileSystem();
+    const baseDir = this.config.baseDir ?? this.defaults.baseDir;
+    await fileSystem.mkdir(baseDir, true);
   }
 
   /**
    * Load existing workspaces from disk
    */
   private async loadExistingWorkspaces(): Promise<void> {
-    const baseDir = this.config.baseDir || this.defaults.baseDir;
+    if (!this.runtime) {
+      throw new Error('Runtime not initialized');
+    }
+
+    const fileSystem = this.runtime.getFileSystem();
+    const baseDir = this.config.baseDir ?? this.defaults.baseDir;
 
     try {
-      const entries = await fs.readdir(baseDir, { withFileTypes: true });
+      const entries = await fileSystem.readdir(baseDir);
 
-      for (const entry of entries) {
-        if (entry.isDirectory() && entry.name.startsWith('workspace-')) {
-          const metadataPath = path.join(baseDir, entry.name, '.metadata.json');
-
-          try {
-            const metadata = await fs.readFile(metadataPath, 'utf-8');
-            const workspace = JSON.parse(metadata) as Workspace;
-            workspace.createdAt = new Date(workspace.createdAt);
-            workspace.lastAccessedAt = new Date(workspace.lastAccessedAt);
-            this.workspaces.set(workspace.id, workspace);
-          } catch {
-            // Metadata not found or invalid, skip
-            console.warn(`Skipping invalid workspace: ${entry.name}`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load existing workspaces:', error);
-    }
-  }
-
-  /**
-   * Create a new workspace for a server
-   */
-  async createWorkspace(serverId: string): Promise<Workspace> {
-    const runtime = await this.runtime;
-    const baseDir = this.config.baseDir || this.defaults.baseDir;
-
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (attempts < maxAttempts) {
-      const id = await runtime.idGenerator.generate();
-      const workspacePath = path.join(baseDir, `workspace-${id}`);
-
-      try {
-        // Try to create directory (will fail if already exists)
-        await fs.mkdir(workspacePath, { recursive: false });
-
-        // Create workspace metadata
-        const workspace: Workspace = {
-          id,
-          path: workspacePath,
-          serverId,
-          createdAt: new Date(),
-          lastAccessedAt: new Date(),
-        };
-
-        // Save metadata
-        await this.saveMetadata(workspace);
-
-        // Track workspace
-        this.workspaces.set(id, workspace);
-
-        // Check workspace limit
-        await this.enforceWorkspaceLimit();
-
-        return workspace;
-      } catch (error) {
-        // If directory already exists (race condition), retry with new ID
-        if (
-          error instanceof Error &&
-          'code' in error &&
-          error.code === 'EEXIST'
-        ) {
-          attempts++;
-          console.warn(
-            `Workspace directory collision, retrying (attempt ${attempts}/${maxAttempts})`,
-          );
+      for (const entryName of entries) {
+        if (!entryName.startsWith('workspace-')) {
           continue;
         }
-        // Re-throw other errors
+
+        const metadataPath = path.join(baseDir, entryName, 'metadata.json');
+
+        // Skip invalid workspaces
+        if (!(await fileSystem.exists(metadataPath))) {
+          console.error(`Skipping invalid workspace: ${entryName}`);
+          continue;
+        }
+
+        const metadata = JSON.parse(
+          await fileSystem.readFile(metadataPath),
+        ) as Workspace;
+        this.workspaces.set(metadata.id, metadata);
+      }
+    } catch (error) {
+      // Base directory might not exist yet
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         throw error;
       }
     }
-
-    throw ErrorHelpers.workspaceCreationFailed(maxAttempts);
   }
 
   /**
-   * Save workspace metadata
+   * Create a new workspace
+   */
+  async createWorkspace(serverId: string): Promise<Workspace> {
+    if (!this.runtime) {
+      throw new Error('Runtime not initialized');
+    }
+
+    const fileSystem = this.runtime.getFileSystem();
+
+    // Enforce workspace limit
+    await this.enforceWorkspaceLimit();
+
+    const id = `workspace-${randomUUID()}`;
+    const baseDir = this.config.baseDir ?? this.defaults.baseDir;
+    const workspacePath = path.join(baseDir, id);
+
+    // Create workspace directory
+    await fileSystem.mkdir(workspacePath, { recursive: true });
+
+    const workspace: Workspace = {
+      id,
+      path: workspacePath,
+      serverId,
+      createdAt: new Date().toISOString(),
+      lastAccessedAt: new Date().toISOString(),
+    };
+
+    // Save metadata
+    await this.saveMetadata(workspace);
+
+    // Store in memory
+    this.workspaces.set(id, workspace);
+
+    // Create package cache directory
+    await this.createPackageCache(workspace);
+
+    return workspace;
+  }
+
+  /**
+   * Save workspace metadata to disk
    */
   private async saveMetadata(workspace: Workspace): Promise<void> {
-    const metadataPath = path.join(workspace.path, '.metadata.json');
-    await fs.writeFile(
+    if (!this.runtime) {
+      throw new Error('Runtime not initialized');
+    }
+
+    const fileSystem = this.runtime.getFileSystem();
+    const metadataPath = path.join(workspace.path, 'metadata.json');
+    await fileSystem.writeFile(
       metadataPath,
       JSON.stringify(workspace, null, 2),
-      'utf-8',
     );
   }
 
   /**
-   * Get workspace by ID
+   * Get a workspace by ID
    */
-  async getWorkspace(id: string): Promise<Workspace | null> {
+  async getWorkspace(id: string): Promise<Workspace | undefined> {
     const workspace = this.workspaces.get(id);
-
     if (workspace) {
       // Update last accessed time
-      workspace.lastAccessedAt = new Date();
+      workspace.lastAccessedAt = new Date().toISOString();
       await this.saveMetadata(workspace);
     }
-
-    return workspace || null;
+    return workspace;
   }
 
   /**
    * Get workspace by server ID
    */
-  async getWorkspaceByServerId(serverId: string): Promise<Workspace | null> {
+  async getWorkspaceByServerId(
+    serverId: string,
+  ): Promise<Workspace | undefined> {
     for (const workspace of this.workspaces.values()) {
       if (workspace.serverId === serverId) {
         // Update last accessed time
-        workspace.lastAccessedAt = new Date();
+        workspace.lastAccessedAt = new Date().toISOString();
         await this.saveMetadata(workspace);
         return workspace;
       }
     }
-
-    return null;
+    return undefined;
   }
 
   /**
    * Delete a workspace
    */
   async deleteWorkspace(id: string): Promise<void> {
-    const workspace = this.workspaces.get(id);
+    if (!this.runtime) {
+      throw new Error('Runtime not initialized');
+    }
 
+    const fileSystem = this.runtime.getFileSystem();
+    const workspace = this.workspaces.get(id);
     if (!workspace) {
       return;
     }
 
-    // Remove from tracking
-    this.workspaces.delete(id);
+    // Remove from disk
+    await fileSystem.rmdir(workspace.path, { recursive: true });
 
-    // Delete directory
-    try {
-      await fs.rm(workspace.path, { recursive: true, force: true });
-    } catch (error) {
-      console.error(`Failed to delete workspace ${id}:`, error);
-    }
+    // Remove from memory
+    this.workspaces.delete(id);
   }
 
   /**
-   * Enforce workspace limit
+   * Enforce workspace limit by deleting oldest workspaces
    */
   private async enforceWorkspaceLimit(): Promise<void> {
     const maxWorkspaces =
-      this.config.maxWorkspaces || this.defaults.maxWorkspaces;
+      this.config.maxWorkspaces ?? this.defaults.maxWorkspaces;
 
-    if (this.workspaces.size <= maxWorkspaces) {
-      return;
-    }
+    if (this.workspaces.size >= maxWorkspaces) {
+      // Sort by last accessed time
+      const sorted = Array.from(this.workspaces.values()).sort(
+        (a, b) =>
+          new Date(a.lastAccessedAt).getTime() -
+          new Date(b.lastAccessedAt).getTime(),
+      );
 
-    // Sort by last accessed time
-    const sorted = Array.from(this.workspaces.values()).sort(
-      (a, b) => a.lastAccessedAt.getTime() - b.lastAccessedAt.getTime(),
-    );
-
-    // Delete oldest workspaces
-    const toDelete = sorted.slice(0, this.workspaces.size - maxWorkspaces);
-
-    for (const workspace of toDelete) {
-      await this.deleteWorkspace(workspace.id);
+      // Delete oldest workspaces
+      const toDelete = sorted.slice(
+        0,
+        this.workspaces.size - maxWorkspaces + 1,
+      );
+      for (const workspace of toDelete) {
+        await this.deleteWorkspace(workspace.id);
+      }
     }
   }
 
@@ -267,86 +259,73 @@ export class WorkspaceManager {
    * Clean up old workspaces
    */
   async cleanup(): Promise<void> {
-    const maxAgeMs = this.config.maxAgeMs || this.defaults.maxAgeMs;
+    const maxAgeMs = this.config.maxAgeMs ?? this.defaults.maxAgeMs;
     const now = Date.now();
-    const toDelete: string[] = [];
 
     for (const workspace of this.workspaces.values()) {
-      const age = now - workspace.lastAccessedAt.getTime();
-
+      const age = now - new Date(workspace.lastAccessedAt).getTime();
       if (age > maxAgeMs) {
-        toDelete.push(workspace.id);
+        await this.deleteWorkspace(workspace.id);
       }
     }
-
-    // Delete old workspaces
-    for (const id of toDelete) {
-      await this.deleteWorkspace(id);
-    }
-
-    console.log(`Cleaned up ${toDelete.length} old workspaces`);
   }
 
   /**
-   * Create a package cache directory
+   * Create package cache directory for a workspace
    */
-  async createPackageCache(
-    workspaceId: string,
-    packageName: string,
-  ): Promise<string> {
-    const workspace = await this.getWorkspace(workspaceId);
-
-    if (!workspace) {
-      throw ErrorHelpers.workspaceNotFound(workspaceId);
+  async createPackageCache(workspace: Workspace): Promise<void> {
+    if (!this.runtime) {
+      throw new Error('Runtime not initialized');
     }
 
-    // Sanitize package name for directory
-    const safeName = packageName.replace(/[^a-zA-Z0-9-]/g, '_');
-    const cachePath = path.join(workspace.path, '.cache', safeName);
+    const fileSystem = this.runtime.getFileSystem();
+    const cacheDir = path.join(workspace.path, '.cache');
+    await fileSystem.mkdir(cacheDir, { recursive: true });
 
-    await fs.mkdir(cachePath, { recursive: true });
-
-    return cachePath;
+    // Create subdirectories for different package managers
+    await fileSystem.mkdir(path.join(cacheDir, 'npm'), { recursive: true });
+    await fileSystem.mkdir(path.join(cacheDir, 'yarn'), { recursive: true });
+    await fileSystem.mkdir(path.join(cacheDir, 'pnpm'), { recursive: true });
   }
 
   /**
    * Get workspace statistics
    */
-  getStats(): {
-    totalWorkspaces: number;
-    workspacesByServer: Record<string, number>;
-    oldestWorkspace?: Date;
-    newestWorkspace?: Date;
-  } {
-    const stats: {
-      totalWorkspaces: number;
-      workspacesByServer: Record<string, number>;
-      oldestWorkspace?: Date;
-      newestWorkspace?: Date;
-    } = {
-      totalWorkspaces: this.workspaces.size,
-      workspacesByServer: {},
+  getStats(): WorkspaceStats {
+    const workspaces = Array.from(this.workspaces.values());
+    const now = Date.now();
+
+    const stats: WorkspaceStats = {
+      total: workspaces.length,
+      active: 0,
+      stale: 0,
+      avgAgeMs: 0,
+      oldestAgeMs: 0,
+      newestAgeMs: Number.MAX_SAFE_INTEGER,
     };
 
-    let oldest: Date | undefined;
-    let newest: Date | undefined;
-
-    for (const workspace of this.workspaces.values()) {
-      // Count by server
-      stats.workspacesByServer[workspace.serverId] =
-        (stats.workspacesByServer[workspace.serverId] || 0) + 1;
-
-      // Track oldest and newest
-      if (!oldest || workspace.createdAt < oldest) {
-        oldest = workspace.createdAt;
-      }
-      if (!newest || workspace.createdAt > newest) {
-        newest = workspace.createdAt;
-      }
+    if (workspaces.length === 0) {
+      return stats;
     }
 
-    stats.oldestWorkspace = oldest;
-    stats.newestWorkspace = newest;
+    let totalAge = 0;
+    const maxAgeMs = this.config.maxAgeMs ?? this.defaults.maxAgeMs;
+
+    for (const workspace of workspaces) {
+      const age = now - new Date(workspace.lastAccessedAt).getTime();
+      totalAge += age;
+
+      if (age > maxAgeMs) {
+        stats.stale++;
+      } else {
+        stats.active++;
+      }
+
+      stats.oldestAgeMs = Math.max(stats.oldestAgeMs, age);
+      stats.newestAgeMs = Math.min(stats.newestAgeMs, age);
+    }
+
+    stats.avgAgeMs = totalAge / workspaces.length;
 
     return stats;
   }
@@ -362,11 +341,9 @@ export class WorkspaceManager {
    * Shutdown the workspace manager
    */
   async shutdown(): Promise<void> {
-    const runtime = await this.runtime;
-
     // Stop cleanup interval
-    if (this.cleanupInterval) {
-      runtime.clearInterval(this.cleanupInterval);
+    if (this.cleanupInterval && this.runtime) {
+      this.runtime.clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
 

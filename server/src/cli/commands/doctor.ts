@@ -3,7 +3,7 @@
  */
 
 import chalk from 'chalk';
-import { Command } from 'commander';
+import type { Command } from 'commander';
 import {
   formatDiagnosticReport,
   runDiagnostics,
@@ -12,8 +12,9 @@ import {
 /**
  * Create doctor command
  */
-export function createDoctorCommand(): Command {
-  const doctor = new Command('doctor')
+export function createDoctorCommand(program: Command): void {
+  program
+    .command('doctor')
     .description('Run system diagnostics and environment checks')
     .option('--profile <name>', 'Profile to check', 'default')
     .option('-p, --port <port>', 'Port to check availability')
@@ -63,6 +64,4 @@ export function createDoctorCommand(): Command {
         process.exit(1);
       }
     });
-
-  return doctor;
 }

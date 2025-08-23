@@ -61,7 +61,7 @@ export class ServerRegistry extends EventEmitter {
   private workspaceManager: WorkspaceManager;
   private config: ServerRegistryConfig;
   private healthCheckInterval: NodeJS.Timeout | null = null;
-  private runtime = getRuntime();
+  private runtime: Runtime | null = null;
   private storage: RegistryStorage | null = null;
   private serverListeners = new WeakMap<
     NpxMcpServer | RemoteMcpServer,
@@ -99,7 +99,9 @@ export class ServerRegistry extends EventEmitter {
    * Initialize the registry
    */
   async initialize(): Promise<void> {
-    const runtime = await this.runtime;
+    // Get runtime at initialization
+    this.runtime = await getRuntime();
+    const runtime = this.runtime;
 
     // Initialize storage if available
     if (this.storage) {
@@ -620,7 +622,10 @@ export class ServerRegistry extends EventEmitter {
    * Discover tools from a server
    */
   private async discoverTools(serverId: string): Promise<void> {
-    const _runtime = await this.runtime;
+    if (!this.runtime) {
+      throw ErrorHelpers.notInitialized('ServerRegistry');
+    }
+    const _runtime = this.runtime;
     const registered = this.servers.get(serverId);
 
     if (!registered || !registered.instance) {
@@ -664,7 +669,10 @@ export class ServerRegistry extends EventEmitter {
    * Discover resources from a server with Circuit Breaker pattern
    */
   private async discoverResources(serverId: string): Promise<void> {
-    const _runtime = await this.runtime;
+    if (!this.runtime) {
+      throw ErrorHelpers.notInitialized('ServerRegistry');
+    }
+    const _runtime = this.runtime;
     const registered = this.servers.get(serverId);
 
     if (!registered || !registered.instance) {
@@ -747,7 +755,10 @@ export class ServerRegistry extends EventEmitter {
    * Check health of a single server
    */
   private async checkServerHealth(registered: RegisteredServer): Promise<void> {
-    const runtime = await this.runtime;
+    if (!this.runtime) {
+      throw ErrorHelpers.notInitialized('ServerRegistry');
+    }
+    const runtime = this.runtime;
 
     if (!registered.instance) {
       return;
@@ -1015,7 +1026,12 @@ export class ServerRegistry extends EventEmitter {
    * Shutdown the registry
    */
   async shutdown(): Promise<void> {
-    const runtime = await this.runtime;
+    // Guard against uninitialized runtime
+    if (!this.runtime) {
+      return;
+    }
+
+    const runtime = this.runtime;
 
     // Stop health check interval
     if (this.healthCheckInterval) {

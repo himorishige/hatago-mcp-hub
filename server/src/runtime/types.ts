@@ -165,6 +165,11 @@ export interface FileSystem {
    * Read directory contents
    */
   readdir(path: string): Promise<string[]>;
+
+  /**
+   * Remove a directory
+   */
+  rmdir?(path: string, options?: { recursive?: boolean }): Promise<void>;
 }
 
 /**

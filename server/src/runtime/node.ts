@@ -270,6 +270,13 @@ class NodeFileSystem implements FileSystem {
   async readdir(dirPath: string): Promise<string[]> {
     return fs.readdir(dirPath);
   }
+
+  async rmdir(
+    dirPath: string,
+    options?: { recursive?: boolean },
+  ): Promise<void> {
+    await fs.rm(dirPath, { recursive: options?.recursive, force: true });
+  }
 }
 
 /**
