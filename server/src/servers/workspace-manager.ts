@@ -75,7 +75,7 @@ export class WorkspaceManager extends RuntimeDependentService {
     const runtime = this.requireRuntime();
     const fileSystem = runtime.getFileSystem();
     const baseDir = this.config.baseDir ?? this.defaults.baseDir;
-    await fileSystem.mkdir(baseDir, true);
+    await fileSystem.mkdir(baseDir, { recursive: true });
   }
 
   /**

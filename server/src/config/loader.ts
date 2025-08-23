@@ -27,7 +27,7 @@ const CONFIG_FILENAMES = [
 export async function findConfigFile(
   startDir?: string,
 ): Promise<string | undefined> {
-  const searchDir = startDir || process.cwd();
+  const searchDir = startDir || process.cwd() || '.';
 
   // カレントディレクトリから検索
   for (const filename of CONFIG_FILENAMES) {
@@ -438,16 +438,16 @@ export function generateSampleConfig(): string {
 /**
  * Generate JSON Schema for configuration
  */
-export function generateJsonSchema(): unknown {
+export async function generateJsonSchema(): Promise<unknown> {
   // Import dynamically to avoid circular dependency
   try {
     // Try to import pre-generated schema first
-    const { CONFIG_SCHEMA } = require('../config/schema.js');
+    const { CONFIG_SCHEMA } = await import('../config/schema.js');
     return CONFIG_SCHEMA;
   } catch {
     // Fallback: generate schema on the fly
-    const { zodToJsonSchema } = require('zod-to-json-schema');
-    const { HatagoConfigSchema } = require('../config/types.js');
+    const { zodToJsonSchema } = await import('zod-to-json-schema');
+    const { HatagoConfigSchema } = await import('../config/types.js');
 
     const jsonSchema = zodToJsonSchema(HatagoConfigSchema, {
       name: 'HatagoConfig',

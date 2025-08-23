@@ -221,16 +221,16 @@ describe('config/loader', () => {
   });
 
   describe('generateJsonSchema', () => {
-    it('should generate a valid JSON schema', () => {
-      const schema = generateJsonSchema();
+    it('should generate a valid JSON schema', async () => {
+      const schema = await generateJsonSchema();
 
       expect(schema).toHaveProperty('$schema');
       expect(schema).toHaveProperty('title');
       expect(schema).toHaveProperty('description');
     });
 
-    it('should include all config properties', () => {
-      const schema = generateJsonSchema();
+    it('should include all config properties', async () => {
+      const schema = await generateJsonSchema();
 
       expect(schema.properties).toHaveProperty('version');
       expect(schema.properties).toHaveProperty('http');
@@ -239,8 +239,8 @@ describe('config/loader', () => {
       expect(schema.properties).toHaveProperty('servers');
     });
 
-    it('should have proper type definitions', () => {
-      const schema = generateJsonSchema();
+    it('should have proper type definitions', async () => {
+      const schema = await generateJsonSchema();
 
       expect(schema.type).toBe('object');
       expect(schema.properties.servers.type).toBe('array');
