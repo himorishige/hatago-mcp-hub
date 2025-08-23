@@ -22,10 +22,20 @@ Hatago MCP Hub is a lightweight MCP (Model Context Protocol) Hub server built on
 /
 ├── server/              # MCP Hub Server
 │   ├── src/
-│   │   └── index.ts    # Entry point (Hono server on port 3000)
-│   ├── package.json    
-│   ├── tsconfig.json   
-│   ├── biome.jsonc     
+│   │   ├── index.ts    # Server entry point
+│   │   ├── cli/        # CLI commands implementation
+│   │   │   └── index.ts # CLI entry point (hatago command)
+│   │   ├── core/       # Core functionality (Hub, Registry, etc.)
+│   │   ├── servers/    # NPX/Remote MCP servers
+│   │   ├── config/     # Configuration management
+│   │   ├── storage/    # Data storage
+│   │   ├── transport/  # Communication layer
+│   │   ├── runtime/    # Runtime abstraction
+│   │   └── utils/      # Utilities
+│   ├── dist/           # Build output
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── biome.jsonc
 │   └── vitest.config.ts
 └── docs/               # Documentation
     └── spec-v0.0.1.md  # Specification
@@ -40,6 +50,7 @@ All commands should be run in the `server/` directory:
 pnpm dev          # Start dev server with watch mode
 pnpm build        # Build to dist/
 pnpm start        # Start production server
+pnpm cli          # Run CLI in development mode
 
 # Code Quality - Run these after making changes
 pnpm format       # Format code
@@ -49,6 +60,32 @@ pnpm check        # Format + Lint + Type check
 # Testing
 pnpm test         # Run tests
 pnpm coverage     # Run tests with coverage
+```
+
+## CLI Commands (hatago)
+
+```bash
+# Server Management
+hatago serve              # Start MCP Hub server
+hatago status            # Check server status
+hatago reload            # Reload configuration
+
+# NPX MCP Server Management
+hatago npx add <package>     # Add NPX MCP server
+hatago npx list              # List NPX servers
+hatago npx remove <id>       # Remove NPX server
+hatago npx start/stop <id>   # Start/stop server
+hatago npx status <id>       # Server details
+
+# MCP Configuration (Claude Code Compatible)
+hatago mcp list              # List MCP configs (Claude Code format)
+hatago mcp add <name> <cmd>  # Add MCP config
+hatago mcp remove <name>     # Remove MCP config
+
+# Session Management
+hatago session list          # List active sessions
+hatago session delete <id>   # Delete session
+hatago session clear         # Clear all sessions
 ```
 
 ## Code Style Guidelines
@@ -69,10 +106,21 @@ pnpm coverage     # Run tests with coverage
 
 ## Development Phases
 
-Currently implementing:
-- **Phase 0**: Tool collision avoidance, session management, config hot-swap
-- **Phase 1**: Remote MCP proxy (HTTP/SSE), CLI management
-- **Phase 2**: npx-based MCP proxy support
+### Completed
+
+- **Phase 0**: ✅ Tool collision avoidance, session management, config hot-swap
+- **Phase 1**: ✅ Remote MCP proxy (HTTP/SSE), CLI management
+- **Phase 2**: ✅ npx-based MCP proxy support
+
+### Key Features Implemented
+
+- Multi-server MCP hub with unified management
+- Tool name collision avoidance with configurable prefixes
+- Session-based isolation for concurrent clients
+- NPX MCP server dynamic loading and management
+- Claude Code compatible MCP configuration commands
+- Hot-reload configuration support
+- Comprehensive CLI tool (hatago)
 
 ## Working with this Codebase
 

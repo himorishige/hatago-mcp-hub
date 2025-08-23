@@ -12,20 +12,29 @@ Hatago MCP Hub は Hono と hono/mcp を薄くラップした高速・軽量・�
 - **パッケージマネージャ**: pnpm
 - **テストフレームワーク**: Vitest  
 - **リンター/フォーマッター**: Biome
-- **CLI**: Commander + Zod v4
+- **CLI**: Commander + Zod
 
 ## プロジェクト構造
 ```
 /
-├── app/              # メインアプリケーション
+├── server/              # メインアプリケーション
 │   ├── src/
-│   │   └── index.ts  # エントリーポイント（Honoサーバー）
-│   ├── package.json  # 依存関係とスクリプト
-│   ├── tsconfig.json # TypeScript設定
-│   ├── biome.jsonc   # Biome設定
+│   │   ├── index.ts     # サーバーエントリーポイント
+│   │   ├── cli/         # CLIコマンド実装
+│   │   ├── core/        # コア機能（Hub、Registry等）
+│   │   ├── servers/     # NPX/Remote MCPサーバー
+│   │   ├── config/      # 設定管理
+│   │   ├── storage/     # データストレージ
+│   │   ├── transport/   # 通信層
+│   │   ├── runtime/     # ランタイム抽象化
+│   │   └── utils/       # ユーティリティ
+│   ├── dist/            # ビルド出力
+│   ├── package.json     # 依存関係とスクリプト
+│   ├── tsconfig.json    # TypeScript設定
+│   ├── biome.jsonc      # Biome設定
 │   └── vitest.config.ts # Vitest設定
-└── docs/             # ドキュメント
-    └── spec-v0.0.1.md # 仕様書
+└── docs/                # ドキュメント
+    └── spec-v0.0.1.md   # 仕様書
 ```
 
 ## 現在の実装状況
@@ -33,8 +42,12 @@ Hatago MCP Hub は Hono と hono/mcp を薄くラップした高速・軽量・�
 - TypeScript + ESM セットアップ
 - Biome による lint/format 設定
 - Vitest によるテスト環境
+- Commander CLIツール `hatago` の実装
+- Phase 0: ✅ 完了（ツール名衝突回避、セッション管理、設定ホットスワップ）
+- Phase 1: ✅ 完了（リモートMCPプロキシ（HTTP/SSE）、CLI管理）
+- Phase 2: ✅ 完了（npx経由MCPプロキシ対応）
 
-## 今後の実装予定
-- Phase 0: ツール名衝突回避、セッション管理、設定ホットスワップ
-- Phase 1: リモートMCPプロキシ（HTTP/SSE）、CLI管理
-- Phase 2: npx経由MCPプロキシ対応
+## パッケージ情報
+- **name**: @himorishige/hatago
+- **version**: 0.0.2
+- **bin**: hatago CLI コマンド
