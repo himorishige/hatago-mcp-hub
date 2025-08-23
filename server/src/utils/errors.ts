@@ -1078,6 +1078,18 @@ export const ErrorHelpers = {
       recoverable: false,
     }),
 
+  // Component initialization errors
+  notInitialized: (componentName: string) =>
+    new HatagoError(
+      ErrorCode.E_STATE_INVALID_TRANSITION,
+      `${componentName} not initialized`,
+      {
+        severity: ErrorSeverity.ERROR,
+        context: { componentName },
+        recoverable: false,
+      },
+    ),
+
   // Generic error creation from unknown type
   createErrorFromUnknown: (
     error: Error | unknown,

@@ -2,9 +2,11 @@
  * Workspace manager for isolated NPX server environments
  */
 
+import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { getRuntime } from '../runtime/runtime-factory.js';
+import { RuntimeDependentService } from '../core/runtime-dependent-service.js';
+import type { Runtime } from '../runtime/types.js';
 
 /**
  * Workspace information
@@ -13,8 +15,8 @@ export interface Workspace {
   id: string;
   path: string;
   serverId: string;
-  createdAt: Date;
-  lastAccessedAt: Date;
+  createdAt: string;
+  lastAccessedAt: string;
 }
 
 /**
@@ -30,11 +32,10 @@ export interface WorkspaceManagerConfig {
 /**
  * Manages isolated workspaces for NPX servers
  */
-export class WorkspaceManager {
+export class WorkspaceManager extends RuntimeDependentService {
   private config: WorkspaceManagerConfig;
   private workspaces = new Map<string, Workspace>();
   private cleanupInterval: NodeJS.Timeout | null = null;
-  private runtime: Runtime | null = null;
 
   // Default configuration
   private readonly defaults = {
@@ -45,6 +46,7 @@ export class WorkspaceManager {
   };
 
   constructor(config?: WorkspaceManagerConfig) {
+    super();
     this.config = {
       ...this.defaults,
       ...config,
@@ -52,19 +54,16 @@ export class WorkspaceManager {
   }
 
   /**
-   * Initialize the workspace manager
+   * Called after runtime is ready
    */
-  async initialize(): Promise<void> {
-    // Get runtime instance at initialization
-    this.runtime = await getRuntime();
-
+  protected async onRuntimeReady(runtime: Runtime): Promise<void> {
     await this.ensureBaseDir();
     await this.loadExistingWorkspaces();
 
     // Start cleanup interval
     const cleanupInterval =
       this.config.cleanupIntervalMs ?? this.defaults.cleanupIntervalMs;
-    this.cleanupInterval = this.runtime.setInterval(() => {
+    this.cleanupInterval = runtime.setInterval(() => {
       void this.cleanup();
     }, cleanupInterval);
   }
@@ -73,11 +72,8 @@ export class WorkspaceManager {
    * Ensure base directory exists
    */
   private async ensureBaseDir(): Promise<void> {
-    if (!this.runtime) {
-      throw new Error('Runtime not initialized');
-    }
-
-    const fileSystem = this.runtime.getFileSystem();
+    const runtime = this.requireRuntime();
+    const fileSystem = runtime.getFileSystem();
     const baseDir = this.config.baseDir ?? this.defaults.baseDir;
     await fileSystem.mkdir(baseDir, true);
   }
@@ -86,11 +82,8 @@ export class WorkspaceManager {
    * Load existing workspaces from disk
    */
   private async loadExistingWorkspaces(): Promise<void> {
-    if (!this.runtime) {
-      throw new Error('Runtime not initialized');
-    }
-
-    const fileSystem = this.runtime.getFileSystem();
+    const runtime = this.requireRuntime();
+    const fileSystem = runtime.getFileSystem();
     const baseDir = this.config.baseDir ?? this.defaults.baseDir;
 
     try {
@@ -126,11 +119,8 @@ export class WorkspaceManager {
    * Create a new workspace
    */
   async createWorkspace(serverId: string): Promise<Workspace> {
-    if (!this.runtime) {
-      throw new Error('Runtime not initialized');
-    }
-
-    const fileSystem = this.runtime.getFileSystem();
+    const runtime = this.requireRuntime();
+    const fileSystem = runtime.getFileSystem();
 
     // Enforce workspace limit
     await this.enforceWorkspaceLimit();
@@ -166,11 +156,8 @@ export class WorkspaceManager {
    * Save workspace metadata to disk
    */
   private async saveMetadata(workspace: Workspace): Promise<void> {
-    if (!this.runtime) {
-      throw new Error('Runtime not initialized');
-    }
-
-    const fileSystem = this.runtime.getFileSystem();
+    const runtime = this.requireRuntime();
+    const fileSystem = runtime.getFileSystem();
     const metadataPath = path.join(workspace.path, 'metadata.json');
     await fileSystem.writeFile(
       metadataPath,
@@ -212,11 +199,8 @@ export class WorkspaceManager {
    * Delete a workspace
    */
   async deleteWorkspace(id: string): Promise<void> {
-    if (!this.runtime) {
-      throw new Error('Runtime not initialized');
-    }
-
-    const fileSystem = this.runtime.getFileSystem();
+    const runtime = this.requireRuntime();
+    const fileSystem = runtime.getFileSystem();
     const workspace = this.workspaces.get(id);
     if (!workspace) {
       return;
@@ -274,11 +258,8 @@ export class WorkspaceManager {
    * Create package cache directory for a workspace
    */
   async createPackageCache(workspace: Workspace): Promise<void> {
-    if (!this.runtime) {
-      throw new Error('Runtime not initialized');
-    }
-
-    const fileSystem = this.runtime.getFileSystem();
+    const runtime = this.requireRuntime();
+    const fileSystem = runtime.getFileSystem();
     const cacheDir = path.join(workspace.path, '.cache');
     await fileSystem.mkdir(cacheDir, { recursive: true });
 
@@ -340,10 +321,14 @@ export class WorkspaceManager {
   /**
    * Shutdown the workspace manager
    */
-  async shutdown(): Promise<void> {
+  /**
+   * Called during shutdown
+   */
+  protected async onShutdown(): Promise<void> {
     // Stop cleanup interval
-    if (this.cleanupInterval && this.runtime) {
-      this.runtime.clearInterval(this.cleanupInterval);
+    if (this.cleanupInterval) {
+      const runtime = this.requireRuntime();
+      runtime.clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
 

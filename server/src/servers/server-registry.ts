@@ -2,7 +2,6 @@
  * Server registry for managing MCP servers
  */
 
-import { EventEmitter } from 'node:events';
 import type {
   Prompt,
   Resource,
@@ -14,7 +13,7 @@ import type {
   RemoteServerConfig,
   ServerConfig,
 } from '../config/types.js';
-import { getRuntime } from '../runtime/runtime-factory.js';
+import { RuntimeDependentService } from '../core/runtime-dependent-service.js';
 import type { RegistryStorage } from '../storage/registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { sanitizeLog } from '../utils/security.js';
@@ -56,12 +55,12 @@ export interface ServerRegistryConfig {
 /**
  * Registry for managing MCP servers
  */
-export class ServerRegistry extends EventEmitter {
+export class ServerRegistry extends RuntimeDependentService {
   private servers = new Map<string, RegisteredServer>();
   private workspaceManager: WorkspaceManager;
   private config: ServerRegistryConfig;
   private healthCheckInterval: NodeJS.Timeout | null = null;
-  private runtime: Runtime | null = null;
+
   private storage: RegistryStorage | null = null;
   private serverListeners = new WeakMap<
     NpxMcpServer | RemoteMcpServer,
@@ -98,11 +97,7 @@ export class ServerRegistry extends EventEmitter {
   /**
    * Initialize the registry
    */
-  async initialize(): Promise<void> {
-    // Get runtime at initialization
-    this.runtime = await getRuntime();
-    const runtime = this.runtime;
-
+  protected async onRuntimeReady(runtime: Runtime): Promise<void> {
     // Initialize storage if available
     if (this.storage) {
       await this.storage.init();
@@ -1025,17 +1020,10 @@ export class ServerRegistry extends EventEmitter {
   /**
    * Shutdown the registry
    */
-  async shutdown(): Promise<void> {
-    // Guard against uninitialized runtime
-    if (!this.runtime) {
-      return;
-    }
-
-    const runtime = this.runtime;
-
+  protected async onShutdown(): Promise<void> {
     // Stop health check interval
-    if (this.healthCheckInterval) {
-      runtime.clearInterval(this.healthCheckInterval);
+    if (this.runtime && this.healthCheckInterval) {
+      this.runtime.clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
     }
 
@@ -1052,6 +1040,8 @@ export class ServerRegistry extends EventEmitter {
 
     // Clear registry
     this.servers.clear();
+
+    // EventEmitter cleanup
     this.removeAllListeners();
 
     // Close storage
