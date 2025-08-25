@@ -147,9 +147,13 @@ export function convertMcpServerToInternal(
         );
       }
 
-      // headersからauth情報を抽出
+      // auth情報を設定から直接取得、またはheadersから抽出
       let auth: RemoteServerConfig['auth'];
-      if (config.headers?.Authorization) {
+      if (config.auth) {
+        // 設定で直接authが指定されている場合
+        auth = config.auth;
+      } else if (config.headers?.Authorization) {
+        // headersからauth情報を抽出
         const authHeader = config.headers.Authorization;
         if (authHeader.startsWith('Bearer ')) {
           auth = {
@@ -170,10 +174,11 @@ export function convertMcpServerToInternal(
         id,
         type: 'remote',
         url: config.url,
-        transport: config.type === 'sse' ? 'http' : 'http', // SSEもHTTPトランスポートを使用
+        transport: config.transport || config.type || 'http', // Use config transport/type or default to http
         start: 'lazy',
         env: config.env,
         ...(auth && { auth }),
+        ...(config.healthCheck && { healthCheck: config.healthCheck }),
       } as RemoteServerConfig;
       break;
     }
@@ -192,6 +197,7 @@ export function convertMcpServerToInternal(
         transport: 'stdio',
         start: 'lazy',
         env: config.env,
+        cwd: config.cwd, // Add cwd field
       } as LocalServerConfig;
       break;
     }

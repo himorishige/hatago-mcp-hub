@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "logLevel": "debug",
+  "mcpServers": {
+    "deepwiki-only": {
+      "type": "remote",
+      "url": "https://mcp.deepwiki.com/sse",
+      "transport": "sse",
+      "hatagoOptions": {
+        "start": "eager",
+        "timeout": 60000
+      }
+    }
+  }
+}

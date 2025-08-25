@@ -8,9 +8,13 @@ import { Command } from 'commander';
 
 // Import individual command handlers
 import { createCallCommand } from './commands/call.js';
+import { createDevCommand } from './commands/dev.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createDrainCommand } from './commands/drain.js';
+// Import developer tools
+import { createGenerateCommand } from './commands/generate.js';
 import { createInitCommand } from './commands/init.js';
+import { createInspectCommand } from './commands/inspect.js';
 import { createListCommand } from './commands/list.js';
 import { createMcpCommands } from './commands/mcp.js';
 import { createNpxCommands } from './commands/npx.js';
@@ -21,6 +25,10 @@ import { createSecretCommands } from './commands/secret.js';
 import { createServeCommand } from './commands/serve.js';
 import { createSessionCommand } from './commands/session.js';
 import { createStatusCommand } from './commands/status.js';
+import { createCircuitBreakerCommand } from './commands/v2/circuit-breaker.js';
+// Import v2 commands
+import { createHealthCommand } from './commands/v2/health.js';
+import { createMetricsCommand } from './commands/v2/metrics.js';
 
 const program = new Command();
 
@@ -47,5 +55,22 @@ program.addCommand(createRemoteCommands());
 createSecretCommands(program);
 createDoctorCommand(program);
 
-// Parse command line arguments
-program.parse(process.argv);
+// Register v2 commands
+program.addCommand(createHealthCommand());
+program.addCommand(createMetricsCommand());
+program.addCommand(createCircuitBreakerCommand());
+
+// Register developer tools
+createGenerateCommand(program);
+createInspectCommand(program);
+createDevCommand(program);
+
+// Parse command line arguments (async for handling async actions)
+(async () => {
+  try {
+    await program.parseAsync(process.argv);
+  } catch (error) {
+    console.error('Command execution failed:', error);
+    process.exit(1);
+  }
+})();

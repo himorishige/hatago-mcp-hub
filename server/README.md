@@ -43,15 +43,35 @@ npx hatago serve
 
 ## 📝 Features
 
+### 🏗️ 核心機能
 - **設定不要**: デフォルト設定で即座に動作
 - **プロジェクト非侵襲**: 既存プロジェクトを汚染しません
-- **マルチトランスポート**: STDIO (デフォルト) / HTTP / SSE対応
-- **リモートMCP対応**: HTTP/SSEリモートサーバーへの接続
-- **NPXサーバー管理**: NPXパッケージのMCPサーバーを統合管理
+- **プロキシアーキテクチャ**: 統合されたMCPサーバー管理とCapability Graph
+- **マルチトランスポート**: STDIO (デフォルト) / HTTP / SSE / WebSocket対応
+- **ホットリロード**: 設定変更時の自動再読み込み
+
+### 🛡️ セキュリティ & 信頼性
+- **認証・認可**: 柔軟な権限管理システム
+- **レート制限**: サーバー保護とリソース管理
+- **サーキットブレーカー**: 障害時の自動復旧機能
+- **ログサニタイズ**: 機密情報の自動マスキング
+
+### 📊 観測可能性
+- **分散トレーシング**: リクエスト追跡とパフォーマンス分析
+- **メトリクス収集**: Prometheus互換メトリクス
+- **ヘルスチェック**: Kubernetes互換のliveness/readiness probe
+- **構造化ログ**: JSON形式での詳細ログ出力
+
+### 👨‍💻 開発者体験
+- **TypeScript型生成**: MCPサーバーからの自動型生成
+- **開発サーバー**: ファイル監視とホットリロード機能
+- **OpenAPI統合**: REST API ⇔ MCP双方向変換
+- **デコレーターAPI**: 宣言的なMCPサーバー定義（実験的）
+- **テストユーティリティ**: モックサーバーとテストクライアント
 
 ## 🛠️ CLI Commands
 
-### 基本コマンド
+### サーバー管理
 
 ```bash
 # STDIOモードで起動（デフォルト）
@@ -65,16 +85,60 @@ hatago serve --quiet
 
 # カスタム設定を使用
 hatago serve --config ./my-config.json
+
+# サーバー状態確認
+hatago status
+
+# 設定のリロード
+hatago reload
+```
+
+### 開発ツール
+
+```bash
+# 開発サーバー（ファイル監視 + ホットリロード）
+hatago dev ./my-server.js
+
+# MCPサーバー調査
+hatago inspect @modelcontextprotocol/server-filesystem
+
+# TypeScript型生成
+hatago generate types ./types/mcp-servers.d.ts
+
+# OpenAPI仕様からMCPツール生成
+hatago generate mcp --from-openapi ./api.yaml
+```
+
+### システム監視
+
+```bash
+# ヘルスチェック
+hatago health
+
+# メトリクス表示
+hatago metrics
+
+# ログ監視
+hatago logs --follow
+
+# トレース情報表示
+hatago trace <trace-id>
 ```
 
 ### MCPサーバー管理（Claude Code互換）
 
 ```bash
-# ローカルSTDIOサーバー（NPX）
-hatago mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /path/to/dir
-
-# ローカルNode.jsサーバー
+# ローカルコマンドサーバー（Node.js）
 hatago mcp add myserver -- node ./server.js arg1 arg2
+
+# ローカルコマンドサーバー（Python）
+hatago mcp add python-server -- python ./server.py --port 3001
+
+# ローカルコマンドサーバー（Deno）
+hatago mcp add deno-server -- deno run --allow-net ./server.ts
+
+# NPXパッケージサーバー
+hatago mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /path/to/dir
 
 # Pythonサーバー（uvx）
 hatago mcp add serena -- uvx --from serena-mcp serena-mcp /project/path
@@ -134,13 +198,19 @@ hatago npx stop filesystem
 ## 📚 Documentation
 
 ### ユーザー向け
-- [MCP統合ガイド](../docs/mcp-integration.md) - プロジェクトへの統合方法
 - [README](README.md) - 基本的な使い方（このドキュメント）
+- [MCP統合ガイド](../docs/mcp-integration.md) - プロジェクトへの統合方法
+- [設定リファレンス](./docs/configuration.md) - 詳細な設定オプション
 
 ### 開発者向け  
-- [実装状況](../docs/implementation-status.md) - 機能の実装状況
-- [残存タスク](../docs/remaining-tasks.md) - 技術的課題と改善項目
-- [テストガイド](docs/testing-guide.md) - テスト環境構築
+- [アーキテクチャガイド](./docs/architecture.md) - システム設計と内部構造
+- [開発者ガイド](./docs/developer-guide.md) - 型生成・デコレーターAPI・テスト
+- [観測可能性ガイド](./docs/observability.md) - トレーシング・メトリクス・ログ
+- [セキュリティガイド](./docs/security.md) - 認証・認可・レート制限
+
+### 運用・管理
+- [テストガイド](./docs/testing-guide.md) - テスト環境構築
+- [開発ロードマップ](./docs/roadmap.md) - 機能計画と実装状況
 
 ## 🔐 Security & Environment Variables
 
@@ -148,13 +218,26 @@ Hatagoは以下の環境変数でセキュリティと動作をカスタマイ�
 
 ### セキュリティ設定
 - `HATAGO_DEBUG_REDACTION=1` - ログサニタイズのデバッグモード（開発時のみ）
+- `HATAGO_AUTH_SECRET` - JWT認証のシークレットキー
+- `HATAGO_RATE_LIMIT_WINDOW=60000` - レート制限ウィンドウ（デフォルト: 60秒）
+- `HATAGO_RATE_LIMIT_MAX=1000` - レート制限最大リクエスト数（デフォルト: 1000）
 
-### 再接続制限
+### 観測可能性
+- `HATAGO_TRACING_ENABLED=true` - 分散トレーシングの有効化
+- `HATAGO_METRICS_ENABLED=true` - メトリクス収集の有効化
+- `HATAGO_METRICS_PORT=9090` - メトリクスエクスポートポート
+- `HATAGO_LOG_LEVEL=info` - ログレベル（debug, info, warn, error）
+
+### パフォーマンス
 - `HATAGO_MAX_RECONNECT_DEPTH=32` - 再接続の最大深度（デフォルト: 32）
 - `HATAGO_MAX_RECONNECT_STEPS=10000` - 再接続の最大ステップ数（デフォルト: 10000）
-
-### ヘルスチェック
+- `HATAGO_CIRCUIT_BREAKER_THRESHOLD=5` - サーキットブレーカー閾値
 - `HATAGO_HEALTH_TIMEOUT_MS=1000` - ヘルスチェックタイムアウト（デフォルト: 1000ms）
+
+### 開発モード
+- `HATAGO_DEV_MODE=true` - 開発モードの有効化
+- `HATAGO_HOT_RELOAD=true` - ホットリロードの有効化
+- `HATAGO_TYPE_GENERATION=true` - 自動型生成の有効化
 
 ## ⚙️ Configuration (Optional)
 
@@ -182,6 +265,33 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
       "transport": "sse"
     }
   ]
+}
+```
+
+#### ローカルコマンドサーバー設定例
+
+```json
+{
+  "servers": {
+    "local-node": {
+      "id": "local-node",
+      "type": "local",
+      "command": "node",
+      "args": ["./my-mcp-server.js"],
+      "cwd": "/path/to/server",
+      "start": "lazy",
+      "env": {
+        "DEBUG": "true"
+      }
+    },
+    "local-python": {
+      "id": "local-python", 
+      "type": "local",
+      "command": "python",
+      "args": ["./server.py", "--port", "3001"],
+      "start": "immediate"
+    }
+  }
 }
 ```
 
@@ -251,7 +361,52 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
     "maxSessions": 100
   },
   "security": {
-    "allowNet": ["*"]
+    "allowNet": ["*"],
+    "maskedEnvVars": ["GITHUB_TOKEN", "API_KEY"],
+    "authentication": {
+      "enabled": true,
+      "secret": "${HATAGO_AUTH_SECRET}",
+      "algorithms": ["HS256"]
+    },
+    "rateLimit": {
+      "windowMs": 60000,
+      "max": 1000,
+      "skipSuccessfulRequests": false
+    }
+  },
+  "observability": {
+    "tracing": {
+      "enabled": true,
+      "serviceName": "hatago-hub",
+      "exportInterval": 5000
+    },
+    "metrics": {
+      "enabled": true,
+      "port": 9090,
+      "path": "/metrics"
+    },
+    "logging": {
+      "level": "info",
+      "format": "json",
+      "sanitize": true
+    }
+  },
+  "proxy": {
+    "circuitBreaker": {
+      "failureThreshold": 5,
+      "resetTimeoutMs": 30000
+    },
+    "cache": {
+      "enabled": false,
+      "ttl": 300000
+    }
+  },
+  "development": {
+    "hotReload": true,
+    "typeGeneration": {
+      "enabled": true,
+      "outputPath": "./types/generated.d.ts"
+    }
   },
   "servers": {
     "filesystem": {
@@ -259,14 +414,30 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
       "type": "npx",
       "package": "@modelcontextprotocol/server-filesystem",
       "start": "immediate",
-      "initTimeoutMs": 30000
+      "initTimeoutMs": 30000,
+      "args": ["/path/to/directory"]
+    },
+    "local-node": {
+      "id": "local-node",
+      "type": "local",
+      "command": "node",
+      "args": ["./examples/test-mcp-server.js"],
+      "cwd": "./",
+      "start": "lazy",
+      "env": {
+        "DEBUG": "true"
+      }
     },
     "remote": {
       "id": "remote",
       "type": "remote",
       "url": "https://mcp.example.com/sse",
       "transport": "sse",
-      "start": "lazy"
+      "start": "lazy",
+      "healthCheck": {
+        "enabled": true,
+        "interval": 30000
+      }
     }
   }
 }
@@ -277,13 +448,24 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
 ```bash
 # 開発環境セットアップ
 pnpm install
+
+# 開発サーバー起動
 pnpm dev
+
+# ファイル監視 + 型生成
+hatago dev --generate-types
 
 # ビルド
 pnpm build
 
-# テスト
+# コード品質チェック
+pnpm format && pnpm lint && pnpm check
+
+# テスト実行
 pnpm test
+
+# カバレッジ付きテスト
+pnpm coverage
 ```
 
 ## 🧪 Testing

@@ -214,29 +214,29 @@ export function wrapTransport(
     }
   >();
 
-  // Set up message handler
-  if (transport.onmessage) {
-    const originalHandler = transport.onmessage;
-    transport.onmessage = (message: JSONRPCMessage) => {
-      // Check if this is a response to a pending request
-      if ('id' in message && message.id !== null && message.id !== undefined) {
-        const pending = pendingResponses.get(message.id);
-        if (pending) {
-          clearTimeout(pending.timer);
-          pendingResponses.delete(message.id);
-          pending.resolve(message);
-        }
+  // Store the original handler (if any)
+  const originalHandler = transport.onmessage;
+  transport.onmessage = (message: JSONRPCMessage) => {
+    // Check if this is a response to a pending request
+    if ('id' in message && message.id !== null && message.id !== undefined) {
+      const pending = pendingResponses.get(message.id);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingResponses.delete(message.id);
+        pending.resolve(message);
       }
+    }
 
-      // Call original handler
+    // Call original handler if it exists
+    if (originalHandler) {
       originalHandler(message);
+    }
 
-      // Call additional handler if provided
-      if (onMessage) {
-        onMessage(message);
-      }
-    };
-  }
+    // Call additional handler if provided
+    if (onMessage) {
+      onMessage(message);
+    }
+  };
 
   return {
     async send(message: JSONRPCMessage): Promise<void> {

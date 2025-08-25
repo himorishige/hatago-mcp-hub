@@ -106,8 +106,9 @@ export class MCPClientFacade {
    */
   private createBypassTransport(originalTransport: Transport): Transport {
     let initIntercepted = false;
+    const messageHandlers: Array<(message: JSONRPCMessage) => void> = [];
 
-    return {
+    const transport = {
       send: async (message: JSONRPCMessage) => {
         // Intercept initialize requests from SDK and respond immediately
         if (
@@ -141,14 +142,41 @@ export class MCPClientFacade {
         return originalTransport.send(adapted);
       },
 
-      onmessage: originalTransport.onmessage,
-      onerror: originalTransport.onerror,
-      onclose: originalTransport.onclose,
+      set onmessage(handler: ((message: JSONRPCMessage) => void) | undefined) {
+        if (handler) {
+          messageHandlers.push(handler);
+          // Set up the original transport's onmessage if not already set
+          if (!originalTransport.onmessage) {
+            originalTransport.onmessage = (message: JSONRPCMessage) => {
+              messageHandlers.forEach((h) => h(message));
+            };
+          }
+        }
+      },
+      get onmessage() {
+        return messageHandlers[0];
+      },
+
+      set onerror(handler: ((error: Error) => void) | undefined) {
+        originalTransport.onerror = handler;
+      },
+      get onerror() {
+        return originalTransport.onerror;
+      },
+
+      set onclose(handler: (() => void) | undefined) {
+        originalTransport.onclose = handler;
+      },
+      get onclose() {
+        return originalTransport.onclose;
+      },
 
       close: originalTransport.close
         ? async () => originalTransport.close?.()
         : undefined,
     };
+
+    return transport;
   }
 
   /**

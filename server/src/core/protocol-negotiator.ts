@@ -10,6 +10,7 @@ import { ErrorHelpers } from '../utils/errors.js';
 
 export const SUPPORTED_PROTOCOLS = [
   '2025-06-18', // Latest date-based version
+  '2025-03-26', // DeepWiki version
   '0.1.0', // Legacy semantic version
 ] as const;
 

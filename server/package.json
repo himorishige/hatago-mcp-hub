@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Hatago MCP Hub - Lightweight MCP server management",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,6 +12,38 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./observability": {
+      "types": "./dist/observability/index.d.ts",
+      "import": "./dist/observability/index.js"
+    },
+    "./security": {
+      "types": "./dist/security/index.d.ts",
+      "import": "./dist/security/index.js"
+    },
+    "./proxy": {
+      "types": "./dist/proxy/index.d.ts",
+      "import": "./dist/proxy/index.js"
+    },
+    "./legacy": {
+      "types": "./dist/legacy/adapter.d.ts",
+      "import": "./dist/legacy/adapter.js"
+    },
+    "./codegen": {
+      "types": "./dist/codegen/index.d.ts",
+      "import": "./dist/codegen/index.js"
+    },
+    "./integrations": {
+      "types": "./dist/integrations/index.d.ts",
+      "import": "./dist/integrations/index.js"
+    },
+    "./decorators": {
+      "types": "./dist/decorators/index.d.ts",
+      "import": "./dist/decorators/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -42,14 +74,19 @@
     "cli-table3": "^0.6.5",
     "commander": "^14.0.0",
     "hono": "^4.9.2",
+    "json-schema-to-typescript": "^15.0.2",
     "json-schema-to-zod": "^2.6.1",
     "jsonc-parser": "^3.3.1",
     "pino": "^9.9.0",
+    "reflect-metadata": "^0.2.2",
+    "typescript": "^5.7.3",
+    "ws": "^8.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@types/node": "^20.11.17",
+    "@types/ws": "^8.5.13",
     "pino-pretty": "^13.1.1",
     "tsdown": "^0.14.1",
     "tsx": "^4.7.1",

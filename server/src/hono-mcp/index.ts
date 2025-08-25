@@ -20,11 +20,12 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import { streamSSE } from 'hono/streaming';
 import { ErrorHelpers } from '../utils/errors.js';
 
 export class StreamableHTTPTransport implements Transport {
   #started = false;
-  #initialized = false;
+  #initializedSessions = new Map<string, boolean>();
   #onsessioninitialized?: (sessionId: string) => void;
   #sessionIdGenerator?: () => string;
   #eventStore?: EventStore;
@@ -36,13 +37,19 @@ export class StreamableHTTPTransport implements Transport {
       ctx: {
         header: (name: string, value: string) => void;
         json: (data: unknown) => void;
+        body: (data: string) => void;
       };
 
       createdAt: number;
+      notifications?: JSONRPCMessage[];
+      streamWriter?: any; // Stream writer for NDJSON streaming
     }
   >();
   #requestToStreamMapping = new Map<RequestId, string>();
   #requestResponseMap = new Map<RequestId, JSONRPCMessage>();
+
+  // SSE session management
+  #activeStreams = new Map<string, { sessionId: string; createdAt: number }>();
 
   // Memory leak prevention settings
   #maxMapSize = 1000; // Maximum entries in each map
@@ -131,6 +138,23 @@ export class StreamableHTTPTransport implements Transport {
       }
     }
 
+    // Clean up expired SSE sessions
+    for (const [sessionId, data] of this.#activeStreams.entries()) {
+      if (now - data.createdAt > this.#ttlMs) {
+        this.#activeStreams.delete(sessionId);
+        this.#initializedSessions.delete(sessionId);
+      }
+    }
+
+    // Clean up expired initialized sessions
+    for (const [sessionId] of this.#initializedSessions.entries()) {
+      // If session doesn't have active stream, check if it's expired
+      if (!this.#activeStreams.has(sessionId)) {
+        // Remove orphaned initialized sessions
+        this.#initializedSessions.delete(sessionId);
+      }
+    }
+
     // Enforce max size limit (LRU-style cleanup)
     this.enforceMaxSize();
   }
@@ -185,25 +209,49 @@ export class StreamableHTTPTransport implements Transport {
    * Handles GET requests for SSE stream
    */
   private async handleGetRequest(ctx: Context) {
-    // SSE is deprecated and no longer supported
-    // Return 405 Method Not Allowed for all GET requests
-    return ctx.json(
-      {
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message:
-            'SSE transport is deprecated and no longer supported. Please use POST with Streamable HTTP transport.',
-        },
-        id: null,
-      },
-      {
-        status: 405,
-        headers: {
-          Allow: 'POST, DELETE',
-        },
-      },
-    );
+    // For SSE compatibility, handle GET requests as SSE stream initialization
+    const sessionId =
+      ctx.req.header('mcp-session-id') ||
+      this.#sessionIdGenerator?.() ||
+      crypto.randomUUID();
+
+    // Store session in activeStreams
+    this.#activeStreams.set(sessionId, {
+      sessionId,
+      createdAt: Date.now(),
+    });
+
+    // Initialize session if callback provided
+    if (this.#onsessioninitialized) {
+      this.#onsessioninitialized(sessionId);
+    }
+
+    // Set session ID in response header
+    ctx.header('mcp-session-id', sessionId);
+
+    console.error(`[DEBUG SSE] SSE session initialized: ${sessionId}`);
+
+    // Return SSE stream response
+    return streamSSE(ctx, async (stream) => {
+      // Don't send initial connection event as it's not JSON-RPC compliant
+      // MCP Inspector will establish connection through proper initialize request
+
+      // Keep connection alive with heartbeat
+      const heartbeatInterval = setInterval(async () => {
+        try {
+          await stream.write(':heartbeat\n\n');
+        } catch (_error) {
+          clearInterval(heartbeatInterval);
+        }
+      }, 30000);
+
+      // Clean up on close
+      stream.onAbort(() => {
+        clearInterval(heartbeatInterval);
+        this.#activeStreams.delete(sessionId);
+        console.error(`[DEBUG SSE] SSE session closed: ${sessionId}`);
+      });
+    });
   }
 
   /**
@@ -266,19 +314,20 @@ export class StreamableHTTPTransport implements Transport {
       // https://spec.modelcontextprotocol.io/specification/2025-03-26/basic/lifecycle/
       const isInitializationRequest = messages.some(isInitializeRequest);
       if (isInitializationRequest) {
-        // If it's a server with session management and the session ID is already set we should reject the request
-        // to avoid re-initialization.
-        if (this.#initialized && this.sessionId !== undefined) {
-          throw new HTTPException(400, {
-            res: Response.json({
-              jsonrpc: '2.0',
-              error: {
-                code: -32600,
-                message: 'Invalid Request: Server already initialized',
-              },
-              id: null,
-            }),
-          });
+        // Get or generate session ID
+        const requestSessionId =
+          ctx.req.header('mcp-session-id') ||
+          this.#sessionIdGenerator?.() ||
+          crypto.randomUUID();
+
+        // Check if this specific session is already initialized
+        if (this.#initializedSessions.has(requestSessionId)) {
+          // Allow re-initialization for the same session (for reconnection scenarios)
+          console.log(
+            `[DEBUG] Session ${requestSessionId} is being re-initialized`,
+          );
+          // Update the session timestamp to keep it alive
+          this.#initializedSessions.set(requestSessionId, true);
         }
 
         if (messages.length > 1) {
@@ -294,8 +343,9 @@ export class StreamableHTTPTransport implements Transport {
             }),
           });
         }
-        this.sessionId = this.#sessionIdGenerator?.();
-        this.#initialized = true;
+        // Use the same session ID we validated above
+        this.sessionId = requestSessionId;
+        this.#initializedSessions.set(requestSessionId, true);
 
         // If we have a session ID and an onsessioninitialized handler, call it immediately
         // This is needed in cases where the server needs to keep track of multiple sessions
@@ -325,39 +375,175 @@ export class StreamableHTTPTransport implements Transport {
       }
 
       // All remaining cases have requests
-      // The default behavior is to use SSE streaming
-      // but in some cases server will return JSON responses
-      const streamId = crypto.randomUUID();
+      // Check if any message has a progress token or if it's a long-running operation
+      const hasProgressToken = messages.some(
+        (msg: any) =>
+          isJSONRPCRequest(msg) &&
+          msg.params?._meta?.progressToken !== undefined,
+      );
 
-      if (!this.#enableJsonResponse && this.sessionId !== undefined) {
-        ctx.header('mcp-session-id', this.sessionId);
-      }
+      // Check if this is a tools/call request (potentially long-running)
+      const isToolCall = messages.some(
+        (msg: any) => isJSONRPCRequest(msg) && msg.method === 'tools/call',
+      );
 
-      // Store the response for this request to send messages back through this connection
-      // We need to track by request ID to maintain the connection
-      const result = await new Promise<JSONRPCMessage | JSONRPCMessage[]>(
-        (resolve) => {
+      // Use SSE for long-running operations or when progress token is present
+      if (
+        (hasProgressToken || isToolCall) &&
+        ctx.req.header('accept')?.includes('text/event-stream')
+      ) {
+        // SSE response for long-running operations
+        console.log(
+          '[DEBUG StreamableHTTP] Using SSE response for long-running operation',
+        );
+
+        const streamId = crypto.randomUUID();
+
+        if (this.sessionId !== undefined) {
+          ctx.header('mcp-session-id', this.sessionId);
+        }
+
+        // Use Hono's streamSSE helper for proper SSE support
+        return streamSSE(ctx, async (stream) => {
+          const streamData: any = {
+            ctx,
+            stream,
+            notifications: [],
+            createdAt: Date.now(),
+          };
+
+          this.#streamMapping.set(streamId, streamData);
+
+          // Map request IDs to this stream
           for (const message of messages) {
             if (isJSONRPCRequest(message)) {
-              this.#streamMapping.set(streamId, {
-                ctx: {
-                  header: ctx.header,
-                  json: resolve,
-                },
-                createdAt: Date.now(),
-              });
               this.#requestToStreamMapping.set(message.id, streamId);
             }
           }
 
-          // handle each message
+          // Send initial keepalive to prevent early timeout
+          await stream.write(':keepalive\n\n');
+
+          // Set up keepalive interval (every 5 seconds)
+          const keepaliveInterval = setInterval(async () => {
+            try {
+              await stream.write(':keepalive\n\n');
+            } catch (_e) {
+              // Stream closed, stop keepalive
+              clearInterval(keepaliveInterval);
+            }
+          }, 5000);
+
+          // Store interval for cleanup
+          streamData.keepaliveInterval = keepaliveInterval;
+
+          // Process messages (this will trigger the actual work)
+          console.log(
+            '[DEBUG StreamableHTTP] Processing messages with SSE support',
+          );
           for (const message of messages) {
             this.onmessage?.(message, { authInfo });
           }
-        },
-      );
 
-      return ctx.json(result);
+          // Wait for the response to be ready
+          // The response will be sent via the send() method
+          const responsePromise = new Promise<void>((resolve) => {
+            streamData.resolveResponse = resolve;
+          });
+
+          // Wait for response with timeout
+          const timeoutPromise = new Promise<void>((_, reject) => {
+            setTimeout(() => reject(new Error('Request timeout')), 120000); // 2 minutes for SSE
+          });
+
+          try {
+            await Promise.race([responsePromise, timeoutPromise]);
+          } catch (error) {
+            console.error(
+              '[DEBUG StreamableHTTP] SSE timeout or error:',
+              error,
+            );
+            clearInterval(keepaliveInterval);
+            await stream.write(`data: ${JSON.stringify({
+              jsonrpc: '2.0',
+              error: {
+                code: -32001,
+                message: 'Request timed out',
+              },
+              id: messages.find(isJSONRPCRequest)?.id || null,
+            })}
+
+`);
+          } finally {
+            clearInterval(keepaliveInterval);
+            // Clean up
+            for (const message of messages) {
+              if (isJSONRPCRequest(message)) {
+                this.#requestToStreamMapping.delete(message.id);
+              }
+            }
+            this.#streamMapping.delete(streamId);
+          }
+        });
+      } else {
+        // No progress tokens, use regular JSON response
+        const streamId = crypto.randomUUID();
+
+        // Always set session ID header if available
+        if (this.sessionId !== undefined) {
+          ctx.header('mcp-session-id', this.sessionId);
+        }
+
+        // Store the response for this request to send messages back through this connection
+        // We need to track by request ID to maintain the connection
+        const result = await new Promise<JSONRPCMessage | JSONRPCMessage[]>(
+          (resolve, reject) => {
+            // Set up timeout for the promise
+            const timeoutId = setTimeout(() => {
+              console.error('[DEBUG StreamableHTTP] Request timeout triggered');
+              reject(new Error('Request timeout: No response received'));
+            }, 60000); // 60 second timeout for remote servers
+
+            for (const message of messages) {
+              if (isJSONRPCRequest(message)) {
+                this.#streamMapping.set(streamId, {
+                  ctx: {
+                    header: ctx.header.bind(ctx),
+                    json: (data: unknown) => {
+                      console.log(
+                        '[DEBUG StreamableHTTP] Resolving promise with data',
+                      );
+                      clearTimeout(timeoutId);
+                      resolve(data as JSONRPCMessage | JSONRPCMessage[]);
+                    },
+                    body: (data: string) => {
+                      console.log(
+                        '[DEBUG StreamableHTTP] Resolving promise with body data',
+                      );
+                      clearTimeout(timeoutId);
+                      resolve(data as any);
+                    },
+                  },
+                  createdAt: Date.now(),
+                });
+                this.#requestToStreamMapping.set(message.id, streamId);
+              }
+            }
+
+            // handle each message
+            console.log(
+              '[DEBUG StreamableHTTP] Processing messages:',
+              messages.length,
+            );
+            for (const message of messages) {
+              console.log('[DEBUG StreamableHTTP] Handling message:', message);
+              this.onmessage?.(message, { authInfo });
+            }
+          },
+        );
+
+        return ctx.json(result);
+      }
     } catch (error) {
       if (error instanceof HTTPException) {
         throw error;
@@ -423,34 +609,24 @@ export class StreamableHTTPTransport implements Transport {
       // and we don't need to validate the session ID
       return true;
     }
-    if (!this.#initialized) {
-      // If the server has not been initialized yet, reject all requests
-      throw new HTTPException(400, {
-        res: Response.json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32000,
-            message: 'Bad Request: Server not initialized',
-          },
-          id: null,
-        }),
-      });
-    }
 
     const sessionId = ctx.req.header('mcp-session-id');
 
     if (!sessionId) {
-      // Non-initialization requests without a session ID should return 400 Bad Request
-      throw new HTTPException(400, {
-        res: Response.json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32000,
-            message: 'Bad Request: Mcp-Session-Id header is required',
-          },
-          id: null,
-        }),
-      });
+      // For flexible session management (e.g., MCP Inspector compatibility),
+      // auto-create an ephemeral session instead of failing
+      const ephemeralSessionId =
+        this.#sessionIdGenerator?.() || crypto.randomUUID();
+      this.sessionId = ephemeralSessionId;
+      this.#initializedSessions.set(ephemeralSessionId, true);
+
+      // Set the session ID in response header for client tracking
+      ctx.header('mcp-session-id', ephemeralSessionId);
+
+      console.error(
+        `[DEBUG] Auto-created ephemeral session: ${ephemeralSessionId}`,
+      );
+      return true;
     }
 
     if (Array.isArray(sessionId)) {
@@ -467,18 +643,13 @@ export class StreamableHTTPTransport implements Transport {
       });
     }
 
-    if (sessionId !== this.sessionId) {
-      // Reject requests with invalid session ID with 404 Not Found
-      throw new HTTPException(404, {
-        res: Response.json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32001,
-            message: 'Session not found',
-          },
-          id: null,
-        }),
-      });
+    // Check if this session has been initialized
+    if (!this.#initializedSessions.has(sessionId)) {
+      // For flexible session management, auto-initialize unknown sessions
+      this.sessionId = sessionId;
+      this.#initializedSessions.set(sessionId, true);
+
+      console.error(`[DEBUG] Auto-initialized session: ${sessionId}`);
     }
 
     return true;
@@ -512,15 +683,77 @@ export class StreamableHTTPTransport implements Transport {
     message: JSONRPCMessage,
     options?: { relatedRequestId?: RequestId },
   ): Promise<void> {
+    console.log('[DEBUG StreamableHTTP] send() called with message:', message);
+
+    // Check if this is a notification (has method but no id)
+    const isNotification = 'method' in message && !('id' in message);
+
+    if (isNotification) {
+      console.log(
+        '[DEBUG StreamableHTTP] Processing notification:',
+        (message as any).method,
+      );
+
+      // For SSE streams, send the notification immediately
+      if (options?.relatedRequestId) {
+        const streamId = this.#requestToStreamMapping.get(
+          options.relatedRequestId,
+        );
+        if (streamId) {
+          const streamData = this.#streamMapping.get(streamId);
+          if (streamData?.stream) {
+            // Send as SSE event
+            try {
+              await streamData.stream.write(`data: ${JSON.stringify(message)}
+
+`);
+              console.log('[DEBUG StreamableHTTP] Sent notification via SSE');
+            } catch (e) {
+              console.error(
+                '[DEBUG StreamableHTTP] Failed to send notification:',
+                e,
+              );
+            }
+          } else if (streamData?.notifications) {
+            // Queue for later if stream not ready
+            streamData.notifications.push(message);
+            console.log(
+              '[DEBUG StreamableHTTP] Queued notification (SSE not ready)',
+            );
+          }
+        }
+      } else {
+        // Broadcast to all active SSE streams
+        for (const [streamId, streamData] of this.#streamMapping.entries()) {
+          if (streamData.stream) {
+            try {
+              await streamData.stream.write(`data: ${JSON.stringify(message)}
+
+`);
+              console.log(
+                '[DEBUG StreamableHTTP] Broadcast notification to stream:',
+                streamId,
+              );
+            } catch (e) {
+              console.error('[DEBUG StreamableHTTP] Failed to broadcast:', e);
+            }
+          }
+        }
+      }
+      return;
+    }
+
     let requestId = options?.relatedRequestId;
     if (isJSONRPCResponse(message) || isJSONRPCError(message)) {
       // If the message is a response, use the request ID from the message
       requestId = message.id;
     }
 
+    console.log('[DEBUG StreamableHTTP] Request ID:', requestId);
     // Without SSE support, we can't send messages without a request ID
     if (requestId === undefined) {
       // Notifications without request ID are discarded
+      console.log('[DEBUG StreamableHTTP] No request ID, discarding message');
       return;
     }
 
@@ -535,27 +768,53 @@ export class StreamableHTTPTransport implements Transport {
     }
 
     if (isJSONRPCResponse(message) || isJSONRPCError(message)) {
-      this.#requestResponseMap.set(requestId, message);
-      const relatedIds = Array.from(this.#requestToStreamMapping.entries())
-        .filter(
-          ([, streamId]) => this.#streamMapping.get(streamId) === response,
-        )
-        .map(([id]) => id);
+      // Check if this is for an SSE stream
+      const streamData = streamId
+        ? this.#streamMapping.get(streamId)
+        : undefined;
 
-      // Check if we have responses for all requests using this connection
-      const allResponsesReady = relatedIds.every((id) =>
-        this.#requestResponseMap.has(id),
-      );
+      if (streamData?.stream) {
+        // Send response via SSE
+        try {
+          await streamData.stream.write(`data: ${JSON.stringify(message)}
 
-      if (allResponsesReady) {
-        if (!response) {
-          throw ErrorHelpers.operationFailed(
-            'Connection lookup',
-            `No connection established for request ID: ${String(requestId)}`,
+`);
+          console.log('[DEBUG StreamableHTTP] Sent response via SSE');
+
+          // Resolve the response promise to close the stream
+          if (streamData.resolveResponse) {
+            streamData.resolveResponse();
+          }
+        } catch (e) {
+          console.error(
+            '[DEBUG StreamableHTTP] Failed to send response via SSE:',
+            e,
           );
         }
-        if (this.#enableJsonResponse) {
-          // All responses ready, send as JSON
+
+        // Clean up
+        this.#requestToStreamMapping.delete(requestId);
+        // Stream cleanup will be handled by the finally block in streamSSE
+      } else {
+        // Non-SSE response handling (regular JSON)
+        this.#requestResponseMap.set(requestId, message);
+        const relatedIds = Array.from(this.#requestToStreamMapping.entries())
+          .filter(([, sid]) => sid === streamId)
+          .map(([id]) => id);
+
+        // Check if we have responses for all requests using this connection
+        const allResponsesReady = relatedIds.every((id) =>
+          this.#requestResponseMap.has(id),
+        );
+
+        if (allResponsesReady) {
+          if (!response) {
+            throw ErrorHelpers.operationFailed(
+              'Connection lookup',
+              `No connection established for request ID: ${String(requestId)}`,
+            );
+          }
+          // Always send responses as JSON (MCP Inspector expects this)
           if (this.sessionId !== undefined) {
             response.ctx.header('mcp-session-id', this.sessionId);
           }
@@ -564,15 +823,50 @@ export class StreamableHTTPTransport implements Transport {
             .map((id) => this.#requestResponseMap.get(id))
             .filter((r): r is JSONRPCMessage => r !== undefined);
 
-          response.ctx.json(responses.length === 1 ? responses[0] : responses);
-          return;
-        }
-        // Streaming response is not supported in the current implementation
-        // All responses are sent as JSON when enableJsonResponse is true
-        // Clean up
-        for (const id of relatedIds) {
-          this.#requestResponseMap.delete(id);
-          this.#requestToStreamMapping.delete(id);
+          // Get the stream data to check for notifications
+          const notifications = streamData?.notifications || [];
+
+          if (notifications.length > 0) {
+            // Send as NDJSON stream for notifications + response
+            console.log(
+              '[DEBUG StreamableHTTP] Sending NDJSON stream with notifications:',
+              notifications.length,
+            );
+
+            // Create NDJSON response
+            const ndjsonLines: string[] = [];
+
+            // Add all notifications first
+            for (const notification of notifications) {
+              ndjsonLines.push(JSON.stringify(notification));
+            }
+
+            // Add the actual response(s)
+            if (responses.length === 1) {
+              ndjsonLines.push(JSON.stringify(responses[0]));
+            } else {
+              for (const resp of responses) {
+                ndjsonLines.push(JSON.stringify(resp));
+              }
+            }
+
+            // For StreamableHTTP, send the final response as JSON
+            // The notifications are already queued in the transport
+            const finalResponse = responses[responses.length - 1];
+            response.ctx.json(finalResponse);
+          } else {
+            // Send the response as regular JSON
+            response.ctx.json(
+              responses.length === 1 ? responses[0] : responses,
+            );
+          }
+
+          // Clean up after sending
+          for (const id of relatedIds) {
+            this.#requestResponseMap.delete(id);
+            this.#requestToStreamMapping.delete(id);
+          }
+          this.#streamMapping.delete(streamId);
         }
       }
     }

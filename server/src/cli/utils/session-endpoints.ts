@@ -3,6 +3,7 @@
  * Handles MCP session lifecycle and request routing
  */
 
+import { randomUUID } from 'node:crypto';
 import type { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { Logger } from 'pino';
@@ -19,47 +20,80 @@ export function setupSessionEndpoints(
 ): void {
   const sessionManager = hub.getSessionManager();
 
+  // Store transports per session for proper connection management
+  const transports = new Map<string, StreamableHTTPTransport>();
+
   // POST endpoint (JSON-RPC)
   app.post('/mcp', async (c) => {
-    // Create new transport for each request (stateless)
-    const transport = new StreamableHTTPTransport({
-      sessionIdGenerator: undefined, // Stateless mode
-      enableJsonResponse: true, // Enable JSON response
-    });
-
     try {
-      // Temporarily connect to server
-      process.stderr.write('[DEBUG] Connecting transport to server...\n');
-      await hub.getServer().server.connect(transport);
-      process.stderr.write('[DEBUG] Transport connected successfully\n');
-
       const body = await c.req.json();
 
       // MCP spec: If server returns Mcp-Session-Id, it's required for subsequent requests
       const clientSessionId = c.req.header('mcp-session-id');
 
+      // Determine if this is an initialization request
+      const isInitRequest = body?.method === 'initialize';
+
+      let transport: StreamableHTTPTransport;
+      let sessionId = clientSessionId;
+
+      if (isInitRequest) {
+        // Create new transport for initialization
+        // Use client-provided session ID if available, otherwise generate new one
+        sessionId = clientSessionId || randomUUID();
+        transport = new StreamableHTTPTransport({
+          sessionIdGenerator: () => sessionId,
+          enableJsonResponse: true,
+          onsessioninitialized: (sid) => {
+            logger.info(`Session initialized: ${sid}`);
+          },
+        });
+
+        // Connect transport to server
+        process.stderr.write('[DEBUG] Connecting new transport to server...\n');
+        await hub.getServer().server.connect(transport);
+        process.stderr.write('[DEBUG] Transport connected successfully\n');
+
+        // Store transport for this session
+        transports.set(sessionId, transport);
+      } else if (clientSessionId && transports.has(clientSessionId)) {
+        // Use existing transport for this session
+        const existingTransport = transports.get(clientSessionId);
+        if (!existingTransport) {
+          throw new Error(`Transport not found for session ${clientSessionId}`);
+        }
+        transport = existingTransport;
+        process.stderr.write(`[DEBUG] Using existing transport for session: ${clientSessionId}
+`);
+      } else {
+        // No session or session not found
+        return c.json(
+          {
+            jsonrpc: '2.0',
+            error: {
+              code: -32001,
+              message: 'Session not found or not initialized',
+            },
+            id: null,
+          },
+          400,
+        );
+      }
+
       // Session validation
       let currentSession = null;
-      if (clientSessionId) {
+      if (sessionId && !isInitRequest) {
         // Get existing session (also updates last access time)
-        currentSession = await sessionManager.getSession(clientSessionId);
+        currentSession = await sessionManager.getSession(sessionId);
 
-        // Return error if session not found
+        // Create session if it doesn't exist
         if (!currentSession) {
-          return c.json(
-            {
-              jsonrpc: '2.0',
-              error: {
-                code: -32001,
-                message: 'Session not found',
-              },
-              id: null,
-            },
-            404,
-          );
+          await sessionManager.createSession(sessionId);
+          currentSession = await sessionManager.getSession(sessionId);
         }
       }
 
+      // Handle the request through the transport
       const result = await transport.handleRequest(c, body);
 
       // If handleRequest returns undefined, response was already sent
@@ -67,30 +101,14 @@ export function setupSessionEndpoints(
         return new Response(null, { status: 200 });
       }
 
-      // Add MCP-Protocol-Version header
-      const headers = new Headers(result.headers);
-      headers.set('MCP-Protocol-Version', '2024-11-05');
-
-      // Check for Mcp-Session-Id header in response
-      if (result?.headers) {
-        const serverSessionId = result.headers.get('mcp-session-id');
-        if (serverSessionId && !currentSession) {
-          // Create new session (using central SessionManager)
-          await sessionManager.createSession(serverSessionId);
-          headers.set('Mcp-Session-Id', serverSessionId);
-          logger.info(`New session created: ${serverSessionId}`);
-        } else if (serverSessionId && currentSession) {
-          // Confirm existing session
-          headers.set('Mcp-Session-Id', currentSession.id);
-        }
+      // For initialization requests, ensure session ID is in the response
+      if (isInitRequest && sessionId) {
+        // Session was already created, just return the response
+        return result;
       }
 
-      // Rebuild response with new headers
-      return new Response(result.body, {
-        status: result.status,
-        statusText: result.statusText,
-        headers,
-      });
+      // For other requests, return the result as-is
+      return result;
     } catch (error) {
       // Error handling
       logger.error({ error }, 'MCP request error');
@@ -113,13 +131,6 @@ export function setupSessionEndpoints(
         },
         500,
       );
-    } finally {
-      // Cleanup
-      try {
-        await transport.close();
-      } catch {
-        // Ignore close errors
-      }
     }
   });
 
@@ -143,6 +154,20 @@ export function setupSessionEndpoints(
           },
           404,
         );
+      }
+
+      // Clean up transport
+      const transport = transports.get(clientSessionId);
+      if (transport) {
+        try {
+          await transport.close();
+        } catch (error) {
+          logger.warn(
+            { error, sessionId: clientSessionId },
+            'Error closing transport',
+          );
+        }
+        transports.delete(clientSessionId);
       }
 
       // Delete session

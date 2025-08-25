@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "everything-local": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "env": {},
+      "hatagoOptions": {
+        "start": "eager"
+      }
+    },
+    "deepwiki-sse": {
+      "type": "remote",
+      "url": "https://mcp.deepwiki.com/sse",
+      "transport": "sse",
+      "hatagoOptions": {
+        "start": "eager",
+        "timeout": 30000
+      }
+    }
+  }
+}
