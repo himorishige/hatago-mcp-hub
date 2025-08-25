@@ -1,0 +1,12 @@
+{
+  "profile": "default",
+  "servers": [
+    {
+      "id": "example-local",
+      "type": "local",
+      "command": "node",
+      "args": ["./example-server.js"],
+      "description": "Example local MCP server"
+    }
+  ]
+}

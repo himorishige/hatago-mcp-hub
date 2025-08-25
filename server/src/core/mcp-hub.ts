@@ -410,9 +410,10 @@ export class McpHub {
     this.logger.info(`Found ${servers.length} servers in config`);
     for (const serverConfig of servers) {
       this.logger.debug(
-        `Checking server ${serverConfig.id} with start: ${serverConfig.start}`,
+        `Checking server ${serverConfig.id} with enabled: ${serverConfig.enabled}`,
       );
-      if (serverConfig.start === 'eager') {
+      // enabled !== false の場合は自動起動（デフォルトはtrue）
+      if (serverConfig.enabled !== false) {
         try {
           await this.connectServer(serverConfig);
         } catch (error) {

@@ -1,71 +1,66 @@
 #!/usr/bin/env node
 
 /**
- * Hatago MCP Hub CLI - Refactored to avoid circular dependencies
+ * Hatago MCP Hub CLI - Lite Version
+ * Minimal CLI with only essential commands
  */
 
 import { Command } from 'commander';
 
-// Import individual command handlers
-import { createCallCommand } from './commands/call.js';
-import { createDevCommand } from './commands/dev.js';
-import { createDoctorCommand } from './commands/doctor.js';
-import { createDrainCommand } from './commands/drain.js';
-// Import developer tools
-import { createGenerateCommand } from './commands/generate.js';
+// Import only essential command handlers
 import { createInitCommand } from './commands/init.js';
-import { createInspectCommand } from './commands/inspect.js';
 import { createListCommand } from './commands/list.js';
 import { createMcpCommands } from './commands/mcp.js';
-import { createNpxCommands } from './commands/npx.js';
-import { createPolicyCommand } from './commands/policy.js';
-import { createReloadCommand } from './commands/reload.js';
-import { createRemoteCommands } from './commands/remote.js';
-import { createSecretCommands } from './commands/secret.js';
-import { createServeCommand } from './commands/serve.js';
-import { createSessionCommand } from './commands/session.js';
-import { createStatusCommand } from './commands/status.js';
-import { createCircuitBreakerCommand } from './commands/v2/circuit-breaker.js';
-// Import v2 commands
-import { createHealthCommand } from './commands/v2/health.js';
-import { createMetricsCommand } from './commands/v2/metrics.js';
+import { createServeCommand } from './commands/serve-lite.js';
 
 const program = new Command();
 
 program
   .name('hatago')
-  .description('🏨 Hatago MCP Hub - Unified MCP server management')
-  .version('0.0.2');
+  .description('🏨 Hatago MCP Hub Lite - Minimal MCP server management')
+  .version('0.2.0');
 
-// Register all commands
+// Register essential commands only
 createServeCommand(program);
 createInitCommand(program);
 createListCommand(program);
-createReloadCommand(program);
-createStatusCommand(program);
-createPolicyCommand(program);
-createSessionCommand(program);
-createDrainCommand(program);
-createCallCommand(program);
 
-// Register existing sub-command groups
+// MCP management commands
 program.addCommand(createMcpCommands());
-program.addCommand(createNpxCommands());
-program.addCommand(createRemoteCommands());
-createSecretCommands(program);
-createDoctorCommand(program);
 
-// Register v2 commands
-program.addCommand(createHealthCommand());
-program.addCommand(createMetricsCommand());
-program.addCommand(createCircuitBreakerCommand());
+// Optional: Add help for enabling enterprise features
+program
+  .command('enterprise')
+  .description('Information about enterprise features')
+  .action(() => {
+    console.log(`
+🏨 Hatago Enterprise Features
 
-// Register developer tools
-createGenerateCommand(program);
-createInspectCommand(program);
-createDevCommand(program);
+To enable enterprise features, install the full version:
+  npm install @himorishige/hatago
 
-// Parse command line arguments (async for handling async actions)
+Available enterprise features:
+  • Health monitoring and metrics
+  • Authentication and rate limiting
+  • TypeScript type generation
+  • OpenAPI integration
+  • Distributed tracing
+  • Advanced circuit breakers
+
+Configure features in your config file:
+  {
+    "features": {
+      "healthCheck": true,
+      "metrics": true,
+      "authentication": true
+    }
+  }
+
+Learn more: https://github.com/himorishige/hatago-hub
+    `);
+  });
+
+// Parse command line arguments
 (async () => {
   try {
     await program.parseAsync(process.argv);

@@ -1,0 +1,30 @@
+{
+  "profile": "lite",
+  "description": "Hatago Lite - Minimal configuration",
+  "features": {
+    "healthCheck": false,
+    "metrics": false,
+    "tracing": false,
+    "authentication": false,
+    "rateLimit": false,
+    "typeGeneration": false,
+    "openapi": false
+  },
+  "servers": [
+    {
+      "id": "example-local",
+      "type": "local",
+      "command": "node",
+      "args": ["./example-server.js"],
+      "description": "Example local MCP server",
+      "enabled": true
+    }
+  ],
+  "http": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "generation": {
+    "autoReload": false
+  }
+}

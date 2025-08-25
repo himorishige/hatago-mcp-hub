@@ -477,3 +477,4 @@ class StreamController<T = unknown> {
     }
   }
 }
+}
