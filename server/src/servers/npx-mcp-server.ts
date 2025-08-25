@@ -329,10 +329,19 @@ export class NpxMcpServer extends EventEmitter {
       }
     }
 
-    console.log(`🚀 Starting NPX server ${this.config.id}`);
+    console.log(
+      `🚀 Starting server ${this.config.id} (${isActualNpx ? 'NPX' : 'Local command'})`,
+    );
     console.log(`  Command: ${command} ${args.join(' ')}`);
     console.log(`  Working directory: ${this.config.workDir || process.cwd()}`);
     console.log(`  Timeout: ${this.config.initTimeoutMs || 30000}ms`);
+
+    // Debug: Show the actual command that would be run
+    if (!isActualNpx && args.length > 0) {
+      console.log(
+        `  Debug - Resolved command: cd "${this.config.workDir || process.cwd()}" && "${command}" ${args.map((a) => `"${a}"`).join(' ')}`,
+      );
+    }
 
     // Check if this is the first run (for extended timeout)
     const isFirstRun = !this.restartCount && !this.lastStartTime;

@@ -7,9 +7,9 @@ import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { z } from 'zod';
 import { type ServerConfig, ServerConfigSchema } from '../config/types.js';
-import type { ServerState } from './registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { createLogger } from '../utils/logger.js';
+import type { ServerState } from './registry-storage.js';
 
 const logger = createLogger({
   component: 'cli-registry-storage',

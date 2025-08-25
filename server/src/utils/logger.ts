@@ -87,30 +87,38 @@ export function createLogger(options: LoggerOptions = {}): Logger {
 
   // Use pino-pretty in development or when explicitly requested
   if (format === 'pretty') {
-    // For pretty format with stderr, we need to use the stream directly
-    // because pino-pretty transport doesn't properly respect destination
-    if (destination === process.stderr) {
-      const prettyStream = require('pino-pretty')({
-        colorize: true,
-        translateTime: 'HH:MM:ss.l',
-        ignore: 'pid,hostname',
-        messageFormat: '{component} | {req_id} | {msg}',
-        destination: process.stderr,
-      });
-      return pino(baseOptions, prettyStream);
-    } else {
-      return pino({
-        ...baseOptions,
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'HH:MM:ss.l',
-            ignore: 'pid,hostname',
-            messageFormat: '{component} | {req_id} | {msg}',
+    try {
+      // For pretty format with stderr, we need to use the stream directly
+      // because pino-pretty transport doesn't properly respect destination
+      if (destination === process.stderr) {
+        const prettyStream = require('pino-pretty')({
+          colorize: true,
+          translateTime: 'HH:MM:ss.l',
+          ignore: 'pid,hostname',
+          messageFormat: '{component} | {req_id} | {msg}',
+          destination: process.stderr,
+        });
+        return pino(baseOptions, prettyStream);
+      } else {
+        return pino({
+          ...baseOptions,
+          transport: {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              translateTime: 'HH:MM:ss.l',
+              ignore: 'pid,hostname',
+              messageFormat: '{component} | {req_id} | {msg}',
+            },
           },
-        },
-      });
+        });
+      }
+    } catch (_err) {
+      // pino-pretty not available, fall back to JSON format
+      if (destination === process.stderr) {
+        console.warn('[logger] pino-pretty not available, using JSON format');
+      }
+      return pino(baseOptions, destination);
     }
   }
 

@@ -256,7 +256,13 @@ export class CustomStdioTransport
         );
       }
     } catch (error) {
-      throw ErrorHelpers.mcpInitTimeout(this.options.command, String(error));
+      const timeout = this.options.initTimeoutMs || 30000;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(
+        `Failed to initialize ${this.options.command}: ${errorMessage}`,
+      );
+      throw ErrorHelpers.mcpInitTimeout(this.options.command, timeout);
     }
   }
 

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "everything": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "env": {},
+      "hatagoOptions": {
+        "start": "eager"
+      }
+    }
+  }
+}

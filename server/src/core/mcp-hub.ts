@@ -146,20 +146,88 @@ export class McpHub {
     // tools/list handler
     this.server.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = this.registry.getAllTools();
-      return {
-        tools: tools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema || {},
-        })),
+      const result = {
+        tools: tools.map((tool) => {
+          // inputSchemaのサニタイズ（MCP Inspector互換性のため）
+          let sanitizedSchema = tool.inputSchema;
+
+          if (sanitizedSchema && typeof sanitizedSchema === 'object') {
+            // type: "object"が欠落している場合は追加
+            if (!sanitizedSchema.type) {
+              sanitizedSchema = {
+                type: 'object',
+                ...sanitizedSchema,
+              };
+            }
+            // propertiesが未定義でかつ他のスキーマ定義もない場合のみ空オブジェクトを設定
+            if (
+              !sanitizedSchema.properties &&
+              !sanitizedSchema.$ref &&
+              !sanitizedSchema.allOf &&
+              !sanitizedSchema.oneOf &&
+              !sanitizedSchema.anyOf
+            ) {
+              sanitizedSchema.properties = {};
+            }
+          } else if (!sanitizedSchema) {
+            // inputSchemaが無い場合のデフォルト
+            sanitizedSchema = {
+              type: 'object',
+              properties: {},
+              additionalProperties: false,
+            };
+          }
+
+          return {
+            name: tool.name,
+            description: tool.description,
+            inputSchema: sanitizedSchema,
+          };
+        }),
       };
+      console.log(
+        '[DEBUG tools/list] Returning tools:',
+        JSON.stringify(result.tools.slice(0, 1), null, 2),
+      );
+      return result;
     });
 
     // tools/callハンドラーも明示的に設定
     this.server.server.setRequestHandler(
       CallToolRequestSchema,
-      async (request: CallToolRequest) => {
-        return await this.callTool(request.params);
+      async (request, extra) => {
+        // リクエスト構造をデバッグログで確認
+        console.log(
+          '[DEBUG tools/call] Request structure:',
+          JSON.stringify(request, null, 2),
+        );
+
+        // request.paramsまたはrequest直接を使用
+        const params = (request as any).params || request;
+
+        try {
+          const result = await this.callTool(params, extra?.requestId);
+          console.log(
+            '[DEBUG tools/call] Result:',
+            JSON.stringify(result, null, 2),
+          );
+
+          // 必ずレスポンスを返す
+          return result || { content: [], isError: false };
+        } catch (error) {
+          console.error('[DEBUG tools/call] Error:', error);
+
+          // エラー時も必ずレスポンスを返す
+          return {
+            content: [
+              {
+                type: 'text',
+                text: error instanceof Error ? error.message : 'Unknown error',
+              },
+            ],
+            isError: true,
+          };
+        }
       },
     );
   }
@@ -202,12 +270,10 @@ export class McpHub {
         }
 
         // 接続タイプに応じてリソースを読み取り
-        if (connection.type === 'local' && connection.client) {
-          // ローカルサーバーの場合
-          const result = await connection.client.readResource({
-            uri: originalUri,
-          });
-          return result;
+        if (connection.type === 'local' && connection.npxServer) {
+          // ローカルサーバーの場合（実際にはNpxMcpServerを使用）
+          const result = await connection.npxServer.readResource(originalUri);
+          return result as ReadResourceResult;
         } else if (connection.type === 'npx' && connection.npxServer) {
           // NPXサーバーの場合
           const result = await connection.npxServer.readResource(originalUri);
@@ -265,13 +331,13 @@ export class McpHub {
         }
 
         // 接続タイプに応じてプロンプトを取得
-        if (connection.type === 'local' && connection.client) {
-          // ローカルサーバーの場合
-          const result = await connection.client.getPrompt({
-            name: originalName,
-            arguments: args,
-          });
-          return result;
+        if (connection.type === 'local' && connection.npxServer) {
+          // ローカルサーバーの場合（実際にはNpxMcpServerを使用）
+          const result = await connection.npxServer.getPrompt(
+            originalName,
+            args,
+          );
+          return result as GetPromptResult;
         } else if (connection.type === 'npx' && connection.npxServer) {
           // NPXサーバーの場合
           const result = await connection.npxServer.getPrompt(
@@ -544,24 +610,11 @@ export class McpHub {
         });
 
         // ツールの発見イベント
-        this.serverRegistry.on(
-          'server:tools-discovered',
-          async ({ serverId: discoveredId }) => {
-            if (discoveredId === serverId) {
-              await this.updateHubTools();
-            }
-          },
-        );
+        // ServerRegistryが自動的にツールを発見し、refreshRemoteServerToolsで処理するため
+        // ここではイベントリスナーを設定しない（重複防止）
 
         // リソースの発見イベント
-        this.serverRegistry.on(
-          'server:resources-discovered',
-          async ({ serverId: discoveredId }) => {
-            if (discoveredId === serverId) {
-              await this.updateHubResources();
-            }
-          },
-        );
+        // 同様にリソースもconnectServerの最後で一度だけ取得する
 
         // プロンプトの発見イベント
         this.serverRegistry.on(
@@ -613,32 +666,17 @@ export class McpHub {
             this.logger.info(
               `Remote server ${serverId} started, discovering tools and resources...`,
             );
-            // ツールを再発見
-            await this.refreshRemoteServerTools(serverId);
-            // リソースを再発見
-            await this.refreshRemoteServerResources(serverId);
+            // ServerRegistryが既にdiscoverToolsを呼んでいるので、ここでは呼ばない
+            // ツールとリソースはconnectServerの最後で一度だけ取得する
           }
         });
 
         // ツールの発見イベント
-        this.serverRegistry.on(
-          'server:tools-discovered',
-          async ({ serverId: discoveredId }) => {
-            if (discoveredId === serverId) {
-              await this.updateHubTools();
-            }
-          },
-        );
+        // ServerRegistryが自動的にツールを発見し、refreshRemoteServerToolsで処理するため
+        // ここではイベントリスナーを設定しない（重複防止）
 
         // リソースの発見イベント
-        this.serverRegistry.on(
-          'server:resources-discovered',
-          async ({ serverId: discoveredId }) => {
-            if (discoveredId === serverId) {
-              await this.updateHubResources();
-            }
-          },
-        );
+        // 同様にリソースもconnectServerの最後で一度だけ取得する
 
         // すべてのエラーイベントリスナーを確実に設定
         remoteServer.setMaxListeners(10); // デフォルトの10を明示的に設定
@@ -661,6 +699,82 @@ export class McpHub {
         await this.refreshRemoteServerResources(serverId);
 
         this.logger.info(`Connected to remote server ${serverId}`);
+      } else if (type === 'local') {
+        // ローカルサーバーはNPXサーバーと同様の処理
+        if (!this.serverRegistry) {
+          this.serverRegistry = new ServerRegistry();
+        }
+
+        // サーバーを登録（LocalServerConfigをNpxMcpServerで実行）
+        const localConfig = serverConfig as LocalServerConfig;
+        const registered =
+          await this.serverRegistry.registerLocalServer(localConfig);
+
+        // イベントリスナーを設定
+        const localServer = registered.instance as NpxMcpServer;
+
+        // Started イベント
+        localServer.on('started', async ({ serverId: startedId }) => {
+          if (startedId === serverId) {
+            this.logger.info(
+              `Local server ${serverId} started, discovering tools and resources...`,
+            );
+          }
+        });
+
+        // ツールの発見イベント
+        localServer.on(
+          'tools-discovered',
+          async ({ serverId: discoveredId }) => {
+            if (discoveredId === serverId) {
+              await this.updateHubTools();
+            }
+          },
+        );
+
+        // リソースの発見イベント
+        localServer.on(
+          'resources-discovered',
+          async ({ serverId: discoveredId }) => {
+            if (discoveredId === serverId) {
+              await this.updateHubResources();
+            }
+          },
+        );
+
+        // プロンプトの発見イベント
+        localServer.on(
+          'prompts-discovered',
+          async ({ serverId: discoveredId }) => {
+            if (discoveredId === serverId) {
+              await this.updateHubPrompts();
+            }
+          },
+        );
+
+        // すべてのエラーイベントリスナーを確実に設定
+        localServer.setMaxListeners(10);
+
+        // 起動
+        await this.serverRegistry.startServer(serverId);
+
+        // 接続情報を保存
+        const connection: McpConnection = {
+          serverId,
+          npxServer: localServer, // NpxMcpServerインスタンスをnpxServerとして保存
+          connected: true,
+          type: 'local',
+        };
+        this.connections.set(serverId, connection);
+
+        // ツールを取得して登録
+        await this.refreshNpxServerTools(serverId);
+        // リソースを取得して登録
+        await this.refreshNpxServerResources(serverId);
+        // プロンプトを取得して登録
+        await this.refreshNpxServerPrompts(serverId);
+
+        this.logger.info(`Connected to local server ${serverId}`);
       } else {
         this.logger.info(`Server type ${type} is not yet supported`);
       }
@@ -825,10 +939,13 @@ export class McpHub {
 
     try {
       // ServerRegistryからツール情報を取得
-      const tools = registered.tools.map((name) => ({
-        name,
-        description: `Tool from remote server ${serverId}`,
-        inputSchema: {},
+      const tools = registered.tools.map((tool) => ({
+        name: typeof tool === 'string' ? tool : tool.name,
+        description:
+          typeof tool === 'string'
+            ? `Tool from remote server ${serverId}`
+            : tool.description || `Tool from remote server ${serverId}`,
+        inputSchema: typeof tool === 'string' ? {} : tool.inputSchema || {},
       }));
 
       this.logger.info(`Remote Server ${serverId} has ${tools.length} tools`);
@@ -1083,7 +1200,7 @@ export class McpHub {
       this.logger.info(`Hub now has ${tools.length} total tools`);
       // Debug: Log the first tool to see its structure
       if (tools.length > 0) {
-        this.logger.debug({ tool: tools[0] }, 'First tool structure');
+        this.logger.info({ tool: tools[0] }, 'First tool structure');
       }
 
       // Track which tools are currently active
@@ -1104,6 +1221,10 @@ export class McpHub {
         if (this.registeredTools.has(tool.name)) {
           continue;
         }
+
+        // Mark as registered BEFORE attempting registration to prevent retries
+        // This prevents duplicate registration attempts even if registration fails
+        this.registeredTools.add(tool.name);
 
         try {
           // JSON\u30b9\u30ad\u30fc\u30de\u3092Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u306b\u5909\u63db
@@ -1135,14 +1256,12 @@ export class McpHub {
             },
           );
 
-          // Mark as registered - this is now protected by mutex
-          this.registeredTools.add(tool.name);
-          this.logger.info(`✅ Tool ${tool.name} registered`);
+          this.logger.info(`✅ Tool ${tool.name} registered successfully`);
         } catch (error) {
-          // This should rarely happen now due to idempotent check
-          this.logger.debug(
+          // Registration failed but keep it marked as registered to prevent retries
+          this.logger.warn(
             { error: error instanceof Error ? error.message : error },
-            `Failed to register tool ${tool.name}`,
+            `Tool ${tool.name} registration failed but marked as registered to prevent retries`,
           );
         }
       }
@@ -1154,8 +1273,37 @@ export class McpHub {
   /**
    * ツールを実行
    */
-  async callTool(request: CallToolRequest): Promise<CallToolResult> {
+  async callTool(
+    request: CallToolRequest & { _meta?: { progressToken?: unknown } },
+    requestId?: string | number,
+  ): Promise<CallToolResult> {
     const { name: publicName, arguments: toolArgs } = request;
+    const progressToken = (request as any)._meta?.progressToken;
+
+    // 引数の型を確認して必要に応じて変換
+    let processedArgs = toolArgs;
+    if (typeof toolArgs === 'string') {
+      this.logger.debug(
+        `Tool arguments received as string for ${publicName}, attempting to parse: ${toolArgs}`,
+      );
+      try {
+        processedArgs = JSON.parse(toolArgs);
+        this.logger.debug(
+          `Successfully parsed tool arguments for ${publicName}`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to parse tool arguments for ${publicName}: ${error}`,
+        );
+        // パースに失敗した場合は元の文字列をそのまま使用
+        processedArgs = toolArgs;
+      }
+    } else {
+      this.logger.debug(
+        `Tool arguments for ${publicName} already an object:`,
+        toolArgs,
+      );
+    }
 
     // ツールを解決
     const resolved = this.registry.resolveTool(publicName);
@@ -1220,6 +1368,67 @@ export class McpHub {
       };
     }
 
+    // Progress通知の設定
+    let progressInterval: NodeJS.Timeout | undefined;
+    if (progressToken !== undefined) {
+      let progress = 0;
+
+      // 進捗通知を送信する関数
+      const sendProgressNotification = (currentProgress: number) => {
+        try {
+          // サーバーが接続されているか確認
+          const transport = (this.server.server as any).transport;
+          if (transport && typeof transport.send === 'function') {
+            // transportに直接送信（非同期だがawaitしない）
+            transport.send(
+              {
+                jsonrpc: '2.0',
+                method: 'notifications/progress',
+                params: {
+                  progressToken,
+                  progress: Math.round(currentProgress * 100) / 100, // 小数点2桁に丸める
+                  total: 1.0,
+                  message: `Processing ${publicName}...`,
+                  level: 'info',
+                },
+              },
+              { relatedRequestId: requestId },
+            );
+            console.log(
+              `[DEBUG] Sent progress notification: ${currentProgress} for token: ${progressToken}`,
+            );
+          } else {
+            console.log(
+              '[DEBUG] Transport not available for progress notification',
+            );
+          }
+        } catch (error) {
+          // エラーをログに記録するが、処理は続行
+          console.log(
+            '[DEBUG] Could not send progress notification:',
+            error instanceof Error ? error.message : error,
+          );
+          // intervalをクリアして、これ以上のnotificationを防ぐ
+          if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = undefined;
+          }
+        }
+      };
+
+      // 初回の進捗通知を即座に送信
+      sendProgressNotification(0.05);
+      progress = 0.05;
+
+      // 定期的な進捗通知の設定
+      progressInterval = setInterval(() => {
+        if (progress < 0.95) {
+          progress += 0.05;
+          sendProgressNotification(progress);
+        }
+      }, 1000); // 1秒ごとに進捗送信（より頻繁に）
+    }
+
     try {
       // タイムアウトを設定
       const timeoutMs = this.config.timeouts.toolCallMs;
@@ -1227,23 +1436,23 @@ export class McpHub {
 
       let callPromise: Promise<CallToolResult>;
 
-      if (connection.type === 'local' && connection.client) {
-        // ローカルサーバーの場合
-        callPromise = connection.client.callTool({
-          name: originalName,
-          arguments: toolArgs,
-        });
+      if (connection.type === 'local' && connection.npxServer) {
+        // ローカルサーバーの場合（実際にはNpxMcpServerを使用）
+        callPromise = connection.npxServer.callTool(
+          originalName,
+          processedArgs,
+        ) as Promise<CallToolResult>;
       } else if (connection.type === 'npx' && connection.npxServer) {
         // NPXサーバーの場合
         callPromise = connection.npxServer.callTool(
           originalName,
-          toolArgs,
+          processedArgs,
         ) as Promise<CallToolResult>;
       } else if (connection.type === 'remote' && connection.remoteServer) {
         // リモートサーバーの場合
         callPromise = connection.remoteServer.callTool(
           originalName,
-          toolArgs,
+          processedArgs,
         ) as Promise<CallToolResult>;
       } else {
         throw ErrorHelpers.unsupportedConnectionType(connection.type);
@@ -1266,15 +1475,57 @@ export class McpHub {
           clearTimeout(timeoutId);
         }
 
+        // Progress通知のクリーンアップと完了通知
+        if (progressInterval) {
+          clearInterval(progressInterval);
+        }
+        if (progressToken !== undefined) {
+          try {
+            const transport = (this.server.server as any).transport;
+            if (transport && typeof transport.send === 'function') {
+              transport.send(
+                {
+                  jsonrpc: '2.0',
+                  method: 'notifications/progress',
+                  params: {
+                    progressToken,
+                    progress: 1.0,
+                    total: 1.0,
+                    message: `Completed ${publicName}`,
+                    level: 'info',
+                  },
+                },
+                { relatedRequestId: requestId },
+              );
+              console.log(
+                `[DEBUG] Sent completion notification for token: ${progressToken}`,
+              );
+            }
+          } catch (error) {
+            console.log(
+              '[DEBUG] Could not send completion notification:',
+              error instanceof Error ? error.message : error,
+            );
+          }
+        }
+
         return result;
       } catch (timeoutError) {
         // タイムアウトをクリア
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
+        // Progress通知のクリーンアップ
+        if (progressInterval) {
+          clearInterval(progressInterval);
+        }
         throw timeoutError;
       }
     } catch (error) {
+      // Progress通知のクリーンアップ
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       return {
         content: [
           {

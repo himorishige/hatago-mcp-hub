@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "cloudflare-docs": {
+      "type": "remote",
+      "url": "https://docs.mcp.cloudflare.com/sse",
+      "transport": "sse",
+      "hatagoOptions": {
+        "start": "eager",
+        "timeout": 60000
+      }
+    }
+  }
+}

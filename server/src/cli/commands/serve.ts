@@ -25,13 +25,31 @@ export function createServeCommand(program: Command): void {
       'default',
     )
     .option('-p, --port <port>', 'HTTP port', '3000')
-    .option('-m, --mode <mode>', 'Transport mode: stdio | http', 'stdio')
+    .option(
+      '-m, --mode <mode>',
+      'Transport mode: stdio | http | streamable-http | v2',
+      'stdio',
+    )
     .option('--http', 'Use HTTP mode instead of STDIO')
+    .option('--streamable-http', 'Use streamable HTTP mode')
+    .option(
+      '--stream-port <port>',
+      'Port for streamable HTTP (default: 3001)',
+      '3001',
+    )
+    .option('--v2', 'Use v2 architecture with advanced features')
     .option('-q, --quiet', 'Suppress non-essential output')
     .option('-v, --verbose', 'Enable verbose logging')
     .option('--log-level <level>', 'Log level: error, warn, info, debug, trace')
     .option('--log-format <format>', 'Log format: json | pretty')
     .action(async (options) => {
+      // Handle transport mode options early to prevent STDIO mode misdetection
+      if (options.http) {
+        options.mode = 'http';
+      } else if (options.streamableHttp) {
+        options.mode = 'streamable-http';
+      }
+
       try {
         const reqLogger = await setupLogger(options);
         const config = await loadAndValidateConfig(options, reqLogger);
@@ -39,6 +57,12 @@ export function createServeCommand(program: Command): void {
 
         const hub = new McpHub({ config, logger: reqLogger });
         await hub.initialize();
+
+        // Start health monitoring for serve command
+        const { healthMonitor } = await import(
+          '../../observability/health-monitor.js'
+        );
+        healthMonitor.startMonitoring();
 
         const fileWatcher = await setupHotReload(
           config,
@@ -50,6 +74,8 @@ export function createServeCommand(program: Command): void {
         // Start appropriate transport mode
         if (options.mode === 'stdio') {
           await startStdioMode(hub, reqLogger, options);
+        } else if (options.mode === 'streamable-http') {
+          await startStreamableHttpMode(hub, config, reqLogger, options);
         } else {
           await startHttpMode(hub, config, reqLogger, options.port);
         }
@@ -148,7 +174,7 @@ async function mergeCLIServers(
     '../../storage/cli-registry-storage.js'
   );
   const cliStorage = new CliRegistryStorage('.hatago/cli-registry.json');
-  await cliStorage.initialize();
+  await cliStorage.init();
   const cliServers = await cliStorage.getServers();
 
   const configServerIds = new Set(config.servers.map((s) => s.id));
@@ -293,6 +319,13 @@ function setupShutdownHandlers(
 ): void {
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}, shutting down...`);
+
+    // Stop health monitoring
+    const { healthMonitor } = await import(
+      '../../observability/health-monitor.js'
+    );
+    healthMonitor.stop();
+
     if (fileWatcher) {
       await fileWatcher.stop();
     }
@@ -302,6 +335,79 @@ function setupShutdownHandlers(
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+}
+
+async function startStreamableHttpMode(
+  hub: McpHub,
+  config: HatagoConfig,
+  logger: Logger,
+  options: ServeOptions,
+): Promise<void> {
+  const { createHttpApp } = await import('../utils/http-app-factory.js');
+  const { StreamableHTTPTransport } = await import('../../hono-mcp/index.js');
+
+  // Create HTTP application
+  const app = createHttpApp(hub, config, logger);
+
+  // Create streamable transport with flexible session management for MCP Inspector compatibility
+  const transport = new StreamableHTTPTransport({
+    // Enable session ID generator for proper session tracking
+    sessionIdGenerator: () => crypto.randomUUID(),
+    enableJsonResponse: true,
+    onsessioninitialized: (sessionId) => {
+      logger.info({ sessionId }, 'New streamable HTTP session initialized');
+    },
+  });
+
+  // Connect transport to MCP server
+  await hub.getServer().server.connect(transport);
+
+  // Setup streamable HTTP endpoints
+  // Support both /mcp/v1/sse and /mcp for compatibility
+  const handleMcpRequest = async (c: Context) => {
+    const response = await transport.handleRequest(c);
+    if (c.req.method === 'GET') {
+      return (
+        response ||
+        c.text('', 200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        })
+      );
+    } else if (c.req.method === 'DELETE') {
+      return response || c.json({ error: 'Session not found' }, 404);
+    }
+    return response || c.json({ error: 'No response' }, 500);
+  };
+
+  // Legacy endpoint
+  app.post('/mcp/v1/sse', handleMcpRequest);
+  app.get('/mcp/v1/sse', handleMcpRequest);
+  app.delete('/mcp/v1/sse', handleMcpRequest);
+
+  // MCP Inspector compatible endpoint
+  app.post('/mcp', handleMcpRequest);
+  app.get('/mcp', handleMcpRequest);
+  app.delete('/mcp', handleMcpRequest);
+
+  // Get port configuration
+  const port = parseInt(options.streamPort || '3001', 10);
+
+  // Start server
+  const { serve } = await import('@hono/node-server');
+  serve(
+    {
+      fetch: app.fetch,
+      port,
+    },
+    (info) => {
+      logger.info(
+        { port: info.port, url: `http://localhost:${info.port}/mcp/v1/sse` },
+        `🏨 MCP Hub running in Streamable HTTP mode on http://localhost:${info.port}/mcp/v1/sse`,
+      );
+    },
+  );
 }
 
 async function handleStartupError(error: unknown): Promise<never> {

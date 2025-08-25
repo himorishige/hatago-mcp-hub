@@ -9,17 +9,18 @@ const server = new McpServer({
   version: '1.0.0',
 });
 
-// Register a simple tool
+// Register a simple tool with Zod schema
 server.registerTool(
   'test_hello',
   {
     title: 'Test Hello',
     description: 'A simple test tool',
     inputSchema: {
-      name: z.string().describe('Name to greet'),
+      name: z.string().describe('Name to greet')
     },
   },
-  async ({ name = 'World' }) => {
+  async (args) => {
+    const { name = 'World' } = args;
     return {
       content: [
         {
@@ -34,4 +35,5 @@ server.registerTool(
 // Start the server
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error('Test MCP server started successfully');
+// Don't output to stderr as it may interfere with MCP protocol
+// console.error('Test MCP server started successfully');

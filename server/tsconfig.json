@@ -12,7 +12,9 @@
     "declaration": true,
     "isolatedDeclarations": false,
     "outDir": "./dist",
-    "sourceMap": true
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "exclude": ["node_modules", "dist"]
 }

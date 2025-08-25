@@ -3,16 +3,36 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
+import type {
+  CallToolResult,
+  ReadResourceResult,
+} from '@modelcontextprotocol/sdk/types.js';
 import type { RemoteServerConfig } from '../config/types.js';
 import { MCPClientFacade } from '../core/mcp-client-facade.js';
 import type { NegotiatedProtocol } from '../core/protocol-negotiator.js';
 import { getRuntime } from '../runtime/runtime-factory.js';
 import { ErrorCode, ErrorHelpers, HatagoError } from '../utils/errors.js';
 import { sanitizeLog } from '../utils/security.js';
+
+/**
+ * Known server quirks for specific MCP servers
+ * These are applied automatically based on the server URL
+ */
+const KNOWN_SERVER_QUIRKS: Record<string, RemoteServerConfig['quirks']> = {
+  'mcp.deepwiki.com': {
+    useDirectClient: true,
+    forceProtocolVersion: '2025-03-26',
+    assumedCapabilities: {
+      tools: true,
+      resources: false,
+      prompts: false,
+    },
+  },
+  // Add more server quirks as discovered
+};
 
 /**
  * Server state enum (reuse from npx-mcp-server)
@@ -34,6 +54,11 @@ export interface RemoteConnection {
   transport: StreamableHTTPClientTransport | SSEClientTransport;
   transportType?: 'streamable-http' | 'sse';
   protocol?: NegotiatedProtocol;
+  capabilities?: {
+    tools?: boolean;
+    resources?: boolean;
+    prompts?: boolean;
+  };
 }
 
 /**
@@ -67,7 +92,7 @@ export class RemoteMcpServer extends EventEmitter {
     reconnectDelayMs: 1000,
     maxReconnects: 5,
     maxReconnectDurationMs: 300000, // 5 minutes max reconnect duration
-    connectTimeoutMs: 30000,
+    connectTimeoutMs: 60000, // Increased to 60 seconds for remote connections
     healthCheckIntervalMs: 0, // Disabled by default (0 = no health check)
     healthCheckTimeoutMs: Number(process.env.HATAGO_HEALTH_TIMEOUT_MS || 5000), // 5 seconds health check timeout (if enabled)
   };
@@ -242,9 +267,7 @@ export class RemoteMcpServer extends EventEmitter {
     const baseUrl = new URL(this.config.url);
 
     try {
-      console.log(
-        `Connecting to ${this.config.id} using streamable-http transport`,
-      );
+      // Transport type will be determined in connectWithTransport
       const connection = await this.connectWithTransport(baseUrl, headers);
       console.log(`🏮 Successfully connected to ${this.config.id}`);
 
@@ -270,7 +293,15 @@ export class RemoteMcpServer extends EventEmitter {
   ): Promise<RemoteConnection> {
     const _runtime = await this.runtime;
 
-    // Create client facade for protocol negotiation
+    // Apply known server quirks automatically
+    const hostname = baseUrl.hostname;
+    const knownQuirks = KNOWN_SERVER_QUIRKS[hostname];
+    const quirks = {
+      ...knownQuirks,
+      ...this.config.quirks, // User config overrides known quirks
+    };
+
+    // Create client facade for protocol negotiation (unless quirks say otherwise)
     const facade = new MCPClientFacade({
       name: 'hatago-hub',
       version: '0.0.2',
@@ -284,79 +315,254 @@ export class RemoteMcpServer extends EventEmitter {
       debug: process.env.DEBUG === 'true',
     });
 
-    // First try Streamable HTTP transport (newer protocol)
-    try {
-      console.log(`Trying Streamable HTTP transport for ${this.config.id}`);
-      const transport = new StreamableHTTPClientTransport(baseUrl, {
-        headers: {
-          ...headers,
-          Accept: 'application/json',
-        },
-      });
+    // Choose transport based on configuration
+    const transportType = this.config.transport || 'http';
 
-      // Connect with protocol negotiation
-      const protocol = await this.withTimeout(
-        facade.connect(transport),
-        this.defaults.connectTimeoutMs,
-        'streamable-http connection',
-      );
-
-      console.log(
-        `🏮 Connected to ${this.config.id} with protocol: ${protocol.protocol}`,
-      );
-
-      return {
-        client: facade.getClient(),
-        facade,
-        transport,
-        transportType: 'streamable-http',
-        protocol,
-      };
-    } catch (error) {
-      // If Streamable HTTP fails, try SSE transport (older protocol)
-      console.log(
-        `Streamable HTTP failed for ${this.config.id}, trying SSE transport: ${error}`,
-      );
-
-      // Create a new facade for SSE attempt
-      const sseFacade = new MCPClientFacade({
-        name: 'hatago-hub',
-        version: '0.0.2',
-        initializerOptions: {
-          isFirstRun: false,
-          timeouts: {
-            normalMs: this.defaults.connectTimeoutMs,
-          },
-          debug: process.env.DEBUG === 'true',
-        },
-        debug: process.env.DEBUG === 'true',
-      });
-
-      const sseTransport = new SSEClientTransport(baseUrl, {
+    if (transportType === 'sse') {
+      // Use SSE transport with direct Client (MCPClientFacade has issues with SSE)
+      console.log(`Using SSE transport for ${this.config.id}`);
+      const sseTransport = new SSEClientTransport(new URL(baseUrl), {
         headers: {
           ...headers,
           Accept: 'application/json, text/event-stream',
         },
       });
 
-      // Connect with protocol negotiation
-      const protocol = await this.withTimeout(
-        sseFacade.connect(sseTransport),
+      // Create a direct client instead of using facade for SSE
+      const client = new Client(
+        {
+          name: 'hatago-hub',
+          version: '0.0.2',
+        },
+        {
+          capabilities: {},
+        },
+      );
+
+      await this.withTimeout(
+        client.connect(sseTransport),
         this.defaults.connectTimeoutMs,
         'sse connection',
       );
 
-      console.log(
-        `🏮 Successfully connected to ${this.config.id} using SSE transport with protocol: ${protocol.protocol}`,
-      );
+      console.log(`🏮 Connected to ${this.config.id} using SSE transport`);
 
       return {
-        client: sseFacade.getClient(),
-        facade: sseFacade,
+        client,
+        facade: null as any, // SSE doesn't use facade
         transport: sseTransport,
         transportType: 'sse',
-        protocol,
+        protocol: {
+          protocol: '0.1.0',
+          capabilities: {},
+          serverInfo: undefined,
+        },
+        capabilities: {
+          tools: true, // Assume SSE servers support tools
+          resources: true, // Assume SSE servers support resources
+          prompts: true, // Assume SSE servers support prompts
+        },
       };
+    } else {
+      // Try Streamable HTTP first, then fall back to SSE
+      try {
+        console.log(`Trying Streamable HTTP transport for ${this.config.id}`);
+
+        // Check if we should use direct Client based on quirks
+        if (quirks?.useDirectClient) {
+          // Use direct Client to avoid sessionId issues
+          const transport = new StreamableHTTPClientTransport(baseUrl, {
+            headers: {
+              ...headers,
+              Accept: 'application/json',
+            },
+          });
+
+          const client = new Client(
+            {
+              name: 'hatago-hub',
+              version: '0.0.2',
+            },
+            {
+              capabilities: {},
+            },
+          );
+
+          await this.withTimeout(
+            client.connect(transport),
+            this.defaults.connectTimeoutMs,
+            'direct-client-http connection',
+          );
+
+          console.log(
+            `🏮 Connected to ${this.config.id} using direct Client (quirks mode)`,
+          );
+
+          // Use quirks-specified protocol version or default
+          const protocolVersion = quirks?.forceProtocolVersion || '0.1.0';
+
+          return {
+            client,
+            facade: null as any, // Direct client doesn't use facade
+            transport,
+            transportType: 'streamable-http',
+            protocol: {
+              protocol: protocolVersion,
+              capabilities: {},
+              serverInfo: undefined,
+            },
+            capabilities: quirks?.assumedCapabilities || {
+              tools: true,
+              resources: true,
+              prompts: true,
+            },
+          };
+        } else {
+          // Normal flow for other servers
+          const transport = new StreamableHTTPClientTransport(baseUrl, {
+            headers: {
+              ...headers,
+              Accept: 'application/json',
+            },
+          });
+
+          const protocol = await this.withTimeout(
+            facade.connect(transport),
+            this.defaults.connectTimeoutMs,
+            'streamable-http connection',
+          );
+
+          console.log(
+            `🏮 Connected to ${this.config.id} with protocol: ${protocol.protocol}`,
+          );
+
+          return {
+            client: facade.getClient(),
+            facade,
+            transport,
+            transportType: 'streamable-http',
+            protocol,
+            capabilities: {
+              tools: !!protocol?.capabilities?.tools,
+              resources: !!protocol?.capabilities?.resources,
+              prompts: !!protocol?.capabilities?.prompts,
+            },
+          };
+        }
+      } catch (error) {
+        // Check if it's a sessionId error and retry with direct client
+        const errorMessage = String(error);
+        if (
+          !quirks?.useDirectClient &&
+          (errorMessage.includes('-32600') ||
+            errorMessage.includes('sessionId') ||
+            errorMessage.includes('Invalid Request'))
+        ) {
+          console.log(
+            `Session ID error detected for ${this.config.id}, retrying with direct client`,
+          );
+
+          // Retry with direct client
+          const directTransport = new StreamableHTTPClientTransport(baseUrl, {
+            headers: {
+              ...headers,
+              Accept: 'application/json',
+            },
+          });
+
+          const directClient = new Client(
+            {
+              name: 'hatago-hub',
+              version: '0.0.2',
+            },
+            {
+              capabilities: {},
+            },
+          );
+
+          try {
+            await this.withTimeout(
+              directClient.connect(directTransport),
+              this.defaults.connectTimeoutMs,
+              'fallback-direct-client connection',
+            );
+
+            console.log(
+              `🏮 Connected to ${this.config.id} using direct Client (auto-fallback)`,
+            );
+
+            return {
+              client: directClient,
+              facade: null as any,
+              transport: directTransport,
+              transportType: 'streamable-http',
+              protocol: {
+                protocol: '0.1.0',
+                capabilities: {},
+                serverInfo: undefined,
+              },
+              capabilities: {
+                tools: true,
+                resources: true,
+                prompts: true,
+              },
+            };
+          } catch (fallbackError) {
+            console.log(
+              `Direct client fallback also failed for ${this.config.id}: ${fallbackError}`,
+            );
+            // Continue to SSE fallback
+          }
+        }
+
+        // Fall back to SSE
+        console.log(
+          `Streamable HTTP failed for ${this.config.id}, trying SSE transport: ${error}`,
+        );
+
+        const sseFacade = new MCPClientFacade({
+          name: 'hatago-hub',
+          version: '0.0.2',
+          initializerOptions: {
+            isFirstRun: false,
+            timeouts: {
+              normalMs: this.defaults.connectTimeoutMs,
+            },
+            debug: process.env.DEBUG === 'true',
+          },
+          debug: process.env.DEBUG === 'true',
+        });
+
+        const sseTransport = new SSEClientTransport(new URL(baseUrl), {
+          headers: {
+            ...headers,
+            Accept: 'application/json, text/event-stream',
+          },
+        });
+
+        const protocol = await this.withTimeout(
+          sseFacade.connect(sseTransport),
+          this.defaults.connectTimeoutMs,
+          'sse connection',
+        );
+
+        console.log(
+          `🏮 Successfully connected to ${this.config.id} using SSE transport with protocol: ${protocol.protocol}`,
+        );
+
+        return {
+          client: sseFacade.getClient(),
+          facade: sseFacade,
+          transport: sseTransport,
+          transportType: 'sse',
+          protocol,
+          capabilities: {
+            tools: !!protocol?.capabilities?.tools,
+            resources: !!protocol?.capabilities?.resources,
+            prompts: !!protocol?.capabilities?.prompts,
+          },
+        };
+      }
     }
   }
 
@@ -392,6 +598,14 @@ export class RemoteMcpServer extends EventEmitter {
   private async handleConnectionError(error: Error): Promise<void> {
     // Skip if shutdown was requested or if it's an abort error
     if (this.shutdownRequested || error.message.includes('AbortError')) {
+      return;
+    }
+
+    // Skip progress token errors - these are not connection errors
+    if (error.message.includes('progress notification for an unknown token')) {
+      console.debug(
+        `Ignoring progress token error for ${this.config.id} - not a connection issue`,
+      );
       return;
     }
 
@@ -478,12 +692,27 @@ export class RemoteMcpServer extends EventEmitter {
             }, this.defaults.healthCheckTimeoutMs);
           });
 
-          // Race between health check and timeout
+          // Use ping for health check (MCP protocol standard)
+          // If ping is not supported, it will throw Method not found which we'll handle gracefully
           await Promise.race([
-            this.connection.client.request({
-              method: 'tools/list',
-              params: {},
-            }),
+            this.connection.client
+              .request({
+                method: 'ping',
+                params: {},
+              })
+              .catch((error: any) => {
+                // If ping is not supported, consider it healthy (non-fatal)
+                if (
+                  error?.code === -32601 ||
+                  error?.message?.includes('Method not found')
+                ) {
+                  console.debug(
+                    `Server ${this.config.id} doesn't support ping, considering healthy`,
+                  );
+                  return; // Return normally, don't throw
+                }
+                throw error; // Re-throw other errors
+              }),
             timeoutPromise,
           ]);
         } catch (error) {
@@ -704,13 +933,45 @@ export class RemoteMcpServer extends EventEmitter {
   async callTool(
     name: string,
     args: Record<string, unknown>,
-  ): Promise<unknown> {
+  ): Promise<CallToolResult> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
-      return await this.connection.client.callTool({ name, arguments: args });
+      const result = await this.connection.client.callTool({
+        name,
+        arguments: args,
+      });
+
+      // レスポンスが正しい形式かチェック
+      if (!result || typeof result !== 'object') {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result),
+            },
+          ],
+          isError: false,
+        };
+      }
+
+      // CallToolResult形式で返す
+      if ('content' in result) {
+        return result as CallToolResult;
+      }
+
+      // 互換性のため、結果をテキストコンテンツとして返す
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result),
+          },
+        ],
+        isError: false,
+      };
     } catch (error) {
       // Handle connection errors during tool calls
       if (
@@ -807,19 +1068,42 @@ export class RemoteMcpServer extends EventEmitter {
    * Discover available resources from the remote server
    */
   async discoverResources(): Promise<unknown[]> {
-    const resourcesResponse = await this.listResources();
+    // Check if server supports resources based on capabilities
+    if (!this.connection?.capabilities?.resources) {
+      console.debug(
+        `Server ${this.config.id} doesn't support resources (capability not declared)`,
+      );
+      return [];
+    }
 
-    // MCPのlistResourcesレスポンスからリソースを抽出
-    if (
-      resourcesResponse &&
-      typeof resourcesResponse === 'object' &&
-      'resources' in resourcesResponse
-    ) {
-      const resources = (resourcesResponse as { resources: unknown[] })
-        .resources;
-      if (Array.isArray(resources)) {
-        return resources;
+    try {
+      const resourcesResponse = await this.listResources();
+
+      // MCPのlistResourcesレスポンスからリソースを抽出
+      if (
+        resourcesResponse &&
+        typeof resourcesResponse === 'object' &&
+        'resources' in resourcesResponse
+      ) {
+        const resources = (resourcesResponse as { resources: unknown[] })
+          .resources;
+        if (Array.isArray(resources)) {
+          return resources;
+        }
       }
+    } catch (error: any) {
+      // Handle Method not found gracefully (non-fatal)
+      if (
+        error?.code === -32601 ||
+        error?.message?.includes('Method not found')
+      ) {
+        console.warn(
+          `Server ${this.config.id} doesn't support resources/list method`,
+        );
+        return [];
+      }
+      // Re-throw other errors
+      throw error;
     }
 
     return [];
@@ -828,10 +1112,10 @@ export class RemoteMcpServer extends EventEmitter {
   /**
    * Discover available tools from the remote server
    */
-  async discoverTools(): Promise<string[]> {
+  async discoverTools(): Promise<any[]> {
     const toolsResponse = await this.listTools();
 
-    // MCPのlistToolsレスポンスからツール名を抽出
+    // MCPのlistToolsレスポンスから完全なツール情報を返す
     if (
       toolsResponse &&
       typeof toolsResponse === 'object' &&
@@ -839,17 +1123,9 @@ export class RemoteMcpServer extends EventEmitter {
     ) {
       const response = toolsResponse as { tools: unknown };
       if (Array.isArray(response.tools)) {
-        return response.tools
-          .map((tool) => {
-            if (tool && typeof tool === 'object' && 'name' in tool) {
-              const toolWithName = tool as { name: unknown };
-              return typeof toolWithName.name === 'string'
-                ? toolWithName.name
-                : '';
-            }
-            return '';
-          })
-          .filter(Boolean);
+        return response.tools.filter(
+          (tool) => tool && typeof tool === 'object' && 'name' in tool,
+        );
       }
     }
 

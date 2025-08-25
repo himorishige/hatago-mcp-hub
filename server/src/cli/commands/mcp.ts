@@ -243,11 +243,7 @@ export function createMcpCommands(): Command {
   mcp
     .command('add <name> [command...]')
     .description('Add a new MCP server')
-    .option(
-      '--scope <scope>',
-      'Server scope (local|project|user)',
-      'local',
-    )
+    .option('--scope <scope>', 'Server scope (local|project|user)', 'local')
     .option(
       '-t, --transport <type>',
       'Transport type (http|sse) for remote servers',

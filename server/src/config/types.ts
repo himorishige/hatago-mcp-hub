@@ -176,7 +176,9 @@ export type LocalServerConfig = z.infer<typeof LocalServerConfigSchema>;
 export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
   type: z.literal('remote'),
   url: z.string(),
-  transport: z.enum(['http', 'websocket']).default('http'),
+  transport: z
+    .enum(['http', 'websocket', 'sse', 'streamable-http'])
+    .default('http'),
   auth: z
     .object({
       type: z.enum(['bearer', 'basic']).optional(),
@@ -189,6 +191,12 @@ export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
         .boolean()
         .default(false)
         .describe('Enable health checks for this server'),
+      mode: z
+        .enum(['initialize-only', 'initialize+ping', 'full'])
+        .default('initialize+ping')
+        .describe(
+          'Health check mode. initialize-only: only check connection, initialize+ping: check connection and ping, full: check all declared capabilities',
+        ),
       intervalMs: z
         .number()
         .min(0)
@@ -203,6 +211,19 @@ export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
         .describe(
           'Health check timeout in milliseconds. Should be less than intervalMs. Can be overridden by HATAGO_HEALTH_TIMEOUT_MS env var',
         ),
+      startupGraceMs: z
+        .number()
+        .min(0)
+        .default(5000)
+        .describe(
+          'Grace period in milliseconds after startup before health checks begin',
+        ),
+      skipMethods: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'Methods to skip during health checks (e.g., ["resources/list", "prompts/list"])',
+        ),
       method: z
         .enum(['ping', 'tools/list'])
         .default('ping')
@@ -212,6 +233,37 @@ export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
     })
     .optional()
     .describe('Health check configuration for remote servers'),
+  quirks: z
+    .object({
+      useDirectClient: z
+        .boolean()
+        .optional()
+        .describe(
+          'Use direct Client instead of facade (for servers that reject sessionId)',
+        ),
+      skipProtocolNegotiation: z
+        .boolean()
+        .optional()
+        .describe('Skip protocol negotiation and use default version'),
+      forceProtocolVersion: z
+        .string()
+        .optional()
+        .describe(
+          'Force a specific protocol version (e.g., "2025-03-26" for DeepWiki)',
+        ),
+      assumedCapabilities: z
+        .object({
+          tools: z.boolean().optional(),
+          resources: z.boolean().optional(),
+          prompts: z.boolean().optional(),
+        })
+        .optional()
+        .describe(
+          'Manually set capabilities when server does not provide them',
+        ),
+    })
+    .optional()
+    .describe('Server-specific workarounds and quirks'),
 });
 export type RemoteServerConfig = z.infer<typeof RemoteServerConfigSchema>;
 
@@ -280,14 +332,32 @@ export type HatagoOptions = z.infer<typeof HatagoOptionsSchema>;
 // Claude Code互換のMCPサーバー設定
 export const McpServerConfigSchema = z.object({
   // Claude Code標準プロパティ
-  type: z.enum(['stdio', 'sse', 'http']).optional(), // SSE/HTTP transport types
+  type: z.enum(['stdio', 'sse', 'http', 'remote']).optional(), // Transport types including remote
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string()).optional(),
+  cwd: z.string().optional(), // Working directory for local servers
 
-  // SSE/HTTP用
+  // SSE/HTTP/Remote用
   url: z.string().optional(),
+  transport: z.enum(['http', 'sse', 'websocket', 'streamable-http']).optional(), // Transport protocol
   headers: z.record(z.string()).optional(), // Authentication headers for SSE/HTTP
+
+  // Remote server auth
+  auth: z
+    .object({
+      type: z.enum(['bearer', 'basic']),
+      token: z.string(),
+    })
+    .optional(),
+
+  // Remote server health check
+  healthCheck: z
+    .object({
+      intervalMs: z.number().optional(),
+      timeoutMs: z.number().optional(),
+    })
+    .optional(),
 
   // Hatago独自オプション
   hatagoOptions: HatagoOptionsSchema.optional(),

@@ -233,6 +233,9 @@ export class ServerRegistry extends RuntimeDependentService {
   async registerLocalServer(
     config: LocalServerConfig,
   ): Promise<RegisteredServer> {
+    console.log(
+      `[ServerRegistry] registerLocalServer called with config.cwd: ${config.cwd}`,
+    );
     // Check if server already exists
     if (this.servers.has(config.id)) {
       throw ErrorHelpers.serverAlreadyRegistered(config.id);
@@ -241,10 +244,10 @@ export class ServerRegistry extends RuntimeDependentService {
     // Create workspace for the server
     const workspace = await this.workspaceManager.createWorkspace(config.id);
 
-    // Update config with workspace directory
+    // Update config with workspace directory (use cwd if provided)
     const serverConfig: LocalServerConfig = {
       ...config,
-      workDir: workspace.path,
+      workDir: config.cwd || workspace.path,
     };
 
     // Create server instance using NpxMcpServer (which can handle any command)
@@ -257,7 +260,8 @@ export class ServerRegistry extends RuntimeDependentService {
       transport: config.transport || 'stdio',
       start: config.start || 'lazy',
       env: config.env,
-      workDir: workspace.path,
+      // Use cwd from config if provided, otherwise use workspace path
+      workDir: config.cwd || workspace.path,
       autoRestart: config.autoRestart,
       maxRestarts: config.maxRestarts,
       restartDelayMs: config.restartDelayMs,
