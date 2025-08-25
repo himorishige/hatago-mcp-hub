@@ -16,7 +16,7 @@ export interface RetryOptions {
  */
 export async function callWithRetry<T>(
   fn: () => Promise<T>,
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): Promise<T> {
   const {
     maxRetries = 3,
@@ -46,12 +46,12 @@ export async function callWithRetry<T>(
 
       // Calculate delay with exponential backoff
       const delay = Math.min(
-        initialDelayMs * Math.pow(backoffFactor, attempt),
-        maxDelayMs
+        initialDelayMs * backoffFactor ** attempt,
+        maxDelayMs,
       );
 
       // Wait before next retry
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
@@ -68,11 +68,11 @@ export function isRetryableError(error: unknown): boolean {
     if (error.message.includes('ECONNREFUSED')) return true;
     if (error.message.includes('ETIMEDOUT')) return true;
     if (error.message.includes('ENOTFOUND')) return true;
-    
+
     // Temporary failures
     if (error.message.includes('EAGAIN')) return true;
     if (error.message.includes('EBUSY')) return true;
-    
+
     // HTTP status codes (if available)
     if ('statusCode' in error) {
       const status = (error as any).statusCode;
@@ -82,7 +82,7 @@ export function isRetryableError(error: unknown): boolean {
       }
     }
   }
-  
+
   return false;
 }
 
@@ -90,18 +90,15 @@ export function isRetryableError(error: unknown): boolean {
  * Decorator for adding retry to async functions
  */
 export function withRetry(options: RetryOptions = {}) {
-  return function (
-    target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
+  return (
+    _target: any,
+    _propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) => {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
-      return callWithRetry(
-        () => originalMethod.apply(this, args),
-        options
-      );
+      return callWithRetry(() => originalMethod.apply(this, args), options);
     };
 
     return descriptor;

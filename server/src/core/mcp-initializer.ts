@@ -7,13 +7,12 @@
 
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import { ErrorHelpers } from '../utils/errors.js';
-import {
-  createInitializeRequest,
-  type InitializeResult,
-  type NegotiatedProtocol,
-  ProtocolNegotiator,
-} from './protocol-negotiator.js';
+
+import type { NegotiatedProtocol } from './types.js';
+import type {
+  InitializeResult,
+  InitializeParams,
+} from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Initialization options
@@ -72,12 +71,11 @@ export interface NegotiableTransport {
  * MCP Initializer class
  */
 export class MCPInitializer {
-  private negotiator: ProtocolNegotiator;
+  private negotiatedProtocol: NegotiatedProtocol | null = null;
   private options: Required<InitializerOptions>;
   private requestId = 1;
 
   constructor(options: InitializerOptions = {}) {
-    this.negotiator = new ProtocolNegotiator();
     this.options = {
       clientInfo: options.clientInfo || {
         name: 'hatago-hub',
@@ -93,92 +91,115 @@ export class MCPInitializer {
   }
 
   /**
-   * Initialize connection with protocol negotiation
+   * Initialize connection with MCP server
    */
   async initialize(
-    transport: NegotiableTransport,
+    transport: Transport,
+    protocolVersion = '2024-11-05',
   ): Promise<NegotiatedProtocol> {
-    const timeout = this.options.isFirstRun
-      ? this.options.timeouts.firstRunMs
-      : this.options.timeouts.normalMs;
+    try {
+      const result = await this.sendInitialize(transport, protocolVersion);
 
-    this.log(
-      `Starting initialization (timeout: ${timeout}ms, firstRun: ${this.options.isFirstRun})`,
-    );
+      // Create simplified negotiated protocol
+      this.negotiatedProtocol = {
+        protocol: protocolVersion,
+        serverInfo: result.serverInfo,
+        features: {
+          notifications: true,
+          resources: !!result.capabilities?.resources,
+          prompts: !!result.capabilities?.prompts,
+          tools: !!result.capabilities?.tools,
+        },
+      };
 
-    // Create initialization function for negotiator
-    const initializeFn = async (
-      protocolVersion: string,
-    ): Promise<InitializeResult> => {
-      return this.sendInitialize(transport, protocolVersion, timeout);
-    };
-
-    // Perform protocol negotiation
-    const negotiated = await this.negotiator.negotiate(initializeFn);
-
-    this.log(`Initialization complete with protocol: ${negotiated.protocol}`);
-    return negotiated;
+      return this.negotiatedProtocol;
+    } catch (error) {
+      this.log('error', `Initialization failed: ${error}`);
+      throw error;
+    }
   }
 
   /**
-   * Send initialize request and wait for response
+   * Send initialize request
    */
   private async sendInitialize(
-    transport: NegotiableTransport,
+    transport: Transport,
     protocolVersion: string,
-    timeoutMs: number,
   ): Promise<InitializeResult> {
     const id = this.getNextId();
+
+    // Create initialize params
+    const params: InitializeParams = {
+      protocolVersion,
+      capabilities: {
+        experimental: {},
+        tools: {},
+        prompts: {},
+        resources: {},
+        sampling: {},
+      },
+      clientInfo: this.options.clientInfo,
+    };
 
     const request: JSONRPCMessage = {
       jsonrpc: '2.0',
       id,
       method: 'initialize',
-      params: createInitializeRequest(protocolVersion, this.options.clientInfo),
+      params,
     };
 
-    this.log(`Sending initialize with protocol ${protocolVersion} (id: ${id})`);
+    this.log('debug', `Sending initialize request: ${JSON.stringify(request)}`);
 
     // Send the request
     await transport.send(request);
 
     // Wait for response
-    const response = await transport.waitForResponse(id, timeoutMs);
+    const response = await transport.waitForResponse(
+      id,
+      this.options.isFirstRun 
+        ? this.options.timeouts.firstRunMs 
+        : this.options.timeouts.normalMs,
+    );
 
-    // Check for error response
     if ('error' in response) {
-      const error = response.error as { message?: string };
-      throw ErrorHelpers.operationFailed(
-        'MCP initialization',
-        error.message || JSON.stringify(error),
-      );
+      throw new Error(`Initialize failed: ${response.error.message}`);
     }
 
-    // Extract result
     if (!('result' in response)) {
-      throw ErrorHelpers.operationFailed(
-        'MCP initialization',
-        'Initialize response missing result',
-      );
+      throw new Error('Invalid initialize response: missing result');
     }
+
+    this.log(
+      'debug',
+      `Initialize response: ${JSON.stringify(response.result)}`,
+    );
+
+    // Send initialized notification
+    await transport.send({
+      jsonrpc: '2.0',
+      method: 'notifications/initialized',
+    });
 
     return response.result as InitializeResult;
   }
 
   /**
-   * Get the negotiated protocol
+   * Get negotiated protocol
    */
   getNegotiatedProtocol(): NegotiatedProtocol | null {
-    return this.negotiator.getNegotiatedProtocol();
+    return this.negotiatedProtocol;
   }
 
   /**
-   * Create an adapted call function for the transport
+   * Create adapted call (simplified - no protocol adaptation needed)
    */
-  createAdaptedCall(
-    callFn: (method: string, params: unknown) => Promise<unknown>,
-  ): (method: string, params: unknown) => Promise<unknown> {
-    return this.negotiator.createAdaptedCall(callFn);
+  createAdaptedCall(method: string, params?: unknown): JSONRPCMessage {
+    return {
+      jsonrpc: '2.0',
+      id: this.getNextId(),
+      method,
+      params,
+    };
   }
 
   /**
@@ -189,13 +210,33 @@ export class MCPInitializer {
   }
 
   /**
-   * Debug logging
+   * Log helper
    */
-  private log(message: string): void {
-    if (this.options.debug) {
-      console.log(`[MCPInitializer] ${message}`);
+  private log(level: 'debug' | 'info' | 'error', message: string): void {
+    if (this.options.debug || level === 'error') {
+      console.log(`[MCPInitializer] ${level}: ${message}`);
     }
   }
+}
+
+/**
+ * Helper function to create initialize request params
+ */
+export function createInitializeRequest(
+  protocolVersion: string,
+  clientInfo = { name: 'hatago-hub', version: '0.0.2' },
+): InitializeParams {
+  return {
+    protocolVersion,
+    capabilities: {
+      experimental: {},
+      tools: {},
+      prompts: {},
+      resources: {},
+      sampling: {},
+    },
+    clientInfo,
+  };
 }
 
 /**

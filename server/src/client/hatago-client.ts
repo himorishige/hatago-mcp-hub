@@ -38,7 +38,7 @@ export class HatagoClient {
   private readonly options: Required<Omit<HatagoClientOptions, 'transport'>>;
   private requestId = 0;
   private pendingRequests = new Map<string | number, PendingRequest>();
-  private activeStreams = new Map<string, StreamController>();
+  private activeStreams = new Map<string, StreamController<unknown>>();
   private isConnected = false;
 
   constructor(options: HatagoClientOptions) {
@@ -124,7 +124,7 @@ export class HatagoClient {
     method: string,
     params?: unknown,
     options: StreamOptions = {},
-  ): AsyncIterator<T> {
+  ): AsyncGenerator<T> {
     if (!this.isConnected) {
       throw new Error('Client is not connected');
     }
@@ -134,15 +134,17 @@ export class HatagoClient {
     const bufferSize = options.bufferSize ?? 100;
 
     // Start the stream
+    const streamParams =
+      typeof params === 'object' && params !== null ? params : {};
     await this.call(
       `${method}_stream_start`,
-      { streamId, ...params },
+      { streamId, ...streamParams },
       { timeout },
     );
 
     // Create stream controller
     const controller = new StreamController<T>(streamId, bufferSize);
-    this.activeStreams.set(streamId, controller);
+    this.activeStreams.set(streamId, controller as StreamController<unknown>);
 
     try {
       yield* controller.iterator();
@@ -220,9 +222,9 @@ export class HatagoClient {
       }, timeout);
 
       const pending: PendingRequest = {
-        resolve: (result: T) => {
+        resolve: (result: unknown) => {
           clearTimeout(timer);
-          resolve(result);
+          resolve(result as T);
         },
         reject: (error: Error) => {
           clearTimeout(timer);
@@ -286,7 +288,7 @@ export class HatagoClient {
 
       // Notify active streams
       for (const stream of this.activeStreams.values()) {
-        stream.error(error);
+        stream.setError(error);
       }
     });
 
@@ -345,7 +347,7 @@ export class HatagoClient {
         stream.push(frame.payload);
         break;
       case 'error':
-        stream.error(new Error(frame.payload?.message || 'Stream error'));
+        stream.setError(new Error(frame.payload?.message || 'Stream error'));
         break;
       case 'end':
         stream.end();
@@ -358,18 +360,22 @@ export class HatagoClient {
 
   private isJsonRpcResponse(message: unknown): message is JsonRpcResponse {
     return (
-      message &&
+      typeof message === 'object' &&
+      message !== null &&
+      'jsonrpc' in message &&
       message.jsonrpc === '2.0' &&
-      (message.result !== undefined || message.error !== undefined)
+      ('result' in message || 'error' in message)
     );
   }
 
   private isStreamFrame(message: unknown): message is StreamFrame {
     return (
-      message &&
       typeof message === 'object' &&
+      message !== null &&
+      'type' in message &&
       typeof message.type === 'string' &&
       ['data', 'error', 'end', 'cancel'].includes(message.type) &&
+      'id' in message &&
       typeof message.id === 'string'
     );
   }
@@ -448,12 +454,13 @@ class StreamController<T = unknown> {
     this.resolvers.length = 0;
   }
 
-  async *iterator(): AsyncIterator<T> {
+  async *iterator(): AsyncGenerator<T> {
     while (!this.isEnded || this.buffer.length > 0) {
       if (this.buffer.length > 0) {
         const item = this.buffer.shift();
         if (item !== undefined) {
           yield item;
+        }
       } else if (this.isEnded) {
         break;
       } else {
@@ -476,5 +483,4 @@ class StreamController<T = unknown> {
       throw this.error;
     }
   }
-}
 }

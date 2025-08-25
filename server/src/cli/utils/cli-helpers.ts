@@ -2,7 +2,10 @@
  * CLI common utilities and helpers
  */
 
-import type { Logger } from 'pino';
+import type { MinimalLogger } from '../../observability/minimal-logger.js';
+
+type Logger = MinimalLogger;
+
 import { loadConfig as baseLoadConfig } from '../../config/loader.js';
 import type { HatagoConfig } from '../../config/types.js';
 import { McpHub } from '../../core/mcp-hub.js';
@@ -25,9 +28,9 @@ export async function loadConfigWithDefaults(
  */
 export async function createAndInitializeHub(
   config: HatagoConfig,
-  logger?: Logger,
+  _logger?: Logger,
 ): Promise<McpHub> {
-  const hub = new McpHub({ config, logger });
+  const hub = new McpHub({ config });
   await hub.initialize();
   return hub;
 }
@@ -90,13 +93,14 @@ export async function mergeCLIServers(
     '../../storage/cli-registry-storage.js'
   );
   const cliStorage = new CliRegistryStorage('.hatago/cli-registry.json');
-  await cliStorage.initialize();
+  await cliStorage.init();
   const cliServers = await cliStorage.getServers();
 
   // Merge servers (config has priority)
-  const configServerIds = new Set(config.servers.map((s) => s.id));
+  const configServerIds = new Set((config.servers || []).map((s) => s.id));
   for (const cliServer of cliServers) {
     if (!configServerIds.has(cliServer.id)) {
+      if (!config.servers) config.servers = [];
       config.servers.push(cliServer);
       if (logger) {
         logger.info(`Added CLI server: ${cliServer.id}`);

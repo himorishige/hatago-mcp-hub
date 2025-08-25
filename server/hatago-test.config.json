@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "logLevel": "debug",
+  "servers": [
+    {
+      "id": "deepwiki",
+      "type": "remote",
+      "url": "https://mcp.deepwiki.com/sse",
+      "transport": "sse"
+    },
+    {
+      "id": "test-server",
+      "type": "local",
+      "command": "node",
+      "args": ["/Users/morishige/ghq/github.com/himorishige/hatago-hub/server/examples/test-mcp-server.js"],
+      "transport": "stdio"
+    }
+  ],
+  "mcpServers": {
+    "everything": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "env": {},
+      "hatagoOptions": {
+        "start": "eager"
+      }
+    }
+  }
+}

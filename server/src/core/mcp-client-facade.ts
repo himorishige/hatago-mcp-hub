@@ -15,7 +15,7 @@ import {
   type NegotiableTransport,
   wrapTransport,
 } from './mcp-initializer.js';
-import type { NegotiatedProtocol } from './protocol-negotiator.js';
+import type { NegotiatedProtocol } from './types.js';
 
 /**
  * Client facade options
@@ -148,7 +148,7 @@ export class MCPClientFacade {
           // Set up the original transport's onmessage if not already set
           if (!originalTransport.onmessage) {
             originalTransport.onmessage = (message: JSONRPCMessage) => {
-              messageHandlers.forEach((h) => h(message));
+              messageHandlers.forEach((h) => { h(message); });
             };
           }
         }

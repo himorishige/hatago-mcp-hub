@@ -2,13 +2,8 @@
  * Configuration validation utilities
  */
 
-import { createLogger } from '../utils/logger.js';
+import { logger } from '../observability/minimal-logger.js';
 import type { HatagoConfig, ServerConfig } from './types.js';
-
-const logger = createLogger({
-  component: 'config-validator',
-  destination: process.stderr, // Always use stderr to avoid stdout contamination
-});
 
 export interface ValidationError {
   path: string;
@@ -37,14 +32,14 @@ export function validateProfileConfig(config: HatagoConfig): ValidationResult {
   }
 
   // Validate servers
-  if (config.servers.length === 0) {
+  if (!config.servers || config.servers.length === 0) {
     warnings.push({
       path: 'servers',
       message: 'No servers configured',
     });
   }
 
-  config.servers.forEach((server, index) => {
+  (config.servers || []).forEach((server, index) => {
     const serverErrors = validateServerConfig(server, `servers[${index}]`);
     errors.push(...serverErrors.errors);
     warnings.push(...serverErrors.warnings);

@@ -4,9 +4,9 @@
  */
 
 import { Hono } from 'hono';
-import type { Logger } from 'pino';
 import type { HatagoConfig } from '../../config/types.js';
 import type { McpHub } from '../../core/mcp-hub.js';
+import { logger } from '../../observability/minimal-logger.js';
 
 /**
  * Create the base HTTP application with health and debug endpoints
@@ -14,7 +14,6 @@ import type { McpHub } from '../../core/mcp-hub.js';
 export function createHttpApp(
   hub: McpHub,
   _config: HatagoConfig, // Reserved for future configuration use
-  _logger: Logger, // Reserved for future logging use
 ): Hono {
   const app = new Hono();
 
@@ -64,7 +63,6 @@ export async function setupReadinessCheck(
   app: Hono,
   hub: McpHub,
   config: HatagoConfig,
-  logger: Logger,
 ): Promise<void> {
   const {
     HealthCheckManager,
@@ -79,7 +77,7 @@ export async function setupReadinessCheck(
 
   // Register health checks
   healthManager.register(createConfigCheck(() => !!config));
-  healthManager.register(createWorkspaceCheck(config.workspace));
+  healthManager.register(createWorkspaceCheck(undefined));
   healthManager.register(createHatagoDirectoryCheck());
   healthManager.register(
     createMCPServersCheck(() => {

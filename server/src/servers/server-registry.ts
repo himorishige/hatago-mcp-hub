@@ -14,12 +14,13 @@ import type {
   ServerConfig,
 } from '../config/types.js';
 import { RuntimeDependentService } from '../core/runtime-dependent-service.js';
+import { logger } from '../observability/minimal-logger.js';
 import type { RegistryStorage } from '../storage/registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
-import { sanitizeLog } from '../utils/security.js';
+// import { sanitizeLog } from '../utils/security.js';
 import { NpxMcpServer, ServerState } from './npx-mcp-server.js';
 import { RemoteMcpServer } from './remote-mcp-server.js';
-import type { WorkspaceManager } from './workspace-manager.js';
+import type { SimpleWorkspaceManager } from './simple-workspace.js';
 
 /**
  * Registered server information
@@ -57,7 +58,7 @@ export interface ServerRegistryConfig {
  */
 export class ServerRegistry extends RuntimeDependentService {
   private servers = new Map<string, RegisteredServer>();
-  private workspaceManager: WorkspaceManager;
+  private workspaceManager: SimpleWorkspaceManager;
   private config: ServerRegistryConfig;
   private healthCheckInterval: NodeJS.Timeout | null = null;
 
@@ -81,7 +82,7 @@ export class ServerRegistry extends RuntimeDependentService {
   private readonly maxConsecutiveFailures = 3;
 
   constructor(
-    workspaceManager: WorkspaceManager,
+    workspaceManager: SimpleWorkspaceManager,
     config?: ServerRegistryConfig,
     storage?: RegistryStorage,
   ) {
@@ -105,7 +106,7 @@ export class ServerRegistry extends RuntimeDependentService {
       // Restore server states
       const savedStates = await this.storage.getAllServerStates();
       for (const [serverId, state] of savedStates.entries()) {
-        console.log(`Restoring state for server ${serverId}: ${state.state}`);
+        logger.info(`Restoring state for server ${serverId}: ${state.state}`);
         // Store minimal state for recovery tracking
         // Actual server instances will be created on demand
       }
@@ -233,7 +234,7 @@ export class ServerRegistry extends RuntimeDependentService {
   async registerLocalServer(
     config: LocalServerConfig,
   ): Promise<RegisteredServer> {
-    console.log(
+    logger.info(
       `[ServerRegistry] registerLocalServer called with config.cwd: ${config.cwd}`,
     );
     // Check if server already exists
@@ -656,8 +657,8 @@ export class ServerRegistry extends RuntimeDependentService {
         tools,
       });
     } catch (error) {
-      const safeError = await sanitizeLog(String(error));
-      console.error(
+      const safeError = String(error); // await sanitizeLog(String(error));
+      logger.error(
         `Failed to discover tools for server ${serverId}:`,
         safeError,
       );
@@ -681,7 +682,7 @@ export class ServerRegistry extends RuntimeDependentService {
     // Check circuit breaker
     const failures = this.resourceDiscoveryFailures.get(serverId) || 0;
     if (failures >= this.maxConsecutiveFailures) {
-      console.warn(
+      logger.warn(
         `Circuit breaker open for ${serverId}: skipping resource discovery after ${failures} consecutive failures`,
       );
       registered.resources = [];
@@ -717,8 +718,8 @@ export class ServerRegistry extends RuntimeDependentService {
       const currentFailures = this.resourceDiscoveryFailures.get(serverId) || 0;
       this.resourceDiscoveryFailures.set(serverId, currentFailures + 1);
 
-      const safeError = await sanitizeLog(String(error));
-      console.error(
+      const safeError = String(error); // await sanitizeLog(String(error));
+      logger.error(
         `Failed to discover resources for server ${serverId} (failure ${currentFailures + 1}/${this.maxConsecutiveFailures}):`,
         safeError,
       );
@@ -764,14 +765,31 @@ export class ServerRegistry extends RuntimeDependentService {
     }
 
     try {
-      // Send ping request
-      const pingRequest = JSON.stringify({
+      // Send a standard MCP request for health check (tools/list is always supported)
+      const healthCheckRequest = JSON.stringify({
         jsonrpc: '2.0',
         id: await runtime.idGenerator.generate(),
-        method: 'ping',
+        method: 'tools/list',
       });
 
-      await registered.instance.send(`${pingRequest}\n`);
+      // For remote servers, use the appropriate method
+      if (registered.instance instanceof RemoteMcpServer) {
+        // Remote servers have a listTools method
+        const result = await registered.instance.listTools();
+        if (!result || (typeof result === 'object' && 'error' in result)) {
+          throw new Error('Health check failed: tools/list returned error');
+        }
+      } else if (registered.instance instanceof NpxMcpServer) {
+        // NPX/Local servers: check if getTools works
+        const tools = registered.instance.getTools();
+        if (!Array.isArray(tools)) {
+          throw new Error('Health check failed: getTools did not return array');
+        }
+      } else {
+        // Fallback: send raw request
+        await registered.instance.send(`${healthCheckRequest}
+`);
+      }
 
       // Update last health check time and reset failure count
       registered.lastHealthCheck = new Date();
@@ -818,7 +836,7 @@ export class ServerRegistry extends RuntimeDependentService {
         this.defaults.autoRestartOnHealthFailure;
 
       if (autoRestart && registered.healthCheckFailures >= maxFailures) {
-        console.warn(
+        logger.warn(
           `Server ${registered.id} failed ${registered.healthCheckFailures} consecutive health checks. Attempting auto-restart...`,
         );
 
@@ -843,7 +861,7 @@ export class ServerRegistry extends RuntimeDependentService {
     const autoRestartAttempts = registered.autoRestartAttempts || 0;
 
     if (autoRestartAttempts >= maxAutoRestartAttempts) {
-      console.error(
+      logger.error(
         `Server ${registered.id} exceeded max auto-restart attempts (${maxAutoRestartAttempts})`,
       );
       registered.state = ServerState.CRASHED;
@@ -858,7 +876,7 @@ export class ServerRegistry extends RuntimeDependentService {
         : Math.min(5000 * 2 ** (autoRestartAttempts - 1), 30000);
 
     if (backoffMs > 0) {
-      console.log(
+      logger.info(
         `Waiting ${backoffMs / 1000}s before restart attempt ${autoRestartAttempts + 1} for server ${registered.id}`,
       );
       await new Promise((resolve) => setTimeout(resolve, backoffMs));
@@ -892,7 +910,7 @@ export class ServerRegistry extends RuntimeDependentService {
         serverId: registered.id,
       });
 
-      console.log(`🏮 Server ${registered.id} auto-restarted successfully`);
+      logger.info(`🏮 Server ${registered.id} auto-restarted successfully`);
     } catch (error) {
       // Clear restarting flag even on failure
       registered.isRestarting = false;
@@ -902,8 +920,8 @@ export class ServerRegistry extends RuntimeDependentService {
         attempt: registered.autoRestartAttempts,
       });
 
-      const safeError = await sanitizeLog(String(error));
-      console.error(
+      const safeError = String(error); // await sanitizeLog(String(error));
+      logger.error(
         `Failed to auto-restart server ${registered.id}:`,
         safeError,
       );
@@ -985,7 +1003,7 @@ export class ServerRegistry extends RuntimeDependentService {
   registerServerTools(serverId: string, tools: Tool[]): void {
     const registered = this.servers.get(serverId);
     if (!registered) {
-      console.warn(`Server ${serverId} not found for tool registration`);
+      logger.warn(`Server ${serverId} not found for tool registration`);
       return;
     }
 
@@ -999,7 +1017,7 @@ export class ServerRegistry extends RuntimeDependentService {
   registerServerResources(serverId: string, resources: Resource[]): void {
     const registered = this.servers.get(serverId);
     if (!registered) {
-      console.warn(`Server ${serverId} not found for resource registration`);
+      logger.warn(`Server ${serverId} not found for resource registration`);
       return;
     }
 
@@ -1013,7 +1031,7 @@ export class ServerRegistry extends RuntimeDependentService {
   registerServerPrompts(serverId: string, prompts: Prompt[]): void {
     const registered = this.servers.get(serverId);
     if (!registered) {
-      console.warn(`Server ${serverId} not found for prompt registration`);
+      logger.warn(`Server ${serverId} not found for prompt registration`);
       return;
     }
 

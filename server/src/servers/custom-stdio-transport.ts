@@ -11,7 +11,7 @@ import {
   MCPInitializer,
   type NegotiableTransport,
 } from '../core/mcp-initializer.js';
-import type { NegotiatedProtocol } from '../core/protocol-negotiator.js';
+import type { NegotiatedProtocol } from '../core/types.js';
 import { ErrorHelpers } from '../utils/errors.js';
 
 export interface CustomStdioTransportOptions {

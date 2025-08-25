@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { RuntimeDependentService } from '../core/runtime-dependent-service.js';
+import { logger } from '../observability/minimal-logger.js';
 import type { Runtime } from '../runtime/types.js';
 
 /**
@@ -98,7 +99,7 @@ export class WorkspaceManager extends RuntimeDependentService {
 
         // Skip invalid workspaces
         if (!(await fileSystem.exists(metadataPath))) {
-          console.error(`Skipping invalid workspace: ${entryName}`);
+          logger.error(`Skipping invalid workspace: ${entryName}`);
           continue;
         }
 

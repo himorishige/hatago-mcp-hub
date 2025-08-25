@@ -7,7 +7,7 @@
 import type { TransportConfig } from '../composition/types.js';
 import { HatagoProtocolError, RPC_ERRORS } from '../protocol/errors.js';
 import type { Transport } from '../protocol/index.js';
-import { WebSocketTransport } from './websocket.js';
+// import { WebSocketTransport } from './websocket.js';
 
 export class TransportFactory {
   /**
@@ -16,7 +16,8 @@ export class TransportFactory {
   static async createTransport(config: TransportConfig): Promise<Transport> {
     switch (config.type) {
       case 'websocket':
-        return TransportFactory.createWebSocketTransport(config);
+        throw new Error('WebSocket transport not yet implemented');
+      // return TransportFactory.createWebSocketTransport(config);
 
       case 'http':
         return TransportFactory.createHttpTransport(config);
@@ -35,19 +36,19 @@ export class TransportFactory {
     }
   }
 
-  private static createWebSocketTransport(config: TransportConfig): Transport {
-    if (!config.url) {
-      throw HatagoProtocolError.userError('WebSocket transport requires URL', {
-        code: RPC_ERRORS.INVALID_PARAMS,
-      });
-    }
+  // private static createWebSocketTransport(config: TransportConfig): Transport {
+  //   if (!config.url) {
+  //     throw HatagoProtocolError.userError('WebSocket transport requires URL', {
+  //       code: RPC_ERRORS.INVALID_PARAMS,
+  //     });
+  //   }
 
-    return new WebSocketTransport({
-      url: config.url,
-      headers: config.headers,
-      connectionTimeout: config.timeout,
-    });
-  }
+  //   return new WebSocketTransport({
+  //     url: config.url,
+  //     headers: config.headers,
+  //     connectionTimeout: config.timeout,
+  //   });
+  // }
 
   private static createHttpTransport(_config: TransportConfig): Transport {
     // TODO: Implement HTTP transport (using fetch/axios)

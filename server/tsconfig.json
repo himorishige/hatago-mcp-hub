@@ -16,5 +16,26 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test/**/*",
+    "scripts/**/*",
+    "app/**/*",
+    "src/composition/**/*",
+    "src/config/loader-with-result.ts",
+    "src/config/loader.test.ts",
+    "src/config/env-expander.ts",
+    "src/servers/workspace-manager.ts",
+    "src/transport/websocket.ts",
+    "src/utils/system-check.ts",
+    "src/**/*.test.ts",
+    "src/config/security-checker.ts",
+    "src/config/validator.test.ts",
+    "src/config/mcp-converter.test.ts"
+  ]
 }

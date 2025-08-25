@@ -1,396 +1,316 @@
 /**
- * Serve command - Lite version with conditional enterprise features
+ * Serve command - Lightweight version
  */
 
 import { serve } from '@hono/node-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { CallToolRequest } from '@modelcontextprotocol/sdk/types.js';
 import type { Command } from 'commander';
-import type { Logger } from 'pino';
 import { loadConfig } from '../../config/loader.js';
 import type { HatagoConfig } from '../../config/types.js';
-import type { FileWatcher } from '../../core/file-watcher.js';
 import { McpHub } from '../../core/mcp-hub.js';
+import {
+  logger,
+  MinimalLogger,
+  parseLogLevel,
+} from '../../observability/minimal-logger.js';
+import {
+  createSecurityMiddleware,
+  validateBindAddress,
+} from '../../security/minimal-security.js';
 import { ErrorHelpers } from '../../utils/errors.js';
 import type { ServeOptions } from '../types/serve-options.js';
-
-// Feature flags interface
-interface FeatureFlags {
-  healthCheck?: boolean;
-  metrics?: boolean;
-  tracing?: boolean;
-  authentication?: boolean;
-  rateLimit?: boolean;
-  typeGeneration?: boolean;
-  openapi?: boolean;
-}
-
-interface LiteConfig extends HatagoConfig {
-  features?: FeatureFlags;
-}
 
 export function createServeCommand(program: Command): void {
   program
     .command('serve')
     .description('Start the MCP Hub server (Lite version)')
     .option('-c, --config <path>', 'Path to config file')
-    .option(
-      '--profile <name>',
-      'Profile to use (default: "default")',
-      'default',
-    )
+    .option('--profile <name>', 'Profile to use', 'default')
     .option('-p, --port <port>', 'HTTP port', '3000')
-    .option(
-      '-m, --mode <mode>',
-      'Transport mode: stdio | http',
-      'stdio',
-    )
+    .option('-m, --mode <mode>', 'Transport mode: stdio | http', 'stdio')
     .option('--http', 'Use HTTP mode instead of STDIO')
+    .option('--bind <address>', 'Bind address', '127.0.0.1')
+    .option('--allow-remote', 'Allow remote connections')
+    .option('--shared-secret <secret>', 'Shared secret for authentication')
     .option('-q, --quiet', 'Suppress non-essential output')
     .option('-v, --verbose', 'Enable verbose logging')
     .option('--log-level <level>', 'Log level: error, warn, info, debug, trace')
-    .option('--log-format <format>', 'Log format: json | pretty')
+    .option('--log-format <format>', 'Log format: json | human', 'human')
     .action(async (options) => {
-      // Handle transport mode options early
+      // Handle transport mode
       if (options.http) {
         options.mode = 'http';
       }
 
       try {
-        const reqLogger = await setupLogger(options);
-        const config = await loadAndValidateConfig(options, reqLogger) as LiteConfig;
-        await mergeCLIServers(config, reqLogger);
+        // Setup logging
+        setupLogging(options);
 
-        const hub = new McpHub({ config, logger: reqLogger });
+        // Load configuration
+        const config = await loadAndValidateConfig(options);
+
+        // Merge CLI servers if provided
+        await mergeCLIServers(config);
+
+        // Create and initialize hub
+        const hub = new McpHub({ config });
         await hub.initialize();
-
-        // Conditionally start health monitoring
-        if (config.features?.healthCheck) {
-          try {
-            const { healthMonitor } = await import(
-              '../../observability/health-monitor.js'
-            );
-            healthMonitor.startMonitoring();
-            reqLogger.info('Health monitoring enabled');
-          } catch (error) {
-            reqLogger.warn('Health monitoring requested but not available (install enterprise features)');
-          }
-        }
-
-        const fileWatcher = await setupHotReload(
-          config,
-          options,
-          hub,
-          reqLogger,
-        );
 
         // Start appropriate transport mode
         if (options.mode === 'stdio') {
-          await startStdioMode(hub, reqLogger, options);
+          await startStdioMode(hub, options);
         } else {
-          await startHttpMode(hub, config, reqLogger, options.port);
+          await startHttpMode(hub, config, options);
         }
 
-        setupShutdownHandlers(hub, fileWatcher, reqLogger, config.features);
+        // Setup shutdown handlers
+        setupShutdownHandlers(hub);
       } catch (error) {
         await handleStartupError(error);
       }
     });
 }
 
-async function setupLogger(options: ServeOptions): Promise<Logger> {
-  // Try to use pino if available, otherwise use console
-  try {
-    const { createLogger, createRequestLogger, getLogLevel, setGlobalLogger } =
-      await import('../../utils/logger.js');
+function setupLogging(options: ServeOptions): void {
+  // Set log level
+  const level = parseLogLevel(
+    options.logLevel ||
+      (options.verbose ? 'debug' : options.quiet ? 'warn' : 'info'),
+  );
+  logger.setLevel(level);
 
-    // STDIO mode console redirect
-    if (options.mode === 'stdio') {
-      const originalConsoleError = console.error;
-      console.log = (...args: unknown[]) => {
-        originalConsoleError('[STDIO-REDIRECT]', ...args);
-      };
-      console.warn = (...args: unknown[]) => {
-        originalConsoleError('[STDIO-REDIRECT-WARN]', ...args);
-      };
-      options.quiet = true;
-      options.logLevel = 'silent';
-    }
-
-    const logLevel = getLogLevel({
-      verbose: options.verbose,
-      quiet: options.quiet,
-      logLevel: options.logLevel,
-    });
-
-    const logger = createLogger({
-      level: logLevel,
-      format: options.logFormat,
-      profile: options.profile,
-      component: 'hatago-cli',
-      destination: options.mode === 'stdio' ? process.stderr : process.stdout,
-    });
-
-    setGlobalLogger(logger);
-
-    return createRequestLogger(logger, {
-      cmd: 'serve',
-      profile: options.profile,
-    });
-  } catch {
-    // Fallback to console logger
-    return createConsoleLogger(options);
+  // In STDIO mode, output logs to stderr to avoid polluting MCP protocol
+  if (options.mode === 'stdio') {
+    // Create new logger instance with stderr output
+    const stderrLogger = new MinimalLogger(level, 200, 'human', 'stderr');
+    // Replace global logger
+    Object.setPrototypeOf(logger, Object.getPrototypeOf(stderrLogger));
+    Object.assign(logger, stderrLogger);
   }
-}
 
-function createConsoleLogger(options: ServeOptions): Logger {
-  const noop = () => {};
-  const log = options.quiet ? noop : console.log.bind(console);
-  const error = console.error.bind(console);
-  
-  return {
-    trace: options.verbose ? log : noop,
-    debug: options.verbose ? log : noop,
-    info: log,
-    warn: log,
-    error,
-    fatal: error,
-    child: () => createConsoleLogger(options),
-  } as unknown as Logger;
+  // Log startup
+  logger.info('Starting Hatago MCP Hub Lite', {
+    version: '0.2.0-lite',
+    mode: options.mode || 'stdio',
+  });
 }
 
 async function loadAndValidateConfig(
   options: ServeOptions,
-  logger: Logger,
-): Promise<LiteConfig> {
-  if (options.http) {
-    options.mode = 'http';
+): Promise<HatagoConfig> {
+  if (!options.config) {
+    logger.info('No config file specified, using defaults');
+    return {
+      version: 1,
+      servers: [],
+      logLevel: 'info',
+      concurrency: { global: 10 },
+      toolNaming: {
+        format: '{server}_{tool}',
+        strategy: 'namespace',
+        separator: '_',
+      },
+      session: {
+        timeout: 300000,
+        keepAlive: true,
+        maxSessions: 100,
+      },
+      security: {
+        allowedOrigins: ['*'],
+        enableAuth: false,
+        rateLimit: {
+          enabled: false,
+          windowMs: 60000,
+          maxRequests: 100,
+        },
+      },
+      policy: {
+        maxRequestSize: 10485760,
+        timeout: 30000,
+        retryPolicy: {
+          enabled: false,
+          maxRetries: 3,
+          retryDelayMs: 1000,
+        },
+      },
+      registry: {
+        type: 'memory',
+        persistence: {
+          enabled: false,
+        },
+      },
+      generation: {
+        enabled: false,
+      },
+      rollover: {
+        enabled: false,
+        maxSize: 10485760,
+        maxAge: 86400000,
+        maxFiles: 5,
+      },
+      replication: {
+        enabled: false,
+      },
+      sessionSharing: {
+        enabled: false,
+      },
+      timeouts: {
+        default: 30000,
+        tool: 30000,
+        resource: 30000,
+        prompt: 30000,
+      },
+    } as unknown as HatagoConfig;
   }
 
-  logger.info({ mode: options.mode }, '🏨 Starting Hatago MCP Hub (Lite)');
-
+  logger.info(`Loading config from: ${options.config}`);
   const config = await loadConfig(options.config, {
-    quiet: options.quiet,
     profile: options.profile,
-  }) as LiteConfig;
+  });
 
-  // Simple validation without heavy validator
-  if (!config.servers || !Array.isArray(config.servers)) {
-    throw new Error('Invalid configuration: servers must be an array');
+  // Ensure servers array exists
+  if (!config.servers) {
+    config.servers = [];
   }
 
   return config;
 }
 
-async function mergeCLIServers(
-  config: HatagoConfig,
-  logger: Logger,
-): Promise<void> {
-  try {
-    const { CliRegistryStorage } = await import(
-      '../../storage/cli-registry-storage.js'
-    );
-    const cliStorage = new CliRegistryStorage('.hatago/cli-registry.json');
-    await cliStorage.init();
-    const cliServers = await cliStorage.getServers();
+async function mergeCLIServers(config: HatagoConfig): Promise<void> {
+  const cliServers = process.env.HATAGO_CLI_SERVERS;
+  if (!cliServers) return;
 
-    const configServerIds = new Set(config.servers.map((s) => s.id));
-    for (const cliServer of cliServers) {
-      if (!configServerIds.has(cliServer.id)) {
-        config.servers.push(cliServer);
-        logger.info(`Added CLI server: ${cliServer.id}`);
-      } else {
-        logger.warn(
-          `CLI server '${cliServer.id}' skipped (name conflict with config)`,
-        );
-      }
+  try {
+    const servers = JSON.parse(cliServers);
+    if (Array.isArray(servers)) {
+      config.servers = [...(config.servers || []), ...servers];
+      logger.info(`Merged ${servers.length} servers from CLI`);
     }
-  } catch {
-    // CLI registry is optional
-    logger.debug('CLI registry not available');
-  }
-}
-
-async function setupHotReload(
-  config: HatagoConfig,
-  options: ServeOptions,
-  hub: McpHub,
-  logger: Logger,
-): Promise<FileWatcher | null> {
-  if (!config.generation?.autoReload) {
-    return null;
-  }
-
-  try {
-    const { FileWatcher } = await import('../../core/file-watcher.js');
-    const fileWatcher = new FileWatcher({
-      watchPaths: config.generation.watchPaths || ['.hatago/config.jsonc'],
-      debounceMs: 2000,
-    });
-
-    fileWatcher.on('config:changed', async (event: { path: string }) => {
-      logger.info({ path: event.path }, '🔄 Config changed, reloading...');
-
-      try {
-        await hub.shutdown();
-
-        const newConfig = await loadConfig(
-          options.config || '.hatago/config.jsonc',
-          {
-            quiet: options.quiet,
-            profile: options.profile,
-          },
-        );
-
-        hub = new McpHub({ config: newConfig, logger });
-        await hub.initialize();
-
-        logger.info('✅ Hub reloaded successfully');
-      } catch (error) {
-        logger.error({ error }, '❌ Failed to reload hub');
-      }
-    });
-
-    await fileWatcher.start();
-    logger.info(
-      { paths: fileWatcher.getWatchPaths() },
-      '👁️ Watching config files for changes',
-    );
-
-    return fileWatcher;
-  } catch {
-    logger.debug('File watching not available');
-    return null;
+  } catch (error) {
+    logger.warn('Failed to parse CLI servers', { error });
   }
 }
 
 async function startStdioMode(
   hub: McpHub,
-  logger: Logger,
-  options: ServeOptions,
+  _options: ServeOptions,
 ): Promise<void> {
-  logger.info({ profile: options.profile }, `🏨 MCP Hub running in STDIO mode`);
+  logger.info('Starting STDIO transport');
 
   const transport = new StdioServerTransport();
+  const mcpServer = hub.getServer();
 
-  // Debug: Intercept MCP server tool calls in verbose mode
-  if (options.verbose) {
-    const server = hub.getServer();
-    const originalCallTool = server.callTool;
-    if (originalCallTool) {
-      server.callTool = async function (request: CallToolRequest) {
-        console.error(
-          `[DEBUG STDIO] Tool call request:`,
-          JSON.stringify(request),
-        );
-        const result = await originalCallTool.call(this, request);
-        console.error(
-          `[DEBUG STDIO] Tool call response:`,
-          JSON.stringify(result).substring(0, 200),
-        );
-        return result;
-      };
-    }
-  }
+  await mcpServer.connect(transport);
+  logger.info('STDIO transport connected');
 
-  await hub.getServer().server.connect(transport);
+  // Handle transport errors
+  transport.onerror = (error) => {
+    logger.error('STDIO transport error', { error });
+    process.exit(1);
+  };
+
+  transport.onclose = () => {
+    logger.info('STDIO transport closed');
+    process.exit(0);
+  };
 }
 
 async function startHttpMode(
   hub: McpHub,
-  config: LiteConfig,
-  logger: Logger,
-  portOption?: string,
+  _config: HatagoConfig,
+  options: ServeOptions,
 ): Promise<void> {
-  const { createHttpApp, setupReadinessCheck, getPort } = await import(
-    '../utils/http-app-factory.js'
+  const port = Number.parseInt(options.port || '3000', 10);
+  const bindAddress = options.bind || '127.0.0.1';
+
+  // Validate bind address for security
+  validateBindAddress(bindAddress, options.allowRemote || false);
+
+  logger.info(`Starting HTTP server on ${bindAddress}:${port}`);
+
+  // Create HTTP app with security middleware
+  const { Hono } = await import('hono');
+  const app = new Hono();
+
+  // Add minimal security
+  app.use(
+    '*',
+    createSecurityMiddleware({
+      bindAddress,
+      allowRemote: options.allowRemote,
+      sharedSecret: options.sharedSecret || process.env.HATAGO_TOKEN,
+    }),
   );
+
+  // Add health endpoint
+  app.get('/health', (c) => c.json({ status: 'ok', version: '0.2.0-lite' }));
+
+  // Setup MCP endpoints
   const { setupSessionEndpoints } = await import(
     '../utils/session-endpoints.js'
   );
-
-  // Create HTTP application
-  const app = createHttpApp(hub, config, logger);
-
-  // Setup readiness checks
-  await setupReadinessCheck(app, hub, config, logger);
-
-  // Setup MCP session endpoints
-  setupSessionEndpoints(app, hub, logger);
-
-  // Conditionally add enterprise endpoints
-  if (config.features?.metrics) {
-    try {
-      const { setupMetricsEndpoint } = await import(
-        '../../observability/metrics.js'
-      );
-      setupMetricsEndpoint(app);
-      logger.info('Metrics endpoint enabled at /metrics');
-    } catch {
-      logger.warn('Metrics requested but not available');
-    }
-  }
-
-  // Get port configuration
-  const port = getPort(config, portOption);
+  setupSessionEndpoints(app, hub);
 
   // Start server
-  serve(
-    {
-      fetch: app.fetch,
-      port,
-    },
-    (info) => {
-      logger.info(
-        { port: info.port, url: `http://localhost:${info.port}` },
-        `🏨 MCP Hub (Lite) is running on http://localhost:${info.port}`,
-      );
-    },
-  );
+  const _server = serve({
+    fetch: app.fetch,
+    port,
+    hostname: bindAddress,
+  });
+
+  logger.info(`HTTP server started on http://${bindAddress}:${port}`);
+
+  if (options.allowRemote) {
+    logger.warn(
+      'Remote connections are allowed. Ensure proper security measures are in place.',
+    );
+  }
 }
 
-function setupShutdownHandlers(
-  hub: McpHub,
-  fileWatcher: FileWatcher | null,
-  logger: Logger,
-  features?: FeatureFlags,
-): void {
+function setupShutdownHandlers(hub: McpHub): void {
   const shutdown = async (signal: string) => {
-    logger.info(`Received ${signal}, shutting down...`);
+    logger.info(`Received ${signal}, shutting down gracefully`);
 
-    // Stop health monitoring if enabled
-    if (features?.healthCheck) {
-      try {
-        const { healthMonitor } = await import(
-          '../../observability/health-monitor.js'
-        );
-        healthMonitor.stop();
-      } catch {
-        // Health monitor not available
-      }
+    try {
+      await hub.shutdown();
+      logger.info('Hub shutdown complete');
+      process.exit(0);
+    } catch (error) {
+      logger.error('Error during shutdown', { error });
+      process.exit(1);
     }
-
-    if (fileWatcher) {
-      await fileWatcher.stop();
-    }
-    await hub.shutdown();
-    process.exit(0);
   };
 
-  process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
+  // Handle uncaught errors
+  process.on('uncaughtException', (error) => {
+    logger.error('Uncaught exception', { error });
+    logger.dumpRingBuffer();
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled rejection', { reason });
+    logger.dumpRingBuffer();
+    process.exit(1);
+  });
 }
 
-async function handleStartupError(error: unknown): Promise<void> {
-  console.error('Failed to start server:', error);
-  
-  if (error instanceof Error) {
-    if (error.message.includes('EADDRINUSE')) {
-      console.error('Port is already in use. Try a different port with -p option.');
-    } else if (error.message.includes('EACCES')) {
-      console.error('Permission denied. Try running with appropriate permissions.');
-    }
+async function handleStartupError(error: unknown): Promise<never> {
+  const errorInfo = ErrorHelpers.extract(error);
+  logger.error('Failed to start server', { error: errorInfo });
+
+  if (errorInfo.code === 'EADDRINUSE') {
+    logger.error(
+      'Port is already in use. Try a different port or stop the existing process.',
+    );
+  } else if (errorInfo.code === 'EACCES') {
+    logger.error(
+      'Permission denied. Try running with appropriate permissions or use a port > 1024.',
+    );
   }
-  
+
   process.exit(1);
 }

@@ -6,18 +6,14 @@
 import { randomUUID } from 'node:crypto';
 import type { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import type { Logger } from 'pino';
 import type { McpHub } from '../../core/mcp-hub.js';
 import { StreamableHTTPTransport } from '../../hono-mcp/index.js';
+import { logger } from '../../observability/minimal-logger.js';
 
 /**
  * Setup MCP session management endpoints
  */
-export function setupSessionEndpoints(
-  app: Hono,
-  hub: McpHub,
-  logger: Logger,
-): void {
+export function setupSessionEndpoints(app: Hono, hub: McpHub): void {
   const sessionManager = hub.getSessionManager();
 
   // Store transports per session for proper connection management
@@ -42,7 +38,7 @@ export function setupSessionEndpoints(
         // Use client-provided session ID if available, otherwise generate new one
         sessionId = clientSessionId || randomUUID();
         transport = new StreamableHTTPTransport({
-          sessionIdGenerator: () => sessionId,
+          sessionIdGenerator: () => sessionId!,
           enableJsonResponse: true,
           onsessioninitialized: (sid) => {
             logger.info(`Session initialized: ${sid}`);
@@ -111,7 +107,7 @@ export function setupSessionEndpoints(
       return result;
     } catch (error) {
       // Error handling
-      logger.error({ error }, 'MCP request error');
+      logger.error('MCP request error', { error });
 
       // Return HTTPException as-is
       if (error instanceof HTTPException) {
@@ -162,10 +158,10 @@ export function setupSessionEndpoints(
         try {
           await transport.close();
         } catch (error) {
-          logger.warn(
-            { error, sessionId: clientSessionId },
-            'Error closing transport',
-          );
+          logger.warn('Error closing transport', {
+            error,
+            sessionId: clientSessionId,
+          });
         }
         transports.delete(clientSessionId);
       }

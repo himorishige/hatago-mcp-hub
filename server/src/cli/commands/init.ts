@@ -7,7 +7,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { Command } from 'commander';
 import { generateSampleConfig } from '../../config/loader.js';
-import { sanitizeLog } from '../../utils/security.js';
+// import { sanitizeLog } from '../../utils/security.js';
 
 export function createInitCommand(program: Command): void {
   program
@@ -95,7 +95,7 @@ secrets.policy.json
           '../../utils/logger.js'
         );
         const logger = createLogger({ component: 'hatago-cli-init' });
-        const _safeError = await sanitizeLog(String(error));
+        const _safeError = String(error); // await sanitizeLog(String(error));
         logError(logger, error, 'Failed to create config file');
         process.exit(1);
       }

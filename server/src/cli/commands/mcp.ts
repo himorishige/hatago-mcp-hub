@@ -401,7 +401,9 @@ Examples (Claude Code compatible):
 
           // Load config to see which are from config file
           const config = await loadConfig(undefined, { quiet: true });
-          const configServerIds = new Set(config.servers.map((s) => s.id));
+          const configServerIds = new Set(
+            (config.servers || []).map((s) => s.id),
+          );
 
           if (servers.length === 0) {
             console.log(chalk.yellow('No MCP servers registered'));

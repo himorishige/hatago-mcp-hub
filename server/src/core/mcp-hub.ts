@@ -28,15 +28,15 @@ import type {
   RemoteServerConfig,
   ServerConfig,
 } from '../config/types.js';
+import { logger } from '../observability/minimal-logger.js';
 import { getNpxCacheManager } from '../servers/npx-cache-manager.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
-import { WorkspaceManager } from '../servers/workspace-manager.js';
+import { SimpleWorkspaceManager } from '../servers/simple-workspace.js';
 import type { StdioTransport } from '../transport/stdio.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { createZodLikeSchema } from '../utils/json-to-zod.js';
-import { createLogger } from '../utils/logger.js';
 import { createMutex } from '../utils/mutex.js';
 import {
   createPromptRegistry,
@@ -77,7 +77,7 @@ export class McpHub {
   private connections = new Map<string, McpConnection>();
   private config: HatagoConfig;
   private initialized = false;
-  private workspaceManager?: WorkspaceManager;
+  private workspaceManager?: SimpleWorkspaceManager;
   private serverRegistry?: ServerRegistry;
   private registeredTools = new Set<string>(); // Track registered tools to avoid duplicates
   private toolRegistrationMutex = createMutex(); // Mutex for tool registration
@@ -89,10 +89,7 @@ export class McpHub {
     this.config = options.config;
 
     // Create logger for McpHub
-    this.logger = createLogger({
-      component: 'mcp-hub',
-      destination: process.stderr, // Always use stderr to avoid stdout contamination
-    });
+    this.logger = logger;
 
     // MCPサーバーを作成
     this.server = new McpServer({
@@ -378,11 +375,9 @@ export class McpHub {
 
     if (hasNpxServers || hasRemoteServers) {
       if (hasNpxServers) {
-        // Use .hatago/workspaces directory for workspace management
+        // Use temp directory for workspace management
         this.workDir = '.hatago';
-        this.workspaceManager = new WorkspaceManager({
-          baseDir: `${this.workDir}/workspaces`,
-        });
+        this.workspaceManager = new SimpleWorkspaceManager();
         await this.workspaceManager.initialize();
 
         // Warm up NPX packages to populate cache
@@ -1201,7 +1196,9 @@ export class McpHub {
       this.logger.info(`Hub now has ${tools.length} total tools`);
       // Debug: Log the first tool to see its structure
       if (tools.length > 0) {
-        this.logger.info({ tool: tools[0] }, 'First tool structure');
+        this.logger.debug(
+          `First tool structure: ${JSON.stringify(tools[0], null, 2)}`,
+        );
       }
 
       // Track which tools are currently active
@@ -1261,8 +1258,7 @@ export class McpHub {
         } catch (error) {
           // Registration failed but keep it marked as registered to prevent retries
           this.logger.warn(
-            { error: error instanceof Error ? error.message : error },
-            `Tool ${tool.name} registration failed but marked as registered to prevent retries`,
+            `Tool ${tool.name} registration failed but marked as registered to prevent retries: ${error instanceof Error ? error.message : error}`,
           );
         }
       }
@@ -1503,9 +1499,8 @@ export class McpHub {
               );
             }
           } catch (error) {
-            console.log(
-              '[DEBUG] Could not send completion notification:',
-              error instanceof Error ? error.message : error,
+            this.logger.debug(
+              `Could not send completion notification: ${error instanceof Error ? error.message : error}`,
             );
           }
         }

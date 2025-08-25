@@ -5,14 +5,14 @@
 import chalk from 'chalk';
 import { loadConfig } from '../../config/loader.js';
 import { ServerRegistry } from '../../servers/server-registry.js';
-import { WorkspaceManager } from '../../servers/workspace-manager.js';
+import { SimpleWorkspaceManager } from '../../servers/simple-workspace.js';
 import { CliRegistryStorage } from '../../storage/cli-registry-storage.js';
 
 /**
  * Registry context for CLI operations
  */
 export interface RegistryContext {
-  workspaceManager: WorkspaceManager;
+  workspaceManager: SimpleWorkspaceManager;
   registry: ServerRegistry;
   cliStorage: CliRegistryStorage;
 }
@@ -25,9 +25,7 @@ export async function initializeRegistry(config?: {
   healthCheckIntervalMs?: number;
 }): Promise<RegistryContext> {
   // Use .hatago/workspaces directory for workspace management
-  const workspaceManager = new WorkspaceManager({
-    baseDir: '.hatago/workspaces',
-  });
+  const workspaceManager = new SimpleWorkspaceManager();
   await workspaceManager.initialize();
 
   // Create CLI storage
@@ -45,7 +43,7 @@ export async function initializeRegistry(config?: {
   const configData = await loadConfig(undefined, { quiet: true });
 
   // Register config servers first (they have priority)
-  for (const server of configData.servers) {
+  for (const server of configData.servers || []) {
     try {
       await registry.registerServer(server);
     } catch (_error) {

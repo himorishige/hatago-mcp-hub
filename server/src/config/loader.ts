@@ -3,15 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parse as parseJsonc } from 'jsonc-parser';
+import { logger } from '../observability/minimal-logger.js';
 import { ErrorHelpers } from '../utils/errors.js';
-import { createLogger } from '../utils/logger.js';
 import { expandEnvironmentVariables } from './env-expander.js';
 import { type HatagoConfig, validateConfig } from './types.js';
-
-const logger = createLogger({
-  component: 'config-loader',
-  destination: process.stderr, // Always use stderr to avoid stdout contamination
-});
 
 // 設定ファイルのパス候補
 const CONFIG_FILENAMES = [
@@ -72,7 +67,7 @@ export async function loadConfigFile(
 
     // mcpServers形式の変換（あれば）
     const { mergeConfigWithMcpServers } = await import('./mcp-converter.js');
-    const merged = mergeConfigWithMcpServers(expanded);
+    const merged = mergeConfigWithMcpServers(expanded as any) as HatagoConfig;
 
     // Debug: Check if servers are present after merge
     if (!options?.quiet) {
@@ -446,15 +441,15 @@ export async function generateJsonSchema(): Promise<unknown> {
     return CONFIG_SCHEMA;
   } catch {
     // Fallback: generate schema on the fly
-    const { zodToJsonSchema } = await import('zod-to-json-schema');
-    const { HatagoConfigSchema } = await import('../config/types.js');
+    // const { zodToJsonSchema } = await import('zod-to-json-schema');
+    // const { HatagoConfigSchema } = await import('../config/types.js');
 
-    const jsonSchema = zodToJsonSchema(HatagoConfigSchema, {
-      name: 'HatagoConfig',
-      $refStrategy: 'none',
-      errorMessages: true,
-      markdownDescription: true,
-    });
+    // const jsonSchema = zodToJsonSchema(HatagoConfigSchema, {
+    //   name: 'HatagoConfig',
+    //   $refStrategy: 'none',
+    //   errorMessages: true,
+    //   markdownDescription: true,
+    // });
 
     return {
       $schema: 'http://json-schema.org/draft-07/schema#',
@@ -462,7 +457,7 @@ export async function generateJsonSchema(): Promise<unknown> {
       title: 'Hatago MCP Hub Configuration',
       description:
         'Configuration schema for Hatago MCP Hub - A lightweight MCP server management tool',
-      ...jsonSchema,
+      // ...jsonSchema,
     };
   }
 }
