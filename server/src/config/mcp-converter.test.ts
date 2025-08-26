@@ -119,7 +119,7 @@ describe('MCP Converter', () => {
         id: 'test-sse',
         type: 'remote',
         url: 'https://sse.example.com/events',
-        transport: 'http',
+        transport: 'sse',
         start: 'lazy',
         env: undefined,
         auth: {
