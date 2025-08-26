@@ -378,10 +378,10 @@ export class NpxMcpServer extends EventEmitter {
     // Handle transport errors (CustomStdioTransport has event emitter)
     if (this.transport && 'on' in this.transport) {
       (this.transport as any).on('error', (error: any) => {
-        logger.error(`❌ Transport error for ${this.config.id}:`, {
-          package: this.config.package,
-          error: error.message,
-        });
+        logger.error(
+          `❌ Transport error for ${this.config.id}: ${error.message}`,
+          `Package: ${this.config.package}`,
+        );
       });
     }
 
@@ -406,10 +406,12 @@ export class NpxMcpServer extends EventEmitter {
       await this.client.connect(this.transport as any);
       logger.debug(`🏢 Server ${this.config.id} initialized successfully`);
     } catch (error) {
-      logger.error(`❌ Failed to connect to ${this.config.id}`, {
-        package: this.config.package,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.error(
+        `❌ Failed to connect to ${this.config.id}`,
+        `Package: ${this.config.package}, Error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
 
       // Provide helpful error messages based on the error type
       if (error instanceof Error) {
@@ -459,7 +461,10 @@ export class NpxMcpServer extends EventEmitter {
         tools: this.tools,
       });
     } catch (error) {
-      logger.debug(`Failed to discover tools for ${this.config.id}:`, error);
+      logger.debug(
+        `Failed to discover tools for ${this.config.id}:`,
+        error instanceof Error ? error.message : String(error),
+      );
       throw error;
     }
   }
@@ -488,8 +493,8 @@ export class NpxMcpServer extends EventEmitter {
     } catch (error) {
       // Resources are optional, log as debug
       logger.debug(
-        `Server ${this.config.id} doesn't implement resources:`,
-        error,
+        `Server ${this.config.id} doesn't implement $1:`,
+        error instanceof Error ? error.message : String(error),
       );
       // Don't throw - resources are optional
       this.resources = [];
@@ -520,8 +525,8 @@ export class NpxMcpServer extends EventEmitter {
     } catch (error) {
       // Prompts are optional, log as debug
       logger.debug(
-        `Server ${this.config.id} doesn't implement prompts:`,
-        error,
+        `Server ${this.config.id} doesn't implement $1:`,
+        error instanceof Error ? error.message : String(error),
       );
       // Don't throw - prompts are optional
       this.prompts = [];
@@ -588,7 +593,10 @@ export class NpxMcpServer extends EventEmitter {
             // Reset restart count on successful start
             this.restartCount = 0;
           } catch (error) {
-            logger.error(`Failed to restart server ${this.config.id}:`, error);
+            logger.error(
+              `Failed to restart server ${this.config.id}:`,
+              error instanceof Error ? error.message : String(error),
+            );
           }
         }
         resolve();
@@ -600,7 +608,40 @@ export class NpxMcpServer extends EventEmitter {
       try {
         await this.transport.close();
       } catch (error) {
-        logger.debug(`Failed to close transport for ${this.config.id}:`, error);
+        logger.debug(
+          `Failed to close transport for ${this.config.id}:`,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+      this.transport = null;
+    }
+
+    this.state = ServerState.STOPPED;
+    this.emit('stopped', { serverId: this.config.id });
+  }
+
+  /**
+   * Restart the server
+   */
+  /**
+   * Disconnect from server
+   */
+  async disconnect(): Promise<void> {
+    this.shutdownRequested = true;
+
+    if (this.client) {
+      await this.client.close();
+      this.client = null;
+    }
+
+    if (this.transport) {
+      try {
+        await this.transport.close();
+      } catch (error) {
+        logger.debug(
+          `Failed to close transport for ${this.config.id}:`,
+          error instanceof Error ? error.message : String(error),
+        );
       }
       this.transport = null;
     }
@@ -613,7 +654,8 @@ export class NpxMcpServer extends EventEmitter {
    * Restart the server
    */
   async restart(): Promise<void> {
-    await this.stop();
+    // Stop the server first
+    await this.disconnect();
     this.restartCount = 0; // Reset restart count for manual restart
     await this.start();
   }

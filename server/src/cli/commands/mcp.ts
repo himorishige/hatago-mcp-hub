@@ -433,7 +433,8 @@ Examples (Claude Code compatible):
             // Get tool count if running
             if (server.state === 'running') {
               try {
-                const tools = await server.listTools();
+                const tools =
+                  (await (server.instance as any)?.getTools?.()) ?? [];
                 serverInfo.tools = tools ? tools.length : 0;
               } catch {
                 serverInfo.tools = 'unavailable';
@@ -443,9 +444,12 @@ Examples (Claude Code compatible):
             // Probe for more details if requested
             if (options?.probe && server.state === 'running') {
               try {
-                const tools = await server.listTools();
+                const tools =
+                  (await (server.instance as any)?.getTools?.()) ?? [];
                 if (tools && tools.length > 0) {
-                  serverInfo.toolNames = tools.map((t) => t.name).slice(0, 5);
+                  serverInfo.toolNames = tools
+                    .map((t: any) => t.name)
+                    .slice(0, 5);
                   if (tools.length > 5) {
                     serverInfo.toolNames.push(`... +${tools.length - 5} more`);
                   }
@@ -535,7 +539,8 @@ Server: ${serverInfo.name}`),
                 let tools = 0;
                 if (server.state === 'running') {
                   try {
-                    const toolList = await server.listTools();
+                    const toolList =
+                      (await (server.instance as any)?.getTools?.()) ?? [];
                     tools = toolList ? toolList.length : 0;
                   } catch {
                     // Ignore errors
@@ -561,7 +566,8 @@ Server: ${serverInfo.name}`),
           for (const server of servers) {
             if (server.state === 'running') {
               try {
-                const tools = await server.listTools();
+                const tools =
+                  (await (server.instance as any)?.getTools?.()) ?? [];
                 toolCounts.set(server.id, tools ? tools.length : 0);
               } catch {
                 toolCounts.set(server.id, 0);

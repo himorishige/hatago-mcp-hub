@@ -67,7 +67,7 @@ export async function loadConfigFile(
 
     // mcpServers形式の変換（必須）
     const { mergeConfigWithMcpServers } = await import('./mcp-converter.js');
-    const merged = mergeConfigWithMcpServers(expanded);
+    const merged = mergeConfigWithMcpServers(expanded as any);
 
     // Debug: Check if servers are present after merge
     if (!options?.quiet && merged.mcpServers) {

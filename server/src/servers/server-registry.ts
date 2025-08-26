@@ -474,7 +474,7 @@ export class ServerRegistry extends EventEmitter {
 
     // Stop the server if it's running
     if (registered.instance && registered.state !== ServerState.STOPPED) {
-      await registered.instance.stop();
+      await (registered.instance as any).stop?.();
     }
 
     // Clean up workspace directory if it exists
@@ -550,7 +550,7 @@ export class ServerRegistry extends EventEmitter {
       );
     }
 
-    await registered.instance.stop();
+    await (registered.instance as any).stop?.();
 
     // Update storage
     if (this.storage) {
@@ -1028,7 +1028,7 @@ export class ServerRegistry extends EventEmitter {
 
     for (const registered of this.servers.values()) {
       if (registered.instance && registered.state !== ServerState.STOPPED) {
-        promises.push(registered.instance.stop());
+        promises.push((registered.instance as any).stop?.());
       }
     }
 

@@ -118,9 +118,9 @@ function applyHatagoOptions<T extends ServerConfig>(
     // タイムアウト設定を適用
     if (options.timeouts !== undefined) {
       remoteConfig.timeouts = {
-        timeout: options.timeouts.timeout,
-        maxTotalTimeout: options.timeouts.maxTotalTimeout,
-        resetTimeoutOnProgress: options.timeouts.resetTimeoutOnProgress,
+        timeout: options.timeouts.timeout ?? 60000,
+        maxTotalTimeout: options.timeouts.maxTotalTimeout ?? 300000,
+        resetTimeoutOnProgress: options.timeouts.resetTimeoutOnProgress ?? true,
       };
     }
   }

@@ -30,6 +30,7 @@
     "format": "biome format src --write",
     "lint": "biome lint src --write",
     "check": "biome check src --write",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "coverage": "vitest run --coverage"
   },

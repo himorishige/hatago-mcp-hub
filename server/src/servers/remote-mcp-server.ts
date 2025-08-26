@@ -3,7 +3,14 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { RequestOptions } from '@modelcontextprotocol/sdk/client/index.js';
+
+// RequestOptions is not directly exported, define our own
+type RequestOptions = {
+  timeout?: number;
+  maxTotalTimeout?: number;
+  resetTimeoutOnProgress?: boolean;
+};
+
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -383,9 +390,9 @@ export class RemoteMcpServer extends EventEmitter {
         baseUrl,
         headers,
         cached?.supportsSessionId ?? true, // Default to sessionId
-        cached?.transport ||
+        (cached?.transport ||
           this.config.transport ||
-          this.detectTransport(baseUrl),
+          this.detectTransport(baseUrl)) as 'sse' | 'http',
       );
 
       // Cache successful connection
@@ -410,9 +417,9 @@ export class RemoteMcpServer extends EventEmitter {
             baseUrl,
             headers,
             false, // No sessionId
-            cached?.transport ||
+            (cached?.transport ||
               this.config.transport ||
-              this.detectTransport(baseUrl),
+              this.detectTransport(baseUrl)) as 'sse' | 'http',
           );
 
           // Cache successful connection
@@ -426,7 +433,9 @@ export class RemoteMcpServer extends EventEmitter {
           return connection;
         } catch (secondError) {
           // Log second error but throw first for better diagnostics
-          logger.debug(`Second attempt also failed: ${secondError.message}`);
+          logger.debug(
+            `Second attempt also failed: ${(secondError as Error).message}`,
+          );
           throw firstError;
         }
       }
@@ -452,7 +461,9 @@ export class RemoteMcpServer extends EventEmitter {
 
           return connection;
         } catch (secondError) {
-          logger.debug(`SSE attempt also failed: ${secondError.message}`);
+          logger.debug(
+            `SSE attempt also failed: ${(secondError as Error).message}`,
+          );
           throw firstError;
         }
       }
@@ -956,13 +967,6 @@ export class RemoteMcpServer extends EventEmitter {
         // 全体の最大時間（ユーザー設定 > デフォルト値）
         maxTotalTimeout:
           this.config.timeouts?.maxTotalTimeout ?? DEFAULT_MAX_TIMEOUT,
-        // progress通知のハンドリング
-        onprogress: (progress) => {
-          // デバッグログ
-          logger.debug(`Tool progress for ${name}:`, progress);
-          // 必要に応じてイベントを発火
-          this.emit('toolProgress', { tool: name, progress });
-        },
       };
 
       // progressTokenがある場合はmetaに設定（SDKの正しい使い方）
