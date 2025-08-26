@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "everything": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    "test-server": {
+      "command": "node",
+      "args": ["/Users/morishige/ghq/github.com/himorishige/hatago-hub/server/examples/test-mcp-server.js"],
+      "env": {}
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": {}
+    },
+    "hatago-hub": {
+      "command": "node",
+      "args": [
+        "/Users/morishige/ghq/github.com/himorishige/hatago-hub/server/dist/cli/index.js",
+        "serve",
+        "--config",
+        "/Users/morishige/ghq/github.com/himorishige/hatago-hub/server/hatago-test.config.json"
+      ],
+      "env": {}
+    }
+  }
+}

@@ -3,6 +3,7 @@
  */
 
 import { EventEmitter } from 'node:events';
+import type { RequestOptions } from '@modelcontextprotocol/sdk/client/index.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -23,6 +24,13 @@ import {
 } from '../utils/errors.js';
 
 // import { sanitizeLog } from '../utils/security.js';
+
+/**
+ * Default timeout values for remote servers
+ */
+const DEFAULT_REMOTE_TIMEOUT = 30000; // 30 seconds
+const DEFAULT_MAX_TIMEOUT = 300000; // 5 minutes
+const DEFAULT_RESET_ON_PROGRESS = true;
 
 /**
  * Known server quirks for specific MCP servers
@@ -976,19 +984,38 @@ export class RemoteMcpServer extends EventEmitter {
     }
 
     try {
+      // RequestOptionsを正しく設定（ユーザー設定を優先）
+      const requestOptions: RequestOptions = {
+        // タイムアウト設定（ユーザー設定 > デフォルト値）
+        timeout: this.config.timeouts?.timeout ?? DEFAULT_REMOTE_TIMEOUT,
+        // progress通知でタイムアウトリセット（ユーザー設定 > デフォルト値）
+        resetTimeoutOnProgress:
+          this.config.timeouts?.resetTimeoutOnProgress ??
+          DEFAULT_RESET_ON_PROGRESS,
+        // 全体の最大時間（ユーザー設定 > デフォルト値）
+        maxTotalTimeout:
+          this.config.timeouts?.maxTotalTimeout ?? DEFAULT_MAX_TIMEOUT,
+        // progress通知のハンドリング
+        onprogress: (progress) => {
+          // デバッグログ
+          logger.debug(`Tool progress for ${name}:`, progress);
+          // 必要に応じてイベントを発火
+          this.emit('toolProgress', { tool: name, progress });
+        },
+      };
+
+      // progressTokenがある場合はmetaに設定（SDKの正しい使い方）
+      if (progressToken) {
+        (requestOptions as any).meta = { progressToken };
+      }
+
       const result = await this.connection.client.callTool(
         {
           name,
           arguments: args,
         },
         undefined, // Use default resultSchema
-        progressToken
-          ? ({
-              _meta: {
-                progressToken,
-              },
-            } as any)
-          : undefined,
+        requestOptions,
       );
 
       // レスポンスが正しい形式かチェック

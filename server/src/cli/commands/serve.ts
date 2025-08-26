@@ -9,6 +9,7 @@ import { loadConfig } from '../../config/loader.js';
 import type { HatagoConfig } from '../../config/types.js';
 import { McpHub } from '../../core/mcp-hub.js';
 import {
+  LogLevel,
   logger,
   MinimalLogger,
   parseLogLevel,
@@ -72,6 +73,21 @@ export function createServeCommand(program: Command): void {
 }
 
 function setupLogging(options: ServeOptions): void {
+  // IMMEDIATELY set STDIO mode flag and disable console output
+  if (options.mode === 'stdio') {
+    process.env.MCP_STDIO_MODE = 'true';
+
+    // Disable ALL console output immediately
+    if (!process.env.DEBUG && !process.env.MCP_DEBUG) {
+      const noop = () => {};
+      console.log = noop;
+      console.error = noop;
+      console.warn = noop;
+      console.info = noop;
+      console.debug = noop;
+    }
+  }
+
   // Set log level
   const level = parseLogLevel(
     options.logLevel ||
@@ -79,13 +95,47 @@ function setupLogging(options: ServeOptions): void {
   );
   logger.setLevel(level);
 
-  // In STDIO mode, output logs to stderr to avoid polluting MCP protocol
+  // In STDIO mode, disable most logging to avoid polluting MCP protocol
   if (options.mode === 'stdio') {
-    // Create new logger instance with stderr output
-    const stderrLogger = new MinimalLogger(level, 200, 'human', 'stderr');
+    // In STDIO mode, silence all logs unless DEBUG is enabled
+    const stderrLevel =
+      process.env.DEBUG === 'true' || process.env.MCP_DEBUG === 'true'
+        ? parseLogLevel('debug')
+        : LogLevel.NONE;
+    const stderrLogger = new MinimalLogger(stderrLevel, 200, 'human', 'none');
     // Replace global logger
     Object.setPrototypeOf(logger, Object.getPrototypeOf(stderrLogger));
     Object.assign(logger, stderrLogger);
+
+    // Disable all console output to prevent protocol pollution
+    const originalConsoleError = console.error;
+    const _originalConsoleLog = console.log;
+    const _originalConsoleWarn = console.warn;
+
+    console.error = (...args: any[]) => {
+      // Only output in debug mode
+      if (process.env.DEBUG === 'true' || process.env.MCP_DEBUG === 'true') {
+        originalConsoleError(...args);
+      }
+      // Otherwise, completely silence console.error
+    };
+
+    console.log = (...args: any[]) => {
+      // Never output to stdout in STDIO mode - it corrupts the protocol
+      if (process.env.DEBUG === 'true' || process.env.MCP_DEBUG === 'true') {
+        // In debug mode, redirect to stderr
+        originalConsoleError('[LOG]', ...args);
+      }
+      // Otherwise, completely silence
+    };
+
+    console.warn = (...args: any[]) => {
+      // Only output in debug mode (to stderr)
+      if (process.env.DEBUG === 'true' || process.env.MCP_DEBUG === 'true') {
+        originalConsoleError('[WARN]', ...args);
+      }
+      // Otherwise, completely silence
+    };
   }
 
   // Log startup

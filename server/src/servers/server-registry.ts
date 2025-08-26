@@ -641,7 +641,8 @@ export class ServerRegistry extends EventEmitter {
       });
     } catch (error) {
       const safeError = String(error); // await sanitizeLog(String(error));
-      logger.error(
+      // Tools discovery should rarely fail, but log as warn instead of error
+      logger.warn(
         `Failed to discover tools for server ${serverId}:`,
         safeError,
       );
@@ -698,8 +699,9 @@ export class ServerRegistry extends EventEmitter {
       this.resourceDiscoveryFailures.set(serverId, currentFailures + 1);
 
       const safeError = String(error); // await sanitizeLog(String(error));
-      logger.error(
-        `Failed to discover resources for server ${serverId} (failure ${currentFailures + 1}/${this.maxConsecutiveFailures}):`,
+      // Resources discovery failure is normal for servers that don't implement it
+      logger.debug(
+        `Server ${serverId} doesn't implement resources/list (attempt ${currentFailures + 1}/${this.maxConsecutiveFailures})`,
         safeError,
       );
       // Don't throw - resources are optional

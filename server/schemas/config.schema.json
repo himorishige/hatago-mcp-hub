@@ -172,6 +172,29 @@
                   },
                   "restartDelayMs": {
                     "type": "number"
+                  },
+                  "timeouts": {
+                    "type": "object",
+                    "properties": {
+                      "timeout": {
+                        "type": "number",
+                        "minimum": 1000,
+                        "maximum": 300000,
+                        "description": "Initial timeout in milliseconds for tool calls"
+                      },
+                      "maxTotalTimeout": {
+                        "type": "number",
+                        "minimum": 1000,
+                        "maximum": 600000,
+                        "description": "Maximum total timeout in milliseconds (default: 5 minutes)"
+                      },
+                      "resetTimeoutOnProgress": {
+                        "type": "boolean",
+                        "description": "Reset timeout when progress notifications are received"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Timeout configuration for tool calls"
                   }
                 },
                 "additionalProperties": false
@@ -527,320 +550,7 @@
           "additionalProperties": false,
           "default": {}
         },
-        "servers": {
-          "type": "array",
-          "items": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string",
-                    "const": "local"
-                  },
-                  "start": {
-                    "type": "string",
-                    "enum": [
-                      "eager",
-                      "lazy"
-                    ],
-                    "default": "lazy"
-                  },
-                  "tools": {
-                    "type": "object",
-                    "properties": {
-                      "include": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        },
-                        "default": [
-                          "*"
-                        ]
-                      },
-                      "exclude": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "prefix": {
-                        "type": "string"
-                      },
-                      "aliases": {
-                        "type": "object",
-                        "additionalProperties": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "env": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  },
-                  "command": {
-                    "type": "string"
-                  },
-                  "args": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "cwd": {
-                    "type": "string"
-                  },
-                  "transport": {
-                    "type": "string",
-                    "const": "stdio",
-                    "default": "stdio"
-                  }
-                },
-                "required": [
-                  "id",
-                  "type",
-                  "command"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string",
-                    "const": "remote"
-                  },
-                  "start": {
-                    "type": "string",
-                    "enum": [
-                      "eager",
-                      "lazy"
-                    ],
-                    "default": "lazy"
-                  },
-                  "tools": {
-                    "type": "object",
-                    "properties": {
-                      "include": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        },
-                        "default": [
-                          "*"
-                        ]
-                      },
-                      "exclude": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "prefix": {
-                        "type": "string"
-                      },
-                      "aliases": {
-                        "type": "object",
-                        "additionalProperties": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "env": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  },
-                  "url": {
-                    "type": "string"
-                  },
-                  "transport": {
-                    "type": "string",
-                    "enum": [
-                      "http",
-                      "websocket"
-                    ],
-                    "default": "http"
-                  },
-                  "auth": {
-                    "type": "object",
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "bearer",
-                          "basic"
-                        ]
-                      },
-                      "token": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "healthCheck": {
-                    "type": "object",
-                    "properties": {
-                      "enabled": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "Enable health checks for this server",
-                        "markdownDescription": "Enable health checks for this server"
-                      },
-                      "intervalMs": {
-                        "type": "number",
-                        "minimum": 0,
-                        "default": 0,
-                        "description": "Health check interval in milliseconds. 0 = disabled. Recommended: 1000-2000ms for local, 5000-10000ms for remote",
-                        "markdownDescription": "Health check interval in milliseconds. 0 = disabled. Recommended: 1000-2000ms for local, 5000-10000ms for remote"
-                      },
-                      "timeoutMs": {
-                        "type": "number",
-                        "minimum": 1000,
-                        "default": 5000,
-                        "description": "Health check timeout in milliseconds. Should be less than intervalMs. Can be overridden by HATAGO_HEALTH_TIMEOUT_MS env var",
-                        "markdownDescription": "Health check timeout in milliseconds. Should be less than intervalMs. Can be overridden by HATAGO_HEALTH_TIMEOUT_MS env var"
-                      },
-                      "method": {
-                        "type": "string",
-                        "enum": [
-                          "ping",
-                          "tools/list"
-                        ],
-                        "default": "ping",
-                        "description": "Method to use for health checks. \"ping\" is lighter, \"tools/list\" verifies tool availability",
-                        "markdownDescription": "Method to use for health checks. \"ping\" is lighter, \"tools/list\" verifies tool availability"
-                      }
-                    },
-                    "additionalProperties": false,
-                    "description": "Health check configuration for remote servers",
-                    "markdownDescription": "Health check configuration for remote servers"
-                  }
-                },
-                "required": [
-                  "id",
-                  "type",
-                  "url"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string",
-                    "const": "npx"
-                  },
-                  "start": {
-                    "type": "string",
-                    "enum": [
-                      "eager",
-                      "lazy"
-                    ],
-                    "default": "lazy"
-                  },
-                  "tools": {
-                    "type": "object",
-                    "properties": {
-                      "include": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        },
-                        "default": [
-                          "*"
-                        ]
-                      },
-                      "exclude": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "prefix": {
-                        "type": "string"
-                      },
-                      "aliases": {
-                        "type": "object",
-                        "additionalProperties": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "env": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  },
-                  "package": {
-                    "type": "string"
-                  },
-                  "version": {
-                    "type": "string"
-                  },
-                  "args": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "transport": {
-                    "type": "string",
-                    "const": "stdio",
-                    "default": "stdio"
-                  },
-                  "autoRestart": {
-                    "type": "boolean"
-                  },
-                  "restartDelayMs": {
-                    "type": "number"
-                  },
-                  "maxRestarts": {
-                    "type": "number"
-                  },
-                  "timeout": {
-                    "type": "number"
-                  },
-                  "shutdownTimeoutMs": {
-                    "type": "number"
-                  },
-                  "initTimeoutMs": {
-                    "type": "number"
-                  },
-                  "workDir": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "type",
-                  "package"
-                ],
-                "additionalProperties": false
-              }
-            ]
-          },
-          "default": []
-        }
+
       },
       "additionalProperties": false
     }

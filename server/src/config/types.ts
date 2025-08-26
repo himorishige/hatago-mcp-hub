@@ -233,6 +233,33 @@ export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
     })
     .optional()
     .describe('Health check configuration for remote servers'),
+  timeouts: z
+    .object({
+      timeout: z
+        .number()
+        .min(1000)
+        .max(300000)
+        .default(30000)
+        .describe(
+          'Initial timeout in milliseconds for tool calls (default: 30000)',
+        ),
+      maxTotalTimeout: z
+        .number()
+        .min(1000)
+        .max(600000)
+        .default(300000)
+        .describe(
+          'Maximum total timeout in milliseconds (default: 300000 = 5 minutes)',
+        ),
+      resetTimeoutOnProgress: z
+        .boolean()
+        .default(true)
+        .describe(
+          'Reset timeout when progress notifications are received (default: true)',
+        ),
+    })
+    .optional()
+    .describe('Timeout configuration for tool calls'),
   quirks: z
     .object({
       useDirectClient: z
@@ -326,6 +353,13 @@ export const HatagoOptionsSchema = z.object({
   autoRestart: z.boolean().optional(),
   maxRestarts: z.number().optional(),
   restartDelayMs: z.number().optional(),
+  timeouts: z
+    .object({
+      timeout: z.number().min(1000).max(300000).optional(),
+      maxTotalTimeout: z.number().min(1000).max(600000).optional(),
+      resetTimeoutOnProgress: z.boolean().optional(),
+    })
+    .optional(),
 });
 export type HatagoOptions = z.infer<typeof HatagoOptionsSchema>;
 
@@ -374,6 +408,9 @@ export const HatagoConfigSchema = z.object({
 
   // Claude Code互換形式
   mcpServers: McpServersSchema.optional(),
+
+  // 内部使用のみ（mcpServersから自動変換される）
+  servers: z.array(ServerConfigSchema).optional(),
   toolNaming: ToolNamingConfigSchema.default({}),
   session: SessionConfigSchema.default({}),
   sessionSharing: SessionSharingConfigSchema.default({}),
@@ -385,7 +422,7 @@ export const HatagoConfigSchema = z.object({
   generation: GenerationConfigSchema.default({}),
   rollover: RolloverConfigSchema.default({}),
   replication: ReplicationConfigSchema.default({}),
-  servers: z.array(ServerConfigSchema).optional(),
+
   npxCache: z
     .object({
       enabled: z.boolean().default(true),

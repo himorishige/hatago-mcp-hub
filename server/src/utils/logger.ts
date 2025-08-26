@@ -4,6 +4,21 @@
 
 import { randomUUID } from 'node:crypto';
 
+// Check STDIO mode early to prevent stdout pollution
+// Also check if we're running as 'serve' command with no --http flag (default stdio mode)
+const isServeCommand = process.argv.includes('serve');
+const hasHttpFlag = process.argv.includes('--http');
+const hasModeFlag = process.argv.includes('--mode');
+const modeIsHttp =
+  hasModeFlag && process.argv[process.argv.indexOf('--mode') + 1] === 'http';
+
+const IS_STDIO_MODE =
+  process.env.MCP_STDIO_MODE === 'true' ||
+  process.argv.includes('--stdio') ||
+  (isServeCommand && !hasHttpFlag && !modeIsHttp);
+
+const DEFAULT_DESTINATION = IS_STDIO_MODE ? process.stderr : process.stdout;
+
 // Minimal Logger interface
 export interface Logger {
   error: (obj: any, msg?: string) => void;
@@ -27,13 +42,18 @@ export interface LoggerOptions {
  */
 export function createLogger(options: LoggerOptions = {}): Logger {
   const level = options.level || process.env.LOG_LEVEL || 'info';
-  const destination = options.destination || process.stdout;
+  // Use pre-calculated STDIO mode check
+  const destination = options.destination || DEFAULT_DESTINATION;
   const component = options.component || 'hatago-hub';
 
   const levels = ['error', 'warn', 'info', 'debug'];
   const currentLevelIndex = levels.indexOf(level);
 
   const shouldLog = (logLevel: string) => {
+    // In STDIO mode without debug, suppress most logs
+    if (IS_STDIO_MODE && !process.env.DEBUG && !process.env.MCP_DEBUG) {
+      return false; // Suppress all logs in STDIO mode unless debugging
+    }
     return levels.indexOf(logLevel) <= currentLevelIndex;
   };
 
@@ -49,8 +69,9 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       msg: msg || obj.msg || obj.message || '',
     };
 
-    // Simple JSON output
-    destination.write(`${JSON.stringify(logObj)}\n`);
+    // Simple JSON output (to stderr in STDIO mode)
+    destination.write(`${JSON.stringify(logObj)}
+`);
   };
 
   const logger: Logger = {
@@ -122,6 +143,11 @@ export function getGlobalLogger(): Logger {
   if (!globalLogger) {
     globalLogger = createLogger({
       component: 'hatago-hub-global',
+      destination: DEFAULT_DESTINATION,
+      level:
+        IS_STDIO_MODE && !process.env.DEBUG && !process.env.MCP_DEBUG
+          ? 'error'
+          : undefined,
     });
   }
   return globalLogger;
@@ -141,6 +167,7 @@ export function setGlobalLogger(logger: Logger): void {
 
 /**
  * Default global logger instance
+ * Note: Use getGlobalLogger() instead of this directly to ensure proper STDIO mode handling
  */
 export const logger = getGlobalLogger();
 

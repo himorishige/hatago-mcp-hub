@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "logLevel": "debug",
+  "servers": [
+    {
+      "id": "test-server",
+      "type": "local",
+      "command": "node",
+      "args": ["/Users/morishige/ghq/github.com/himorishige/hatago-hub/server/examples/test-mcp-server.js"],
+      "transport": "stdio"
+    }
+  ],
+  "mcpServers": {
+    "everything": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "env": {},
+      "hatagoOptions": {
+        "start": "lazy"
+      }
+    }
+  }
+}

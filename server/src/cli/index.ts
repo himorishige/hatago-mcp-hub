@@ -5,6 +5,17 @@
  * Minimal CLI with only essential commands
  */
 
+// IMPORTANT: Check for STDIO mode BEFORE importing anything that uses logger
+// This ensures logger is configured correctly from the start
+if (
+  process.argv.includes('serve') &&
+  ((process.argv.includes('--mode') &&
+    process.argv[process.argv.indexOf('--mode') + 1] === 'stdio') ||
+    (!process.argv.includes('--http') && !process.argv.includes('--mode')))
+) {
+  process.env.MCP_STDIO_MODE = 'true';
+}
+
 import { Command } from 'commander';
 
 // Import only essential command handlers

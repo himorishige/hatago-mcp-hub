@@ -65,22 +65,22 @@ export async function loadConfigFile(
     // 環境変数を展開
     const expanded = expandEnvironmentVariables(parsed);
 
-    // mcpServers形式の変換（あれば）
+    // mcpServers形式の変換（必須）
     const { mergeConfigWithMcpServers } = await import('./mcp-converter.js');
-    const merged = mergeConfigWithMcpServers(expanded) as HatagoConfig;
+    const merged = mergeConfigWithMcpServers(expanded);
 
     // Debug: Check if servers are present after merge
-    if (!options?.quiet) {
-      logger.debug(`Merged config has ${merged.servers?.length || 0} servers`);
-      if (merged.mcpServers) {
-        logger.debug(
-          `Original mcpServers: ${Object.keys(merged.mcpServers).length} entries`,
-        );
-      }
+    if (!options?.quiet && merged.mcpServers) {
+      logger.debug(
+        `Original mcpServers: ${Object.keys(merged.mcpServers).length} entries`,
+      );
     }
 
-    // バリデーション
-    const config = validateConfig(merged);
+    // バリデーション - serversフィールドを追加
+    const config = validateConfig({
+      ...merged,
+      servers: merged.servers || [],
+    } as HatagoConfig);
 
     if (!options?.quiet) {
       logger.info(`Config loaded successfully`);
@@ -126,7 +126,7 @@ export function createDefaultConfig(): HatagoConfig {
     security: {
       redactKeys: ['password', 'apiKey', 'token', 'secret'],
     },
-    servers: [],
+    mcpServers: {},
   });
 }
 
@@ -315,37 +315,6 @@ export function generateSampleConfig(): string {
     }
   },
   
-  // ---------------------------------------------
-  // Option 2: Hatago Detailed Format (Advanced)
-  // ---------------------------------------------
-  // Use this format for full control over server configuration
-  // NPX Server Tips:
-  // - initTimeoutMs: Increase for slow networks (default: 30000ms)
-  // - Some packages need "stdio" arg: @modelcontextprotocol/server-github
-  // - Some don't: @modelcontextprotocol/server-filesystem
-  // - See src/servers/npx-compatibility.json for full list
-  // Uncomment the following section to use detailed configuration
-  /*
-  "servers": [
-    {
-      "id": "advanced_server",
-      "type": "local",
-      "command": "python",
-      "args": ["mcp_server.py"],
-      "transport": "stdio",
-      "start": "eager",
-      "tools": {
-        "include": ["*"],
-        "exclude": ["admin_*"],
-        "aliases": {
-          "very_long_tool_name": "short"
-        }
-      },
-      "env": {
-        "PYTHON_ENV": "production"
-      }
-    }
-  ],
   */
   
   // ============================================

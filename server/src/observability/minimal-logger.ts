@@ -16,6 +16,7 @@ import type { Context } from 'hono';
  * Log levels
  */
 export enum LogLevel {
+  NONE = -1, // No logging at all
   ERROR = 0,
   WARN = 1,
   INFO = 2,
@@ -101,13 +102,13 @@ export class MinimalLogger {
   private level: LogLevel;
   private ringBuffer: RingBuffer<LogEntry>;
   private format: 'json' | 'human';
-  private outputStream: 'stdout' | 'stderr';
+  private outputStream: 'stdout' | 'stderr' | 'none';
 
   constructor(
     level: LogLevel = LogLevel.INFO,
     bufferSize = 200,
     format: 'json' | 'human' = 'human',
-    outputStream: 'stdout' | 'stderr' = 'stdout',
+    outputStream: 'stdout' | 'stderr' | 'none' = 'stdout',
   ) {
     this.level = level;
     this.ringBuffer = new RingBuffer(bufferSize);
@@ -190,9 +191,14 @@ export class MinimalLogger {
 
     const formatted = this.formatEntry(entry);
 
-    // In STDIO mode, output to stderr to avoid polluting MCP protocol stream
-    if (this.outputStream === 'stderr') {
-      process.stderr.write(`${formatted}\n`);
+    // Handle different output modes
+    if (this.outputStream === 'none') {
+      // Silent mode - no output at all
+      return;
+    } else if (this.outputStream === 'stderr') {
+      // In STDIO mode, output to stderr to avoid polluting MCP protocol stream
+      process.stderr.write(`${formatted}
+`);
     } else {
       // In HTTP mode, use console methods for proper log levels
       if (level === LogLevel.ERROR) {
@@ -229,9 +235,15 @@ export class MinimalLogger {
    * Dump ring buffer (for crash analysis)
    */
   dumpRingBuffer(): void {
+    // Skip dump in silent mode
+    if (this.outputStream === 'none') {
+      return;
+    }
+
     const errorLine = (msg: string) => {
       if (this.outputStream === 'stderr') {
-        process.stderr.write(`${msg}\n`);
+        process.stderr.write(`${msg}
+`);
       } else {
         console.error(msg);
       }
@@ -272,6 +284,9 @@ export function parseLogLevel(level?: string): LogLevel {
   if (!level) return LogLevel.INFO;
 
   switch (level.toLowerCase()) {
+    case 'none':
+    case 'silent':
+      return LogLevel.NONE;
     case 'error':
       return LogLevel.ERROR;
     case 'warn':
