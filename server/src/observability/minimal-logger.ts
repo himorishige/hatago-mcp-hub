@@ -1,5 +1,5 @@
 /**
- * Minimal observability for Hatago Lite
+ * Minimal observability for Hatago
  *
  * Lightweight logging and tracing without heavy dependencies:
  * - Request ID generation and propagation

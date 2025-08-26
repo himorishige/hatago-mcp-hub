@@ -1,5 +1,5 @@
 /**
- * Hatago MCP Hub Lite
+ * Hatago MCP Hub
  *
  * Lightweight MCP Hub with essential features only.
  * Focused on performance, simplicity, and reliability.

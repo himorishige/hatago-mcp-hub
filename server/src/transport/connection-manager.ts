@@ -1,5 +1,5 @@
 /**
- * Connection management for Hatago Lite
+ * Connection management for Hatago
  *
  * Provides connection resilience and monitoring:
  * - Heartbeat (ping/pong)

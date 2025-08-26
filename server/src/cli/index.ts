@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Hatago MCP Hub CLI - Lite Version
+ * Hatago MCP Hub CLI
  * Minimal CLI with only essential commands
  */
 
@@ -19,7 +19,6 @@ if (
 import { Command } from 'commander';
 
 // Import only essential command handlers
-import { createInitCommand } from './commands/init.js';
 import { createListCommand } from './commands/list.js';
 import { createMcpCommands } from './commands/mcp.js';
 import { createServeCommand } from './commands/serve.js';
@@ -28,12 +27,11 @@ const program = new Command();
 
 program
   .name('hatago')
-  .description('🏨 Hatago MCP Hub Lite - Minimal MCP server management')
+  .description('🏮 Hatago MCP Hub - Lightweight MCP server management')
   .version('0.2.0');
 
 // Register essential commands only
 createServeCommand(program);
-createInitCommand(program);
 createListCommand(program);
 
 // MCP management commands
@@ -45,7 +43,7 @@ program
   .description('Information about enterprise features')
   .action(() => {
     console.log(`
-🏨 Hatago Enterprise Features
+🏮 Hatago Enterprise Features
 
 To enable enterprise features, install the full version:
   npm install @himorishige/hatago

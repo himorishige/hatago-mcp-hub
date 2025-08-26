@@ -1,6 +1,7 @@
 # 関数型プログラミング移行 完了
 
 ## 実施日
+
 2025-08-26
 
 ## 完了した作業
@@ -8,12 +9,14 @@
 ### Phase 1: 基本コンポーネントの関数化
 
 #### 1. ToolRegistry の関数化
+
 - **新規ファイル**: `core/tool-registry-functional.ts`
 - 純粋関数による完全な実装
 - イミュータブルなデータ構造（ReadonlyMap使用）
 - 既存クラスは薄いアダプタとして機能
 
-#### 2. ConfigManager の簡素化  
+#### 2. ConfigManager の簡素化
+
 - **新規ファイル**: `core/config-store.ts`
 - EventEmitterを使わないシンプルなストア実装
 - Subscribe/Unsubscribeパターン
@@ -22,12 +25,14 @@
 ### Phase 2: セッション管理とユーティリティ
 
 #### 3. SessionManager の関数化
+
 - **新規ファイル**: `core/session-operations.ts`
 - セッション操作の純粋関数化
 - タイマー管理とビジネスロジックの分離
 - 既存クラスは関数型コアのラッパーとして動作
 
 #### 4. 並行処理ユーティリティの関数化
+
 - **新規ファイル**: `utils/concurrency.ts`
 - SimpleSemaphore → createSemaphore()
 - SimpleTaskQueue → createTaskQueue()
@@ -53,11 +58,13 @@
 ## 成果と利点
 
 ### 定量的成果
+
 - ✅ ビルド成功（エラーなし）
 - ✅ 全236テストが通過
 - ✅ 既存APIとの100%互換性維持
 
 ### 定性的利点
+
 1. **テスタビリティ向上**
    - 純粋関数は単体テストが簡単
    - 副作用の分離により予測可能
@@ -73,6 +80,7 @@
 ## 変更しなかった部分（意図的）
 
 以下は複雑なライフサイクル管理のため現状維持：
+
 - McpHub（中央ハブ）
 - ServerRegistry（サーバー管理）
 - Storage系（ファイルI/O、ロック機構）
@@ -84,7 +92,7 @@
 ```
 新規作成ファイル（5個）:
 - core/tool-registry-functional.ts
-- core/config-store.ts  
+- core/config-store.ts
 - core/session-operations.ts
 - utils/concurrency.ts
 

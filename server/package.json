@@ -1,7 +1,7 @@
 {
   "name": "@himorishige/hatago",
-  "version": "0.3.0-lite",
-  "description": "Hatago MCP Hub Lite - Ultra-lightweight MCP server management",
+  "version": "0.3.0",
+  "description": "Hatago MCP Hub - Lightweight MCP server management",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,8 @@
   "sideEffects": false,
   "scripts": {
     "dev": "tsx src/cli/index.ts serve",
-    "build": "tsdown",
+    "build": "tsdown && pnpm build:schema",
+    "build:schema": "tsx scripts/generate-schema.ts",
     "start": "node dist/cli/index.js serve",
     "cli": "tsx src/cli/index.ts",
     "format": "biome format src --write",
@@ -45,10 +46,12 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@types/node": "^20.11.17",
+    "chalk": "^5.6.0",
     "tsdown": "^0.14.1",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod-to-json-schema": "^3.24.6"
   },
   "engines": {
     "node": ">=20"

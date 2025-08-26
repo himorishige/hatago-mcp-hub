@@ -1,5 +1,5 @@
 /**
- * Minimal security features for Hatago Lite
+ * Minimal security features for Hatago
  *
  * Provides basic protection without heavy dependencies:
  * - Local-only binding by default

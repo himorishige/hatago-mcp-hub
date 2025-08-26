@@ -22,9 +22,6 @@ importers:
       jsonc-parser:
         specifier: ^3.3.1
         version: 3.3.1
-      ws:
-        specifier: ^8.18.0
-        version: 8.18.3
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -35,9 +32,9 @@ importers:
       "@types/node":
         specifier: ^20.11.17
         version: 20.19.11
-      "@types/ws":
-        specifier: ^8.5.13
-        version: 8.18.1
+      chalk:
+        specifier: ^5.6.0
+        version: 5.6.0
       tsdown:
         specifier: ^0.14.1
         version: 0.14.1(typescript@5.9.2)
@@ -50,10 +47,9 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@20.19.11)(jiti@2.5.1)(tsx@4.20.4)
-    optionalDependencies:
-      chalk:
-        specifier: ^5.6.0
-        version: 5.6.0
+      zod-to-json-schema:
+        specifier: ^3.24.6
+        version: 3.24.6(zod@3.25.76)
 
 packages:
   "@babel/generator@7.28.3":
@@ -796,12 +792,6 @@ packages:
     resolution:
       {
         integrity: sha512-uug3FEEGv0r+jrecvUUpbY8lLisvIjg6AAic6a2bSP5OEOLeJsDSnvhCDov7ipFFMXS3orMpzlmi0ZcuGkBbow==,
-      }
-
-  "@types/ws@8.18.1":
-    resolution:
-      {
-        integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==,
       }
 
   "@vitest/expect@3.2.4":
@@ -1988,21 +1978,6 @@ packages:
         integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==,
       }
 
-  ws@8.18.3:
-    resolution:
-      {
-        integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==,
-      }
-    engines: { node: ">=10.0.0" }
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: ">=5.0.2"
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   zod-to-json-schema@3.24.6:
     resolution:
       {
@@ -2341,10 +2316,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  "@types/ws@8.18.1":
-    dependencies:
-      "@types/node": 20.19.11
-
   "@vitest/expect@3.2.4":
     dependencies:
       "@types/chai": 5.2.2
@@ -2446,8 +2417,7 @@ snapshots:
       loupe: 3.2.0
       pathval: 2.0.1
 
-  chalk@5.6.0:
-    optional: true
+  chalk@5.6.0: {}
 
   check-error@2.1.1: {}
 
@@ -3095,8 +3065,6 @@ snapshots:
       stackback: 0.0.2
 
   wrappy@1.0.2: {}
-
-  ws@8.18.3: {}
 
   zod-to-json-schema@3.24.6(zod@3.25.76):
     dependencies:

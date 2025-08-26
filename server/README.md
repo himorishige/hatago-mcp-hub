@@ -153,8 +153,6 @@ hatago mcp add --env API_KEY=secret --env DB_URL=postgres://localhost db -- node
 hatago mcp remove filesystem
 ```
 
-
-
 ### リモートサーバー管理
 
 ```bash

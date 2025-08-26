@@ -1,16 +1,17 @@
 # 関数型プログラミング移行 Phase 1 完了
 
 ## 実施日
+
 2025-08-26
 
 ## 完了した作業
 
 ### 1. ToolRegistry の関数化
-- **ファイル作成**: `tool-registry-functional.ts` 
+
+- **ファイル作成**: `tool-registry-functional.ts`
   - 純粋関数でレジストリ操作を実装
   - イミュータブルなデータ構造を使用
   - 副作用を完全に排除
-  
 - **既存クラスの改修**: `tool-registry.ts`
   - 薄いアダプタとして機能
   - 内部で関数型コアを使用
@@ -26,6 +27,7 @@
   - `detectCollisions()` - 衝突検出
 
 ### 2. ConfigManager の簡素化
+
 - **ファイル作成**: `config-store.ts`
   - EventEmitterを使わないシンプルな設定ストア
   - Subscribe/Unsubscribeパターンの実装

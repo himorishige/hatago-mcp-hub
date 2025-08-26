@@ -45,7 +45,7 @@ export function createListCommand(program: Command): void {
         const debugInfo = hub.getRegistry().getDebugInfo();
 
         // 構造化ログとして出力
-        logger.info('🏨 MCP Hub Status', {
+        logger.info('🏮 MCP Hub Status', {
           totalServers: debugInfo.totalServers,
           totalTools: debugInfo.totalTools,
           namingStrategy: debugInfo.namingStrategy,

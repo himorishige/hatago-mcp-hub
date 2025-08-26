@@ -42,8 +42,8 @@ export function createHttpApp(
   app.get('/', (c) =>
     c.html(`<!doctype html>
 <meta charset="utf-8"/>
-<title>🏨 Hatago MCP Hub</title>
-<h1>🏨 Hatago MCP Hub v0.0.2</h1>
+<title>🏮 Hatago MCP Hub</title>
+<h1>🏮 Hatago MCP Hub v0.0.2</h1>
 <p>MCP endpoint: <code>POST /mcp</code></p>
 <p>Tools list: <code>GET /tools</code></p>
 <p>Health check: <code>GET /health</code></p>

@@ -24,7 +24,7 @@ import type { ServeOptions } from '../types/serve-options.js';
 export function createServeCommand(program: Command): void {
   program
     .command('serve')
-    .description('Start the MCP Hub server (Lite version)')
+    .description('Start the MCP Hub server')
     .option('-c, --config <path>', 'Path to config file')
     .option('--profile <name>', 'Profile to use', 'default')
     .option('-p, --port <port>', 'HTTP port', '3000')
@@ -139,7 +139,7 @@ function setupLogging(options: ServeOptions): void {
   }
 
   // Log startup
-  logger.info('Starting Hatago MCP Hub Lite', {
+  logger.info('Starting Hatago MCP Hub', {
     version: '0.2.0-lite',
     mode: options.mode || 'stdio',
   });

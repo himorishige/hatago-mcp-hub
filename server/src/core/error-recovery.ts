@@ -1,5 +1,5 @@
 /**
- * Error recovery mechanisms for Hatago Lite
+ * Error recovery mechanisms for Hatago
  *
  * Provides resilience without heavy dependencies:
  * - Exponential backoff with jitter
