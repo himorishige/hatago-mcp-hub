@@ -2,6 +2,7 @@
  * MCP command handlers for Claude Code compatible syntax
  */
 
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { z } from 'zod';
@@ -14,6 +15,28 @@ import type { ServerRegistry } from '../../servers/server-registry.js';
 import type { UnifiedFileStorage } from '../../storage/unified-file-storage.js';
 import { ErrorHelpers } from '../../utils/errors.js';
 import { handleCliError, withRegistry } from '../helpers/registry-helper.js';
+
+/**
+ * Server info for listing display
+ */
+interface ServerInfo {
+  name: string;
+  type: string;
+  status: string;
+  source: string;
+  url?: string;
+  command?: string;
+  tools?: number | string; // Can be 'unavailable'
+  toolNames?: string[];
+  resources?: number;
+  prompts?: number;
+  args?: string[];
+  cwd?: string;
+  package?: string;
+  transport?: string;
+  envKeys?: string[];
+  probeError?: string;
+}
 
 /**
  * Add MCP server command schema
@@ -399,7 +422,7 @@ Examples (Claude Code compatible):
             const isCliServer = cliServers.some((s) => s.id === name);
 
             // Prepare server info
-            const serverInfo: any = {
+            const serverInfo: ServerInfo = {
               name: server.id,
               type: server.config.type,
               status: server.state,
@@ -434,7 +457,11 @@ Examples (Claude Code compatible):
             if (server.state === 'running') {
               try {
                 const tools =
-                  (await (server.instance as any)?.getTools?.()) ?? [];
+                  (await (
+                    server.instance as {
+                      getTools?: () => Promise<Tool[]> | Tool[];
+                    }
+                  )?.getTools?.()) ?? [];
                 serverInfo.tools = tools ? tools.length : 0;
               } catch {
                 serverInfo.tools = 'unavailable';
@@ -445,11 +472,13 @@ Examples (Claude Code compatible):
             if (options?.probe && server.state === 'running') {
               try {
                 const tools =
-                  (await (server.instance as any)?.getTools?.()) ?? [];
+                  (await (
+                    server.instance as {
+                      getTools?: () => Promise<Tool[]> | Tool[];
+                    }
+                  )?.getTools?.()) ?? [];
                 if (tools && tools.length > 0) {
-                  serverInfo.toolNames = tools
-                    .map((t: any) => t.name)
-                    .slice(0, 5);
+                  serverInfo.toolNames = tools.map((t) => t.name).slice(0, 5);
                   if (tools.length > 5) {
                     serverInfo.toolNames.push(`... +${tools.length - 5} more`);
                   }
@@ -540,7 +569,11 @@ Server: ${serverInfo.name}`),
                 if (server.state === 'running') {
                   try {
                     const toolList =
-                      (await (server.instance as any)?.getTools?.()) ?? [];
+                      (await (
+                        server.instance as {
+                          getTools?: () => Promise<Tool[]> | Tool[];
+                        }
+                      )?.getTools?.()) ?? [];
                     tools = toolList ? toolList.length : 0;
                   } catch {
                     // Ignore errors
@@ -567,7 +600,11 @@ Server: ${serverInfo.name}`),
             if (server.state === 'running') {
               try {
                 const tools =
-                  (await (server.instance as any)?.getTools?.()) ?? [];
+                  (await (
+                    server.instance as {
+                      getTools?: () => Promise<Tool[]> | Tool[];
+                    }
+                  )?.getTools?.()) ?? [];
                 toolCounts.set(server.id, tools ? tools.length : 0);
               } catch {
                 toolCounts.set(server.id, 0);

@@ -13,24 +13,20 @@ import {
 } from './tool-registry-functional.js';
 import type { ToolMetadata } from './types.js';
 
-// ツール名の衝突情報
+// Tool name collision information
 export interface ToolCollision {
   toolName: string;
   serverIds: string[];
 }
 
-// ツールレジストリのオプション
+// Tool registry options
 export interface ToolRegistryOptions {
   namingConfig: ToolNamingConfig;
 }
 
 /**
- * ツールレジストリ - ツール名の管理と衝突回避
- * Claude Code互換のため、内部的にはアンダースコア(_)を使用
- */
-/**
- * ツールレジストリ - ツール名の管理と衝突回避
- * Claude Code互換のため、内部的にはアンダースコア(_)を使用
+ * Tool Registry - Tool name management and collision avoidance
+ * Uses underscore (_) internally for Claude Code compatibility
  *
  * This is now a thin adapter over the functional core
  */

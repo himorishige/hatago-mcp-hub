@@ -76,7 +76,7 @@ export function hashSecret(secret: string): string {
 /**
  * Mask sensitive values in logs
  */
-export function maskSensitiveData(data: any): any {
+export function maskSensitiveData(data: unknown): unknown {
   if (typeof data === 'string') {
     // Mask common patterns
     return data
@@ -86,8 +86,13 @@ export function maskSensitiveData(data: any): any {
   }
 
   if (typeof data === 'object' && data !== null) {
-    const masked: any = Array.isArray(data) ? [] : {};
-    for (const key in data) {
+    if (Array.isArray(data)) {
+      return data.map((item) => maskSensitiveData(item));
+    }
+
+    const masked: Record<string, unknown> = {};
+    const obj = data as Record<string, unknown>;
+    for (const key in obj) {
       if (
         key.toLowerCase().includes('secret') ||
         key.toLowerCase().includes('token') ||
@@ -96,7 +101,7 @@ export function maskSensitiveData(data: any): any {
       ) {
         masked[key] = '***';
       } else {
-        masked[key] = maskSensitiveData(data[key]);
+        masked[key] = maskSensitiveData(obj[key]);
       }
     }
     return masked;

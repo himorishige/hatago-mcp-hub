@@ -21,11 +21,11 @@ const DEFAULT_DESTINATION = IS_STDIO_MODE ? process.stderr : process.stdout;
 
 // Minimal Logger interface
 export interface Logger {
-  error: (obj: any, msg?: string) => void;
-  warn: (obj: any, msg?: string) => void;
-  info: (obj: any, msg?: string) => void;
-  debug: (obj: any, msg?: string) => void;
-  child: (bindings: Record<string, any>) => Logger;
+  error: (obj: unknown, msg?: string) => void;
+  warn: (obj: unknown, msg?: string) => void;
+  info: (obj: unknown, msg?: string) => void;
+  debug: (obj: unknown, msg?: string) => void;
+  child: (bindings: Record<string, unknown>) => Logger;
 }
 
 export interface LoggerOptions {
@@ -61,13 +61,27 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     if (!shouldLog(level)) return;
 
     const timestamp = new Date().toISOString();
-    const logObj = {
-      timestamp,
-      level,
-      component,
-      ...obj,
-      msg: msg || obj.msg || obj.message || '',
-    };
+
+    // Handle different input types
+    let logObj: any;
+    if (typeof obj === 'string') {
+      // If first argument is string, treat it as the message
+      logObj = {
+        timestamp,
+        level,
+        component,
+        msg: obj,
+      };
+    } else {
+      // Otherwise, spread the object
+      logObj = {
+        timestamp,
+        level,
+        component,
+        ...obj,
+        msg: msg || obj.msg || obj.message || '',
+      };
+    }
 
     // Simple JSON output (to stderr in STDIO mode)
     destination.write(`${JSON.stringify(logObj)}

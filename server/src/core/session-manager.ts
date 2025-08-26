@@ -13,7 +13,7 @@ import {
 import type { Session } from './types.js';
 
 /**
- * セッション管理
+ * Session management
  */
 
 export class SessionManager {
@@ -23,12 +23,12 @@ export class SessionManager {
 
   constructor(ttlSeconds = 3600) {
     this.state = createSessionState(ttlSeconds);
-    // 定期的にセッションをクリーンアップ
+    // Periodically cleanup sessions
     this.startCleanup();
   }
 
   /**
-   * セッションを作成
+   * Create a session
    */
   async createSession(id: string): Promise<Session> {
     return this.sessionMutex.runExclusive(id, () => {

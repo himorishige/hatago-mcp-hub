@@ -28,7 +28,10 @@ import type { RegistryStorage } from '../storage/registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { createMutex } from '../utils/mutex.js';
-import { createZodLikeSchema } from '../utils/zod-like.js';
+import {
+  createPromptRegistry,
+  type PromptRegistry,
+} from './prompt-registry.js';
 import {
   createResourceRegistry,
   type ResourceRegistry,
@@ -36,7 +39,7 @@ import {
 import { SessionManager } from './session-manager.js';
 import { ToolRegistry } from './tool-registry.js';
 
-// MCPサーバー接続情報
+// MCP server connection information
 export interface McpConnection {
   serverId: string;
   client?: Client; // For local servers
@@ -48,18 +51,19 @@ export interface McpConnection {
   type: 'local' | 'remote' | 'npx';
 }
 
-// MCPハブのオプション
+// MCP Hub options
 export interface McpHubOptions {
   config: HatagoConfig;
 }
 
 /**
- * MCPハブ - 複数のMCPサーバーを統合管理
+ * MCP Hub - Manages multiple MCP servers in a unified way
  */
 export class McpHub {
   private server: any; // McpServer - using any due to SDK type issues
   private registry: ToolRegistry;
   private resourceRegistry: ResourceRegistry;
+  private promptRegistry: PromptRegistry;
   private connections = new Map<string, McpConnection>();
   private config: HatagoConfig;
   private initialized = false;
@@ -76,31 +80,34 @@ export class McpHub {
     // Create logger for McpHub
     this.logger = logger;
 
-    // MCPサーバーを作成
+    // Create MCP server
     this.server = new McpServer({
       name: 'hatago-hub',
       version: '0.0.2',
     });
 
-    // ツールレジストリを初期化
+    // Initialize tool registry
     this.registry = new ToolRegistry({
       namingConfig: this.config.toolNaming,
     });
 
-    // リソースレジストリを初期化
+    // Initialize resource registry
     this.resourceRegistry = createResourceRegistry({
-      namingConfig: this.config.toolNaming, // リソースも同じ命名戦略を使用
+      namingConfig: this.config.toolNaming, // Use same naming strategy for resources
     });
 
-    // セッションマネージャーを初期化
+    // Initialize prompt registry
+    this.promptRegistry = createPromptRegistry();
+
+    // Initialize session manager
     const sessionTtl = this.config.session?.ttlSeconds ?? 3600;
     this.sessionManager = new SessionManager(sessionTtl);
 
-    // プロンプトレジストリを初期化
-    // ツール、リソース、プロンプト機能を登録（transportに接続する前に行う必要がある）
+    // Initialize prompt registry
+    // Register tools, resources, and prompt features (must be done before connecting to transport)
     this.server.registerCapabilities({
       tools: {
-        listChanged: false, // ツール一覧の変更通知はサポートしない
+        listChanged: false, // Tool list change notification is not supported
       },
       resources: {
         listChanged: true,
@@ -110,12 +117,12 @@ export class McpHub {
       },
     });
 
-    // MCPサーバーにツールハンドラーを設定
+    // Set tool handlers on MCP server
     this.setupToolHandlers();
   }
 
   /**
-   * ツール関連のハンドラーを設定
+   * Set up tool-related handlers
    */
   private setupToolHandlers(): void {
     // Note: shutdown handler is handled internally by MCP SDK
@@ -126,18 +133,18 @@ export class McpHub {
       const tools = this.registry.getAllTools();
       const result = {
         tools: tools.map((tool) => {
-          // inputSchemaのサニタイズ（MCP Inspector互換性のため）
+          // Sanitize inputSchema (for MCP Inspector compatibility)
           let sanitizedSchema = tool.inputSchema;
 
           if (sanitizedSchema && typeof sanitizedSchema === 'object') {
-            // type: "object"が欠落している場合は追加
+            // Add type: "object" if missing
             if (!sanitizedSchema.type) {
               sanitizedSchema = {
                 ...sanitizedSchema,
                 type: 'object',
               };
             }
-            // propertiesが未定義でかつ他のスキーマ定義もない場合のみ空オブジェクトを設定
+            // Set empty object only if properties is undefined and no other schema definitions exist
             if (
               !sanitizedSchema.properties &&
               !sanitizedSchema.$ref &&
@@ -148,7 +155,7 @@ export class McpHub {
               sanitizedSchema.properties = {};
             }
           } else if (!sanitizedSchema) {
-            // inputSchemaが無い場合のデフォルト
+            // Default when inputSchema is missing
             sanitizedSchema = {
               type: 'object',
               properties: {},
@@ -163,48 +170,34 @@ export class McpHub {
           };
         }),
       };
-      console.log(
-        '[DEBUG tools/list] Returning tools:',
-        JSON.stringify(result.tools.slice(0, 1), null, 2),
-      );
+
       return result;
     });
 
-    // tools/callハンドラーも明示的に設定
+    // Explicitly set tools/call handler
     this.server.setRequestHandler(
       CallToolRequestSchema,
       async (request: any, extra: any) => {
-        // リクエスト構造をデバッグログで確認
-        console.log(
-          '[DEBUG tools/call] Request structure:',
-          JSON.stringify(request, null, 2),
-        );
-        console.log('[DEBUG tools/call] Extra:', extra);
+        // Request structure debug log removed
 
-        // request.paramsまたはrequest直接を使用
+        // Use request.params or request directly
         const params = (request as any).params || request;
         const progressToken = params._meta?.progressToken;
 
-        // プログレス通知を送信するインターバルを設定
+        // Set interval for sending progress notifications
         let progressInterval: NodeJS.Timeout | undefined;
-        let progressCount = 0; // 進捗カウンター
+        let progressCount = 0; // Progress counter
         if (
           progressToken &&
           this.transport &&
           'sendProgressNotification' in this.transport
         ) {
-          console.log(
-            `[DEBUG] Setting up progress notifications for token: ${progressToken}`,
-          );
-          console.log(`[DEBUG] Extra requestId: ${extra?.requestId}`);
-
-          // requestIdを取得（extraから、またはrequestのidから）
+          // Get requestId from extra or request id
           const requestId = extra?.requestId || (request as any).id;
-          console.log(`[DEBUG] Using requestId: ${requestId}`);
 
           progressInterval = setInterval(() => {
             try {
-              // トランスポート経由でprogress notificationを送信
+              // Send progress notification via transport
               if (
                 this.transport &&
                 'sendProgressNotification' in this.transport
@@ -212,49 +205,31 @@ export class McpHub {
                 this.transport.sendProgressNotification(
                   requestId,
                   progressToken,
-                  progressCount++, // 増加する数値を送信
-                  // totalは省略（不明な場合）
-                );
-                console.log(
-                  `[DEBUG] Sent progress notification for token: ${progressToken}, requestId: ${requestId}, progress: ${progressCount - 1}`,
+                  progressCount++, // Send incrementing number
+                  // total is omitted (when unknown)
                 );
               }
-            } catch (e) {
-              console.error('[DEBUG] Failed to send progress notification:', e);
-            }
-          }, 1000); // 1秒ごとに送信
+            } catch (_e) {}
+          }, 1000); // Send every second
         } else {
-          console.log(
-            `[DEBUG] Progress notifications not set up. Token: ${progressToken}, Transport: ${!!this.transport}, Has method: ${this.transport && 'sendProgressNotification' in this.transport}`,
-          );
         }
 
         try {
           const result = await this.callTool(params, extra?.requestId);
-          console.log(
-            '[DEBUG tools/call] Result:',
-            JSON.stringify(result, null, 2),
-          );
-
-          // プログレス通知を停止
+          // Stop progress notifications
           if (progressInterval) {
             clearInterval(progressInterval);
-            console.log(
-              `[DEBUG] Stopped progress notifications for token: ${progressToken}`,
-            );
           }
 
-          // 必ずレスポンスを返す
+          // Always return a response
           return result || { content: [], isError: false };
         } catch (error) {
-          console.error('[DEBUG tools/call] Error:', error);
-
-          // プログレス通知を停止
+          // Stop progress notifications
           if (progressInterval) {
             clearInterval(progressInterval);
           }
 
-          // エラー時も必ずレスポンスを返す
+          // Always return a response even on error
           return {
             content: [
               {
@@ -270,29 +245,29 @@ export class McpHub {
   }
 
   /**
-   * リソース関連のハンドラーを設定
+   * Set up resource-related handlers
    */
   private setupResourceHandlers(): void {
-    // resources/listハンドラーを設定
+    // Set resources/list handler
     this.server.setRequestHandler(
       ListResourcesRequestSchema,
       async (_request: ListResourcesRequest): Promise<ListResourcesResult> => {
         const allResources = this.resourceRegistry.getAllResources();
 
-        // TODO: ページネーション対応（cursorパラメータ）
+        // TODO: Add pagination support (cursor parameter)
         return {
           resources: allResources,
         };
       },
     );
 
-    // resources/readハンドラーを設定
+    // Set resources/read handler
     this.server.setRequestHandler(
       ReadResourceRequestSchema,
       async (request: ReadResourceRequest): Promise<ReadResourceResult> => {
         const { uri } = request.params;
 
-        // リソースを解決
+        // Resolve resource
         const resolved = this.resourceRegistry.resolveResource(uri);
         if (!resolved) {
           throw ErrorHelpers.resourceNotFound(uri);
@@ -300,23 +275,23 @@ export class McpHub {
 
         const { serverId, originalUri } = resolved;
 
-        // サーバー接続を取得
+        // Get server connection
         const connection = this.connections.get(serverId);
         if (!connection?.connected) {
           throw ErrorHelpers.serverNotConnected(serverId);
         }
 
-        // 接続タイプに応じてリソースを読み取り
+        // Read resource based on connection type
         if (connection.type === 'local' && connection.npxServer) {
-          // ローカルサーバーの場合（実際にはNpxMcpServerを使用）
+          // For local server (actually uses NpxMcpServer)
           const result = await connection.npxServer.readResource(originalUri);
           return result as ReadResourceResult;
         } else if (connection.type === 'npx' && connection.npxServer) {
-          // NPXサーバーの場合
+          // For NPX server
           const result = await connection.npxServer.readResource(originalUri);
           return result as ReadResourceResult;
         } else if (connection.type === 'remote' && connection.remoteServer) {
-          // リモートサーバーの場合
+          // For remote server
           const result =
             await connection.remoteServer.readResource(originalUri);
           return result as ReadResourceResult;
@@ -326,13 +301,82 @@ export class McpHub {
       },
     );
 
-    // resources/templates/listハンドラーを設定（将来対応）
+    // Set resources/templates/list handler (future support)
     // this.server.setRequestHandler('resources/templates/list', ...);
   }
 
   /**
    * プロンプト関連のハンドラーを設定
    */
+  private setupPromptHandlers(): void {
+    // MCP SDK doesn't have a built-in schema for prompts/list
+    // We need to handle it manually using the underlying server methods
+    try {
+      // Register prompts/list handler
+      (this.server as any)._requestHandlers.set('prompts/list', async () => {
+        const prompts = this.promptRegistry.getAllPrompts();
+
+        this.logger.debug(
+          `Prompts list requested - returning ${prompts.length} prompts`,
+        );
+
+        return {
+          prompts: prompts.map((p) => ({
+            name: p.name,
+            description: p.description,
+            arguments: p.arguments,
+          })),
+        };
+      });
+
+      // Register prompts/get handler
+      (this.server as any)._requestHandlers.set(
+        'prompts/get',
+        async (request: any) => {
+          const name = request.params?.name;
+          if (!name) {
+            throw new Error('Prompt name is required');
+          }
+
+          const prompt = this.promptRegistry.getPrompt(name);
+          if (!prompt) {
+            throw new Error(`Prompt ${name} not found`);
+          }
+
+          // Resolve to original server
+          const resolved = this.promptRegistry.resolvePrompt(name);
+          if (!resolved) {
+            throw new Error(`Cannot resolve prompt ${name}`);
+          }
+
+          // Get server connection
+          const connection = this.connections.get(resolved.serverId);
+          if (!connection?.connected) {
+            throw new Error(`Server ${resolved.serverId} not connected`);
+          }
+
+          // Call the prompt on the appropriate server
+          if (connection.npxServer) {
+            // For NPX servers, use getPrompt method
+            const response = await connection.npxServer.getPrompt(
+              resolved.originalName,
+              request.params?.arguments || {},
+            );
+            return response;
+          } else {
+            throw new Error(`Server type not supported for prompts yet`);
+          }
+        },
+      );
+
+      this.logger.debug('Prompt handlers registered');
+    } catch (error) {
+      this.logger.warn(
+        'Failed to setup prompt handlers - prompts may not be available',
+        { error },
+      );
+    }
+  }
 
   /**
    * MCPハブを初期化
@@ -348,6 +392,7 @@ export class McpHub {
     this.setupResourceHandlers();
 
     // プロンプトハンドラーを設定（initializeの時点で行う）
+    this.setupPromptHandlers();
 
     // NPXサーバーやリモートサーバーサポートの初期化
     const servers = this.config.servers || [];
@@ -410,9 +455,28 @@ export class McpHub {
     const warmupPromises = npxServers.map(async (serverConfig) => {
       try {
         const npxConfig = serverConfig as NpxServerConfig;
+
+        // Get package name from either package property or args
+        let packageName: string | undefined = npxConfig.package;
+
+        if (!packageName && npxConfig.args) {
+          // Extract package name from args (skip -y flag)
+          const argsWithoutFlags = npxConfig.args.filter(
+            (arg) => !arg.startsWith('-'),
+          );
+          packageName = argsWithoutFlags[0];
+        }
+
+        if (!packageName) {
+          this.logger.warn(
+            `  ⚠️  Cannot determine package name for ${serverConfig.id}, skipping warmup`,
+          );
+          return;
+        }
+
         const packageSpec = npxConfig.version
-          ? `${npxConfig.package}@${npxConfig.version}`
-          : npxConfig.package;
+          ? `${packageName}@${npxConfig.version}`
+          : packageName;
 
         this.logger.info(`  📦 Pre-caching ${packageSpec}...`);
 
@@ -959,30 +1023,31 @@ export class McpHub {
    * NPXサーバーのプロンプトを更新
    */
   private async refreshNpxServerPrompts(serverId: string): Promise<void> {
-    if (!this.serverRegistry) {
+    const connection = this.connections.get(serverId);
+    if (!connection?.npxServer) {
       return;
     }
 
-    const registered = this.serverRegistry.getServer(serverId);
-    if (!registered?.instance) {
-      return;
-    }
+    const npxServer = connection.npxServer;
 
     try {
-      const npxServer = registered.instance as NpxMcpServer;
+      // Get prompts from NPX server
       const prompts = npxServer.getPrompts();
 
       this.logger.info(`NPX Server ${serverId} has ${prompts.length} prompts`);
 
-      // ServerRegistryにプロンプトを登録
-      this.serverRegistry.registerServerPrompts(serverId, prompts);
+      // Register prompts in registry
+      this.promptRegistry.registerServerPrompts(serverId, prompts);
 
-      // レジストリに登録
+      // Notify ServerRegistry if available
+      if (this.serverRegistry) {
+        this.serverRegistry.registerServerPrompts(serverId, prompts);
+      }
 
-      // ハブのプロンプトを更新
+      // Update hub prompts
       this.updateHubPrompts();
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error({ error }, `Failed to refresh prompts for ${serverId}`);
     }
   }
 
@@ -1097,7 +1162,7 @@ export class McpHub {
    * ハブのプロンプトを更新
    */
   private updateHubPrompts(): void {
-    const prompts: any[] = []; // TODO: Add proper type
+    const prompts = this.promptRegistry.getAllPrompts();
     this.logger.info(`Hub now has ${prompts.length} total prompts`);
 
     // Debug: Log the first prompt to see its structure
@@ -1177,64 +1242,20 @@ export class McpHub {
       // Remove tools that are no longer available
       for (const toolName of this.registeredTools) {
         if (!currentToolNames.has(toolName)) {
-          // Tool was removed, we can't unregister from MCP SDK but mark it as removed
+          // Tool was removed from registry
           this.registeredTools.delete(toolName);
           this.logger.info(`Tool ${toolName} removed from registry`);
         }
       }
 
-      // Register new or updated tools
+      // Track new tools (no need to register with Server class)
+      // The Server class uses setRequestHandler for tools/list and tools/call
+      // which we've already set up in setupToolHandlers()
       for (const tool of tools) {
-        // Skip if already registered (idempotent)
-        if (this.registeredTools.has(tool.name)) {
-          continue;
-        }
-
-        // Mark as registered BEFORE attempting registration to prevent retries
-        // This prevents duplicate registration attempts even if registration fails
-        this.registeredTools.add(tool.name);
-
-        try {
-          // JSON\u30b9\u30ad\u30fc\u30de\u3092Zod\u4e92\u63db\u30b9\u30ad\u30fc\u30de\u306b\u5909\u63db
-          // inputSchemaが空またはpropertiesが空の場合はundefinedを使用
-          let zodLikeSchema: unknown;
-          if (
-            tool.inputSchema?.properties &&
-            Object.keys(tool.inputSchema.properties).length > 0
-          ) {
-            zodLikeSchema = createZodLikeSchema(tool.inputSchema as any);
-          }
-
-          // MCP SDK\u306eregisterTool\u30e1\u30bd\u30c3\u30c9\u3092\u4f7f\u7528
-          // Use the 'tool' method instead of 'registerTool' (SDK compatibility)
-          this.server.tool(
-            tool.name,
-            {
-              description: tool.description || `Tool ${tool.name}`,
-              inputSchema: zodLikeSchema as any, // Zod互換スキーマを渡す
-            },
-            async (args: unknown, _extra: unknown) => {
-              // registerToolメソッドは正しく引数を渡すはずなので、
-              // argsがundefinedの場合は空オブジェクトを使用
-              const validArgs = args || {};
-              const result = await this.callTool({
-                params: {
-                  name: tool.name,
-                  arguments: validArgs,
-                },
-                method: 'tools/call',
-              } as CallToolRequest);
-              return result;
-            },
-          );
-          this.logger.info(`Registered tool: ${tool.name}`);
-        } catch (error) {
-          // Don't remove from set - SDK already has it registered
-          // Just log the warning (tool may already be registered in SDK)
-          this.logger.warn(
-            { error, tool: tool.name },
-            `Tool registration warning (may already be registered in SDK)`,
-          );
+        if (!this.registeredTools.has(tool.name)) {
+          // Just track that this tool exists
+          this.registeredTools.add(tool.name);
+          this.logger.debug(`Tool ${tool.name} added to hub`);
         }
       }
     });

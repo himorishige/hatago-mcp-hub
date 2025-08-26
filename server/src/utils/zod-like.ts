@@ -8,7 +8,18 @@ import { z } from 'zod';
 /**
  * Convert JSON Schema to Zod schema
  */
-export function createZodLikeSchema(jsonSchema: any): z.ZodSchema {
+// Minimal JSON Schema type definition
+interface JSONSchema {
+  type?: string;
+  properties?: Record<string, JSONSchema>;
+  required?: string[];
+  items?: JSONSchema;
+  enum?: unknown[];
+  const?: unknown;
+  default?: unknown;
+}
+
+export function createZodLikeSchema(jsonSchema: JSONSchema): z.ZodSchema {
   // Simple implementation for basic types
   if (!jsonSchema) {
     return z.any();
@@ -29,7 +40,7 @@ export function createZodLikeSchema(jsonSchema: any): z.ZodSchema {
     // Handle required fields
     if (!jsonSchema.required || jsonSchema.required.length === 0) {
       // Make all fields optional if no required array
-      schema = schema.partial() as any;
+      schema = schema.partial() as z.ZodObject<any, any>;
     }
 
     return schema;

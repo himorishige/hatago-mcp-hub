@@ -112,7 +112,7 @@ function setupLogging(options: ServeOptions): void {
     const _originalConsoleLog = console.log;
     const _originalConsoleWarn = console.warn;
 
-    console.error = (...args: any[]) => {
+    console.error = (...args: unknown[]) => {
       // Only output in debug mode
       if (process.env.DEBUG === 'true' || process.env.MCP_DEBUG === 'true') {
         originalConsoleError(...args);
@@ -120,7 +120,7 @@ function setupLogging(options: ServeOptions): void {
       // Otherwise, completely silence console.error
     };
 
-    console.log = (...args: any[]) => {
+    console.log = (...args: unknown[]) => {
       // Never output to stdout in STDIO mode - it corrupts the protocol
       if (process.env.DEBUG === 'true' || process.env.MCP_DEBUG === 'true') {
         // In debug mode, redirect to stderr
@@ -129,7 +129,7 @@ function setupLogging(options: ServeOptions): void {
       // Otherwise, completely silence
     };
 
-    console.warn = (...args: any[]) => {
+    console.warn = (...args: unknown[]) => {
       // Only output in debug mode (to stderr)
       if (process.env.DEBUG === 'true' || process.env.MCP_DEBUG === 'true') {
         originalConsoleError('[WARN]', ...args);

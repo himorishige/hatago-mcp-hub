@@ -51,8 +51,18 @@ function extractNpxPackageInfo(args: string[] = []): {
     );
   }
 
+  // Filter out -y and --yes flags
+  const filteredArgs = args.filter((arg) => arg !== '-y' && arg !== '--yes');
+
+  if (filteredArgs.length === 0) {
+    throw ErrorHelpers.invalidInput(
+      'npx command',
+      'Requires at least one argument (package name) after flags',
+    );
+  }
+
   // 最初の引数がパッケージ名
-  const [packageName, ...restArgs] = args;
+  const [packageName, ...restArgs] = filteredArgs;
 
   return {
     package: packageName,

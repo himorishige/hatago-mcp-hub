@@ -3,6 +3,7 @@
  */
 
 import { EventEmitter } from 'node:events';
+import { join } from 'node:path';
 import type {
   Prompt,
   Resource,
@@ -128,12 +129,11 @@ export class ServerRegistry extends EventEmitter {
 
     // Use temp directory for NPX servers
     const tmpDir = require('node:os').tmpdir();
-    const workDir = require('node:path').join(tmpDir, 'hatago-npx', config.id);
+    const workDir = join(tmpDir, 'hatago-npx', config.id);
 
     // Create work directory if needed
-    const { NodeFileSystem } = await import('../utils/node-utils.js');
-    const fs = new NodeFileSystem();
-    await fs.mkdir(workDir, true);
+    const { fileSystem } = await import('../utils/node-utils.js');
+    await fileSystem.mkdir(workDir, { recursive: true });
 
     // Update config with workspace directory
     const serverConfig: NpxServerConfig = {
@@ -246,16 +246,11 @@ export class ServerRegistry extends EventEmitter {
 
     // Use temp directory for local servers
     const tmpDir = require('node:os').tmpdir();
-    const workDir = require('node:path').join(
-      tmpDir,
-      'hatago-local',
-      config.id,
-    );
+    const workDir = join(tmpDir, 'hatago-local', config.id);
 
     // Create work directory if needed
-    const { NodeFileSystem } = await import('../utils/node-utils.js');
-    const fs = new NodeFileSystem();
-    await fs.mkdir(workDir, true);
+    const { fileSystem } = await import('../utils/node-utils.js');
+    await fileSystem.mkdir(workDir, { recursive: true });
 
     // Update config with workspace directory (use cwd if provided)
     const serverConfig: LocalServerConfig = {
@@ -479,15 +474,17 @@ export class ServerRegistry extends EventEmitter {
 
     // Clean up workspace directory if it exists
     const tmpDir = require('node:os').tmpdir();
-    const workDirNpx = require('node:path').join(tmpDir, 'hatago-npx', id);
-    const workDirLocal = require('node:path').join(tmpDir, 'hatago-local', id);
-    const { NodeFileSystem } = await import('../utils/node-utils.js');
-    const fs = new NodeFileSystem();
+    const workDirNpx = join(tmpDir, 'hatago-npx', id);
+    const workDirLocal = join(tmpDir, 'hatago-local', id);
+    const { fileSystem } = await import('../utils/node-utils.js');
 
     // Try to clean both possible directories
     for (const dir of [workDirNpx, workDirLocal]) {
-      if (await fs.exists(dir)) {
-        await fs.rmdir(dir, { recursive: true });
+      try {
+        await fileSystem.stat(dir);
+        await fileSystem.rm(dir, { recursive: true });
+      } catch {
+        // Directory doesn't exist, ignore
       }
     }
 

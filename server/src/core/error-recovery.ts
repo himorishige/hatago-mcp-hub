@@ -25,11 +25,12 @@ export enum ErrorType {
 /**
  * Classify error type
  */
-export function classifyError(error: any): ErrorType {
+export function classifyError(error: unknown): ErrorType {
   if (!error) return ErrorType.UNKNOWN;
 
-  const message = error.message || '';
-  const code = error.code || '';
+  const errorObj = error as { message?: string; code?: string };
+  const message = errorObj.message || '';
+  const code = errorObj.code || '';
 
   // Transport errors
   if (
@@ -76,7 +77,7 @@ export function classifyError(error: any): ErrorType {
 /**
  * Determine if error is retryable
  */
-export function isRetryableError(error: any): boolean {
+export function isRetryableError(error: unknown): boolean {
   const errorType = classifyError(error);
 
   // Retryable: transport, timeout, some launch errors
@@ -86,7 +87,8 @@ export function isRetryableError(error: any): boolean {
 
   // Launch errors are retryable if it's a temporary issue
   if (errorType === ErrorType.LAUNCH) {
-    const code = error.code || '';
+    const errorObj = error as { code?: string };
+    const code = errorObj.code || '';
     return code !== 'ENOENT' && code !== 'EACCES'; // File not found or permission denied are not retryable
   }
 
@@ -152,7 +154,7 @@ export async function retryWithBackoff<T>(
   config: BackoffConfig = {},
 ): Promise<T> {
   const cfg = { ...DEFAULT_BACKOFF_CONFIG, ...config };
-  let lastError: any;
+  let lastError: unknown;
 
   for (let attempt = 0; attempt < cfg.maxAttempts; attempt++) {
     try {
@@ -370,8 +372,8 @@ export class CircuitBreakerRegistry {
   /**
    * Get all breaker stats
    */
-  getAllStats(): Record<string, any> {
-    const stats: Record<string, any> = {};
+  getAllStats(): Record<string, unknown> {
+    const stats: Record<string, unknown> = {};
     for (const [name, breaker] of this.breakers.entries()) {
       stats[name] = breaker.getStats();
     }
