@@ -95,20 +95,22 @@ export function checkPackageManager(): CheckResult {
  */
 export function checkRuntime(): CheckResult {
   const runtime = (() => {
-    if (globalThis.Deno) return 'Deno';
-    if (globalThis.Bun) return 'Bun';
+    if ((globalThis as any).Deno) return 'Deno';
+    if ((globalThis as any).Bun) return 'Bun';
     return 'Node.js';
   })();
 
   const version = (() => {
-    if (runtime === 'Deno' && globalThis.Deno) {
+    if (runtime === 'Deno' && (globalThis as any).Deno) {
       return (
-        (globalThis.Deno as { version?: { deno?: string } }).version?.deno ||
-        'unknown'
+        ((globalThis as any).Deno as { version?: { deno?: string } }).version
+          ?.deno || 'unknown'
       );
     }
-    if (runtime === 'Bun' && globalThis.Bun) {
-      return (globalThis.Bun as { version?: string }).version || 'unknown';
+    if (runtime === 'Bun' && (globalThis as any).Bun) {
+      return (
+        ((globalThis as any).Bun as { version?: string }).version || 'unknown'
+      );
     }
     return process.version;
   })();

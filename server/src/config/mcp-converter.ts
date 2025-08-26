@@ -106,7 +106,14 @@ function applyHatagoOptions<T extends ServerConfig>(
       remoteConfig.auth = options.auth;
     }
     if (options.healthCheck !== undefined) {
-      remoteConfig.healthCheck = options.healthCheck;
+      remoteConfig.healthCheck = {
+        enabled: options.healthCheck.enabled || false,
+        mode: 'initialize+ping' as const,
+        intervalMs: options.healthCheck.intervalMs || 0,
+        timeoutMs: options.healthCheck.timeoutMs || 5000,
+        startupGraceMs: 5000,
+        method: options.healthCheck.method || 'ping',
+      };
     }
   }
 

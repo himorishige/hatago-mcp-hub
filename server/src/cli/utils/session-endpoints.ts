@@ -38,7 +38,7 @@ export function setupSessionEndpoints(app: Hono, hub: McpHub): void {
         // Use client-provided session ID if available, otherwise generate new one
         sessionId = clientSessionId || randomUUID();
         transport = new StreamableHTTPTransport({
-          sessionIdGenerator: () => sessionId!,
+          sessionIdGenerator: () => sessionId as string,
           enableJsonResponse: true,
           onsessioninitialized: (sid) => {
             logger.info(`Session initialized: ${sid}`);
@@ -47,7 +47,7 @@ export function setupSessionEndpoints(app: Hono, hub: McpHub): void {
 
         // Connect transport to server
         process.stderr.write('[DEBUG] Connecting new transport to server...\n');
-        await hub.getServer().server.connect(transport);
+        await hub.serve(transport);
         process.stderr.write('[DEBUG] Transport connected successfully\n');
 
         // Store transport for this session
@@ -175,18 +175,45 @@ export function setupSessionEndpoints(app: Hono, hub: McpHub): void {
     return c.body(null, 200);
   });
 
-  // GET endpoint (SSE - not supported in stateless mode)
+  // GET endpoint (SSE support for long-running operations)
   app.get('/mcp', async (c) => {
-    return c.json(
-      {
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'SSE not supported in stateless mode',
+    try {
+      // Get or generate session ID
+      const clientSessionId = c.req.header('mcp-session-id') || randomUUID();
+
+      // Create new transport for SSE session
+      const transport = new StreamableHTTPTransport({
+        sessionIdGenerator: () => clientSessionId,
+        enableJsonResponse: false, // Use SSE mode
+        onsessioninitialized: (sid) => {
+          logger.info(`SSE session initialized: ${sid}`);
         },
-        id: null,
-      },
-      405, // Method Not Allowed
-    );
+      });
+
+      // Store transport for this session
+      if (!transports.has(clientSessionId)) {
+        // Connect transport to server if not already connected
+        await hub.serve(transport);
+        transports.set(clientSessionId, transport);
+      }
+
+      // Handle the SSE request through the transport
+      const result = await transport.handleRequest(c);
+      return result;
+    } catch (error) {
+      logger.error('SSE request error', { error });
+      return c.json(
+        {
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal error',
+            data: error instanceof Error ? error.message : String(error),
+          },
+          id: null,
+        },
+        500,
+      );
+    }
   });
 }

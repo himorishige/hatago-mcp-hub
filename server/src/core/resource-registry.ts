@@ -43,6 +43,7 @@ export function createResourceRegistry(
   const namingConfig: ToolNamingConfig = options.namingConfig || {
     strategy: 'namespace',
     separator: '_',
+    format: '{server}{separator}{tool}',
   };
 
   // Create naming functions

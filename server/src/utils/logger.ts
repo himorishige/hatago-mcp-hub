@@ -1,10 +1,17 @@
 /**
- * Logger utility using pino
+ * Minimal logger utility (pino removed for lightweight version)
  */
 
 import { randomUUID } from 'node:crypto';
-import type { Logger } from 'pino';
-import pino from 'pino';
+
+// Minimal Logger interface
+export interface Logger {
+  error: (obj: any, msg?: string) => void;
+  warn: (obj: any, msg?: string) => void;
+  info: (obj: any, msg?: string) => void;
+  debug: (obj: any, msg?: string) => void;
+  child: (bindings: Record<string, any>) => Logger;
+}
 
 export interface LoggerOptions {
   level?: string;
@@ -19,110 +26,49 @@ export interface LoggerOptions {
  * Create a logger instance
  */
 export function createLogger(options: LoggerOptions = {}): Logger {
-  const isDev = process.env.NODE_ENV === 'development';
-  const format = options.format || (isDev ? 'pretty' : 'json');
+  const level = options.level || process.env.LOG_LEVEL || 'info';
   const destination = options.destination || process.stdout;
+  const component = options.component || 'hatago-hub';
 
-  const baseOptions: pino.LoggerOptions = {
-    level: options.level || process.env.LOG_LEVEL || 'info',
-    formatters: {
-      level: (label) => ({ level: label }),
-      bindings: (bindings) => ({
-        pid: bindings.pid,
-        hostname: bindings.hostname,
-        component: options.component || 'hatago-hub',
-        profile: options.profile,
-        req_id: options.reqId,
-      }),
-    },
-    timestamp: pino.stdTimeFunctions.isoTime,
-    redact: {
-      paths: [
-        // トップレベルの機密フィールド
-        'password',
-        'token',
-        'apiKey',
-        'api_key',
-        'secret',
-        'authorization',
-        'accessToken',
-        'refreshToken',
-        'privateKey',
-        // ワイルドカードパターン（1階層）
-        '*.password',
-        '*.token',
-        '*.apiKey',
-        '*.api_key',
-        '*.secret',
-        '*.authorization',
-        '*.accessToken',
-        '*.refreshToken',
-        '*.privateKey',
-        // 配列要素内
-        '[*].password',
-        '[*].token',
-        '[*].apiKey',
-        '[*].secret',
-        // 環境変数パターン
-        '*.DATABASE_URL',
-        '*.GITHUB_TOKEN',
-        '*.BRAVE_API_KEY',
-        '*.OPENAI_API_KEY',
-        '*.AWS_SECRET_ACCESS_KEY',
-        'env.DATABASE_URL',
-        'env.GITHUB_TOKEN',
-        'env.BRAVE_API_KEY',
-        'config.env.DATABASE_URL',
-        'config.env.GITHUB_TOKEN',
-        // HTTPヘッダー
-        'req.headers.authorization',
-        'req.headers.cookie',
-        'req.headers["x-api-key"]',
-        'headers.authorization',
-        'headers.cookie',
-      ],
-      censor: '[REDACTED]',
+  const levels = ['error', 'warn', 'info', 'debug'];
+  const currentLevelIndex = levels.indexOf(level);
+
+  const shouldLog = (logLevel: string) => {
+    return levels.indexOf(logLevel) <= currentLevelIndex;
+  };
+
+  const log = (level: string, obj: any, msg?: string) => {
+    if (!shouldLog(level)) return;
+
+    const timestamp = new Date().toISOString();
+    const logObj = {
+      timestamp,
+      level,
+      component,
+      ...obj,
+      msg: msg || obj.msg || obj.message || '',
+    };
+
+    // Simple JSON output
+    destination.write(`${JSON.stringify(logObj)}\n`);
+  };
+
+  const logger: Logger = {
+    error: (obj: any, msg?: string) => log('error', obj, msg),
+    warn: (obj: any, msg?: string) => log('warn', obj, msg),
+    info: (obj: any, msg?: string) => log('info', obj, msg),
+    debug: (obj: any, msg?: string) => log('debug', obj, msg),
+    child: (bindings: Record<string, any>) => {
+      return createLogger({
+        ...options,
+        component: bindings.component || component,
+        profile: bindings.profile || options.profile,
+        reqId: bindings.req_id || options.reqId,
+      });
     },
   };
 
-  // Use pino-pretty in development or when explicitly requested
-  if (format === 'pretty') {
-    try {
-      // For pretty format with stderr, we need to use the stream directly
-      // because pino-pretty transport doesn't properly respect destination
-      if (destination === process.stderr) {
-        const prettyStream = require('pino-pretty')({
-          colorize: true,
-          translateTime: 'HH:MM:ss.l',
-          ignore: 'pid,hostname',
-          messageFormat: '{component} | {req_id} | {msg}',
-          destination: process.stderr,
-        });
-        return pino(baseOptions, prettyStream);
-      } else {
-        return pino({
-          ...baseOptions,
-          transport: {
-            target: 'pino-pretty',
-            options: {
-              colorize: true,
-              translateTime: 'HH:MM:ss.l',
-              ignore: 'pid,hostname',
-              messageFormat: '{component} | {req_id} | {msg}',
-            },
-          },
-        });
-      }
-    } catch (_err) {
-      // pino-pretty not available, fall back to JSON format
-      if (destination === process.stderr) {
-        console.warn('[logger] pino-pretty not available, using JSON format');
-      }
-      return pino(baseOptions, destination);
-    }
-  }
-
-  return pino(baseOptions, destination);
+  return logger;
 }
 
 /**
@@ -192,6 +138,11 @@ export function setGlobalLogger(logger: Logger): void {
   globalLogger = logger;
   globalLoggerLocked = true;
 }
+
+/**
+ * Default global logger instance
+ */
+export const logger = getGlobalLogger();
 
 /**
  * Reset global logger (for testing only)

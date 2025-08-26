@@ -33,32 +33,34 @@ Hatago supports running local MCP servers using any command (node, python, deno,
 Local MCP servers must use Zod schemas for tool input definitions when using @modelcontextprotocol/sdk:
 
 ```javascript
-import { createServer } from '@modelcontextprotocol/sdk';
-import { z } from 'zod';
+import { createServer } from "@modelcontextprotocol/sdk";
+import { z } from "zod";
 
 const server = createServer();
 
 // IMPORTANT: Use Zod schema objects, not JSON Schema
 server.registerTool(
-  'my_tool',
+  "my_tool",
   {
-    title: 'My Tool',
-    description: 'Does something useful',
+    title: "My Tool",
+    description: "Does something useful",
     inputSchema: {
       // Zod schema definition
-      name: z.string().describe('Name parameter'),
-      count: z.number().optional().describe('Optional count')
-    }
+      name: z.string().describe("Name parameter"),
+      count: z.number().optional().describe("Optional count"),
+    },
   },
   async (args) => {
     // Tool implementation
     return {
-      content: [{
-        type: 'text',
-        text: `Hello ${args.name}!`
-      }]
+      content: [
+        {
+          type: "text",
+          text: `Hello ${args.name}!`,
+        },
+      ],
     };
-  }
+  },
 );
 
 // Start STDIO transport
@@ -125,17 +127,20 @@ hatago mcp add server -- node ./server.js
 ### Debugging Local Servers
 
 1. **Enable debug logging**:
+
 ```bash
 LOG_LEVEL=debug hatago serve
 ```
 
 2. **Check server output**:
+
 ```bash
 # Server stderr is logged when errors occur
 # Add DEBUG env var to your server for verbose output
 ```
 
 3. **Test with MCP Inspector**:
+
 ```bash
 npx @modelcontextprotocol/inspector ./my-server.js
 ```
@@ -160,6 +165,7 @@ hatago generate types --watch ./types/generated.d.ts
 ### Generated Types Example
 
 Input (MCP server with tools):
+
 ```json
 {
   "tools": [
@@ -180,43 +186,44 @@ Input (MCP server with tools):
 ```
 
 Generated TypeScript:
+
 ```typescript
 export interface GreetUserInput {
   name: string;
   greeting?: string;
 }
 
-export type GreetUserResult = CallToolResult
+export type GreetUserResult = CallToolResult;
 
 export interface GreetUserTool {
-  name: 'greet-user'
-  input: GreetUserInput
-  result: GreetUserResult
+  name: "greet-user";
+  input: GreetUserInput;
+  result: GreetUserResult;
 }
 
 export interface MCPClient {
-  greetUser(input: GreetUserInput): Promise<GreetUserResult>
+  greetUser(input: GreetUserInput): Promise<GreetUserResult>;
 }
 ```
 
 ### Programmatic API
 
 ```typescript
-import { TypeGenerator, MCPIntrospector } from '@himorishige/hatago/codegen'
+import { TypeGenerator, MCPIntrospector } from "@himorishige/hatago/codegen";
 
-const introspector = new MCPIntrospector()
-const generator = new TypeGenerator()
+const introspector = new MCPIntrospector();
+const generator = new TypeGenerator();
 
 // Introspect server
 const definitions = await introspector.introspect({
-  type: 'npx',
-  package: '@modelcontextprotocol/server-filesystem'
-})
+  type: "npx",
+  package: "@modelcontextprotocol/server-filesystem",
+});
 
 // Generate types
-const typeCode = await generator.generateTypes(definitions)
+const typeCode = await generator.generateTypes(definitions);
 
-console.log(typeCode)
+console.log(typeCode);
 ```
 
 ### Configuration
@@ -246,59 +253,59 @@ Configure type generation in your Hatago config:
 The Decorator API allows you to define MCP servers declaratively using TypeScript decorators:
 
 ```typescript
-import 'reflect-metadata'
-import { mcp, tool, resource, prompt } from '@himorishige/hatago/decorators'
+import "reflect-metadata";
+import { mcp, tool, resource, prompt } from "@himorishige/hatago/decorators";
 
 @mcp({
-  name: 'Calculator Server',
-  version: '1.0.0',
-  description: 'A simple calculator'
+  name: "Calculator Server",
+  version: "1.0.0",
+  description: "A simple calculator",
 })
 class CalculatorServer {
   @tool({
-    description: 'Add two numbers',
+    description: "Add two numbers",
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        a: { type: 'number' },
-        b: { type: 'number' }
+        a: { type: "number" },
+        b: { type: "number" },
       },
-      required: ['a', 'b']
-    }
+      required: ["a", "b"],
+    },
   })
   async add(args: { a: number; b: number }): Promise<number> {
-    return args.a + args.b
+    return args.a + args.b;
   }
 
   @resource({
-    uri: 'calc://constants/pi',
-    name: 'Pi Constant',
-    mimeType: 'text/plain'
+    uri: "calc://constants/pi",
+    name: "Pi Constant",
+    mimeType: "text/plain",
   })
   async getPi(): Promise<string> {
-    return Math.PI.toString()
+    return Math.PI.toString();
   }
 
   @prompt({
-    description: 'Generate a math problem',
+    description: "Generate a math problem",
     arguments: [
-      { name: 'difficulty', required: false },
-      { name: 'type', required: true }
-    ]
+      { name: "difficulty", required: false },
+      { name: "type", required: true },
+    ],
   })
   async mathProblem(args: { difficulty?: string; type: string }) {
     return {
-      description: `A ${args.difficulty || 'easy'} ${args.type} problem`,
+      description: `A ${args.difficulty || "easy"} ${args.type} problem`,
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: {
-            type: 'text',
-            text: `Generate a ${args.difficulty || 'easy'} ${args.type} math problem`
-          }
-        }
-      ]
-    }
+            type: "text",
+            text: `Generate a ${args.difficulty || "easy"} ${args.type} math problem`,
+          },
+        },
+      ],
+    };
   }
 }
 ```
@@ -308,46 +315,46 @@ class CalculatorServer {
 #### With ServerFactory
 
 ```typescript
-import { ServerFactory } from '@himorishige/hatago/decorators'
+import { ServerFactory } from "@himorishige/hatago/decorators";
 
-const server = ServerFactory.create(CalculatorServer)
+const server = ServerFactory.create(CalculatorServer);
 
 // Use the server
 const result = await server.callTool({
-  method: 'tools/call',
-  params: { name: 'add', arguments: { a: 5, b: 3 } }
-})
+  method: "tools/call",
+  params: { name: "add", arguments: { a: 5, b: 3 } },
+});
 ```
 
 #### With Hatago Hub
 
 ```typescript
-import { DecoratorServerNode } from '@himorishige/hatago/decorators'
+import { DecoratorServerNode } from "@himorishige/hatago/decorators";
 
 // Register with hub
-const node = new DecoratorServerNode('calculator', {
-  server: CalculatorServer
-})
+const node = new DecoratorServerNode("calculator", {
+  server: CalculatorServer,
+});
 
-hub.addServer(node)
+hub.addServer(node);
 ```
 
 #### With Constructor Arguments
 
 ```typescript
-@mcp({ name: 'Database Server', version: '1.0.0' })
+@mcp({ name: "Database Server", version: "1.0.0" })
 class DatabaseServer {
   constructor(private connectionString: string) {}
 
-  @tool({ description: 'Query database' })
+  @tool({ description: "Query database" })
   async query(args: { sql: string }) {
     // Use this.connectionString
-    return { results: [] }
+    return { results: [] };
   }
 }
 
 // Create with arguments
-const server = ServerFactory.create(DatabaseServer, 'postgres://localhost/db')
+const server = ServerFactory.create(DatabaseServer, "postgres://localhost/db");
 ```
 
 ### TypeScript Configuration
@@ -378,47 +385,50 @@ Hatago provides comprehensive test utilities for testing MCP servers without net
 Create mock MCP servers for testing:
 
 ```typescript
-import { MockMCPServer, MCPTestClient } from '@himorishige/hatago/testing'
+import { MockMCPServer, MCPTestClient } from "@himorishige/hatago/testing";
 
 const server = new MockMCPServer({
-  name: 'Test Server',
-  version: '1.0.0'
-})
+  name: "Test Server",
+  version: "1.0.0",
+});
 
 // Add tools
 server.addTool(
-  { name: 'greet', description: 'Greet someone' },
-  async (args) => `Hello, ${args.name}!`
-)
+  { name: "greet", description: "Greet someone" },
+  async (args) => `Hello, ${args.name}!`,
+);
 
 // Add resources
 server.addResource(
-  { uri: 'test://greeting.txt', name: 'Greeting' },
-  async () => 'Welcome!'
-)
+  { uri: "test://greeting.txt", name: "Greeting" },
+  async () => "Welcome!",
+);
 
 // Test the server
-const client = new MCPTestClient(server)
-await client.connect()
+const client = new MCPTestClient(server);
+await client.connect();
 
 const result = await client.testToolCalls([
   {
-    name: 'greet',
-    arguments: { name: 'World' },
-    expectedResult: (result) => result.content[0].text === 'Hello, World!'
-  }
-])
+    name: "greet",
+    arguments: { name: "World" },
+    expectedResult: (result) => result.content[0].text === "Hello, World!",
+  },
+]);
 ```
 
 ### Testing Real Servers
 
 ```typescript
-import { createTestEnvironment, runMCPTestSuite } from '@himorishige/hatago/testing'
+import {
+  createTestEnvironment,
+  runMCPTestSuite,
+} from "@himorishige/hatago/testing";
 
 // Test real server
 const { server, client } = await createTestEnvironment({
-  name: 'Real Server Test'
-})
+  name: "Real Server Test",
+});
 
 // Add your real server setup here
 // server.addTool(...), server.addResource(...)
@@ -427,52 +437,52 @@ await runMCPTestSuite({
   server,
   toolTests: [
     {
-      name: 'my-tool',
-      arguments: { param: 'value' },
-      expectedResult: (result) => result.content[0].text.includes('expected')
-    }
+      name: "my-tool",
+      arguments: { param: "value" },
+      expectedResult: (result) => result.content[0].text.includes("expected"),
+    },
   ],
   resourceTests: [
     {
-      uri: 'test://resource',
-      expectedContent: (result) => result.contents[0].text === 'expected'
-    }
-  ]
-})
+      uri: "test://resource",
+      expectedContent: (result) => result.contents[0].text === "expected",
+    },
+  ],
+});
 ```
 
 ### Integration Testing
 
 ```typescript
-describe('MCP Server Integration', () => {
-  let hub: HatagoHub
-  let testClient: MCPTestClient
+describe("MCP Server Integration", () => {
+  let hub: HatagoHub;
+  let testClient: MCPTestClient;
 
   beforeEach(async () => {
-    hub = new HatagoHub()
-    
+    hub = new HatagoHub();
+
     // Add your decorator server
-    const node = new DecoratorServerNode('test-server', {
-      server: MyDecoratorServer
-    })
-    
-    hub.addServer(node)
-    await hub.start()
-    
-    testClient = new MCPTestClient(hub)
-    await testClient.connect()
-  })
+    const node = new DecoratorServerNode("test-server", {
+      server: MyDecoratorServer,
+    });
+
+    hub.addServer(node);
+    await hub.start();
+
+    testClient = new MCPTestClient(hub);
+    await testClient.connect();
+  });
 
   afterEach(async () => {
-    await testClient.disconnect()
-    await hub.shutdown()
-  })
+    await testClient.disconnect();
+    await hub.shutdown();
+  });
 
-  it('should handle tool calls', async () => {
-    const result = await testClient.callTool('my-tool', { param: 'value' })
-    expect(result.content[0].text).toBe('expected result')
-  })
-})
+  it("should handle tool calls", async () => {
+    const result = await testClient.callTool("my-tool", { param: "value" });
+    expect(result.content[0].text).toBe("expected result");
+  });
+});
 ```
 
 ## OpenAPI Integration
@@ -492,51 +502,51 @@ hatago generate mcp --from-openapi ./api.yaml --include-operations "user.*" --ta
 ### Programmatic Conversion
 
 ```typescript
-import { OpenAPIGenerator } from '@himorishige/hatago/integrations'
+import { OpenAPIGenerator } from "@himorishige/hatago/integrations";
 
-const generator = new OpenAPIGenerator()
+const generator = new OpenAPIGenerator();
 
 // Convert OpenAPI to MCP tools
 const tools = await generator.generateToolsFromOpenAPI(openApiSpec, {
-  serverUrl: 'https://api.example.com',
-  namePrefix: 'api',
-  includeOperations: ['.*User.*'],
-  tagFilter: ['users']
-})
+  serverUrl: "https://api.example.com",
+  namePrefix: "api",
+  includeOperations: [".*User.*"],
+  tagFilter: ["users"],
+});
 
-console.log(tools) // Array of MCP Tool objects
+console.log(tools); // Array of MCP Tool objects
 ```
 
 ### MCP Tools to REST API
 
 ```typescript
-import { OpenAPIGenerator } from '@himorishige/hatago/integrations'
+import { OpenAPIGenerator } from "@himorishige/hatago/integrations";
 
-const generator = new OpenAPIGenerator()
+const generator = new OpenAPIGenerator();
 
 // Convert MCP tools to REST API
 const app = generator.createRESTAPIFromTools(
   tools,
   async (toolName, args) => {
     // Tool handler implementation
-    return await callMCPTool(toolName, args)
+    return await callMCPTool(toolName, args);
   },
   {
-    basePath: '/api',
+    basePath: "/api",
     enableDocs: true,
     corsEnabled: true,
     authentication: {
       required: true,
-      schemes: ['bearer']
-    }
-  }
-)
+      schemes: ["bearer"],
+    },
+  },
+);
 
 // Start the server
-import { serve } from '@hono/node-server'
+import { serve } from "@hono/node-server";
 serve(app, (info) => {
-  console.log(`REST API server started on http://localhost:${info.port}`)
-})
+  console.log(`REST API server started on http://localhost:${info.port}`);
+});
 ```
 
 ### Generated REST Endpoints
@@ -552,6 +562,7 @@ GET  /api/docs (Swagger UI)
 ```
 
 Example request:
+
 ```bash
 curl -X POST http://localhost:3000/api/tools/greet-user \
   -H "Content-Type: application/json" \
@@ -601,16 +612,16 @@ hatago dev --debug ./my-server.js
 ### Programmatic API
 
 ```typescript
-import { DevServer } from '@himorishige/hatago/cli/commands'
+import { DevServer } from "@himorishige/hatago/cli/commands";
 
 const devServer = new DevServer({
-  serverTarget: './my-server.js',
+  serverTarget: "./my-server.js",
   port: 3000,
   hotReload: true,
-  generateTypes: true
-})
+  generateTypes: true,
+});
 
-await devServer.start()
+await devServer.start();
 
 // Server automatically restarts on file changes
 ```
@@ -618,30 +629,35 @@ await devServer.start()
 ## Best Practices
 
 ### Type Generation
+
 1. Run type generation in CI/CD to catch interface changes
 2. Use `--watch` mode during development
 3. Include generated types in version control for team consistency
 4. Configure exclusion patterns to avoid unnecessary regeneration
 
 ### Decorator API
+
 1. Use TypeScript interfaces for method parameters
 2. Provide comprehensive input schemas for validation
 3. Handle errors gracefully with descriptive messages
 4. Test decorated servers using the test utilities
 
 ### Testing
+
 1. Use MockMCPServer for unit tests
 2. Test real servers with integration tests
 3. Use the test utilities for complex scenarios
 4. Mock external dependencies in tool implementations
 
 ### OpenAPI Integration
+
 1. Keep OpenAPI specs up to date
 2. Use semantic versioning for API changes
 3. Test both directions of conversion
 4. Document authentication requirements clearly
 
 ### Development Workflow
+
 1. Use the development server for rapid iteration
 2. Enable type generation to catch errors early
 3. Set up file watching for automatic rebuilds

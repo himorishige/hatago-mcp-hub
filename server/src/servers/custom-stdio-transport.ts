@@ -7,10 +7,6 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import {
-  MCPInitializer,
-  type NegotiableTransport,
-} from '../core/mcp-initializer.js';
 import type { NegotiatedProtocol } from '../core/types.js';
 import { ErrorHelpers } from '../utils/errors.js';
 
@@ -23,15 +19,11 @@ export interface CustomStdioTransportOptions {
   isFirstRun?: boolean;
 }
 
-export class CustomStdioTransport
-  extends EventEmitter
-  implements Transport, NegotiableTransport
-{
+export class CustomStdioTransport extends EventEmitter implements Transport {
   private child: ChildProcess | null = null;
   private stdinBuffer = Buffer.alloc(0);
   private closed = false;
   private negotiatedProtocol: NegotiatedProtocol | null = null;
-  private initializer: MCPInitializer | null = null;
 
   // Protocol handling
   private requestId = 1;
@@ -59,7 +51,7 @@ export class CustomStdioTransport
 
     // Prepare spawn options with optimized environment
     const spawnOptions = {
-      stdio: ['pipe', 'pipe', 'pipe'] as const,
+      stdio: ['pipe', 'pipe', 'pipe'] as any,
       shell: false,
       cwd: this.options.cwd || process.cwd(),
       env: {
@@ -81,11 +73,11 @@ export class CustomStdioTransport
     this.child = spawn(this.options.command, this.options.args, spawnOptions);
 
     // Handle process errors
-    this.child.on('error', (error) => {
+    this.child?.on('error', (error) => {
       this.handleError(new Error(`Failed to spawn process: ${error.message}`));
     });
 
-    this.child.on('exit', (code, signal) => {
+    this.child?.on('exit', (code, signal) => {
       if (!this.closed) {
         this.handleError(
           new Error(
@@ -96,15 +88,15 @@ export class CustomStdioTransport
     });
 
     // Set up stdout handler with frame detection
-    if (this.child.stdout) {
-      this.child.stdout.on('data', (chunk: Buffer) => {
+    if (this.child?.stdout) {
+      this.child?.stdout.on('data', (chunk: Buffer) => {
         this.handleStdoutData(chunk);
       });
     }
 
     // Set up stderr handler (log only, not protocol)
-    if (this.child.stderr) {
-      this.child.stderr.on('data', (chunk: Buffer) => {
+    if (this.child?.stderr) {
+      this.child?.stderr.on('data', (chunk: Buffer) => {
         const text = chunk.toString('utf8');
         // Log stderr but don't treat as protocol
         if (process.env.DEBUG) {
@@ -232,20 +224,52 @@ export class CustomStdioTransport
   }
 
   private async performInitialization(): Promise<void> {
-    // Create initializer with options
-    this.initializer = new MCPInitializer({
-      isFirstRun: this.options.isFirstRun,
-      timeouts: {
-        firstRunMs: 90000,
-        normalMs: this.options.initTimeoutMs || 30000,
-      },
-      debug: process.env.DEBUG === 'true',
-    });
-
+    // Simple initialization without MCPInitializer
     try {
-      // Perform protocol negotiation
-      this.negotiatedProtocol = await this.initializer.initialize(this);
-      this.initialized = true;
+      // Send initialize request
+      const initRequest = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: {
+            name: 'hatago-hub',
+            version: '0.3.0-lite',
+          },
+        },
+      };
+
+      await this.send(initRequest);
+
+      // Wait for response with timeout
+      const timeoutMs = this.options.initTimeoutMs || 30000;
+      const response = await this.waitForResponse(1, timeoutMs);
+
+      if ('error' in response) {
+        throw new Error(`Initialization error: ${response.error.message}`);
+      }
+
+      // Store negotiated protocol
+      this.negotiatedProtocol = {
+        protocol: '2024-11-05',
+        serverInfo: (response as any).result?.serverInfo,
+        features: {
+          notifications: true,
+          resources: true,
+          prompts: true,
+          tools: true,
+        },
+        capabilities: (response as any).result?.capabilities || {},
+      };
+
+      // Send initialized notification
+      await this.send({
+        jsonrpc: '2.0',
+        method: 'initialized',
+        params: {},
+      });
 
       console.log(
         `✅ Server initialized with protocol: ${this.negotiatedProtocol.protocol}`,
@@ -266,7 +290,7 @@ export class CustomStdioTransport
     }
   }
 
-  // Implementation of NegotiableTransport.waitForResponse
+  // Simple implementation of waitForResponse
   async waitForResponse(
     id: number | string,
     timeoutMs: number,
@@ -288,19 +312,19 @@ export class CustomStdioTransport
   }
 
   private sendFrame(message: JSONRPCMessage): void {
-    if (!this.child || !this.child.stdin) {
-      throw ErrorHelpers.stateInvalidTransition('Transport not started');
+    if (!this.child || !this.child?.stdin) {
+      throw ErrorHelpers.transportNotStarted();
     }
 
     // MCP uses newline-delimited JSON, not Content-Length headers
     const payload = `${JSON.stringify(message)}\n`;
 
-    this.child.stdin.write(payload);
+    this.child?.stdin.write(payload);
   }
 
   async send(message: JSONRPCMessage): Promise<void> {
-    if (!this.child || !this.child.stdin) {
-      throw ErrorHelpers.stateInvalidTransition('Transport not started');
+    if (!this.child || !this.child?.stdin) {
+      throw ErrorHelpers.transportNotStarted();
     }
 
     // Assign ID if needed
@@ -312,6 +336,10 @@ export class CustomStdioTransport
     }
 
     this.sendFrame(message);
+  }
+
+  async stop(): Promise<void> {
+    return this.close();
   }
 
   async close(): Promise<void> {

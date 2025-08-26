@@ -67,7 +67,7 @@ export async function loadConfigFile(
 
     // mcpServers形式の変換（あれば）
     const { mergeConfigWithMcpServers } = await import('./mcp-converter.js');
-    const merged = mergeConfigWithMcpServers(expanded as any) as HatagoConfig;
+    const merged = mergeConfigWithMcpServers(expanded) as HatagoConfig;
 
     // Debug: Check if servers are present after merge
     if (!options?.quiet) {

@@ -1,0 +1,91 @@
+            },
+            async (args: unknown, _extra: unknown) => {
+              // registerToolメソッドは正しく引数を渡すはずなので、
+              // argsがundefinedの場合は空オブジェクトを使用
+              const validArgs = args || {};
+              const result = await this.callTool(
+                {
+                  name: tool.name,
+                  arguments: validArgs,
+                } as CallToolRequest,
+              );
+              return result;
+            },
+          );
+          this.logger.info(`Registered tool: ${tool.name}`);
+        } catch (error) {
+          // Registration failed, remove from set to allow retry
+          this.registeredTools.delete(tool.name);
+          this.logger.error(
+            { error, tool: tool.name },
+            `Failed to register tool`,
+          );
+        }
+      }
+    });
+  }
+
+  /**
+   * ツールを呼び出し
+   */
+  async callTool(
+    request: CallToolRequest,
+    requestId?: string | number,
+  ): Promise<CallToolResult> {
+    const publicName = (request as any).name || request.params?.name;
+    const toolArgs = (request as any).arguments || request.params?.arguments;
+    const progressToken = (request as any)._meta?.progressToken;
+
+    // 引数の型を確認して必要に応じて変換
+    let processedArgs = toolArgs;
+    if (typeof toolArgs === 'string') {
+      try {
+        processedArgs = JSON.parse(toolArgs);
+      } catch {
+        // パースに失敗したら文字列のまま使用
+      }
+    }
+
+    const result = await this.registry.callTool(
+      publicName,
+      processedArgs,
+      requestId,
+      progressToken,
+    );
+    return result;
+  }
+
+  /**
+   * MCPサーバーを起動（STDIOトランスポート用）
+   */
+  async serve(transport: any): Promise<void> {
+    await this.server.connect(transport);
+  }
+
+  /**
+   * クリーンアップ
+   */
+  async cleanup(): Promise<void> {
+    this.logger.info('Cleaning up MCP Hub...');
+
+    // 全サーバーから切断
+    for (const [serverId] of this.connections) {
+      await this.disconnectServer(serverId);
+    }
+
+    // セッションマネージャーを停止
+    this.sessionManager.stop();
+
+    // ワークスペースマネージャーを停止
+    if (this.workspaceManager) {
+      await this.workspaceManager.shutdown();
+    }
+
+    // ServerRegistryをクリーンアップ
+    if (this.serverRegistry) {
+      await this.serverRegistry.cleanup();
+    }
+
+    this.logger.info('MCP Hub cleanup complete');
+  }
+}

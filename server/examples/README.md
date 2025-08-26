@@ -7,6 +7,7 @@ This directory contains example MCP servers demonstrating various features of Ha
 A simple MCP server demonstrating basic tool, resource, and prompt definitions using the @modelcontextprotocol/sdk.
 
 ### Features
+
 - **Tools**: Example tool with Zod schema validation
 - **Resources**: Static and dynamic resource examples
 - **Prompts**: Example prompt templates
@@ -14,16 +15,19 @@ A simple MCP server demonstrating basic tool, resource, and prompt definitions u
 ### Running the Server
 
 #### Standalone (for testing)
+
 ```bash
 node examples/test-mcp-server.js
 ```
 
 #### With MCP Inspector
+
 ```bash
 npx @modelcontextprotocol/inspector node examples/test-mcp-server.js
 ```
 
 #### With Hatago
+
 ```bash
 # Add as local server
 hatago mcp add test-local -- node examples/test-mcp-server.js
@@ -47,32 +51,36 @@ hatago mcp add test-local -- node examples/test-mcp-server.js
 When using @modelcontextprotocol/sdk, tool input schemas must be defined using Zod objects, not JSON Schema:
 
 ```javascript
-import { z } from 'zod';
+import { z } from "zod";
 
 // Correct: Zod schema object
 server.registerTool(
-  'my_tool',
+  "my_tool",
   {
     inputSchema: {
-      name: z.string().describe('Name parameter'),
-      count: z.number().optional()
-    }
+      name: z.string().describe("Name parameter"),
+      count: z.number().optional(),
+    },
   },
-  async (args) => { /* ... */ }
+  async (args) => {
+    /* ... */
+  },
 );
 
 // Incorrect: JSON Schema (will fail)
 server.registerTool(
-  'my_tool',
+  "my_tool",
   {
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        name: { type: 'string' }
-      }
-    }
+        name: { type: "string" },
+      },
+    },
   },
-  async (args) => { /* ... */ }
+  async (args) => {
+    /* ... */
+  },
 );
 ```
 
@@ -81,47 +89,51 @@ server.registerTool(
 ### Basic Template
 
 ```javascript
-import { createServer } from '@modelcontextprotocol/sdk';
-import { z } from 'zod';
+import { createServer } from "@modelcontextprotocol/sdk";
+import { z } from "zod";
 
 const server = createServer();
 
 // Register a tool
 server.registerTool(
-  'hello_world',
+  "hello_world",
   {
-    title: 'Hello World',
-    description: 'Greets the world',
+    title: "Hello World",
+    description: "Greets the world",
     inputSchema: {
-      name: z.string().describe('Name to greet')
-    }
+      name: z.string().describe("Name to greet"),
+    },
   },
   async (args) => {
     return {
-      content: [{
-        type: 'text',
-        text: `Hello, ${args.name}!`
-      }]
+      content: [
+        {
+          type: "text",
+          text: `Hello, ${args.name}!`,
+        },
+      ],
     };
-  }
+  },
 );
 
 // Register a resource
 server.registerResource(
-  'example://data',
+  "example://data",
   {
-    title: 'Example Data',
-    mimeType: 'text/plain'
+    title: "Example Data",
+    mimeType: "text/plain",
   },
   async () => {
     return {
-      contents: [{
-        uri: 'example://data',
-        mimeType: 'text/plain',
-        text: 'Example data content'
-      }]
+      contents: [
+        {
+          uri: "example://data",
+          mimeType: "text/plain",
+          text: "Example data content",
+        },
+      ],
     };
-  }
+  },
 );
 
 // Start STDIO transport
@@ -203,17 +215,20 @@ if __name__ == "__main__":
 ## Debugging Tips
 
 1. **Enable Debug Logging**:
+
    ```bash
    LOG_LEVEL=debug hatago serve
    ```
 
 2. **Test Server Directly**:
+
    ```bash
    # Test STDIO communication
    echo '{"jsonrpc":"2.0","method":"initialize","id":1,"params":{}}' | node examples/test-mcp-server.js
    ```
 
 3. **Use MCP Inspector**:
+
    ```bash
    npx @modelcontextprotocol/inspector node examples/test-mcp-server.js
    ```
@@ -226,14 +241,17 @@ if __name__ == "__main__":
 ## Common Issues
 
 ### Empty inputSchema Error
+
 **Problem**: Tools fail with "inputSchema is empty or undefined"
 **Solution**: Use Zod schema objects, not JSON Schema
 
 ### Process Exits Unexpectedly
+
 **Problem**: Server process exits with code 1
 **Solution**: Check that paths are correct and dependencies are installed
 
 ### Session Not Found
+
 **Problem**: HTTP requests fail with "Session not found"
 **Solution**: Ensure session ID is maintained across requests
 

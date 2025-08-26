@@ -64,16 +64,6 @@ vi.mock('./resource-registry.js', () => ({
   }),
 }));
 
-vi.mock('./prompt-registry.js', () => ({
-  createPromptRegistry: vi.fn().mockReturnValue({
-    getAllPrompts: vi.fn().mockReturnValue([]),
-    registerServerPrompts: vi.fn(),
-    clearServerPrompts: vi.fn(),
-    clear: vi.fn(),
-    resolvePrompt: vi.fn(),
-  }),
-}));
-
 describe('McpHub', () => {
   let hub: McpHub;
   let mockConfig: HatagoConfig;

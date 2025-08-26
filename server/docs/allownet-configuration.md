@@ -53,14 +53,14 @@ Hatago Hubの`allowNet`設定は、リモートMCPサーバーが接続可能な
 {
   "security": {
     "allowNet": [
-      "api.github.com",           // GitHub MCP Server
-      "api.openai.com",           // OpenAI API
-      "api.anthropic.com",        // Anthropic API
-      "mcp.deepwiki.com",         // DeepWiki MCP
-      "api.slack.com",            // Slack MCP Server
-      "www.googleapis.com",       // Google Drive MCP
-      "graph.microsoft.com",      // Microsoft Graph MCP
-      "localhost"                 // ローカルテスト用
+      "api.github.com", // GitHub MCP Server
+      "api.openai.com", // OpenAI API
+      "api.anthropic.com", // Anthropic API
+      "mcp.deepwiki.com", // DeepWiki MCP
+      "api.slack.com", // Slack MCP Server
+      "www.googleapis.com", // Google Drive MCP
+      "graph.microsoft.com", // Microsoft Graph MCP
+      "localhost" // ローカルテスト用
     ]
   }
 }
@@ -75,13 +75,13 @@ Hatago Hubの`allowNet`設定は、リモートMCPサーバーが接続可能な
 
 ## 検証例
 
-| 設定のURL | 必要なallowNetエントリ | 有効？ |
-|----------|----------------------|--------|
-| `https://api.github.com/mcp` | `api.github.com` | ✅ |
-| `https://api.github.com/mcp` | `github.com` | ❌ |
-| `http://localhost:3000/mcp` | `localhost` | ✅ |
-| `https://192.168.1.100:8080/mcp` | `192.168.1.100` | ✅ |
-| 任意のURL | `*` | ✅ |
+| 設定のURL                        | 必要なallowNetエントリ | 有効？ |
+| -------------------------------- | ---------------------- | ------ |
+| `https://api.github.com/mcp`     | `api.github.com`       | ✅     |
+| `https://api.github.com/mcp`     | `github.com`           | ❌     |
+| `http://localhost:3000/mcp`      | `localhost`            | ✅     |
+| `https://192.168.1.100:8080/mcp` | `192.168.1.100`        | ✅     |
+| 任意のURL                        | `*`                    | ✅     |
 
 ## セキュリティのベストプラクティス
 
@@ -98,6 +98,7 @@ Hatago Hubの`allowNet`設定は、リモートMCPサーバーが接続可能な
 URLをホスト名の代わりに設定している場合に発生：
 
 ❌ **誤り:**
+
 ```json
 {
   "security": {
@@ -107,6 +108,7 @@ URLをホスト名の代わりに設定している場合に発生：
 ```
 
 ✅ **正しい:**
+
 ```json
 {
   "security": {
@@ -118,6 +120,7 @@ URLをホスト名の代わりに設定している場合に発生：
 ### エラー: "Host not allowed"
 
 ホスト名がallowNetリストに含まれていません。確認事項：
+
 1. エラーメッセージに表示される正確なホスト名を確認
 2. allowNet設定に追加
 3. Hatagoサーバーを再起動
@@ -129,10 +132,7 @@ URLをホスト名の代わりに設定している場合に発生：
 ```json
 {
   "security": {
-    "allowNet": [
-      "mcp.example.com",
-      "api.service.com"
-    ]
+    "allowNet": ["mcp.example.com", "api.service.com"]
   },
   "servers": [
     {
@@ -143,7 +143,7 @@ URLをホスト名の代わりに設定している場合に発生：
     },
     {
       "id": "api",
-      "type": "remote", 
+      "type": "remote",
       "url": "https://api.service.com/mcp",
       "transport": "http"
     }
@@ -170,6 +170,7 @@ URLをホスト名の代わりに設定している場合に発生：
 ```
 
 環境変数の設定：
+
 ```bash
 export ALLOWED_HOST_1=api.github.com
 export ALLOWED_HOST_2=mcp.deepwiki.com

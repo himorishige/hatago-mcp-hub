@@ -89,10 +89,10 @@ export async function mergeCLIServers(
   config: HatagoConfig,
   logger?: Logger,
 ): Promise<void> {
-  const { CliRegistryStorage } = await import(
-    '../../storage/cli-registry-storage.js'
+  const { UnifiedFileStorage } = await import(
+    '../../storage/unified-file-storage.js'
   );
-  const cliStorage = new CliRegistryStorage('.hatago/cli-registry.json');
+  const cliStorage = new UnifiedFileStorage('.hatago/registry.json');
   await cliStorage.init();
   const cliServers = await cliStorage.getServers();
 

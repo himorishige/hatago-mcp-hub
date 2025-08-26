@@ -52,7 +52,7 @@ jobs:
           # assignee_trigger: "claude-bot"
 
           # Optional: Allow Claude to run specific commands
-          allowed_tools: 'Bash(pnpm install),Bash(pnpm run build),Bash(pnpm run test:*),Bash(pnpm run typecheck),Bash(pnpm run lint:*),Bash(pnpm run check:*),Bash(biome check),Bash(biome lint),Bash(vitest),Bash(pnpm dev),Bash(pnpm dev:*),Bash(pnpm start:*)'
+          allowed_tools: "Bash(pnpm install),Bash(pnpm run build),Bash(pnpm run test:*),Bash(pnpm run typecheck),Bash(pnpm run lint:*),Bash(pnpm run check:*),Bash(biome check),Bash(biome lint),Bash(vitest),Bash(pnpm dev),Bash(pnpm dev:*),Bash(pnpm start:*)"
 
           # Optional: Add custom instructions for Claude to customize its behavior for your project
           custom_instructions: |

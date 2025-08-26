@@ -12,10 +12,9 @@ import type {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { NpxServerConfig } from '../config/types.js';
-import { getRuntime } from '../runtime/runtime-factory.js';
+
 import { ErrorHelpers } from '../utils/errors.js';
 import { CustomStdioTransport } from './custom-stdio-transport.js';
-import { getNpxCacheManager } from './npx-cache-manager.js';
 
 /**
  * Server state enum
@@ -37,12 +36,12 @@ export enum ServerState {
 export class NpxMcpServer extends EventEmitter {
   private config: NpxServerConfig;
   private client: Client | null = null;
-  private transport: StdioClientTransport | null = null;
+  private transport: StdioClientTransport | CustomStdioTransport | null = null;
   private state: ServerState = ServerState.STOPPED;
   private restartCount = 0;
   private lastStartTime: Date | null = null;
   private shutdownRequested = false;
-  private runtime = getRuntime();
+
   private startPromise: Promise<void> | null = null;
   private stopPromise: Promise<void> | null = null;
   private tools: Tool[] = []; // Store discovered tools
@@ -111,7 +110,7 @@ export class NpxMcpServer extends EventEmitter {
     if (!this.client) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
-    return await this.client.callTool({ name, arguments: args });
+    return await this.client.callTool({ name, arguments: args as any });
   }
 
   /**
@@ -167,12 +166,7 @@ export class NpxMcpServer extends EventEmitter {
 
     try {
       // Check if package is cached and adjust timeout accordingly
-      const cacheManager = getNpxCacheManager();
-      const packageSpec = this.config.version
-        ? `${this.config.package}@${this.config.version}`
-        : this.config.package;
-
-      const isCached = await cacheManager.isCached(packageSpec);
+      const isCached = false; // Simple cache check removed
 
       // Use shorter timeout for cached packages, longer for uncached
       const baseTimeout = this.config.initTimeoutMs || 30000;
@@ -183,7 +177,7 @@ export class NpxMcpServer extends EventEmitter {
       if (!isCached) {
         this.emit('info', {
           serverId: this.config.id,
-          message: `Package ${packageSpec} not cached, using extended timeout (${initTimeoutMs}ms)`,
+          message: `Package ${this.config.package || this.config.id} not cached, using extended timeout (${initTimeoutMs}ms)`,
         });
       }
 
@@ -229,8 +223,6 @@ export class NpxMcpServer extends EventEmitter {
         const packageSpec = this.config.version
           ? `${this.config.package}@${this.config.version}`
           : this.config.package;
-        const cacheManager = getNpxCacheManager();
-        cacheManager.clearStatus(packageSpec);
 
         this.emit('error', {
           serverId: this.config.id,
@@ -256,8 +248,6 @@ export class NpxMcpServer extends EventEmitter {
    * Connect to the MCP server using StdioClientTransport
    */
   private async connectToServer(): Promise<void> {
-    const _runtime = await this.runtime;
-
     let command: string;
     let args: string[] = [];
 
@@ -383,12 +373,17 @@ export class NpxMcpServer extends EventEmitter {
       });
     }
 
-    // Handle transport errors
-    this.transport.on('error', (error) => {
-      console.error(`❌ Transport error for ${this.config.id}:`, error.message);
-      console.error(`  Package: ${this.config.package}`);
-      console.error(`  Error details:`, error);
-    });
+    // Handle transport errors (CustomStdioTransport has event emitter)
+    if (this.transport && 'on' in this.transport) {
+      (this.transport as any).on('error', (error: any) => {
+        console.error(
+          `❌ Transport error for ${this.config.id}:`,
+          error.message,
+        );
+        console.error(`  Package: ${this.config.package}`);
+        console.error(`  Error details:`, error);
+      });
+    }
 
     // Create MCP client
     this.client = new Client(
@@ -408,7 +403,7 @@ export class NpxMcpServer extends EventEmitter {
     // Connect to the server
     try {
       console.log(`🔄 Connecting to ${this.config.id}...`);
-      await this.client.connect(this.transport);
+      await this.client.connect(this.transport as any);
       console.log(`🏢 Server ${this.config.id} initialized successfully`);
     } catch (error) {
       console.error(`❌ Failed to connect to ${this.config.id}`);
@@ -541,7 +536,7 @@ export class NpxMcpServer extends EventEmitter {
     if (!this.client) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
-    return await this.client.getPrompt({ name, arguments: args });
+    return await this.client.getPrompt({ name, arguments: args as any });
   }
 
   /**
@@ -574,7 +569,6 @@ export class NpxMcpServer extends EventEmitter {
    * Schedule a restart
    */
   private async scheduleRestart(): Promise<void> {
-    const runtime = await this.runtime;
     const delay = this.config.restartDelayMs || this.defaults.restartDelayMs;
 
     this.restartCount++;
@@ -584,7 +578,7 @@ export class NpxMcpServer extends EventEmitter {
 
     // Prevent race condition with proper promise handling
     await new Promise<void>((resolve) => {
-      runtime.setTimeout(async () => {
+      setTimeout(async () => {
         // Double-check shutdown flag to avoid race condition
         if (!this.shutdownRequested) {
           try {

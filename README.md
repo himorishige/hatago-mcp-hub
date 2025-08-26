@@ -9,16 +9,19 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 ## ✨ 特徴
 
 ### 🎯 シンプル & 軽量
+
 - **設定不要で即座に起動** - `npx @himorishige/hatago serve`
 - **既存プロジェクトに非侵襲** - プロジェクトディレクトリを汚染しません
 - **最小限の依存関係** - Hono + MCP SDKのみ
 
 ### 🔌 豊富な接続性
+
 - **マルチトランスポート対応** - STDIO / HTTP / Streamable HTTP
 - **リモートMCPプロキシ** - HTTPベースのMCPサーバーへの透過的な接続
 - **NPXサーバー統合** - npmパッケージのMCPサーバーを動的に管理
 
 ### 🛡️ エンタープライズ対応
+
 - **セキュリティ機能** - ツール実行ポリシー、PII自動マスク、暗号化シークレット管理
 - **高可用性** - 自動再起動、ヘルスチェック、グレースフルシャットダウン
 - **観測性** - 構造化ログ、メトリクス、診断ツール
@@ -73,16 +76,19 @@ hatago mcp remove filesystem
 ## 📚 ドキュメント
 
 ### 🎯 ユーザー向け
+
 - [**MCP統合ガイド**](docs/mcp-integration.md) - プロジェクトへの統合方法
 - [**詳細README**](server/README.md) - CLIコマンドリファレンス
 
 ### 🔧 開発者向け
+
 - [**実装状況**](docs/implementation-status.md) - 機能の実装状況（98%完了）
 - [**残存タスク**](docs/remaining-tasks.md) - 技術的課題と改善項目
 - [**仕様書**](docs/spec-v0.0.1.md) - アーキテクチャ設計
 - [**テストガイド**](server/docs/testing-guide.md) - テスト環境構築
 
 ### 🔒 セキュリティ
+
 - [**セキュリティガイド**](docs/security.md) - セキュリティ機能の詳細
 
 ## 🏗️ アーキテクチャ

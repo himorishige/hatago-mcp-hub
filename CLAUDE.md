@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hatago MCP Hub is a lightweight MCP (Model Context Protocol) Hub server built on top of Hono and hono/mcp. It provides unified management for multiple MCP servers with tool name collision avoidance and session management.
+Hatago MCP Hub (Lite) is an ultra-lightweight MCP (Model Context Protocol) Hub server built on top of Hono. It provides unified management for multiple MCP servers with tool name collision avoidance and session management. This is a simplified version with minimal dependencies and direct Node.js implementations.
 
 ## Tech Stack
 
@@ -17,7 +17,7 @@ Hatago MCP Hub is a lightweight MCP (Model Context Protocol) Hub server built on
 - **Linter/Formatter**: Biome
 - **Package Manager**: pnpm
 
-## Project Structure
+## Project Structure (Lite Version)
 
 ```
 /
@@ -27,28 +27,35 @@ Hatago MCP Hub is a lightweight MCP (Model Context Protocol) Hub server built on
 │   │   ├── cli/        # CLI commands implementation
 │   │   │   ├── index.ts # CLI entry point (hatago command)
 │   │   │   └── commands/ # Individual CLI commands
-│   │   ├── core/       # Core functionality (Hub, Registry, etc.)
-│   │   ├── proxy/      # Proxy layer for server management
-│   │   ├── observability/ # Tracing, metrics, health monitoring
-│   │   ├── security/   # Authentication, authorization, rate limiting
-│   │   ├── codegen/    # TypeScript type generation
-│   │   ├── integrations/ # OpenAPI integration
-│   │   ├── decorators/ # Experimental decorator API
-│   │   ├── testing/    # Test utilities
-│   │   ├── legacy/     # Legacy adapter for NPX/Remote servers
-│   │   ├── servers/    # NPX/Remote MCP servers (legacy)
+│   │   ├── core/       # Core functionality (simplified)
+│   │   │   ├── mcp-hub.ts            # Main hub (42KB)
+│   │   │   ├── session-manager.ts    # Session management
+│   │   │   ├── tool-registry.ts      # Tool registry
+│   │   │   ├── resource-registry.ts  # Resource registry
+│   │   │   ├── config-manager.ts     # Simple config management
+│   │   │   └── types.ts              # Core types
+│   │   ├── servers/    # MCP server implementations
+│   │   │   ├── server-registry.ts    # Server management (31KB)
+│   │   │   ├── npx-mcp-server.ts     # NPX server support
+│   │   │   ├── remote-mcp-server.ts  # Remote server (32KB)
+│   │   │   └── custom-stdio-transport.ts # STDIO transport
 │   │   ├── config/     # Configuration management
-│   │   ├── storage/    # Data storage
+│   │   ├── storage/    # Data storage (2 types only)
+│   │   │   ├── unified-file-storage.ts  # File storage
+│   │   │   └── memory-registry-storage.ts # Memory storage
 │   │   ├── transport/  # Communication layer
-│   │   ├── runtime/    # Runtime abstraction
 │   │   └── utils/      # Utilities
+│   │       ├── node-utils.ts  # Node.js utilities (NEW)
+│   │       ├── logger.ts      # Logging
+│   │       ├── errors.ts      # Error handling
+│   │       ├── mutex.ts       # Mutex implementation
+│   │       └── zod-like.ts    # Schema conversion (NEW)
 │   ├── dist/           # Build output
-│   ├── docs/           # Detailed documentation
 │   ├── package.json
-│   ├── tsconfig.json
-│   ├── biome.jsonc
-│   └── vitest.config.ts
-└── docs/               # High-level documentation
+│   └── tsconfig.json
+└── docs/               # Documentation
+
+Total: 53 TypeScript files (excluding tests)
 ```
 
 ## Essential Development Commands
@@ -135,89 +142,99 @@ hatago session clear         # Clear all sessions
 - **Local servers**: Use Zod schema objects for tool inputs, not JSON Schema
 - **Working directory**: Local servers use config file location as default cwd
 
-## Development Phases
+## Simplified to Lite Version (v0.3.0-lite) - 2024-12-26
 
-### Completed (v0.0.2) - 2024-12-26
+### Major Simplification
 
-- **Local Server Support**: Added support for running MCP servers using any local command (node, python, deno, etc.)
-  - New `local` server type with full STDIO transport
-  - Custom working directory support for relative paths
-  - Unified execution path with NPX servers
-  - Fixed session management for HTTP mode
-  - Fixed Zod schema handling for tool definitions
+The project has been significantly simplified from its original implementation to create a lightweight, maintainable version.
 
-### Completed (v0.1.0) - 2024-12-24
+### Removed Features (27 files deleted)
 
-- **Phase 0**: ✅ Protocol foundation, proxy core, composition layer
-  - Tool collision avoidance, session management, config hot-swap
-  - WebSocket transport, unified client, capability graph architecture
-  
-- **Phase 1**: ✅ Observability, security, and reliability
-  - Distributed tracing with AsyncLocalStorage context propagation
-  - Prometheus-compatible metrics collection
-  - Authentication/authorization with JWT
-  - Rate limiting with sliding window algorithm
-  - Circuit breaker with error severity classification
-  - Health monitoring with K8s-compatible endpoints
-  
-- **Phase 2**: ✅ Developer experience and integration
-  - TypeScript type generation from MCP introspection
-  - Development tools (dev server, inspector, code generation)
-  - OpenAPI ⇔ MCP bidirectional integration
-  - Experimental decorator API for declarative server definition
-  - Comprehensive test utilities (MockMCPServer, MCPTestClient)
+#### Phase 1: Unnecessary Features
 
-### Future Roadmap (v0.2.0+)
+- `workspace-manager.ts` - Workspace management
+- `shared-session-manager.ts` - Shared session functionality
+- `diagnostics.ts` - Diagnostic tools
+- `prompt-registry.ts` - Prompt management
+- `npx-cache.ts` - NPX caching
+- `protocol-negotiator.ts` - Protocol negotiation
+- `protocol/` directory - Complex protocol handling
+- `crypto.ts` - Encryption utilities
+- `health.ts` - Health check system
 
-- **Phase 3**: Performance optimization and enterprise features
-  - Pipeline system for tool chaining
-  - Distributed caching with TTL and invalidation
-  - Worker pools for parallel execution
-  - Multi-tenant support and audit logging
+#### Phase 2: Storage Consolidation
 
-### Key Features Implemented
+- `cli-registry-storage.ts`
+- `registry-storage-factory.ts`
+- `file-registry-storage.ts`
+  → Consolidated into `unified-file-storage.ts`
 
-- **Proxy Architecture**: Unified server management with capability graph
-- **Multi-transport**: STDIO, HTTP, SSE, WebSocket support
-- **Security**: JWT auth, rate limiting, circuit breakers, log sanitization
-- **Observability**: Distributed tracing, metrics, health checks, structured logging
-- **Developer Tools**: Type generation, hot reload, OpenAPI integration, decorators
-- **Testing**: Mock servers, test utilities, comprehensive test coverage
-- **Legacy Support**: NPX/Remote server adapter for backward compatibility
+#### Phase 3: Runtime Abstraction Removal
+
+- `runtime/runtime-factory.ts`
+- `runtime/runtime-factory-functional.ts`
+- `runtime/types.ts`
+- `runtime/cloudflare-workers.ts`
+- `runtime/node.ts`
+- `runtime/index.ts`
+  → Replaced with simple `node-utils.ts`
+
+### Current Architecture
+
+- **Direct Implementation**: No runtime abstraction layer
+- **Simple Storage**: 2 types (File/Memory) instead of 3
+- **Basic Config**: Direct config loading without generation
+- **Node.js Native**: Direct use of Node.js APIs
+- **Minimal Dependencies**: Reduced external library usage
+
+### Key Features Retained (Lite Version)
+
+- **Core MCP Hub**: Tool/Resource/Prompt management
+- **Multi-Server**: NPX, Remote, and Local server support
+- **Multi-Transport**: STDIO, HTTP, SSE support
+- **Session Management**: Independent sessions for multiple AI clients
+- **Error Handling**: Robust error recovery
+- **Basic Logging**: Simple debug logging
+- **Tool Collision Avoidance**: Namespace prefixing for tools
 
 ## Working with this Codebase
 
 ### Development Workflow
+
 1. Always run code quality checks after changes: `pnpm format && pnpm lint && pnpm check`
 2. Verify build succeeds: `pnpm build`
 3. Run tests to ensure no regressions: `pnpm test`
 4. Use development server for rapid iteration: `hatago dev`
 5. Generate types when adding new MCP servers: `hatago generate types`
 
-### Architecture Guidelines
-1. **Proxy Pattern**: Use ProxyToolManager/ProxyResourceManager for server integration
-2. **Layer Separation**: Keep core, proxy, observability, and security layers distinct
-3. **Transport Abstraction**: Use Transport interface for all communication
-4. **Error Classification**: Use HatagoError with proper error codes and severity
-5. **Capability Graph**: Maintain server relationships and dependency tracking
+### Architecture Guidelines (Lite Version)
+
+1. **Simple Direct Implementation**: No complex abstractions
+2. **Node.js Native**: Use built-in Node.js APIs directly
+3. **Minimal Layers**: Core functionality only
+4. **Error Handling**: Simple error handling with recovery
+5. **Direct File Access**: No runtime abstraction for file operations
 
 ### Code Standards
-1. Follow Hono patterns for HTTP routing and middleware
-2. Maintain MCP specification compliance for tool names (snake_case) and protocols
-3. Use AsyncLocalStorage for distributed tracing context
-4. Implement proper circuit breaking and rate limiting
-5. Sanitize logs to prevent sensitive data leakage
+
+1. Follow Hono patterns for HTTP routing
+2. Maintain MCP specification compliance for tool names (snake_case)
+3. Use simple error handling patterns
+4. Direct Node.js API usage
+5. Minimal external dependencies
 
 ### Testing Strategy
-1. Use MockMCPServer for unit tests
-2. Test all transport types (stdio, http, sse, websocket)
-3. Verify observability features (tracing, metrics, health checks)
-4. Test security features (auth, rate limiting, circuit breakers)
-5. Validate type generation and decorator functionality
+
+1. Basic unit tests for core functionality
+2. Test main transport types (stdio, http, sse)
+3. Test server management (NPX, Remote, Local)
+4. Test session management
+5. Test error recovery
 
 ### Performance Considerations
-1. Keep the proxy layer lightweight - avoid heavy processing
-2. Use circuit breakers to prevent cascade failures
-3. Implement proper resource cleanup and connection pooling
-4. Monitor memory usage and prevent leaks in long-running sessions
-5. Optimize tracing overhead for high-throughput scenarios
+
+1. Keep implementation simple and direct
+2. Avoid unnecessary abstractions
+3. Implement proper resource cleanup
+4. Minimize memory footprint
+5. Fast startup and response times

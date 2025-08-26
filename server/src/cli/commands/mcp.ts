@@ -12,7 +12,7 @@ import type {
   RemoteServerConfig,
 } from '../../config/types.js';
 import type { ServerRegistry } from '../../servers/server-registry.js';
-import type { CliRegistryStorage } from '../../storage/cli-registry-storage.js';
+import type { UnifiedFileStorage } from '../../storage/unified-file-storage.js';
 import { ErrorHelpers } from '../../utils/errors.js';
 import { handleCliError, withRegistry } from '../helpers/registry-helper.js';
 
@@ -176,7 +176,7 @@ function createServerConfig(
 async function registerAndSaveServer(
   serverConfig: LocalServerConfig | NpxServerConfig | RemoteServerConfig,
   registry: ServerRegistry,
-  cliStorage: CliRegistryStorage,
+  cliStorage: UnifiedFileStorage,
 ): Promise<void> {
   // Register with appropriate method
   let registered: { id: string };

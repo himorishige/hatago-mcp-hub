@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "format": "pnpm prettier:fix",
+    "prettier:fix": "prettier --write \"**/*.{md,mdx,html,css,scss,less,yaml,yml,graphql}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}

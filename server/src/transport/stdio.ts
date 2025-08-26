@@ -42,7 +42,7 @@ export class StdioTransport {
         env: {
           ...process.env,
           ...this.options.env,
-        },
+        } as Record<string, string>,
       });
 
       this.connected = true;

@@ -89,7 +89,7 @@ export class SessionManager {
   /**
    * 定期クリーンアップを開始
    */
-  private startCleanup(): void {
+  public startCleanup(): void {
     // 1分ごとに期限切れセッションをクリーンアップ
     this.cleanupInterval = setInterval(() => {
       this.cleanup();

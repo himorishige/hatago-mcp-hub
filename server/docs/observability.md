@@ -84,7 +84,7 @@ Each trace contains:
       "message": "Tool call started",
       "fields": {
         "tool": "read_file",
-        "args": {"path": "/tmp/file.txt"}
+        "args": { "path": "/tmp/file.txt" }
       }
     }
   ]
@@ -94,34 +94,34 @@ Each trace contains:
 ### Using Trace Context
 
 ```typescript
-import { DistributedTracing } from '@himorishige/hatago/observability'
+import { DistributedTracing } from "@himorishige/hatago/observability";
 
 // Start a new trace
-const span = DistributedTracing.startSpan('my-operation', {
-  'operation.type': 'tool-call',
-  'server.id': 'my-server'
-})
+const span = DistributedTracing.startSpan("my-operation", {
+  "operation.type": "tool-call",
+  "server.id": "my-server",
+});
 
 try {
   // Your operation here
-  const result = await performOperation()
-  
+  const result = await performOperation();
+
   // Add metadata to trace
-  span.setTag('result.size', result.length)
-  span.log({ level: 'info', message: 'Operation completed' })
-  
-  return result
+  span.setTag("result.size", result.length);
+  span.log({ level: "info", message: "Operation completed" });
+
+  return result;
 } catch (error) {
   // Record errors in trace
-  span.setTag('error', true)
-  span.log({ 
-    level: 'error', 
+  span.setTag("error", true);
+  span.log({
+    level: "error",
     message: error.message,
-    stack: error.stack 
-  })
-  throw error
+    stack: error.stack,
+  });
+  throw error;
 } finally {
-  span.finish()
+  span.finish();
 }
 ```
 
@@ -146,6 +146,7 @@ hatago serve --log-level debug
 #### Jaeger UI
 
 1. Run Jaeger locally:
+
 ```bash
 docker run -d --name jaeger \
   -p 16686:16686 \
@@ -154,6 +155,7 @@ docker run -d --name jaeger \
 ```
 
 2. Configure Hatago:
+
 ```json
 {
   "observability": {
@@ -262,19 +264,19 @@ hatago metrics --watch
 #### Programmatic Access
 
 ```typescript
-import { MetricsCollector } from '@himorishige/hatago/observability'
+import { MetricsCollector } from "@himorishige/hatago/observability";
 
-const metrics = MetricsCollector.getInstance()
+const metrics = MetricsCollector.getInstance();
 
 // Get all metrics
-const allMetrics = await metrics.getMetrics()
+const allMetrics = await metrics.getMetrics();
 
 // Get specific metrics
-const httpMetrics = await metrics.getMetrics('hatago_http_*')
+const httpMetrics = await metrics.getMetrics("hatago_http_*");
 
 // Custom metrics
-metrics.incrementCounter('my_custom_counter', { label: 'value' })
-metrics.recordHistogram('my_operation_duration', 0.142, { operation: 'read' })
+metrics.incrementCounter("my_custom_counter", { label: "value" });
+metrics.recordHistogram("my_operation_duration", 0.142, { operation: "read" });
 ```
 
 ### Prometheus Integration
@@ -287,9 +289,9 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'hatago'
+  - job_name: "hatago"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
     scrape_interval: 5s
     metrics_path: /metrics
 ```
@@ -345,6 +347,7 @@ GET /health/live
 ```
 
 Response:
+
 ```json
 {
   "status": "ok",
@@ -362,6 +365,7 @@ GET /health/ready
 ```
 
 Response:
+
 ```json
 {
   "status": "ok",
@@ -383,6 +387,7 @@ GET /health/startup
 ```
 
 Response:
+
 ```json
 {
   "status": "ok",
@@ -402,54 +407,54 @@ spec:
   template:
     spec:
       containers:
-      - name: hatago
-        image: hatago:latest
-        ports:
-        - containerPort: 3000
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        startupProbe:
-          httpGet:
-            path: /health/startup
-            port: 3000
-          failureThreshold: 30
-          periodSeconds: 10
+        - name: hatago
+          image: hatago:latest
+          ports:
+            - containerPort: 3000
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: 3000
+            failureThreshold: 30
+            periodSeconds: 10
 ```
 
 ### Custom Health Checks
 
 ```typescript
-import { HealthMonitor } from '@himorishige/hatago/observability'
+import { HealthMonitor } from "@himorishige/hatago/observability";
 
-const healthMonitor = HealthMonitor.getInstance()
+const healthMonitor = HealthMonitor.getInstance();
 
 // Add custom health check
-healthMonitor.addHealthCheck('database', async () => {
+healthMonitor.addHealthCheck("database", async () => {
   try {
-    await database.ping()
-    return { status: 'ok' }
+    await database.ping();
+    return { status: "ok" };
   } catch (error) {
-    return { 
-      status: 'error', 
+    return {
+      status: "error",
       message: error.message,
-      lastError: new Date().toISOString()
-    }
+      lastError: new Date().toISOString(),
+    };
   }
-})
+});
 
 // Check health programmatically
-const health = await healthMonitor.check()
-console.log(health.overall) // 'ok' | 'degraded' | 'error'
+const health = await healthMonitor.check();
+console.log(health.overall); // 'ok' | 'degraded' | 'error'
 ```
 
 ## Structured Logging
@@ -511,26 +516,26 @@ Hatago uses structured JSON logging with automatic sanitization of sensitive dat
 ### Using the Logger
 
 ```typescript
-import { logger } from '@himorishige/hatago/observability'
+import { logger } from "@himorishige/hatago/observability";
 
 // Basic logging
-logger.info('Operation completed')
-logger.error('Operation failed', { error: error.message })
+logger.info("Operation completed");
+logger.error("Operation failed", { error: error.message });
 
 // With context
-logger.info('Tool call started', {
-  server: 'filesystem',
-  tool: 'read_file',
-  args: { path: '/tmp/file.txt' }
-})
+logger.info("Tool call started", {
+  server: "filesystem",
+  tool: "read_file",
+  args: { path: "/tmp/file.txt" },
+});
 
 // Structured data
-logger.info('Performance metric', {
-  metric: 'response_time',
+logger.info("Performance metric", {
+  metric: "response_time",
   value: 142,
-  unit: 'ms',
-  server: 'filesystem'
-})
+  unit: "ms",
+  server: "filesystem",
+});
 ```
 
 ### Log Analysis
@@ -558,25 +563,25 @@ With ELK stack:
 ```yaml
 # logstash.conf
 input {
-  file {
-    path => "/var/log/hatago/*.log"
-    codec => "json"
-  }
+file {
+path => "/var/log/hatago/*.log"
+codec => "json"
+}
 }
 
 filter {
-  if [component] {
-    mutate {
-      add_tag => [ "%{component}" ]
-    }
-  }
+if [component] {
+mutate {
+add_tag => [ "%{component}" ]
+}
+}
 }
 
 output {
-  elasticsearch {
-    hosts => ["localhost:9200"]
-    index => "hatago-%{+YYYY.MM.dd}"
-  }
+elasticsearch {
+hosts => ["localhost:9200"]
+index => "hatago-%{+YYYY.MM.dd}"
+}
 }
 ```
 
@@ -585,6 +590,7 @@ output {
 ### Response Time Tracking
 
 Automatically tracked for:
+
 - HTTP requests
 - Tool calls
 - Resource reads
@@ -621,53 +627,56 @@ hatago metrics --filter "gc_duration"
 ```yaml
 # alerts.yml
 groups:
-- name: hatago
-  rules:
-  - alert: HatagoHighErrorRate
-    expr: rate(hatago_http_requests_total{status=~"5.."}[5m]) > 0.05
-    for: 2m
-    labels:
-      severity: warning
-    annotations:
-      summary: "High error rate in Hatago"
-      description: "Error rate is {{ $value }} requests per second"
+  - name: hatago
+    rules:
+      - alert: HatagoHighErrorRate
+        expr: rate(hatago_http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate in Hatago"
+          description: "Error rate is {{ $value }} requests per second"
 
-  - alert: HatagoHighLatency
-    expr: histogram_quantile(0.95, hatago_http_request_duration_seconds) > 1
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "High latency in Hatago"
-      description: "95th percentile latency is {{ $value }}s"
+      - alert: HatagoHighLatency
+        expr: histogram_quantile(0.95, hatago_http_request_duration_seconds) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency in Hatago"
+          description: "95th percentile latency is {{ $value }}s"
 ```
 
 ### Custom Alerts
 
 ```typescript
-import { MetricsCollector, AlertManager } from '@himorishige/hatago/observability'
+import {
+  MetricsCollector,
+  AlertManager,
+} from "@himorishige/hatago/observability";
 
-const alertManager = new AlertManager()
+const alertManager = new AlertManager();
 
 // Define alert rules
 alertManager.addRule({
-  name: 'high_memory_usage',
+  name: "high_memory_usage",
   condition: (metrics) => {
-    const memoryUsage = metrics.get('hatago_memory_usage_bytes')
-    return memoryUsage > 1024 * 1024 * 512 // 512MB
+    const memoryUsage = metrics.get("hatago_memory_usage_bytes");
+    return memoryUsage > 1024 * 1024 * 512; // 512MB
   },
   action: async (metrics) => {
-    logger.warn('High memory usage detected', { 
-      usage: metrics.get('hatago_memory_usage_bytes') 
-    })
+    logger.warn("High memory usage detected", {
+      usage: metrics.get("hatago_memory_usage_bytes"),
+    });
     // Send notification, scale up, etc.
-  }
-})
+  },
+});
 
 // Check alerts periodically
 setInterval(async () => {
-  await alertManager.checkRules()
-}, 30000)
+  await alertManager.checkRules();
+}, 30000);
 ```
 
 ## Troubleshooting

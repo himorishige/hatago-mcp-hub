@@ -4,6 +4,7 @@
 バージョン: v0.0.6
 
 > **Note**: このドキュメントは開発者向けです。ユーザー向けガイドは以下を参照してください：
+>
 > - [MCP Integration Guide](./mcp-integration.md) - 統合ガイド
 > - [README.md](../README.md) - 基本的な使い方
 
@@ -11,7 +12,7 @@
 
 ```
 Phase 0: ツール衝突回避     100% ✅
-Phase 0: セッション管理      100% ✅  
+Phase 0: セッション管理      100% ✅
 Phase 0: 設定ホットスワップ  100% ✅
 Phase 1: リモートMCPプロキシ 100% ✅
 Phase 1: CLI管理            100% ✅
@@ -21,6 +22,7 @@ Phase 2: NPXプロキシ        100% ✅
 ```
 
 ### 🔄 最新更新 (2025-08-22)
+
 - ✅ 並行処理の競合状態: **完全解決済み** - Mutex実装完了
 - ✅ NPXキャッシュ判定: **解決済み** - 正確な判定ロジック実装
 - ✅ テストカバレッジ: **改善中** - `mcp-hub.test.ts`追加（18テスト）
@@ -33,12 +35,14 @@ Phase 2: NPXプロキシ        100% ✅
 ### 1. NPXキャッシュ判定 ✅ **解決済み**
 
 **解決済みの実装**:
+
 ```typescript
 // NpxMcpServer.connectToServer() での実装
 const isFirstRun = !this.restartCount && !this.lastStartTime;
 ```
 
 **実装詳細**:
+
 - `restartCount`と`lastStartTime`を使用した正確な判定
 - 初回起動時のみ`isFirstRun = true`となる
 - CustomStdioTransportに`isFirstRun`フラグを渡して適切なタイムアウトを設定
@@ -46,13 +50,15 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 
 ### 2. 並行処理での競合状態 ✅ **完全解決済み**
 
-**解決済み**: 
+**解決済み**:
+
 - ✅ CLI Registryのファイルロック実装完了
 - ✅ ツール登録: `toolRegistrationMutex`による排他制御実装済み
 - ✅ セッション作成: `sessionMutex`（KeyedMutex）による排他制御実装済み
 - ✅ Mutex実装: 関数型実装（`createMutex`/`createKeyedMutex`）完了
 
 **実装詳細**:
+
 - `server/src/utils/mutex.ts`: クロージャベースのMutex実装
 - `McpHub.updateHubTools()`: `toolRegistrationMutex.runExclusive()`で保護
 - `SessionManager`: 全セッション操作が`sessionMutex.runExclusive()`で保護
@@ -61,12 +67,14 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 
 ### 3. テストカバレッジの向上
 
-**現状（2025-08-22更新）**: 
+**現状（2025-08-22更新）**:
+
 - ユニットテスト: **65-75%** ✅（17ファイル、182/185テスト成功）
 - E2Eテスト: **5%** ⚠️（1ファイルのみ）
 - 統合テスト: **0%** ❌
 
 **テスト済みモジュール**:
+
 - ✅ セッション管理、並行処理、Mutex
 - ✅ エラーハンドリング、暗号化、パス検証
 - ✅ サーバーレジストリ、ワークスペース管理
@@ -74,6 +82,7 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 - ✅ **mcp-hub.ts** - メインハブクラス（基本テスト18個追加）
 
 **テストカバレッジ不足の領域**（Hatago Code Reviewerより）:
+
 - ⚠️ NPX/Remote/Localサーバー接続フローの統合テスト
 - ⚠️ リソース/プロンプト管理の詳細テスト
 - ⚠️ エラーリカバリーシナリオ
@@ -85,6 +94,7 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 ### 4. エラーコード標準化 ✅ **完全実装完了**
 
 **実装済み（2025-08-22）**:
+
 - ✅ ErrorCode enum定義済み（27種類）
 - ✅ HatagoErrorクラス実装済み（severity、context、recoverable対応）
 - ✅ ErrorHelpers実装済み（**100個以上**のヘルパー関数）
@@ -99,6 +109,7 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
   - CLI/API: cli/index.ts, cli/commands/mcp.ts, hono-mcp/index.ts
 
 **Hatago Code Reviewerレビュー済み**:
+
 - ✅ Hatago原則に高度に準拠
 - ✅ MCP仕様準拠（JSON-RPC 2.0エラーフォーマット）
 - ✅ 関数型設計（純粋関数によるエラー生成）
@@ -107,6 +118,7 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 ### 5. メトリクス・可観測性
 
 **未実装の項目**:
+
 - プロメテウス形式のメトリクス
 - 処理時間の詳細計測
 - リソース使用状況の追跡
@@ -140,20 +152,24 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 ## 📋 優先順位付きアクションアイテム
 
 ### 即座に対応（1-2日）
+
 - [ ] NPXキャッシュ判定ロジックの実装
 - [ ] セッション操作の排他制御
 
 ### 短期（1週間以内）
+
 - [ ] エラーコード標準化
 - [ ] 基本的なユニットテスト追加
 - [ ] ホットリロード検証
 
 ### 中期（2-3週間）
+
 - [ ] E2Eテストスイート完成
 - [ ] メトリクス実装
 - [ ] パフォーマンス最適化
 
 ### 長期（1ヶ月以上）
+
 - [ ] プラグインシステム設計
 - [ ] WebSocketトランスポート
 - [ ] クラスタリング対応
@@ -161,31 +177,36 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 ## 💡 技術的負債
 
 ### 型定義の改善
+
 - `any`型の使用箇所: 3箇所（今回修正で1箇所削減）
 - ジェネリクスの活用不足
 - 型推論の改善余地
 
 ### 循環依存 ✅ **完全解決済み（2025-01-22）**
+
 - runtime-factory.jsでの動的インポート: **解決済み**
-- CLIモジュールの分割: **完了** 
+- CLIモジュールの分割: **完了**
   - 850行以上のcli/index.tsを機能別に分割
   - 各コマンドハンドラーを独立したファイルに移動（14ファイル）
   - 共通ユーティリティをcli/utils/cli-helpers.tsに抽出
   - 循環依存テストを追加して検証済み
 
 ### コード重複
+
 - CLI commandsの重複コード（今回修正で改善）
 - エラーハンドリングパターンの統一化が必要
 
 ## 📝 ドキュメント整備状況
 
 ### ユーザー向け（完成度: 90%）
+
 - ✅ README.md - 基本的な使い方
-- ✅ mcp-integration.md - 統合ガイド  
+- ✅ mcp-integration.md - 統合ガイド
 - ✅ testing-guide.md - テスト環境構築
 - ⚠️ API リファレンス - 未作成
 
 ### 開発者向け（完成度: 70%）
+
 - ✅ implementation-status.md - 実装状況
 - ✅ remaining-tasks.md - このドキュメント
 - ⚠️ アーキテクチャ設計書 - 未作成
@@ -196,7 +217,7 @@ const isFirstRun = !this.restartCount && !this.lastStartTime;
 主要機能は98%完成。本番環境での安定運用には以下が必要：
 
 1. **並行処理の完全な安全性確保**（Critical）
-2. **テストカバレッジ向上**（Important）  
+2. **テストカバレッジ向上**（Important）
 3. **エラー処理の標準化**（Important）
 4. **ドキュメントの完成**（Nice to have）
 

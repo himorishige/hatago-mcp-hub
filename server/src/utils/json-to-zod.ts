@@ -130,7 +130,7 @@ function convertJsonSchemaToZod(schema: JsonSchema | undefined): z.ZodTypeAny {
         } else if (schema.required.length < Object.keys(shape).length) {
           // Some fields are optional
           const optionalKeys = Object.keys(shape).filter(
-            (key) => !schema.required.includes(key),
+            (key) => !schema.required?.includes(key),
           );
           objectSchema = objectSchema.partial(
             optionalKeys.reduce(
@@ -145,9 +145,9 @@ function convertJsonSchemaToZod(schema: JsonSchema | undefined): z.ZodTypeAny {
 
         // Handle additionalProperties
         if (schema.additionalProperties === false) {
-          objectSchema = objectSchema.strict();
+          objectSchema = objectSchema.strict() as any;
         } else if (schema.additionalProperties === true) {
-          objectSchema = objectSchema.passthrough();
+          objectSchema = objectSchema.passthrough() as any;
         }
 
         return objectSchema;

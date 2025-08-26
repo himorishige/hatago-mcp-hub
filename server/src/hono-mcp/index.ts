@@ -10,6 +10,7 @@ import type {
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type {
   JSONRPCMessage,
+  JSONRPCNotification,
   RequestId,
 } from '@modelcontextprotocol/sdk/types.js';
 import {
@@ -42,7 +43,13 @@ export class StreamableHTTPTransport implements Transport {
 
       createdAt: number;
       notifications?: JSONRPCMessage[];
+      resolveResponse?: () => void; // Response resolver
       streamWriter?: any; // Stream writer for NDJSON streaming
+      stream?: {
+        closed: boolean;
+        close: () => void;
+        write: (data: string) => Promise<void>;
+      }; // SSE stream
     }
   >();
   #requestToStreamMapping = new Map<RequestId, string>();
@@ -458,6 +465,17 @@ export class StreamableHTTPTransport implements Transport {
 
           try {
             await Promise.race([responsePromise, timeoutPromise]);
+            console.log(
+              '[DEBUG StreamableHTTP] Response sent, closing SSE stream',
+            );
+            // Clear the keepalive interval after successful response
+            clearInterval(keepaliveInterval);
+
+            // Properly close the SSE stream
+            await stream.close();
+            console.log(
+              '[DEBUG StreamableHTTP] SSE stream closed successfully',
+            );
           } catch (error) {
             console.error(
               '[DEBUG StreamableHTTP] SSE timeout or error:',
@@ -474,9 +492,10 @@ export class StreamableHTTPTransport implements Transport {
             })}
 
 `);
+            // Close stream on error too
+            await stream.close();
           } finally {
-            clearInterval(keepaliveInterval);
-            // Clean up
+            // Clean up mappings
             for (const message of messages) {
               if (isJSONRPCRequest(message)) {
                 this.#requestToStreamMapping.delete(message.id);
@@ -655,6 +674,74 @@ export class StreamableHTTPTransport implements Transport {
     return true;
   }
 
+  /**
+   * Sends a progress notification to a specific request's SSE stream
+   * This is used by McpHub to send progress updates during long-running operations
+   */
+  async sendProgressNotification(
+    requestId: RequestId,
+    progressToken: string | number,
+    progress?: number,
+    total?: number,
+  ): Promise<void> {
+    const streamId = this.#requestToStreamMapping.get(requestId);
+    if (!streamId) {
+      console.log(
+        '[DEBUG StreamableHTTP] No stream found for request ID:',
+        requestId,
+      );
+      return;
+    }
+
+    const streamData = this.#streamMapping.get(streamId);
+    if (!streamData?.stream) {
+      console.log(
+        '[DEBUG StreamableHTTP] No SSE stream found for stream ID:',
+        streamId,
+      );
+      return;
+    }
+
+    const notification: JSONRPCNotification = {
+      jsonrpc: '2.0',
+      method: 'notifications/progress',
+      params: {
+        progressToken,
+        progress: progress ?? 0, // デフォルトは0
+        ...(total !== undefined && total !== null && { total }), // 値がある場合のみ含める
+      },
+    };
+
+    try {
+      await streamData.stream.write(`data: ${JSON.stringify(notification)}
+
+`);
+      console.log(
+        '[DEBUG StreamableHTTP] Sent progress notification via SSE:',
+        progressToken,
+      );
+    } catch (e) {
+      console.error(
+        '[DEBUG StreamableHTTP] Failed to send progress notification:',
+        e,
+      );
+    }
+  }
+
+  /**
+   * Gets the transport instance for a specific request ID
+   * This allows McpHub to send notifications directly to the transport
+   */
+  getTransportForRequest(
+    requestId: RequestId,
+  ): StreamableHTTPTransport | undefined {
+    const streamId = this.#requestToStreamMapping.get(requestId);
+    if (streamId && this.#streamMapping.has(streamId)) {
+      return this;
+    }
+    return undefined;
+  }
+
   async close(): Promise<void> {
     // Stop cleanup interval
     if (this.#cleanupInterval) {
@@ -781,8 +868,11 @@ export class StreamableHTTPTransport implements Transport {
 `);
           console.log('[DEBUG StreamableHTTP] Sent response via SSE');
 
-          // Resolve the response promise to close the stream
+          // Resolve the response promise to trigger stream closure
           if (streamData.resolveResponse) {
+            console.log(
+              '[DEBUG StreamableHTTP] Resolving response promise to close stream',
+            );
             streamData.resolveResponse();
           }
         } catch (e) {

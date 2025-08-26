@@ -52,20 +52,26 @@ npx @himorishige/hatago serve --profile research
 ## プロファイル一覧
 
 ### frontend.jsonc
+
 フロントエンド開発向けのプロファイル
+
 - ファイルシステム（読み取り専用）
 - Brave Search（ドキュメント検索）
 - ポート: 3001
 
 ### backend.jsonc
+
 バックエンド開発向けのプロファイル
+
 - ファイルシステム（読み書き可能）
 - PostgreSQL
 - GitHub API
 - ポート: 3002
 
 ### research.jsonc
+
 調査・ドキュメント作成向けのプロファイル
+
 - ファイルシステム（Documents配下）
 - Brave Search
 - Google Drive
@@ -82,7 +88,7 @@ npx @himorishige/hatago serve --profile research
   "logLevel": "info",
   "servers": [
     // MCPサーバーの設定
-  ]
+  ],
 }
 ```
 

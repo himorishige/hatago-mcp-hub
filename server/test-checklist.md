@@ -25,13 +25,11 @@ pnpm check
 ```
 
 - [x] `pnpm install` が成功する
-
   - 実行結果: ✅ Already up to date
   - エラー内容（ある場合）: なし
   - 検証日時: 2025-08-23
 
 - [x] `pnpm build` が成功する
-
   - 実行結果: ✅ 成功（59 files 生成）
   - ビルド時間: 約1000ms
   - エラー内容（ある場合）: なし
@@ -78,14 +76,12 @@ curl http://localhost:3000/readyz
 ```
 
 - [x] HTTP モードで起動できる
-
   - ポート番号: 3000（デフォルト）
   - 起動コマンド: `pnpm cli serve --mode http`
   - エラー内容（ある場合）: mkdir引数の型エラー（修正済み）
   - 検証日時: 2025-08-23
 
 - [x] `/health` エンドポイントが応答する
-
   - ステータスコード: 200
   - レスポンス内容: {"ok":true,"name":"hatago-hub","version":"0.0.1"}
   - 検証日時: 2025-08-23
@@ -109,7 +105,6 @@ pnpm cli status
 ```
 
 - [x] STDIO モードで起動できる
-
   - 起動コマンド: `pnpm cli serve` (デフォルト) または `pnpm cli serve --mode stdio`
   - 起動時間: 約500ms
   - デバッグログ: stderr に出力される
@@ -147,7 +142,6 @@ pnpm cli serve -v  # verboseモード
 ```
 
 - [ ] プロファイルが正しく読み込まれる
-
   - デフォルトプロファイル: "default"
   - カスタムプロファイル:
   - プロファイル毎の設定分離:
@@ -167,7 +161,6 @@ pnpm cli npx add @modelcontextprotocol/server-filesystem --id fs -- /path/to/wor
 ```
 
 - [x] `server-everything` を追加できる
-
   - 実行結果: ✅ 正常に追加・起動
   - サーバー ID: everything
   - プロトコル: 2025-06-18でネゴシエーション成功
@@ -193,30 +186,25 @@ pnpm cli npx remove everything
 ```
 
 - [ ] サーバー一覧が表示される
-
   - 表示形式: テーブル（cli-table3 使用）
   - 表示項目: ID, ステータス, パッケージ名
 
 - [ ] サーバーを起動できる
-
   - 状態遷移: STOPPED → STARTING → INITIALIZED → TOOLS_DISCOVERING → TOOLS_READY → RUNNING
   - キャッシュ判定によるタイムアウト調整: 初回 120 秒、2 回目以降 30 秒
   - プロセス ID:
 
 - [ ] サーバーステータスを確認できる
-
   - 状態表示:
   - ツール数:
   - ワークスペースパス: .hatago/workspaces/workspace-\*
   - メタデータ: metadata.json に保存
 
 - [ ] サーバーを再起動できる
-
   - 自動再起動機能: maxRestarts, restartDelayMs 設定
   - 新しいプロセス ID:
 
 - [ ] サーバーを停止できる
-
   - グレースフルシャットダウン:
   - クリーンアップ状況:
 
@@ -244,7 +232,6 @@ pnpm cli npx cache clear
 ```
 
 - [ ] キャッシュの確認ができる
-
   - キャッシュ判定: `npm list -g` コマンド使用
   - キャッシュディレクトリ: .hatago/cache/npx
 
@@ -277,13 +264,11 @@ pnpm cli remote remove mock-test
 ```
 
 - [ ] リモートサーバーを追加できる
-
   - サーバー ID: mock-test
   - URL: http://localhost:4001/mcp
   - プロトコルネゴシエーション: MCPClientFacade 使用
 
 - [ ] 接続テストが成功する
-
   - プロトコルバージョン: 2025-06-18 / 0.1.0 自動判定
   - レスポンス:
 
@@ -300,7 +285,6 @@ pnpm cli call mock-test_test_math '{"operation": "add", "a": 10, "b": 20}'
 ```
 
 - [ ] `test_echo` ツールを実行できる
-
   - 実行結果:
   - レスポンス時間:
 
@@ -333,19 +317,16 @@ pnpm cli serve --profile research --port 3003 --mode http &
 ```
 
 - [ ] backend プロファイルで起動できる
-
   - ポート: 3001
   - プロセス ID:
   - 設定ファイル: .hatago/profiles/backend.jsonc
 
 - [ ] frontend プロファイルで起動できる
-
   - ポート: 3002
   - プロセス ID:
   - 設定ファイル: .hatago/profiles/frontend.jsonc
 
 - [ ] research プロファイルで起動できる
-
   - ポート: 3003
   - プロセス ID:
   - 設定ファイル: .hatago/profiles/research.jsonc
@@ -371,27 +352,23 @@ pnpm cli mcp remove test-server
 ```
 
 - [x] `mcp add` コマンドが動作する（Claude Code形式）
-
   - 追加されたサーバー名: test-fs, filesystem-server, old-format
   - `--`セパレータが正しく処理される: ✅ 確認済み
   - NPX サーバーとして登録: ✅ 確認済み
   - 検証日時: 2025-08-23
 
 - [x] 後方互換性が保たれている
-
   - 引用符形式でも動作: ✅ 確認済み
   - 既存スクリプトへの影響なし: ✅ 確認済み
   - 検証日時: 2025-08-23
 
 - [x] CLIレジストリへの永続化
-
   - ファイルパス: .hatago/cli-registry.json
   - 追加・削除が反映される: ✅ 確認済み
   - 再起動後も設定が維持される: ✅ 確認済み
   - 検証日時: 2025-08-23
 
 - [x] `mcp list` コマンドが動作する
-
   - 一覧表示形式: ● running / ○ stopped
   - 表示項目: サーバー名、状態、タイプ、ソース（[cli] / [config]）
   - CLIレジストリと設定ファイルの両方を表示: ✅ 確認済み
@@ -412,17 +389,14 @@ pnpm cli drain 1
 ```
 
 - [ ] 設定変更を検知する
-
   - 検知時間:
   - 通知方法:
 
 - [ ] リロードが成功する
-
   - 新世代番号:
   - 移行時間:
 
 - [ ] 世代管理が適切に動作する
-
   - 旧世代セッション数:
   - 新世代への移行:
 
@@ -442,12 +416,10 @@ pnpm cli secret list
 ```
 
 - [ ] シークレット初期化が成功する
-
   - マスターキー生成:
   - ファイル権限:
 
 - [ ] シークレットを設定できる
-
   - 暗号化確認:
   - 保存場所:
 
@@ -474,7 +446,6 @@ pnpm cli secret import < secrets.json
 ```
 
 - [ ] エクスポートが成功する
-
   - ファイル形式:
   - 暗号化状態:
 
@@ -500,12 +471,10 @@ pnpm cli policy test dangerous_tool
 ```
 
 - [ ] ポリシー設定が適用される
-
   - 許可ツール数:
   - 拒否ツール数:
 
 - [ ] 許可ツールが実行できる
-
   - ツール名: test_echo
   - 実行結果:
 
@@ -528,7 +497,6 @@ HATAGO_CONFIG=.hatago/broken.jsonc pnpm start
 ```
 
 - [ ] 存在しないサーバーで適切なエラーが出る
-
   - エラーメッセージ:
   - エラーコード:
 
@@ -550,7 +518,6 @@ pnpm cli npx status crash-test
 ```
 
 - [ ] プロセスクラッシュを検知する
-
   - 検知時間:
   - ログ出力:
   - エラーコード: E_NPX_PROCESS_CRASHED
@@ -711,7 +678,6 @@ pnpm cli npx start invalid-server
 ```
 
 - [ ] 標準化されたエラーコードが返される
-
   - E*MCP*\* : MCP プロトコル関連
   - E*NPX*\* : NPX サーバー関連
   - E*SESSION*\* : セッション管理関連
@@ -773,7 +739,6 @@ pnpm cli npx start fs-test
 3. Claude Code から接続
 
 - [ ] Claude Code から接続できる
-
   - 接続方法:
   - 認識されたツール数:
 
@@ -787,7 +752,6 @@ pnpm cli npx start fs-test
 2. Cursor 設定で MCP サーバーとして登録
 
 - [ ] Cursor から接続できる
-
   - プロファイル名:
   - ポート番号:
 
@@ -826,7 +790,6 @@ pnpm cli npx start fs-test
 #### 検証必要項目
 
 1. **NPX サーバーの STDIO プロトコル初期化**
-
    - 状態: ⚠️ プロトコルネゴシエーション実装済みだが検証必要
    - 対応: 2025-06-18 と 0.1.0 の自動判定機能
 

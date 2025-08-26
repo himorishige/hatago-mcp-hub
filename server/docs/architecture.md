@@ -77,6 +77,7 @@ The **Capability Graph** is the central organizing principle of Hatago. Instead 
 - **Collision Detection** automatically handles tool name conflicts with prefixes
 
 #### Benefits:
+
 - **Unified View**: Single interface to access capabilities from multiple servers
 - **Intelligent Routing**: Requests are routed to the appropriate server based on capability
 - **Dependency Management**: Servers can depend on other servers' capabilities
@@ -89,18 +90,23 @@ The **Proxy Layer** provides transparent access to server capabilities through m
 ```typescript
 interface ProxyToolManager {
   // Provides unified access to all tools across servers
-  listTools(sessionId?: string): Promise<Tool[]>
-  callTool(name: string, args: any, sessionId?: string): Promise<CallToolResult>
+  listTools(sessionId?: string): Promise<Tool[]>;
+  callTool(
+    name: string,
+    args: any,
+    sessionId?: string,
+  ): Promise<CallToolResult>;
 }
 
 interface ProxyResourceManager {
   // Provides unified access to all resources across servers
-  listResources(sessionId?: string): Promise<Resource[]>
-  readResource(uri: string, sessionId?: string): Promise<ReadResourceResult>
+  listResources(sessionId?: string): Promise<Resource[]>;
+  readResource(uri: string, sessionId?: string): Promise<ReadResourceResult>;
 }
 ```
 
 #### Key Features:
+
 - **Transparent Proxying**: Clients see a single unified interface
 - **Session Isolation**: Each client session has isolated state
 - **Error Handling**: Circuit breakers prevent cascade failures
@@ -112,14 +118,15 @@ All communication is abstracted through the `Transport` interface:
 
 ```typescript
 interface Transport {
-  connect(): Promise<void>
-  disconnect(): Promise<void>
-  send<T>(method: string, params?: any): Promise<T>
-  isConnected(): boolean
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  send<T>(method: string, params?: any): Promise<T>;
+  isConnected(): boolean;
 }
 ```
 
 Implementations:
+
 - **STDIOTransport**: For local process communication
 - **HTTPTransport**: For HTTP-based MCP servers
 - **SSETransport**: For Server-Sent Events
@@ -138,6 +145,7 @@ Implementations:
 - **ConfigManager**: Hot-reloadable configuration management
 
 Key patterns:
+
 - Event-driven architecture for loose coupling
 - Dependency injection for testability
 - Immutable configuration objects
@@ -152,6 +160,7 @@ Key patterns:
 - **CapabilityGraph**: Manages server relationships and dependencies
 
 Key patterns:
+
 - Proxy pattern for transparent access
 - Strategy pattern for routing decisions
 - Observer pattern for capability changes
@@ -166,6 +175,7 @@ Key patterns:
 - **StructuredLogger**: JSON logging with sanitization
 
 Key patterns:
+
 - Aspect-Oriented Programming for cross-cutting concerns
 - Context propagation through AsyncLocalStorage
 - Middleware pattern for HTTP instrumentation
@@ -180,6 +190,7 @@ Key patterns:
 - **CircuitBreaker**: Failure isolation and recovery
 
 Key patterns:
+
 - Middleware pattern for HTTP security
 - Strategy pattern for different auth methods
 - State machine pattern for circuit breaker
@@ -231,31 +242,37 @@ Key patterns:
 ## Design Principles
 
 ### 1. **Layered Architecture**
+
 - Clear separation of concerns across layers
 - Each layer has a single responsibility
 - Dependencies flow downward only
 
 ### 2. **Composition over Inheritance**
+
 - Prefer composition for building complex functionality
 - Use dependency injection for flexibility
 - Avoid deep inheritance hierarchies
 
 ### 3. **Event-Driven Communication**
+
 - Use events for loose coupling between components
 - Enable reactive programming patterns
 - Support hot-pluggable components
 
 ### 4. **Immutable Data Structures**
+
 - Configuration objects are immutable
 - State changes create new objects
 - Easier reasoning about concurrent operations
 
 ### 5. **Fail-Safe Defaults**
+
 - System works with minimal configuration
 - Graceful degradation when components fail
 - Circuit breakers prevent cascade failures
 
 ### 6. **Observability First**
+
 - All operations are traceable
 - Metrics are collected by default
 - Structured logging for analysis
@@ -267,28 +284,36 @@ Key patterns:
 Hatago supports multiple server types, each with its own execution model:
 
 ### Local Servers
+
 Local servers run arbitrary commands (node, python, deno, etc.) as child processes:
+
 - **Execution**: Spawned as child processes with STDIO transport
 - **Configuration**: Support for command, args, cwd, and environment variables
 - **Implementation**: Shares execution logic with NPX servers via `NpxMcpServer` class
 - **Use Case**: Running custom MCP servers written in any language
 
 ### NPX Servers
+
 NPX servers run npm packages directly:
+
 - **Execution**: Uses `npx` to run packages without global installation
 - **Caching**: Leverages npm cache for faster startup
 - **Configuration**: Package name, version, and arguments
 - **Use Case**: Running published MCP server packages
 
 ### Remote Servers
+
 Remote servers connect to HTTP/SSE/WebSocket endpoints:
+
 - **Execution**: No local process, connects over network
 - **Transport**: HTTP, SSE, or WebSocket protocols
 - **Configuration**: URL, authentication, and health check settings
 - **Use Case**: Connecting to cloud-hosted MCP services
 
 ### Decorator Servers (Experimental)
+
 In-process servers defined using TypeScript decorators:
+
 - **Execution**: Runs within the Hatago process
 - **Performance**: No IPC overhead
 - **Configuration**: Class-based with decorator metadata
@@ -325,21 +350,25 @@ In-process servers defined using TypeScript decorators:
 ## Performance Considerations
 
 ### Memory Management
+
 - Connection pooling for HTTP clients
 - Proper cleanup of resources
 - Avoiding memory leaks in long-running sessions
 
 ### Latency Optimization
+
 - Minimize proxy overhead
 - Use connection pooling
 - Implement request caching where appropriate
 
 ### Scalability
+
 - Stateless design for horizontal scaling
 - Circuit breakers prevent resource exhaustion
 - Rate limiting protects against abuse
 
 ### Monitoring
+
 - Track key performance metrics
 - Use distributed tracing for bottleneck identification
 - Health checks for operational status

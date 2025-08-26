@@ -3,6 +3,13 @@
  * Minimal type definitions for lightweight version
  */
 
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+
+/**
+ * MCP Server type alias for compatibility
+ */
+export type McpServer = Server;
+
 /**
  * Simplified protocol negotiation result
  */
@@ -23,6 +30,9 @@ export interface NegotiatedProtocol {
     prompts: boolean;
     tools: boolean;
   };
+
+  // Server capabilities (optional)
+  capabilities?: Record<string, unknown>;
 }
 
 /**

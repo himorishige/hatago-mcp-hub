@@ -11,7 +11,7 @@ import { Command } from 'commander';
 import { createInitCommand } from './commands/init.js';
 import { createListCommand } from './commands/list.js';
 import { createMcpCommands } from './commands/mcp.js';
-import { createServeCommand } from './commands/serve-lite.js';
+import { createServeCommand } from './commands/serve.js';
 
 const program = new Command();
 

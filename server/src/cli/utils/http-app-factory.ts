@@ -6,7 +6,6 @@
 import { Hono } from 'hono';
 import type { HatagoConfig } from '../../config/types.js';
 import type { McpHub } from '../../core/mcp-hub.js';
-import { logger } from '../../observability/minimal-logger.js';
 
 /**
  * Create the base HTTP application with health and debug endpoints
@@ -73,7 +72,7 @@ export async function setupReadinessCheck(
     createSystemResourcesCheck,
   } = await import('../../utils/health.js');
 
-  const healthManager = new HealthCheckManager(logger);
+  const healthManager = new HealthCheckManager(undefined);
 
   // Register health checks
   healthManager.register(createConfigCheck(() => !!config));

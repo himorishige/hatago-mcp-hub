@@ -30,7 +30,15 @@ export class ToolRegistry {
   private serverTools = new Map<string, Set<string>>();
   private namingConfig: ToolNamingConfig;
 
-  constructor(options: ToolRegistryOptions = {}) {
+  constructor(
+    options: ToolRegistryOptions = {
+      namingConfig: {
+        strategy: 'namespace',
+        separator: '_',
+        format: '{serverId}_{toolName}',
+      },
+    },
+  ) {
     this.namingConfig = options.namingConfig || {};
   }
 

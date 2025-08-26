@@ -23,10 +23,10 @@ export function createListCommand(program: Command): void {
         const config = await loadConfig(options.config);
 
         // CLIレジストリから設定をマージ
-        const { CliRegistryStorage } = await import(
-          '../../storage/cli-registry-storage.js'
+        const { UnifiedFileStorage } = await import(
+          '../../storage/unified-file-storage.js'
         );
-        const cliStorage = new CliRegistryStorage();
+        const cliStorage = new UnifiedFileStorage();
         await cliStorage.init();
         const cliServers = await cliStorage.getServers();
 

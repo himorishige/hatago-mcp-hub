@@ -3,6 +3,7 @@
 Hatagoを既存プロジェクトでMCPサーバーとして使用する方法について説明します。
 
 > **Note**: このドキュメントはユーザー向けです。開発者向け情報は以下を参照してください：
+>
 > - [Implementation Status](./implementation-status.md) - 実装状況
 > - [Remaining Tasks](./remaining-tasks.md) - 残存タスク一覧
 
@@ -22,11 +23,7 @@ Hatagoを既存プロジェクトでMCPサーバーとして使用する方法�
 {
   "hatago": {
     "command": "npx",
-    "args": [
-      "-y",
-      "@himorishige/hatago@latest",
-      "serve"
-    ]
+    "args": ["-y", "@himorishige/hatago@latest", "serve"]
   }
 }
 ```
@@ -41,12 +38,7 @@ Hatagoを既存プロジェクトでMCPサーバーとして使用する方法�
     "hatago": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@himorishige/hatago@latest",
-        "serve",
-        "--quiet"
-      ]
+      "args": ["-y", "@himorishige/hatago@latest", "serve", "--quiet"]
     }
   }
 }
@@ -56,11 +48,11 @@ Hatagoを既存プロジェクトでMCPサーバーとして使用する方法�
 
 ### 基本オプション
 
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `--quiet` | 不要なログ出力を抑制 | false |
-| `--config <path>` | 設定ファイルのパス | 自動検出 |
-| `--http` | HTTPモードで起動 | STDIOモード |
+| オプション        | 説明                 | デフォルト  |
+| ----------------- | -------------------- | ----------- |
+| `--quiet`         | 不要なログ出力を抑制 | false       |
+| `--config <path>` | 設定ファイルのパス   | 自動検出    |
+| `--http`          | HTTPモードで起動     | STDIOモード |
 
 ### リモートMCPサーバーの追加
 
@@ -70,12 +62,7 @@ Hatagoを既存プロジェクトでMCPサーバーとして使用する方法�
 {
   "hatago": {
     "command": "npx",
-    "args": [
-      "-y",
-      "@himorishige/hatago@latest",
-      "serve",
-      "--quiet"
-    ],
+    "args": ["-y", "@himorishige/hatago@latest", "serve", "--quiet"],
     "env": {
       "HATAGO_REMOTE_SERVERS": "deepwiki=https://mcp.deepwiki.com/sse"
     }
@@ -96,6 +83,7 @@ Hatagoは設定ファイルなしでも動作しますが、カスタマイズ�
 ### 最小設定例
 
 `.hatago.json`:
+
 ```json
 {
   "servers": [
@@ -117,13 +105,7 @@ Windows（非WSL）では、`cmd /c`ラッパーが必要です：
 {
   "hatago": {
     "command": "cmd",
-    "args": [
-      "/c",
-      "npx",
-      "-y",
-      "@himorishige/hatago@latest",
-      "serve"
-    ]
+    "args": ["/c", "npx", "-y", "@himorishige/hatago@latest", "serve"]
   }
 }
 ```
@@ -133,6 +115,7 @@ Windows（非WSL）では、`cmd /c`ラッパーが必要です：
 ### ログの確認
 
 quietモードを解除してログを確認：
+
 ```bash
 npx @himorishige/hatago serve
 ```
@@ -140,6 +123,7 @@ npx @himorishige/hatago serve
 ### 設定の検証
 
 現在の設定を確認：
+
 ```bash
 npx @himorishige/hatago list
 ```
@@ -147,6 +131,7 @@ npx @himorishige/hatago list
 ### デバッグモード
 
 詳細なデバッグ情報を出力：
+
 ```bash
 DEBUG=* npx @himorishige/hatago serve
 ```
@@ -170,6 +155,7 @@ DEBUG=* npx @himorishige/hatago serve
 ### 2. 複数のMCPサーバーを統合
 
 `.hatago.json`を作成：
+
 ```json
 {
   "servers": [
