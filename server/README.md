@@ -51,6 +51,7 @@ npx hatago serve
 - **マルチサーバー管理**: NPX/Remote/Localサーバーの統合管理
 - **マルチトランスポート**: STDIO (デフォルト) / HTTP / SSE対応
 - **セッション管理**: 複数のAIクライアントから独立接続
+- **完全なMCPサポート**: Tools/Resources/Prompts すべてに対応
 
 ### 🛡️ 基本的なセキュリティ
 

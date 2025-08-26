@@ -27,17 +27,22 @@ Hatago MCP Hub (Lite) is an ultra-lightweight MCP (Model Context Protocol) Hub s
 │   │   ├── cli/        # CLI commands implementation
 │   │   │   ├── index.ts # CLI entry point (hatago command)
 │   │   │   └── commands/ # Individual CLI commands
-│   │   ├── core/       # Core functionality (simplified)
-│   │   │   ├── mcp-hub.ts            # Main hub (42KB)
+│   │   ├── core/       # Core functionality (modularized)
+│   │   │   ├── mcp-hub.ts            # Main hub (~500 lines)
+│   │   │   ├── mcp-hub-resources.ts  # Resource management
+│   │   │   ├── mcp-hub-tools.ts      # Tool management
+│   │   │   ├── mcp-hub-prompts.ts    # Prompt management
 │   │   │   ├── session-manager.ts    # Session management
 │   │   │   ├── tool-registry.ts      # Tool registry
 │   │   │   ├── resource-registry.ts  # Resource registry
+│   │   │   ├── prompt-registry.ts    # Prompt registry
 │   │   │   ├── config-manager.ts     # Simple config management
 │   │   │   └── types.ts              # Core types
 │   │   ├── servers/    # MCP server implementations
-│   │   │   ├── server-registry.ts    # Server management (31KB)
+│   │   │   ├── server-registry.ts    # Server management
 │   │   │   ├── npx-mcp-server.ts     # NPX server support
-│   │   │   ├── remote-mcp-server.ts  # Remote server (32KB)
+│   │   │   ├── remote-mcp-server.ts  # Remote server
+│   │   │   ├── remote-mcp-connection.ts # Connection management
 │   │   │   └── custom-stdio-transport.ts # STDIO transport
 │   │   ├── config/     # Configuration management
 │   │   ├── storage/    # Data storage (2 types only)
@@ -45,17 +50,18 @@ Hatago MCP Hub (Lite) is an ultra-lightweight MCP (Model Context Protocol) Hub s
 │   │   │   └── memory-registry-storage.ts # Memory storage
 │   │   ├── transport/  # Communication layer
 │   │   └── utils/      # Utilities
-│   │       ├── node-utils.ts  # Node.js utilities (NEW)
-│   │       ├── logger.ts      # Logging
-│   │       ├── errors.ts      # Error handling
-│   │       ├── mutex.ts       # Mutex implementation
-│   │       └── zod-like.ts    # Schema conversion (NEW)
+│   │       ├── node-utils.ts    # Node.js utilities
+│   │       ├── logger.ts        # Logging
+│   │       ├── errors.ts        # Error handling
+│   │       ├── error-codes.ts   # Error code definitions
+│   │       ├── mutex.ts         # Mutex implementation
+│   │       └── zod-like.ts      # Schema conversion
 │   ├── dist/           # Build output
 │   ├── package.json
 │   └── tsconfig.json
 └── docs/               # Documentation
 
-Total: 53 TypeScript files (excluding tests)
+Total: ~40 TypeScript files (excluding tests)
 ```
 
 ## Essential Development Commands
@@ -148,14 +154,14 @@ hatago session clear         # Clear all sessions
 
 The project has been significantly simplified from its original implementation to create a lightweight, maintainable version.
 
-### Removed Features (27 files deleted)
+### Removed Features (38+ files deleted)
 
 #### Phase 1: Unnecessary Features
 
 - `workspace-manager.ts` - Workspace management
 - `shared-session-manager.ts` - Shared session functionality
 - `diagnostics.ts` - Diagnostic tools
-- `prompt-registry.ts` - Prompt management
+- `prompt-registry.ts` - Prompt management (re-added in Phase 6)
 - `npx-cache.ts` - NPX caching
 - `protocol-negotiator.ts` - Protocol negotiation
 - `protocol/` directory - Complex protocol handling
@@ -178,6 +184,25 @@ The project has been significantly simplified from its original implementation t
 - `runtime/node.ts`
 - `runtime/index.ts`
   → Replaced with simple `node-utils.ts`
+
+#### Phase 4: Client Components Removal
+
+- `client/hatago-client.ts`
+- `client/index.ts`
+- `config/loader-with-result.ts`
+- `core/protocol-negotiator-simple.ts`
+- `core/protocol/` directory
+- `transport/factory.ts`
+- `utils/crypto.ts` and related tests
+
+#### Phase 5-6: Core Module Refactoring
+
+- Extracted resource management to `mcp-hub-resources.ts`
+- Extracted tool management to `mcp-hub-tools.ts`
+- Extracted prompts management to `mcp-hub-prompts.ts`
+- Simplified `mcp-hub.ts` to ~500 lines (from ~1000+ lines)
+- Added `remote-mcp-connection.ts` for connection management
+- Re-added `prompt-registry.ts` with simplified implementation
 
 ### Current Architecture
 

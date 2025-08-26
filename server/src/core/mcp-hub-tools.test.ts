@@ -10,7 +10,7 @@ describe('McpHubToolManager', () => {
 
   beforeEach(() => {
     mockServer = {
-      setRequestHandler: vi.fn(),
+      _requestHandlers: new Map(),
     } as any;
 
     mockRegistry = {
@@ -47,17 +47,17 @@ describe('McpHubToolManager', () => {
   describe('setupToolHandlers', () => {
     it('should set up list_tools handler', () => {
       toolManager.setupToolHandlers();
-      expect(mockServer.setRequestHandler).toHaveBeenCalledWith(
-        'tools/list',
-        expect.any(Function),
+      expect(mockServer._requestHandlers.has('tools/list')).toBe(true);
+      expect(mockServer._requestHandlers.get('tools/list')).toBeInstanceOf(
+        Function,
       );
     });
 
     it('should set up call_tool handler', () => {
       toolManager.setupToolHandlers();
-      expect(mockServer.setRequestHandler).toHaveBeenCalledWith(
-        'tools/call',
-        expect.any(Function),
+      expect(mockServer._requestHandlers.has('tools/call')).toBe(true);
+      expect(mockServer._requestHandlers.get('tools/call')).toBeInstanceOf(
+        Function,
       );
     });
   });

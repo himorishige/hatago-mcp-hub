@@ -17,6 +17,8 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type {
   CallToolResult,
   ReadResourceResult,
+  Resource,
+  Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { RemoteServerConfig } from '../config/types.js';
 
@@ -1028,13 +1030,14 @@ export class RemoteMcpServer extends EventEmitter {
   /**
    * List available tools
    */
-  async listTools(): Promise<unknown> {
+  async listTools(): Promise<Tool[]> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
-      return await this.connection.client.listTools();
+      const result = await this.connection.client.listTools();
+      return result?.tools || [];
     } catch (error) {
       // Handle connection errors during tool listing
       if (
@@ -1052,13 +1055,14 @@ export class RemoteMcpServer extends EventEmitter {
   /**
    * List available resources
    */
-  async listResources(): Promise<unknown> {
+  async listResources(): Promise<Resource[]> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
 
     try {
-      return await this.connection.client.listResources();
+      const result = await this.connection.client.listResources();
+      return result?.resources || [];
     } catch (error) {
       // Handle connection errors during resource listing
       if (

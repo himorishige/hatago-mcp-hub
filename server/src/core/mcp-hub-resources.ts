@@ -4,15 +4,11 @@
  */
 
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import type {
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import type { z } from 'zod';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import type { ServerRegistry } from '../servers/server-registry.js';
-import { ErrorCode, HatagoError } from '../utils/errors.js';
+import { ErrorCode } from '../utils/error-codes.js';
+import { HatagoError } from '../utils/errors.js';
 import type { Logger } from '../utils/logger.js';
 import type { ResourceRegistry } from './resource-registry.js';
 import type { McpConnection } from './types.js';
@@ -56,9 +52,10 @@ export class McpHubResourceManager {
     }
 
     // List available resources
-    this.server.setRequestHandler(
+    // Use internal _requestHandlers as Server class doesn't expose resource handler methods
+    (this.server as any)._requestHandlers.set(
       'resources/list',
-      async (_request: z.infer<typeof ListResourcesRequestSchema>) => {
+      async (_request: any) => {
         const resources = this.resourceRegistry.getAllResources();
         this.logger.debug(`Listing ${resources.length} resources`);
 
@@ -74,23 +71,25 @@ export class McpHubResourceManager {
     );
 
     // Read resource content
-    this.server.setRequestHandler(
+    (this.server as any)._requestHandlers.set(
       'resources/read',
-      async (request: z.infer<typeof ReadResourceRequestSchema>) => {
+      async (request: any) => {
         const { uri } = request.params;
         this.logger.info(`Reading resource: ${uri}`);
 
         // Find resource registration
-        const resourceInfo = this.resourceRegistry.getResource(uri);
+        const resourceInfo = this.resourceRegistry.resolveResource(uri);
         if (!resourceInfo) {
           throw new HatagoError(
             ErrorCode.RESOURCE_NOT_FOUND,
             `Resource ${uri} not found`,
-            { uri },
+            {
+              context: { uri },
+            },
           );
         }
 
-        const { resource, serverId } = resourceInfo;
+        const { originalUri, serverId } = resourceInfo;
 
         // Find server connection
         const connection = this.connections.get(serverId);
@@ -98,7 +97,9 @@ export class McpHubResourceManager {
           throw new HatagoError(
             ErrorCode.SERVER_NOT_CONNECTED,
             `Server ${serverId} not connected`,
-            { serverId, uri },
+            {
+              context: { serverId, uri },
+            },
           );
         }
 
@@ -109,7 +110,7 @@ export class McpHubResourceManager {
         try {
           const result = await connection.transport.request({
             method: 'resources/read',
-            params: { uri },
+            params: { uri: originalUri },
           });
 
           this.logger.debug(`Resource read ${uri} succeeded`);
@@ -129,7 +130,7 @@ export class McpHubResourceManager {
    */
   async refreshNpxServerResources(serverId: string): Promise<void> {
     const server = this.serverRegistry
-      .getServers()
+      .listServers()
       .find((s) => s.id === serverId);
     if (!server) return;
 
@@ -151,9 +152,7 @@ export class McpHubResourceManager {
     );
 
     // Register all resources
-    for (const resource of resources) {
-      this.resourceRegistry.registerResource(resource.uri, resource, serverId);
-    }
+    this.resourceRegistry.registerServerResources(serverId, resources);
 
     // Update hub resources
     this.updateHubResources();
@@ -168,7 +167,7 @@ export class McpHubResourceManager {
     );
 
     const server = this.serverRegistry
-      .getServers()
+      .listServers()
       .find((s) => s.id === serverId);
     if (!server) {
       this.logger.debug(`[DEBUG] Server ${serverId} not found`);
@@ -183,7 +182,7 @@ export class McpHubResourceManager {
 
     // Get resources from remote server
     try {
-      const resources = await serverInstance.getResources();
+      const resources = await serverInstance.listResources();
       if (!resources || resources.length === 0) {
         this.logger.warn(
           `Server ${serverId} doesn't support resources/list method`,
@@ -196,13 +195,7 @@ export class McpHubResourceManager {
       );
 
       // Register all resources
-      for (const resource of resources) {
-        this.resourceRegistry.registerResource(
-          resource.uri,
-          resource,
-          serverId,
-        );
-      }
+      this.resourceRegistry.registerServerResources(serverId, resources);
 
       // Update hub resources
       this.updateHubResources();
@@ -282,7 +275,7 @@ export class McpHubResourceManager {
    */
   async refreshNpxServerPrompts(serverId: string): Promise<void> {
     const server = this.serverRegistry
-      .getServers()
+      .listServers()
       .find((s) => s.id === serverId);
     if (!server) return;
 

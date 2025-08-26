@@ -70,3 +70,15 @@ export interface Session {
   lastAccessedAt: Date;
   ttlSeconds: number;
 }
+
+/**
+ * MCP Connection information
+ */
+export interface McpConnection {
+  serverId: string;
+  type: 'local' | 'npx' | 'remote';
+  connected: boolean;
+  client?: any;
+  process?: any;
+  transport?: any;
+}

@@ -64,7 +64,12 @@ const errorCodeToJsonRpc: Partial<Record<ErrorCode, number>> = {
  * Convert HatagoError to JSON-RPC error code
  */
 export const getJsonRpcErrorCode = (error: HatagoError): number => {
-  return errorCodeToJsonRpc[error.code] ?? -32603; // Default to internal error
+  // Handle both string and numeric error codes
+  if (typeof error.code === 'string') {
+    return errorCodeToJsonRpc[error.code as ErrorCode] ?? -32603;
+  }
+  // For numeric codes, return a default JSON-RPC error code
+  return -32603; // Default to internal error
 };
 
 /**

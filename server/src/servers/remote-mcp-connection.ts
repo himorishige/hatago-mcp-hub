@@ -6,11 +6,14 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { Transport } from '@modelcontextprotocol/sdk/types.js';
+
+// Transport is the common interface for SSEClientTransport and StreamableHTTPClientTransport
+type Transport = SSEClientTransport | StreamableHTTPClientTransport;
+
 import type { RemoteServerConfig } from '../config/types.js';
-import { ErrorCode, HatagoError } from '../utils/errors.js';
+import { ErrorCode } from '../utils/error-codes.js';
+import { HatagoError } from '../utils/errors.js';
 import type { Logger } from '../utils/logger.js';
-import { parseHeaders } from '../utils/parse-headers.js';
 
 // Connection cache TTL in milliseconds (5 minutes)
 const CACHE_TTL = 5 * 60 * 1000;
@@ -101,7 +104,11 @@ export class RemoteConnectionManager {
   detectTransport(url: string): 'http' | 'sse' {
     // If transport is explicitly specified, use it
     if (this.config.transport) {
-      return this.config.transport;
+      // Map various transport types to supported ones
+      if (this.config.transport === 'sse') return 'sse';
+      if (this.config.transport === 'websocket') return 'http'; // websocket not yet supported, fallback to http
+      if (this.config.transport === 'streamable-http') return 'http';
+      return 'http'; // default to http for any other value
     }
 
     // Auto-detect based on URL path
@@ -124,7 +131,9 @@ export class RemoteConnectionManager {
         throw new HatagoError(
           ErrorCode.INVALID_CONFIG,
           `Invalid protocol: ${parsed.protocol}. Only HTTP/HTTPS are supported.`,
-          { url },
+          {
+            context: { url },
+          },
         );
       }
 
@@ -149,7 +158,9 @@ export class RemoteConnectionManager {
       throw new HatagoError(
         ErrorCode.INVALID_CONFIG,
         `Invalid URL format: ${url}`,
-        { url, error },
+        {
+          context: { url, error },
+        },
       );
     }
   }
@@ -167,10 +178,15 @@ export class RemoteConnectionManager {
     );
 
     if (transportType === 'sse') {
-      const sseTransport = new SSEClientTransport(url, { headers });
+      // SSEClientTransport may not support headers option directly
+      const sseTransport = new SSEClientTransport(new URL(url), headers);
       return sseTransport;
     } else {
-      const httpTransport = new StreamableHTTPClientTransport(url, { headers });
+      // StreamableHTTPClientTransport may not support headers option directly
+      const httpTransport = new StreamableHTTPClientTransport(
+        new URL(url),
+        headers,
+      );
       return httpTransport;
     }
   }
@@ -187,7 +203,9 @@ export class RemoteConnectionManager {
     );
 
     // Parse and prepare headers
-    const headers = parseHeaders(this.config.headers);
+    const headers: Record<string, string> = this.config.auth?.token
+      ? { Authorization: `Bearer ${this.config.auth.token}` }
+      : {};
 
     // Check cache first
     const cached = getCachedConnection(url, headers);
@@ -216,12 +234,12 @@ export class RemoteConnectionManager {
         },
       );
 
-      // Connect to server
-      await client.connect(transport);
+      // Connect to server and get initialization result
+      const initResult: any = await client.connect(transport);
 
-      // Get server info
-      const serverInfo = client.serverInfo;
-      const protocol = serverInfo?.protocolVersion || 'unknown';
+      // Get server info from initialization result
+      const serverInfo = initResult?.serverInfo;
+      const protocol = initResult?.protocolVersion || 'unknown';
       const serverName = serverInfo?.name || 'unknown';
       const serverVersion = serverInfo?.version || 'unknown';
 
@@ -243,7 +261,7 @@ export class RemoteConnectionManager {
 
       return connection;
     } catch (error) {
-      this.logger.error(`Failed to connect with ${transportType}`, { error });
+      this.logger.error({ error }, `Failed to connect with ${transportType}`);
       throw error;
     }
   }
@@ -263,8 +281,8 @@ export class RemoteConnectionManager {
       return await this.connectWithTransport(url, transportType);
     } catch (firstError) {
       this.logger.warn(
-        `Failed with ${transportType}, trying alternative transport`,
         { error: firstError },
+        `Failed with ${transportType}, trying alternative transport`,
       );
 
       // Try alternative transport
@@ -277,9 +295,11 @@ export class RemoteConnectionManager {
           ErrorCode.TRANSPORT_ERROR,
           `Failed to connect with both ${transportType} and ${altTransport} transports`,
           {
-            url,
-            firstError,
-            secondError,
+            context: {
+              url,
+              firstError,
+              secondError,
+            },
           },
         );
       }
@@ -301,7 +321,7 @@ export class RemoteConnectionManager {
       try {
         await this.connection.client.close();
       } catch (error) {
-        this.logger.warn('Error closing connection', { error });
+        this.logger.warn({ error }, 'Error closing connection');
       }
       this.connection = null;
     }

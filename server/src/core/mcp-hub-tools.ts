@@ -4,15 +4,13 @@
  */
 
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import type { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import type { z } from 'zod';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import type { ServerRegistry } from '../servers/server-registry.js';
-import { ErrorCode, type ErrorDetails, HatagoError } from '../utils/errors.js';
+import { ErrorCode } from '../utils/error-codes.js';
+import { HatagoError } from '../utils/errors.js';
 import type { Logger } from '../utils/logger.js';
 import { createMutex, type Mutex } from '../utils/mutex.js';
-import { createZodLikeSchema } from '../utils/zod-like.js';
 import type { ToolRegistry } from './tool-registry.js';
 import type { McpConnection } from './types.js';
 
@@ -56,7 +54,8 @@ export class McpHubToolManager {
     }
 
     // List available tools
-    this.server.setRequestHandler('tools/list', async () => {
+    // Use internal _requestHandlers as Server class doesn't expose tool handler methods
+    (this.server as any)._requestHandlers.set('tools/list', async () => {
       const tools = this.registry.getAllTools();
       this.logger.debug(`Listing ${tools.length} tools`);
 
@@ -70,9 +69,9 @@ export class McpHubToolManager {
     });
 
     // Handle tool calls
-    this.server.setRequestHandler(
+    (this.server as any)._requestHandlers.set(
       'tools/call',
-      async (request: z.infer<typeof CallToolRequestSchema>) => {
+      async (request: any) => {
         const { name, arguments: args } = request.params;
         this.logger.info(`Calling tool: ${name}`);
 
@@ -91,8 +90,10 @@ export class McpHubToolManager {
             ErrorCode.TOOL_NOT_FOUND,
             `Tool ${name} failed`,
             {
-              toolName: name,
-              originalError: error,
+              context: {
+                toolName: name,
+                originalError: error,
+              },
             },
           );
         }
@@ -107,7 +108,7 @@ export class McpHubToolManager {
    */
   async refreshNpxServerTools(serverId: string): Promise<void> {
     const server = this.serverRegistry
-      .getServers()
+      .listServers()
       .find((s) => s.id === serverId);
     if (!server) return;
 
@@ -127,9 +128,7 @@ export class McpHubToolManager {
     );
 
     // Register all tools
-    for (const tool of tools) {
-      this.registry.registerTool(tool.name, tool, serverId);
-    }
+    this.registry.registerServerTools(serverId, tools);
 
     // Update hub tools
     await this.updateHubTools();
@@ -144,7 +143,7 @@ export class McpHubToolManager {
     );
 
     const server = this.serverRegistry
-      .getServers()
+      .listServers()
       .find((s) => s.id === serverId);
     if (!server) {
       this.logger.debug(`[DEBUG] Server ${serverId} not found`);
@@ -159,7 +158,7 @@ export class McpHubToolManager {
 
     // Check if server has registered itself
     const registeredServer = this.serverRegistry
-      .getServers()
+      .listServers()
       .find((s) => s.id === serverId);
 
     if (!registeredServer) {
@@ -195,15 +194,13 @@ export class McpHubToolManager {
 
     // Get tools from remote server
     try {
-      const tools = await serverInstance.getTools();
+      const tools = await serverInstance.listTools();
       this.logger.debug(
         `[DEBUG] Discovered ${tools.length} tools from ${serverId}`,
       );
 
       // Register all tools
-      for (const tool of tools) {
-        this.registry.registerTool(tool.name, tool, serverId);
-      }
+      this.registry.registerServerTools(serverId, tools);
 
       // Update hub tools
       await this.updateHubTools();
@@ -228,40 +225,13 @@ export class McpHubToolManager {
         );
       }
 
-      // Only register tools with the SDK once
+      // Note: Tool registration with SDK is handled in setupToolHandlers
+      // via request handlers. We don't need to use server.addTool here
+      // since Server class doesn't have that method (only McpServer does).
+
+      // Just track which tools we have
       for (const tool of tools) {
-        if (!this.registeredTools.has(tool.name)) {
-          try {
-            // Register with SDK server
-            if (this.server) {
-              // Create input schema from JSON schema
-              const inputSchema = tool.inputSchema || {};
-              const zodSchema = createZodLikeSchema(inputSchema);
-
-              // Register tool with proper handler
-              this.server.addTool(
-                {
-                  name: tool.name,
-                  description: tool.description,
-                  inputSchema: zodSchema,
-                },
-                async (args) => {
-                  // Delegate to callTool for actual execution
-                  return await this.callTool(tool.name, args);
-                },
-              );
-
-              this.registeredTools.add(tool.name);
-              this.logger.debug(`Registered tool ${tool.name} with SDK`);
-            }
-          } catch (error) {
-            this.logger.warn(
-              { error, tool: tool.name },
-              'Tool registration warning (may already be registered in SDK)',
-            );
-            // Continue with other tools even if one fails
-          }
-        }
+        this.registeredTools.add(tool.name);
       }
     });
   }
@@ -279,7 +249,9 @@ export class McpHubToolManager {
         ErrorCode.TOOL_NOT_FOUND,
         `Tool ${name} not found`,
         {
-          toolName: name,
+          context: {
+            toolName: name,
+          },
         },
       );
     }
@@ -293,8 +265,10 @@ export class McpHubToolManager {
         ErrorCode.SERVER_NOT_CONNECTED,
         `Server ${serverId} not connected`,
         {
-          serverId,
-          toolName: name,
+          context: {
+            serverId,
+            toolName: name,
+          },
         },
       );
     }
@@ -315,33 +289,44 @@ export class McpHubToolManager {
     } catch (error) {
       this.logger.error({ error }, `Tool call ${name} failed`);
 
-      // Extract error details
-      const errorDetails: ErrorDetails = {
-        toolName: name,
-        serverId,
-        originalError: error,
-      };
-
       // Throw appropriate error based on error type
       if (error instanceof Error) {
         if (error.message.includes('timeout')) {
           throw new HatagoError(
             ErrorCode.TOOL_TIMEOUT,
             `Tool ${name} timed out`,
-            errorDetails,
+            {
+              context: {
+                toolName: name,
+                serverId,
+                originalError: error,
+              },
+            },
           );
         }
         throw new HatagoError(
           ErrorCode.TOOL_EXECUTION_FAILED,
           `Tool ${name} failed: ${error.message}`,
-          errorDetails,
+          {
+            context: {
+              toolName: name,
+              serverId,
+              originalError: error,
+            },
+          },
         );
       }
 
       throw new HatagoError(
         ErrorCode.TOOL_EXECUTION_FAILED,
         `Tool ${name} failed`,
-        errorDetails,
+        {
+          context: {
+            toolName: name,
+            serverId,
+            originalError: error,
+          },
+        },
       );
     }
   }

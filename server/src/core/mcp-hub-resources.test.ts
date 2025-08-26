@@ -11,7 +11,7 @@ describe('McpHubResourceManager', () => {
 
   beforeEach(() => {
     mockServer = {
-      setRequestHandler: vi.fn(),
+      _requestHandlers: new Map(),
     } as any;
 
     mockRegistry = {
@@ -46,17 +46,17 @@ describe('McpHubResourceManager', () => {
   describe('setupResourceHandlers', () => {
     it('should set up resources/list handler', () => {
       resourceManager.setupResourceHandlers();
-      expect(mockServer.setRequestHandler).toHaveBeenCalledWith(
-        'resources/list',
-        expect.any(Function),
+      expect(mockServer._requestHandlers.has('resources/list')).toBe(true);
+      expect(mockServer._requestHandlers.get('resources/list')).toBeInstanceOf(
+        Function,
       );
     });
 
     it('should set up resources/read handler', () => {
       resourceManager.setupResourceHandlers();
-      expect(mockServer.setRequestHandler).toHaveBeenCalledWith(
-        'resources/read',
-        expect.any(Function),
+      expect(mockServer._requestHandlers.has('resources/read')).toBe(true);
+      expect(mockServer._requestHandlers.get('resources/read')).toBeInstanceOf(
+        Function,
       );
     });
   });
