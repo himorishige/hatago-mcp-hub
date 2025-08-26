@@ -94,21 +94,35 @@ export function checkPackageManager(): CheckResult {
  * Check runtime environment
  */
 export function checkRuntime(): CheckResult {
+  // Define runtime-specific global types
+  interface DenoGlobal {
+    Deno?: {
+      version?: {
+        deno?: string;
+      };
+    };
+  }
+
+  interface BunGlobal {
+    Bun?: {
+      version?: string;
+    };
+  }
+
   const runtime = (() => {
-    if (globalThis.Deno) return 'Deno';
-    if (globalThis.Bun) return 'Bun';
+    if ((globalThis as DenoGlobal).Deno) return 'Deno';
+    if ((globalThis as BunGlobal).Bun) return 'Bun';
     return 'Node.js';
   })();
 
   const version = (() => {
-    if (runtime === 'Deno' && globalThis.Deno) {
-      return (
-        (globalThis.Deno as { version?: { deno?: string } }).version?.deno ||
-        'unknown'
-      );
+    if (runtime === 'Deno') {
+      const denoGlobal = globalThis as DenoGlobal;
+      return denoGlobal.Deno?.version?.deno || 'unknown';
     }
-    if (runtime === 'Bun' && globalThis.Bun) {
-      return (globalThis.Bun as { version?: string }).version || 'unknown';
+    if (runtime === 'Bun') {
+      const bunGlobal = globalThis as BunGlobal;
+      return bunGlobal.Bun?.version || 'unknown';
     }
     return process.version;
   })();

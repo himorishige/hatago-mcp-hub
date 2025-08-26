@@ -2,7 +2,7 @@
  * Environment variable expansion utilities
  */
 
-import { detectThreats, isContentSafe } from '@himorishige/noren';
+// import { detectThreats, isContentSafe } from '@himorishige/noren';
 import { ErrorHelpers } from '../utils/errors.js';
 
 /**
@@ -26,14 +26,17 @@ async function isEnvVarNameSafe(name: string): Promise<boolean> {
     return false;
   }
 
-  // Check with noren for additional threats
-  const safe = await isContentSafe(name);
-  if (!safe) {
-    const threats = await detectThreats(name);
-    return threats.risk < 0.3;
-  }
+  // Basic safety check (simplified version without noren)
+  // Check for suspicious patterns
+  const suspiciousPatterns = [
+    /\$\{.*\}/, // Template injection
+    /`.*`/, // Command substitution
+    /\|/, // Pipe
+    /[;&]/, // Command chaining
+    /[<>]/, // Redirection
+  ];
 
-  return true;
+  return !suspiciousPatterns.some((pattern) => pattern.test(name));
 }
 
 /**
@@ -59,13 +62,17 @@ async function validateEnvVarValue(
     }
   }
 
-  // Check with noren
-  const safe = await isContentSafe(value);
-  if (!safe) {
-    const threats = await detectThreats(value);
-    if (threats.risk > 0.5) {
-      return { safe: false };
-    }
+  // Basic safety check (simplified version without noren)
+  const suspiciousPatterns = [
+    /\$\{.*\}/, // Template injection
+    /`.*`/, // Command substitution
+    /\|/, // Pipe
+    /[;&]/, // Command chaining
+    /[<>]/, // Redirection
+  ];
+
+  if (suspiciousPatterns.some((pattern) => pattern.test(value))) {
+    return { safe: false };
   }
 
   return { safe: true, sanitized: value };

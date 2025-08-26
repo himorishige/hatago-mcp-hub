@@ -4,7 +4,7 @@
 
 import { constants, existsSync } from 'node:fs';
 import { access } from 'node:fs/promises';
-import type { Logger } from 'pino';
+import type { Logger } from './logger.js';
 
 export interface HealthCheck {
   name: string;

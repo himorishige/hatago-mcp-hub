@@ -6,18 +6,14 @@
 import { randomUUID } from 'node:crypto';
 import type { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import type { Logger } from 'pino';
 import type { McpHub } from '../../core/mcp-hub.js';
 import { StreamableHTTPTransport } from '../../hono-mcp/index.js';
+import { logger } from '../../observability/minimal-logger.js';
 
 /**
  * Setup MCP session management endpoints
  */
-export function setupSessionEndpoints(
-  app: Hono,
-  hub: McpHub,
-  logger: Logger,
-): void {
+export function setupSessionEndpoints(app: Hono, hub: McpHub): void {
   const sessionManager = hub.getSessionManager();
 
   // Store transports per session for proper connection management
@@ -42,7 +38,7 @@ export function setupSessionEndpoints(
         // Use client-provided session ID if available, otherwise generate new one
         sessionId = clientSessionId || randomUUID();
         transport = new StreamableHTTPTransport({
-          sessionIdGenerator: () => sessionId,
+          sessionIdGenerator: () => sessionId as string,
           enableJsonResponse: true,
           onsessioninitialized: (sid) => {
             logger.info(`Session initialized: ${sid}`);
@@ -51,7 +47,7 @@ export function setupSessionEndpoints(
 
         // Connect transport to server
         process.stderr.write('[DEBUG] Connecting new transport to server...\n');
-        await hub.getServer().server.connect(transport);
+        await hub.serve(transport);
         process.stderr.write('[DEBUG] Transport connected successfully\n');
 
         // Store transport for this session
@@ -111,7 +107,7 @@ export function setupSessionEndpoints(
       return result;
     } catch (error) {
       // Error handling
-      logger.error({ error }, 'MCP request error');
+      logger.error('MCP request error', { error });
 
       // Return HTTPException as-is
       if (error instanceof HTTPException) {
@@ -162,10 +158,10 @@ export function setupSessionEndpoints(
         try {
           await transport.close();
         } catch (error) {
-          logger.warn(
-            { error, sessionId: clientSessionId },
-            'Error closing transport',
-          );
+          logger.warn('Error closing transport', {
+            error,
+            sessionId: clientSessionId,
+          });
         }
         transports.delete(clientSessionId);
       }
@@ -179,18 +175,45 @@ export function setupSessionEndpoints(
     return c.body(null, 200);
   });
 
-  // GET endpoint (SSE - not supported in stateless mode)
+  // GET endpoint (SSE support for long-running operations)
   app.get('/mcp', async (c) => {
-    return c.json(
-      {
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'SSE not supported in stateless mode',
+    try {
+      // Get or generate session ID
+      const clientSessionId = c.req.header('mcp-session-id') || randomUUID();
+
+      // Create new transport for SSE session
+      const transport = new StreamableHTTPTransport({
+        sessionIdGenerator: () => clientSessionId,
+        enableJsonResponse: false, // Use SSE mode
+        onsessioninitialized: (sid) => {
+          logger.info(`SSE session initialized: ${sid}`);
         },
-        id: null,
-      },
-      405, // Method Not Allowed
-    );
+      });
+
+      // Store transport for this session
+      if (!transports.has(clientSessionId)) {
+        // Connect transport to server if not already connected
+        await hub.serve(transport);
+        transports.set(clientSessionId, transport);
+      }
+
+      // Handle the SSE request through the transport
+      const result = await transport.handleRequest(c);
+      return result;
+    } catch (error) {
+      logger.error('SSE request error', { error });
+      return c.json(
+        {
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal error',
+            data: error instanceof Error ? error.message : String(error),
+          },
+          id: null,
+        },
+        500,
+      );
+    }
   });
 }

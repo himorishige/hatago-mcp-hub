@@ -1,10 +1,32 @@
 /**
- * Logger utility using pino
+ * Minimal logger utility (pino removed for lightweight version)
  */
 
 import { randomUUID } from 'node:crypto';
-import type { Logger } from 'pino';
-import pino from 'pino';
+
+// Check STDIO mode early to prevent stdout pollution
+// Also check if we're running as 'serve' command with no --http flag (default stdio mode)
+const isServeCommand = process.argv.includes('serve');
+const hasHttpFlag = process.argv.includes('--http');
+const hasModeFlag = process.argv.includes('--mode');
+const modeIsHttp =
+  hasModeFlag && process.argv[process.argv.indexOf('--mode') + 1] === 'http';
+
+const IS_STDIO_MODE =
+  process.env.MCP_STDIO_MODE === 'true' ||
+  process.argv.includes('--stdio') ||
+  (isServeCommand && !hasHttpFlag && !modeIsHttp);
+
+const DEFAULT_DESTINATION = IS_STDIO_MODE ? process.stderr : process.stdout;
+
+// Minimal Logger interface
+export interface Logger {
+  error: (obj: unknown, msg?: string) => void;
+  warn: (obj: unknown, msg?: string) => void;
+  info: (obj: unknown, msg?: string) => void;
+  debug: (obj: unknown, msg?: string) => void;
+  child: (bindings: Record<string, unknown>) => Logger;
+}
 
 export interface LoggerOptions {
   level?: string;
@@ -19,110 +41,69 @@ export interface LoggerOptions {
  * Create a logger instance
  */
 export function createLogger(options: LoggerOptions = {}): Logger {
-  const isDev = process.env.NODE_ENV === 'development';
-  const format = options.format || (isDev ? 'pretty' : 'json');
-  const destination = options.destination || process.stdout;
+  const level = options.level || process.env.LOG_LEVEL || 'info';
+  // Use pre-calculated STDIO mode check
+  const destination = options.destination || DEFAULT_DESTINATION;
+  const component = options.component || 'hatago-hub';
 
-  const baseOptions: pino.LoggerOptions = {
-    level: options.level || process.env.LOG_LEVEL || 'info',
-    formatters: {
-      level: (label) => ({ level: label }),
-      bindings: (bindings) => ({
-        pid: bindings.pid,
-        hostname: bindings.hostname,
-        component: options.component || 'hatago-hub',
-        profile: options.profile,
-        req_id: options.reqId,
-      }),
-    },
-    timestamp: pino.stdTimeFunctions.isoTime,
-    redact: {
-      paths: [
-        // トップレベルの機密フィールド
-        'password',
-        'token',
-        'apiKey',
-        'api_key',
-        'secret',
-        'authorization',
-        'accessToken',
-        'refreshToken',
-        'privateKey',
-        // ワイルドカードパターン（1階層）
-        '*.password',
-        '*.token',
-        '*.apiKey',
-        '*.api_key',
-        '*.secret',
-        '*.authorization',
-        '*.accessToken',
-        '*.refreshToken',
-        '*.privateKey',
-        // 配列要素内
-        '[*].password',
-        '[*].token',
-        '[*].apiKey',
-        '[*].secret',
-        // 環境変数パターン
-        '*.DATABASE_URL',
-        '*.GITHUB_TOKEN',
-        '*.BRAVE_API_KEY',
-        '*.OPENAI_API_KEY',
-        '*.AWS_SECRET_ACCESS_KEY',
-        'env.DATABASE_URL',
-        'env.GITHUB_TOKEN',
-        'env.BRAVE_API_KEY',
-        'config.env.DATABASE_URL',
-        'config.env.GITHUB_TOKEN',
-        // HTTPヘッダー
-        'req.headers.authorization',
-        'req.headers.cookie',
-        'req.headers["x-api-key"]',
-        'headers.authorization',
-        'headers.cookie',
-      ],
-      censor: '[REDACTED]',
+  const levels = ['error', 'warn', 'info', 'debug'];
+  const currentLevelIndex = levels.indexOf(level);
+
+  const shouldLog = (logLevel: string) => {
+    // In STDIO mode without debug, suppress most logs
+    if (IS_STDIO_MODE && !process.env.DEBUG && !process.env.MCP_DEBUG) {
+      return false; // Suppress all logs in STDIO mode unless debugging
+    }
+    return levels.indexOf(logLevel) <= currentLevelIndex;
+  };
+
+  const log = (level: string, obj: any, msg?: string) => {
+    if (!shouldLog(level)) return;
+
+    const timestamp = new Date().toISOString();
+
+    // Handle different input types
+    let logObj: any;
+    if (typeof obj === 'string') {
+      // If first argument is string, treat it as the message
+      logObj = {
+        timestamp,
+        level,
+        component,
+        msg: obj,
+      };
+    } else {
+      // Otherwise, spread the object
+      logObj = {
+        timestamp,
+        level,
+        component,
+        ...obj,
+        msg: msg || obj.msg || obj.message || '',
+      };
+    }
+
+    // Simple JSON output (to stderr in STDIO mode)
+    destination.write(`${JSON.stringify(logObj)}
+`);
+  };
+
+  const logger: Logger = {
+    error: (obj: any, msg?: string) => log('error', obj, msg),
+    warn: (obj: any, msg?: string) => log('warn', obj, msg),
+    info: (obj: any, msg?: string) => log('info', obj, msg),
+    debug: (obj: any, msg?: string) => log('debug', obj, msg),
+    child: (bindings: Record<string, any>) => {
+      return createLogger({
+        ...options,
+        component: bindings.component || component,
+        profile: bindings.profile || options.profile,
+        reqId: bindings.req_id || options.reqId,
+      });
     },
   };
 
-  // Use pino-pretty in development or when explicitly requested
-  if (format === 'pretty') {
-    try {
-      // For pretty format with stderr, we need to use the stream directly
-      // because pino-pretty transport doesn't properly respect destination
-      if (destination === process.stderr) {
-        const prettyStream = require('pino-pretty')({
-          colorize: true,
-          translateTime: 'HH:MM:ss.l',
-          ignore: 'pid,hostname',
-          messageFormat: '{component} | {req_id} | {msg}',
-          destination: process.stderr,
-        });
-        return pino(baseOptions, prettyStream);
-      } else {
-        return pino({
-          ...baseOptions,
-          transport: {
-            target: 'pino-pretty',
-            options: {
-              colorize: true,
-              translateTime: 'HH:MM:ss.l',
-              ignore: 'pid,hostname',
-              messageFormat: '{component} | {req_id} | {msg}',
-            },
-          },
-        });
-      }
-    } catch (_err) {
-      // pino-pretty not available, fall back to JSON format
-      if (destination === process.stderr) {
-        console.warn('[logger] pino-pretty not available, using JSON format');
-      }
-      return pino(baseOptions, destination);
-    }
-  }
-
-  return pino(baseOptions, destination);
+  return logger;
 }
 
 /**
@@ -176,6 +157,11 @@ export function getGlobalLogger(): Logger {
   if (!globalLogger) {
     globalLogger = createLogger({
       component: 'hatago-hub-global',
+      destination: DEFAULT_DESTINATION,
+      level:
+        IS_STDIO_MODE && !process.env.DEBUG && !process.env.MCP_DEBUG
+          ? 'error'
+          : undefined,
     });
   }
   return globalLogger;
@@ -192,6 +178,12 @@ export function setGlobalLogger(logger: Logger): void {
   globalLogger = logger;
   globalLoggerLocked = true;
 }
+
+/**
+ * Default global logger instance
+ * Note: Use getGlobalLogger() instead of this directly to ensure proper STDIO mode handling
+ */
+export const logger = getGlobalLogger();
 
 /**
  * Reset global logger (for testing only)

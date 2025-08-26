@@ -1,20 +1,23 @@
 # Hatago MCP Hub プロジェクト概要
 
 ## プロジェクトの目的
+
 Hatago MCP Hub は Hono と hono/mcp を薄くラップした高速・軽量・シンプルな MCP Hub サーバー。
 複数の MCP サーバーを統合管理し、ツール名の衝突回避やセッション管理を行う。
 
 ## 技術スタック
+
 - **言語**: TypeScript
 - **実行環境**: Node.js 20+
 - **Webフレームワーク**: Hono
 - **ビルドツール**: tsdown (ESM output)
 - **パッケージマネージャ**: pnpm
-- **テストフレームワーク**: Vitest  
+- **テストフレームワーク**: Vitest
 - **リンター/フォーマッター**: Biome
 - **CLI**: Commander + Zod
 
 ## プロジェクト構造
+
 ```
 /
 ├── server/              # メインアプリケーション
@@ -38,6 +41,7 @@ Hatago MCP Hub は Hono と hono/mcp を薄くラップした高速・軽量・�
 ```
 
 ## 現在の実装状況
+
 - Honoベースの基本的なHTTPサーバー（ポート3000）
 - TypeScript + ESM セットアップ
 - Biome による lint/format 設定
@@ -48,6 +52,7 @@ Hatago MCP Hub は Hono と hono/mcp を薄くラップした高速・軽量・�
 - Phase 2: ✅ 完了（npx経由MCPプロキシ対応）
 
 ## 主要機能
+
 - **Claude Code互換MCPコマンド**: `hatago mcp add <name> -- <command> [args...]`
 - **CLIレジストリ**: `.hatago/cli-registry.json` でサーバー設定を永続化
 - **マルチトランスポート**: STDIO / HTTP / SSE 対応
@@ -55,9 +60,11 @@ Hatago MCP Hub は Hono と hono/mcp を薄くラップした高速・軽量・�
 - **自動再起動**: NPXサーバーの障害時自動復旧
 
 ## パッケージ情報
+
 - **name**: @himorishige/hatago
 - **version**: 0.0.2
 - **bin**: hatago CLI コマンド
 
 ## 最終更新日
+
 2025-08-23

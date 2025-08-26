@@ -1,0 +1,3 @@
+**/*.{ts,tsx,js,cjs,mjs,json}
+dist/
+build/

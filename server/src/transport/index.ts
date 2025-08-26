@@ -4,5 +4,7 @@
  * Transport layer for various protocols.
  */
 
-export * from './factory.js';
-export * from './websocket.js';
+export * from './connection-manager.js';
+export * from './message-parser.js';
+// Transport exports
+export * from './stdio.js';

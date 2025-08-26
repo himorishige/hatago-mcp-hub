@@ -1,6 +1,6 @@
-import { getRuntime } from '../runtime/runtime-factory.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { createKeyedMutex } from '../utils/mutex.js';
+import { generateId } from '../utils/node-utils.js';
 
 /**
  * ツール実行履歴
@@ -170,8 +170,7 @@ export class MemorySessionStore implements ISessionStore {
     }
 
     // 新しいトークンを生成
-    const runtime = await getRuntime();
-    const token = await runtime.idGenerator.generate();
+    const token = await generateId();
     session.sharedToken = token;
     session.tokenExpiresAt = new Date(Date.now() + ttlSeconds * 1000);
     this.tokenToSession.set(token, sessionId);

@@ -4,7 +4,6 @@
  */
 
 import { Hono } from 'hono';
-import type { Logger } from 'pino';
 import type { HatagoConfig } from '../../config/types.js';
 import type { McpHub } from '../../core/mcp-hub.js';
 
@@ -14,7 +13,6 @@ import type { McpHub } from '../../core/mcp-hub.js';
 export function createHttpApp(
   hub: McpHub,
   _config: HatagoConfig, // Reserved for future configuration use
-  _logger: Logger, // Reserved for future logging use
 ): Hono {
   const app = new Hono();
 
@@ -44,8 +42,8 @@ export function createHttpApp(
   app.get('/', (c) =>
     c.html(`<!doctype html>
 <meta charset="utf-8"/>
-<title>🏨 Hatago MCP Hub</title>
-<h1>🏨 Hatago MCP Hub v0.0.2</h1>
+<title>🏮 Hatago MCP Hub</title>
+<h1>🏮 Hatago MCP Hub v0.0.2</h1>
 <p>MCP endpoint: <code>POST /mcp</code></p>
 <p>Tools list: <code>GET /tools</code></p>
 <p>Health check: <code>GET /health</code></p>
@@ -64,7 +62,6 @@ export async function setupReadinessCheck(
   app: Hono,
   hub: McpHub,
   config: HatagoConfig,
-  logger: Logger,
 ): Promise<void> {
   const {
     HealthCheckManager,
@@ -75,11 +72,11 @@ export async function setupReadinessCheck(
     createSystemResourcesCheck,
   } = await import('../../utils/health.js');
 
-  const healthManager = new HealthCheckManager(logger);
+  const healthManager = new HealthCheckManager(undefined);
 
   // Register health checks
   healthManager.register(createConfigCheck(() => !!config));
-  healthManager.register(createWorkspaceCheck(config.workspace));
+  healthManager.register(createWorkspaceCheck(undefined));
   healthManager.register(createHatagoDirectoryCheck());
   healthManager.register(
     createMCPServersCheck(() => {

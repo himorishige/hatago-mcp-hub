@@ -3,17 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parse as parseJsonc } from 'jsonc-parser';
+import { logger } from '../observability/minimal-logger.js';
 import { ErrorHelpers } from '../utils/errors.js';
-import { createLogger } from '../utils/logger.js';
 import { expandEnvironmentVariables } from './env-expander.js';
 import { type HatagoConfig, validateConfig } from './types.js';
 
-const logger = createLogger({
-  component: 'config-loader',
-  destination: process.stderr, // Always use stderr to avoid stdout contamination
-});
-
-// 設定ファイルのパス候補
+// Configuration file path candidates
 const CONFIG_FILENAMES = [
   'hatago.config.jsonc',
   'hatago.config.json',
@@ -22,14 +17,14 @@ const CONFIG_FILENAMES = [
 ];
 
 /**
- * 設定ファイルを検索
+ * Search for configuration file
  */
 export async function findConfigFile(
   startDir?: string,
 ): Promise<string | undefined> {
   const searchDir = startDir || process.cwd() || '.';
 
-  // カレントディレクトリから検索
+  // Search from current directory
   for (const filename of CONFIG_FILENAMES) {
     const filepath = join(searchDir, filename);
     if (existsSync(filepath)) {
@@ -37,7 +32,7 @@ export async function findConfigFile(
     }
   }
 
-  // ホームディレクトリの.hatagoフォルダも検索
+  // Also search .hatago folder in home directory
   const homeConfigDir = join(homedir(), '.hatago');
   for (const filename of ['config.jsonc', 'config.json']) {
     const filepath = join(homeConfigDir, filename);
@@ -50,7 +45,7 @@ export async function findConfigFile(
 }
 
 /**
- * 設定ファイルを読み込み
+ * Load configuration file
  */
 export async function loadConfigFile(
   filepath: string,
@@ -61,31 +56,33 @@ export async function loadConfigFile(
       logger.info(`Loading config from: ${filepath}`);
     }
 
-    // ファイルを読み込み
+    // Read file
     const content = await readFile(filepath, 'utf-8');
 
-    // JSONCをパース
+    // Parse JSONC
     const parsed = parseJsonc(content);
 
-    // 環境変数を展開
+    // Expand environment variables
     const expanded = expandEnvironmentVariables(parsed);
 
-    // mcpServers形式の変換（あれば）
+    // Convert mcpServers format (required)
     const { mergeConfigWithMcpServers } = await import('./mcp-converter.js');
-    const merged = mergeConfigWithMcpServers(expanded);
+    const merged = mergeConfigWithMcpServers(
+      expanded as Partial<HatagoConfig> & { mcpServers?: any },
+    );
 
     // Debug: Check if servers are present after merge
-    if (!options?.quiet) {
-      logger.debug(`Merged config has ${merged.servers?.length || 0} servers`);
-      if (merged.mcpServers) {
-        logger.debug(
-          `Original mcpServers: ${Object.keys(merged.mcpServers).length} entries`,
-        );
-      }
+    if (!options?.quiet && merged.mcpServers) {
+      logger.debug(
+        `Original mcpServers: ${Object.keys(merged.mcpServers).length} entries`,
+      );
     }
 
-    // バリデーション
-    const config = validateConfig(merged);
+    // Validation - add servers field
+    const config = validateConfig({
+      ...merged,
+      servers: merged.servers || [],
+    } as HatagoConfig);
 
     if (!options?.quiet) {
       logger.info(`Config loaded successfully`);
@@ -100,7 +97,7 @@ export async function loadConfigFile(
 }
 
 /**
- * デフォルト設定を作成
+ * Create default configuration
  */
 export function createDefaultConfig(): HatagoConfig {
   return validateConfig({
@@ -131,20 +128,20 @@ export function createDefaultConfig(): HatagoConfig {
     security: {
       redactKeys: ['password', 'apiKey', 'token', 'secret'],
     },
-    servers: [],
+    mcpServers: {},
   });
 }
 
 /**
- * 設定を読み込み（ファイルまたはデフォルト）
+ * Load configuration (from file or default)
  */
 export async function loadConfig(
   configPath?: string,
   options?: { quiet?: boolean; profile?: string },
 ): Promise<HatagoConfig> {
-  // プロファイルが指定されている場合
+  // If profile is specified
   if (options?.profile && options.profile !== 'default') {
-    // プロファイル名の検証（パストラバーサル攻撃を防ぐ）
+    // Validate profile name (prevent path traversal attacks)
     const profileName = options.profile;
     if (!/^[a-zA-Z0-9_-]+$/.test(profileName)) {
       throw ErrorHelpers.invalidInput(
@@ -160,7 +157,7 @@ export async function loadConfig(
       `${profileName}.jsonc`,
     );
 
-    // パスが期待されるディレクトリ内にあることを確認
+    // Ensure path is within expected directory
     const expectedDir = join(process.cwd(), '.hatago', 'profiles');
     if (!profilePath.startsWith(expectedDir)) {
       throw ErrorHelpers.invalidProfilePath(profilePath);
@@ -173,7 +170,7 @@ export async function loadConfig(
       return await loadConfigFile(profilePath, options);
     }
 
-    // プロファイルファイルが見つからない場合は警告
+    // Warn if profile file not found
     if (!options?.quiet) {
       logger.warn(
         `Profile '${options.profile}' not found at ${profilePath}, falling back to default config`,
@@ -181,7 +178,7 @@ export async function loadConfig(
     }
   }
 
-  // 明示的なパスが指定されている場合
+  // If explicit path is specified
   if (configPath) {
     const resolvedPath = resolve(configPath);
     if (!existsSync(resolvedPath)) {
@@ -190,13 +187,13 @@ export async function loadConfig(
     return await loadConfigFile(resolvedPath, options);
   }
 
-  // 設定ファイルを検索
+  // Search for configuration file
   const foundPath = await findConfigFile();
   if (foundPath) {
     return await loadConfigFile(foundPath, options);
   }
 
-  // デフォルト設定を使用
+  // Use default configuration
   if (!options?.quiet) {
     logger.info('No config file found, using default configuration');
   }
@@ -204,7 +201,7 @@ export async function loadConfig(
 }
 
 /**
- * サンプル設定ファイルを生成
+ * Generate sample configuration file
  */
 export function generateSampleConfig(): string {
   return `{
@@ -320,37 +317,6 @@ export function generateSampleConfig(): string {
     }
   },
   
-  // ---------------------------------------------
-  // Option 2: Hatago Detailed Format (Advanced)
-  // ---------------------------------------------
-  // Use this format for full control over server configuration
-  // NPX Server Tips:
-  // - initTimeoutMs: Increase for slow networks (default: 30000ms)
-  // - Some packages need "stdio" arg: @modelcontextprotocol/server-github
-  // - Some don't: @modelcontextprotocol/server-filesystem
-  // - See src/servers/npx-compatibility.json for full list
-  // Uncomment the following section to use detailed configuration
-  /*
-  "servers": [
-    {
-      "id": "advanced_server",
-      "type": "local",
-      "command": "python",
-      "args": ["mcp_server.py"],
-      "transport": "stdio",
-      "start": "eager",
-      "tools": {
-        "include": ["*"],
-        "exclude": ["admin_*"],
-        "aliases": {
-          "very_long_tool_name": "short"
-        }
-      },
-      "env": {
-        "PYTHON_ENV": "production"
-      }
-    }
-  ],
   */
   
   // ============================================
@@ -446,15 +412,15 @@ export async function generateJsonSchema(): Promise<unknown> {
     return CONFIG_SCHEMA;
   } catch {
     // Fallback: generate schema on the fly
-    const { zodToJsonSchema } = await import('zod-to-json-schema');
-    const { HatagoConfigSchema } = await import('../config/types.js');
+    // const { zodToJsonSchema } = await import('zod-to-json-schema');
+    // const { HatagoConfigSchema } = await import('../config/types.js');
 
-    const jsonSchema = zodToJsonSchema(HatagoConfigSchema, {
-      name: 'HatagoConfig',
-      $refStrategy: 'none',
-      errorMessages: true,
-      markdownDescription: true,
-    });
+    // const jsonSchema = zodToJsonSchema(HatagoConfigSchema, {
+    //   name: 'HatagoConfig',
+    //   $refStrategy: 'none',
+    //   errorMessages: true,
+    //   markdownDescription: true,
+    // });
 
     return {
       $schema: 'http://json-schema.org/draft-07/schema#',
@@ -462,13 +428,13 @@ export async function generateJsonSchema(): Promise<unknown> {
       title: 'Hatago MCP Hub Configuration',
       description:
         'Configuration schema for Hatago MCP Hub - A lightweight MCP server management tool',
-      ...jsonSchema,
+      // ...jsonSchema,
     };
   }
 }
 
 /**
- * 環境変数を展開
+ * Expand environment variables
  */
 export function expandEnvVars(value: string): string {
   return value.replace(/\${env:([^}]+)}/g, (_, envVar) => {
@@ -477,7 +443,7 @@ export function expandEnvVars(value: string): string {
 }
 
 /**
- * 設定のマージ
+ * Merge configurations
  */
 export function mergeConfig(
   base: HatagoConfig,

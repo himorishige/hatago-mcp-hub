@@ -17,7 +17,10 @@ export interface ServeOptions {
   quiet?: boolean;
   verbose?: boolean;
   logLevel?: string;
-  logFormat?: 'json' | 'pretty';
+  logFormat?: 'json' | 'pretty' | 'human';
+  bind?: string;
+  allowRemote?: boolean;
+  sharedSecret?: string;
 }
 
 /**

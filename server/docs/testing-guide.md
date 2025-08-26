@@ -49,9 +49,9 @@ pnpm build && pnpm start
       "type": "remote",
       "url": "http://localhost:4001/mcp",
       "transport": "http",
-      "start": "lazy"
-    }
-  ]
+      "start": "lazy",
+    },
+  ],
 }
 ```
 
@@ -72,18 +72,20 @@ hatago remote test local-test
 現在、以下のような形式でMCPサーバーが提供される予定です：
 
 1. **NPXパッケージ経由**
+
    ```bash
    # NPXサーバーとして追加
    hatago npx add @modelcontextprotocol/server-filesystem --id fs
    ```
 
 2. **ローカルHTTPサーバー**
+
    ```jsonc
    {
      "id": "local-mcp",
      "type": "remote",
      "url": "http://127.0.0.1:3845/mcp",
-     "transport": "http"
+     "transport": "http",
    }
    ```
 
@@ -93,7 +95,7 @@ hatago remote test local-test
      "id": "sse-server",
      "type": "remote",
      "url": "http://127.0.0.1:3845/sse",
-     "transport": "sse"  // SSEは非推奨
+     "transport": "sse", // SSEは非推奨
    }
    ```
 
@@ -172,10 +174,10 @@ DEBUG=hatago:* pnpm dev
 {
   "security": {
     "allowNet": [
-      "localhost",      // ローカルテスト用
-      "api.example.com" // 本番サーバー
-    ]
-  }
+      "localhost", // ローカルテスト用
+      "api.example.com", // 本番サーバー
+    ],
+  },
 }
 ```
 
@@ -190,10 +192,10 @@ DEBUG=hatago:* pnpm dev
       "url": "https://api.example.com/mcp",
       "auth": {
         "type": "bearer",
-        "token": "${MCP_API_TOKEN}" // 環境変数から取得
-      }
-    }
-  ]
+        "token": "${MCP_API_TOKEN}", // 環境変数から取得
+      },
+    },
+  ],
 }
 ```
 

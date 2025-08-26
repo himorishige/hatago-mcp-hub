@@ -1,6 +1,6 @@
-# Hatago MCP Hub
+# Hatago MCP Hub (Lite)
 
-Lightweight MCP (Model Context Protocol) server management hub - 既存プロジェクトで即座に使用可能
+Ultra-lightweight MCP (Model Context Protocol) server management hub - シンプルで高速な実装
 
 ## 🚀 Quick Start (npx)
 
@@ -43,31 +43,27 @@ npx hatago serve
 
 ## 📝 Features
 
-### 🏗️ 核心機能
+### 🏗️ 核心機能 (Lite版)
+
 - **設定不要**: デフォルト設定で即座に動作
+- **軽量実装**: 最小限の依存関係で高速動作
 - **プロジェクト非侵襲**: 既存プロジェクトを汚染しません
-- **プロキシアーキテクチャ**: 統合されたMCPサーバー管理とCapability Graph
-- **マルチトランスポート**: STDIO (デフォルト) / HTTP / SSE / WebSocket対応
-- **ホットリロード**: 設定変更時の自動再読み込み
+- **マルチサーバー管理**: NPX/Remote/Localサーバーの統合管理
+- **マルチトランスポート**: STDIO (デフォルト) / HTTP / SSE対応
+- **セッション管理**: 複数のAIクライアントから独立接続
+- **完全なMCPサポート**: Tools/Resources/Prompts すべてに対応
 
-### 🛡️ セキュリティ & 信頼性
-- **認証・認可**: 柔軟な権限管理システム
-- **レート制限**: サーバー保護とリソース管理
-- **サーキットブレーカー**: 障害時の自動復旧機能
-- **ログサニタイズ**: 機密情報の自動マスキング
+### 🛡️ 基本的なセキュリティ
 
-### 📊 観測可能性
-- **分散トレーシング**: リクエスト追跡とパフォーマンス分析
-- **メトリクス収集**: Prometheus互換メトリクス
-- **ヘルスチェック**: Kubernetes互換のliveness/readiness probe
-- **構造化ログ**: JSON形式での詳細ログ出力
+- **エラーハンドリング**: 堅牢なエラー処理とリカバリー
+- **環境変数マスキング**: 機密情報の保護
+- **基本的なログ出力**: デバッグ用のシンプルなログ
 
-### 👨‍💻 開発者体験
-- **TypeScript型生成**: MCPサーバーからの自動型生成
-- **開発サーバー**: ファイル監視とホットリロード機能
-- **OpenAPI統合**: REST API ⇔ MCP双方向変換
-- **デコレーターAPI**: 宣言的なMCPサーバー定義（実験的）
-- **テストユーティリティ**: モックサーバーとテストクライアント
+### 👨‍💻 シンプルな開発体験
+
+- **TypeScript対応**: 完全な型サポート
+- **CLIツール**: 直感的なコマンドライン管理
+- **設定ファイル**: JSONベースの簡単な設定
 
 ## 🛠️ CLI Commands
 
@@ -93,48 +89,50 @@ hatago status
 hatago reload
 ```
 
-### 開発ツール
+### 基本的な管理コマンド
 
 ```bash
-# 開発サーバー（ファイル監視 + ホットリロード）
-hatago dev ./my-server.js
+# サーバーの状態確認
+hatago status
 
-# MCPサーバー調査
-hatago inspect @modelcontextprotocol/server-filesystem
-
-# TypeScript型生成
-hatago generate types ./types/mcp-servers.d.ts
-
-# OpenAPI仕様からMCPツール生成
-hatago generate mcp --from-openapi ./api.yaml
-```
-
-### システム監視
-
-```bash
-# ヘルスチェック
-hatago health
-
-# メトリクス表示
-hatago metrics
-
-# ログ監視
-hatago logs --follow
-
-# トレース情報表示
-hatago trace <trace-id>
+# 設定のリロード
+hatago reload
 ```
 
 ### MCPサーバー管理（Claude Code互換）
 
 ```bash
-# ローカルコマンドサーバー（Node.js）
+# MCPサーバーの一覧表示
+hatago mcp list
+
+# MCPサーバーの詳細表示
+hatago mcp get <name>
+hatago mcp get <name> --json         # JSON形式で出力
+hatago mcp get <name> --probe        # 接続してツールを取得
+
+# ローカルコマンドサーバーを追加
+hatago mcp add <name> -- <command> [args...]
+
+# リモートサーバーを追加
+hatago mcp add --transport sse <name> <url>
+hatago mcp add --transport http <name> <url>
+hatago mcp add --transport http --header "Authorization:Bearer TOKEN" <name> <url>
+
+# 環境変数付きでサーバーを追加
+hatago mcp add --env KEY=value <name> -- <command> [args...]
+
+# サーバーを削除
+hatago mcp remove <name>
+
+## 例:
+
+# Node.jsサーバー
 hatago mcp add myserver -- node ./server.js arg1 arg2
 
-# ローカルコマンドサーバー（Python）
+# Pythonサーバー
 hatago mcp add python-server -- python ./server.py --port 3001
 
-# ローカルコマンドサーバー（Deno）
+# Denoサーバー
 hatago mcp add deno-server -- deno run --allow-net ./server.ts
 
 # NPXパッケージサーバー
@@ -152,20 +150,8 @@ hatago mcp add --transport http --header "Authorization:Bearer TOKEN" api https:
 # 環境変数の設定
 hatago mcp add --env API_KEY=secret --env DB_URL=postgres://localhost db -- node ./db-server.js
 
-# サーバー一覧表示
-hatago mcp list
-
 # サーバー削除
 hatago mcp remove filesystem
-```
-
-#### 後方互換性
-
-以前の形式もサポートされています：
-
-```bash
-# 引用符で囲む形式（非推奨だが動作する）
-hatago mcp add filesystem "npx @modelcontextprotocol/server-filesystem /tmp"
 ```
 
 ### リモートサーバー管理
@@ -198,73 +184,79 @@ hatago npx stop filesystem
 ## 📚 Documentation
 
 ### ユーザー向け
+
 - [README](README.md) - 基本的な使い方（このドキュメント）
 - [MCP統合ガイド](../docs/mcp-integration.md) - プロジェクトへの統合方法
 - [設定リファレンス](./docs/configuration.md) - 詳細な設定オプション
 
-### 開発者向け  
-- [アーキテクチャガイド](./docs/architecture.md) - システム設計と内部構造
-- [開発者ガイド](./docs/developer-guide.md) - 型生成・デコレーターAPI・テスト
-- [観測可能性ガイド](./docs/observability.md) - トレーシング・メトリクス・ログ
-- [セキュリティガイド](./docs/security.md) - 認証・認可・レート制限
+### 開発者向け
 
-### 運用・管理
-- [テストガイド](./docs/testing-guide.md) - テスト環境構築
-- [開発ロードマップ](./docs/roadmap.md) - 機能計画と実装状況
+- [アーキテクチャガイド](./docs/architecture.md) - Lite版のシンプルな構造
+- [開発者ガイド](./docs/developer-guide.md) - 基本的な開発方法
 
-## 🔐 Security & Environment Variables
+## 🔐 Environment Variables
 
-Hatagoは以下の環境変数でセキュリティと動作をカスタマイズできます：
+Hatago Liteは以下の環境変数でカスタマイズできます：
 
-### セキュリティ設定
-- `HATAGO_DEBUG_REDACTION=1` - ログサニタイズのデバッグモード（開発時のみ）
-- `HATAGO_AUTH_SECRET` - JWT認証のシークレットキー
-- `HATAGO_RATE_LIMIT_WINDOW=60000` - レート制限ウィンドウ（デフォルト: 60秒）
-- `HATAGO_RATE_LIMIT_MAX=1000` - レート制限最大リクエスト数（デフォルト: 1000）
+### 基本設定
 
-### 観測可能性
-- `HATAGO_TRACING_ENABLED=true` - 分散トレーシングの有効化
-- `HATAGO_METRICS_ENABLED=true` - メトリクス収集の有効化
-- `HATAGO_METRICS_PORT=9090` - メトリクスエクスポートポート
-- `HATAGO_LOG_LEVEL=info` - ログレベル（debug, info, warn, error）
+- `LOG_LEVEL=info` - ログレベル（debug, info, warn, error）
+- `HATAGO_CONFIG` - 設定ファイルのパス
+- `PORT=3000` - HTTPモードでのポート番号
 
-### パフォーマンス
-- `HATAGO_MAX_RECONNECT_DEPTH=32` - 再接続の最大深度（デフォルト: 32）
-- `HATAGO_MAX_RECONNECT_STEPS=10000` - 再接続の最大ステップ数（デフォルト: 10000）
-- `HATAGO_CIRCUIT_BREAKER_THRESHOLD=5` - サーキットブレーカー閾値
-- `HATAGO_HEALTH_TIMEOUT_MS=1000` - ヘルスチェックタイムアウト（デフォルト: 1000ms）
+### デバッグ
 
-### 開発モード
-- `HATAGO_DEV_MODE=true` - 開発モードの有効化
-- `HATAGO_HOT_RELOAD=true` - ホットリロードの有効化
-- `HATAGO_TYPE_GENERATION=true` - 自動型生成の有効化
+- `DEBUG=hatago:*` - デバッグログの有効化
 
 ## ⚙️ Configuration (Optional)
 
 Hatagoは設定なしでも動作しますが、カスタマイズも可能です。
 
+### 設定フォーマット
+
+HatagoはClaude Code互換の `mcpServers` フォーマットを採用しています。これにより、Claude CodeやVS Codeと同じ設定ファイルを共有できます。Hatago固有の機能は `hatagoOptions` フィールドで指定します。
+
 設定ファイルの検索順序：
+
 1. `.hatago.json` (カレントディレクトリ)
 2. `.hatago.jsonc` (カレントディレクトリ)
 3. `.hatago/config.json`
 4. `.hatago/config.jsonc`
 5. `~/.hatago/config.jsonc` (ユーザーホーム)
 
+### HatagoOptions
+
+Hatago固有の拡張機能は `hatagoOptions` フィールドで設定します：
+
+- **start**: `"eager"` | `"lazy"` - サーバーの起動タイミング
+- **timeouts**: タイムアウト設定
+  - **timeout**: 初期タイムアウト（ミリ秒、1000-300000）
+  - **maxTotalTimeout**: 最大総タイムアウト（ミリ秒、1000-600000）
+  - **resetTimeoutOnProgress**: 進捗通知でタイムアウトをリセット（boolean）
+- **tools**: ツール管理設定
+  - **prefix**: ツール名のプレフィックス
+  - **include**: 含めるツールパターン（デフォルト: ["*"]）
+  - **exclude**: 除外するツールパターン
+  - **aliases**: ツール名のエイリアス
+- **auth**: 認証設定
+  - **type**: `"bearer"` | `"basic"`
+  - **token**: Bearerトークン
+  - **username** / **password**: Basic認証
+
 ### 設定例
 
-#### 最小設定例
+#### 最小設定例（Claude Code互換フォーマット）
 
 `.hatago.json`:
+
 ```json
 {
-  "servers": [
-    {
-      "id": "deepwiki",
-      "type": "remote",
+  "mcpServers": {
+    "deepwiki": {
       "url": "https://mcp.deepwiki.com/sse",
-      "transport": "sse"
+      "type": "sse"
     }
-  ]
+  }
 }
 ```
 
@@ -272,24 +264,23 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "local-node": {
-      "id": "local-node",
-      "type": "local",
       "command": "node",
       "args": ["./my-mcp-server.js"],
-      "cwd": "/path/to/server",
-      "start": "lazy",
       "env": {
         "DEBUG": "true"
+      },
+      "hatagoOptions": {
+        "start": "lazy"
       }
     },
     "local-python": {
-      "id": "local-python", 
-      "type": "local",
       "command": "python",
       "args": ["./server.py", "--port", "3001"],
-      "start": "immediate"
+      "hatagoOptions": {
+        "start": "eager"
+      }
     }
   }
 }
@@ -299,23 +290,26 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "filesystem": {
-      "id": "filesystem",
-      "type": "npx",
-      "package": "@modelcontextprotocol/server-filesystem",
-      "start": "immediate",
-      "initTimeoutMs": 30000,
-      "args": ["/Users/username/projects"]
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/username/projects"
+      ],
+      "hatagoOptions": {
+        "start": "eager"
+      }
     },
     "github": {
-      "id": "github",
-      "type": "npx",
-      "package": "@modelcontextprotocol/server-github",
-      "start": "lazy",
-      "args": ["stdio"],
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github", "stdio"],
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "hatagoOptions": {
+        "start": "lazy"
       }
     }
   }
@@ -327,116 +321,73 @@ Hatagoは設定なしでも動作しますが、カスタマイズも可能で�
 ```json
 {
   "security": {
-    "allowNet": [
-      "api.github.com",
-      "mcp.deepwiki.com",
-      "localhost"
-    ],
-    "maskedEnvVars": ["GITHUB_TOKEN", "API_KEY", "SECRET"]
+    "allowNet": ["api.github.com", "mcp.deepwiki.com", "localhost"],
+    "redactKeys": ["GITHUB_TOKEN", "API_KEY", "SECRET", "password", "token"]
   },
-  "servers": {
+  "mcpServers": {
     "remote-api": {
-      "id": "remote-api",
-      "type": "remote",
       "url": "https://api.example.com/mcp",
-      "transport": "http",
+      "type": "http",
       "headers": {
         "Authorization": "Bearer ${API_KEY}"
+      },
+      "hatagoOptions": {
+        "auth": {
+          "type": "bearer",
+          "token": "${API_KEY}"
+        }
       }
     }
   }
 }
 ```
 
-#### 完全な設定例
+#### Lite版の標準設定例（タイムアウト設定付き）
 
 ```json
 {
+  "version": 1,
+  "logLevel": "info",
   "http": {
     "port": 3000,
     "host": "localhost"
   },
   "session": {
-    "ttl": 3600000,
-    "maxSessions": 100
+    "ttlSeconds": 3600,
+    "persist": false
   },
-  "security": {
-    "allowNet": ["*"],
-    "maskedEnvVars": ["GITHUB_TOKEN", "API_KEY"],
-    "authentication": {
-      "enabled": true,
-      "secret": "${HATAGO_AUTH_SECRET}",
-      "algorithms": ["HS256"]
-    },
-    "rateLimit": {
-      "windowMs": 60000,
-      "max": 1000,
-      "skipSuccessfulRequests": false
-    }
-  },
-  "observability": {
-    "tracing": {
-      "enabled": true,
-      "serviceName": "hatago-hub",
-      "exportInterval": 5000
-    },
-    "metrics": {
-      "enabled": true,
-      "port": 9090,
-      "path": "/metrics"
-    },
-    "logging": {
-      "level": "info",
-      "format": "json",
-      "sanitize": true
-    }
-  },
-  "proxy": {
-    "circuitBreaker": {
-      "failureThreshold": 5,
-      "resetTimeoutMs": 30000
-    },
-    "cache": {
-      "enabled": false,
-      "ttl": 300000
-    }
-  },
-  "development": {
-    "hotReload": true,
-    "typeGeneration": {
-      "enabled": true,
-      "outputPath": "./types/generated.d.ts"
-    }
-  },
-  "servers": {
+  "mcpServers": {
     "filesystem": {
-      "id": "filesystem",
-      "type": "npx",
-      "package": "@modelcontextprotocol/server-filesystem",
-      "start": "immediate",
-      "initTimeoutMs": 30000,
-      "args": ["/path/to/directory"]
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/path/to/directory"
+      ],
+      "hatagoOptions": {
+        "start": "eager"
+      }
     },
     "local-node": {
-      "id": "local-node",
-      "type": "local",
       "command": "node",
       "args": ["./examples/test-mcp-server.js"],
-      "cwd": "./",
-      "start": "lazy",
       "env": {
         "DEBUG": "true"
+      },
+      "hatagoOptions": {
+        "start": "lazy"
       }
     },
     "remote": {
-      "id": "remote",
-      "type": "remote",
       "url": "https://mcp.example.com/sse",
-      "transport": "sse",
-      "start": "lazy",
-      "healthCheck": {
-        "enabled": true,
-        "interval": 30000
+      "type": "sse",
+      "hatagoOptions": {
+        "start": "lazy",
+        "timeouts": {
+          "timeout": 30000,
+          "maxTotalTimeout": 300000,
+          "resetTimeoutOnProgress": true
+        }
       }
     }
   }

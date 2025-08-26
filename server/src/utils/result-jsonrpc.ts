@@ -30,26 +30,19 @@ export interface JsonRpcErrorResponse {
  * Based on MCP specification
  */
 const errorCodeToJsonRpc: Partial<Record<ErrorCode, number>> = {
-  // Parse error
-  E_INVALID_INPUT: -32700,
-
   // Invalid Request
   E_CONFIG_INVALID: -32600,
   E_CONFIG_NOT_FOUND: -32600,
 
   // Method not found
   E_TOOL_NOT_FOUND: -32601,
-  E_RESOURCE_NOT_FOUND: -32601,
-  E_PROMPT_NOT_FOUND: -32601,
 
   // Invalid params
   E_TOOL_NAME_COLLISION: -32602,
-  E_INVALID_SECRET: -32602,
 
   // Internal error
   E_SYSTEM_UNKNOWN: -32603,
   E_SYSTEM_FS_ERROR: -32603,
-  E_SYSTEM_SPAWN_ERROR: -32603,
   E_SYSTEM_SECURITY_ERROR: -32603,
 
   // Server error (reserved range: -32000 to -32099)
@@ -71,7 +64,12 @@ const errorCodeToJsonRpc: Partial<Record<ErrorCode, number>> = {
  * Convert HatagoError to JSON-RPC error code
  */
 export const getJsonRpcErrorCode = (error: HatagoError): number => {
-  return errorCodeToJsonRpc[error.code] ?? -32603; // Default to internal error
+  // Handle both string and numeric error codes
+  if (typeof error.code === 'string') {
+    return errorCodeToJsonRpc[error.code as ErrorCode] ?? -32603;
+  }
+  // For numeric codes, return a default JSON-RPC error code
+  return -32603; // Default to internal error
 };
 
 /**

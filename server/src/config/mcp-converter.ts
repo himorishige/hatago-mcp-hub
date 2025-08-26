@@ -51,8 +51,18 @@ function extractNpxPackageInfo(args: string[] = []): {
     );
   }
 
+  // Filter out -y and --yes flags
+  const filteredArgs = args.filter((arg) => arg !== '-y' && arg !== '--yes');
+
+  if (filteredArgs.length === 0) {
+    throw ErrorHelpers.invalidInput(
+      'npx command',
+      'Requires at least one argument (package name) after flags',
+    );
+  }
+
   // 最初の引数がパッケージ名
-  const [packageName, ...restArgs] = args;
+  const [packageName, ...restArgs] = filteredArgs;
 
   return {
     package: packageName,
@@ -106,7 +116,22 @@ function applyHatagoOptions<T extends ServerConfig>(
       remoteConfig.auth = options.auth;
     }
     if (options.healthCheck !== undefined) {
-      remoteConfig.healthCheck = options.healthCheck;
+      remoteConfig.healthCheck = {
+        enabled: options.healthCheck.enabled || false,
+        mode: 'initialize+ping' as const,
+        intervalMs: options.healthCheck.intervalMs || 0,
+        timeoutMs: options.healthCheck.timeoutMs || 5000,
+        startupGraceMs: 5000,
+        method: options.healthCheck.method || 'ping',
+      };
+    }
+    // タイムアウト設定を適用
+    if (options.timeouts !== undefined) {
+      remoteConfig.timeouts = {
+        timeout: options.timeouts.timeout ?? 60000,
+        maxTotalTimeout: options.timeouts.maxTotalTimeout ?? 300000,
+        resetTimeoutOnProgress: options.timeouts.resetTimeoutOnProgress ?? true,
+      };
     }
   }
 
@@ -230,24 +255,20 @@ export function convertMcpServersToInternal(
 }
 
 /**
- * 設定にmcpServersが含まれる場合、内部形式に変換してマージ
+ * 設定にmcpServersが含まれる場合、内部形式に変換
  */
 export function mergeConfigWithMcpServers(
   config: Partial<HatagoConfig> & { mcpServers?: McpServers },
-): Partial<HatagoConfig> {
+): Partial<HatagoConfig> & { servers?: ServerConfig[] } {
   if (!config.mcpServers) {
     return config;
   }
 
   const convertedServers = convertMcpServersToInternal(config.mcpServers);
 
-  // 既存のserversとマージ（mcpServersから変換したものを先に配置）
-  const existingServers = config.servers || [];
-  const mergedServers = [...convertedServers, ...existingServers];
-
   // 重複IDをチェック
   const seenIds = new Set<string>();
-  for (const server of mergedServers) {
+  for (const server of convertedServers) {
     if (seenIds.has(server.id)) {
       throw ErrorHelpers.duplicateServerId(server.id);
     }
@@ -256,6 +277,6 @@ export function mergeConfigWithMcpServers(
 
   return {
     ...config,
-    servers: mergedServers,
+    servers: convertedServers,
   };
 }

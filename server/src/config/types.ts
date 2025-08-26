@@ -233,37 +233,33 @@ export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
     })
     .optional()
     .describe('Health check configuration for remote servers'),
-  quirks: z
+  timeouts: z
     .object({
-      useDirectClient: z
-        .boolean()
-        .optional()
+      timeout: z
+        .number()
+        .min(1000)
+        .max(300000)
+        .default(30000)
         .describe(
-          'Use direct Client instead of facade (for servers that reject sessionId)',
+          'Initial timeout in milliseconds for tool calls (default: 30000)',
         ),
-      skipProtocolNegotiation: z
-        .boolean()
-        .optional()
-        .describe('Skip protocol negotiation and use default version'),
-      forceProtocolVersion: z
-        .string()
-        .optional()
+      maxTotalTimeout: z
+        .number()
+        .min(1000)
+        .max(600000)
+        .default(300000)
         .describe(
-          'Force a specific protocol version (e.g., "2025-03-26" for DeepWiki)',
+          'Maximum total timeout in milliseconds (default: 300000 = 5 minutes)',
         ),
-      assumedCapabilities: z
-        .object({
-          tools: z.boolean().optional(),
-          resources: z.boolean().optional(),
-          prompts: z.boolean().optional(),
-        })
-        .optional()
+      resetTimeoutOnProgress: z
+        .boolean()
+        .default(true)
         .describe(
-          'Manually set capabilities when server does not provide them',
+          'Reset timeout when progress notifications are received (default: true)',
         ),
     })
     .optional()
-    .describe('Server-specific workarounds and quirks'),
+    .describe('Timeout configuration for tool calls'),
 });
 export type RemoteServerConfig = z.infer<typeof RemoteServerConfigSchema>;
 
@@ -326,6 +322,13 @@ export const HatagoOptionsSchema = z.object({
   autoRestart: z.boolean().optional(),
   maxRestarts: z.number().optional(),
   restartDelayMs: z.number().optional(),
+  timeouts: z
+    .object({
+      timeout: z.number().min(1000).max(300000).optional(),
+      maxTotalTimeout: z.number().min(1000).max(600000).optional(),
+      resetTimeoutOnProgress: z.boolean().optional(),
+    })
+    .optional(),
 });
 export type HatagoOptions = z.infer<typeof HatagoOptionsSchema>;
 
@@ -374,6 +377,9 @@ export const HatagoConfigSchema = z.object({
 
   // Claude Code互換形式
   mcpServers: McpServersSchema.optional(),
+
+  // 内部使用のみ（mcpServersから自動変換される）
+  servers: z.array(ServerConfigSchema).optional(),
   toolNaming: ToolNamingConfigSchema.default({}),
   session: SessionConfigSchema.default({}),
   sessionSharing: SessionSharingConfigSchema.default({}),
@@ -385,7 +391,7 @@ export const HatagoConfigSchema = z.object({
   generation: GenerationConfigSchema.default({}),
   rollover: RolloverConfigSchema.default({}),
   replication: ReplicationConfigSchema.default({}),
-  servers: z.array(ServerConfigSchema).optional(),
+
   npxCache: z
     .object({
       enabled: z.boolean().default(true),

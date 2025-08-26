@@ -1,199 +1,155 @@
+/**
+ * Prompt Registry - Manages prompts from multiple MCP servers
+ */
+
 import type { Prompt } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolNamingConfig } from '../config/types.js';
-import {
-  createNamingFunction,
-  createParsingFunction,
-} from '../utils/naming-strategy.js';
+import { logger } from '../utils/logger.js';
 
-export interface PromptMetadata extends Prompt {
+/**
+ * Prompt info with server association
+ */
+export interface PromptInfo extends Prompt {
   serverId: string;
   originalName: string;
-}
-
-export interface PromptResolveResult {
-  serverId: string;
-  originalName: string;
-  publicName: string;
-}
-
-export interface PromptRegistryOptions {
-  namingConfig?: ToolNamingConfig;
-}
-
-export interface PromptRegistry {
-  registerServerPrompts: (serverId: string, prompts: Prompt[]) => void;
-  clearServerPrompts: (serverId: string) => void;
-  resolvePrompt: (publicName: string) => PromptResolveResult | null;
-  getServerPrompts: (serverId: string) => Prompt[];
-  getAllPrompts: () => Prompt[];
-  getPromptCollisions: () => Map<string, string[]>;
-  clear: () => void;
 }
 
 /**
- * Create a prompt registry for managing prompts from multiple MCP servers
- * Using functional factory pattern for better adherence to Hatago principles
+ * Registry for managing prompts from multiple servers
  */
-export function createPromptRegistry(
-  options: PromptRegistryOptions = {},
-): PromptRegistry {
-  // Private state managed through closure
-  const prompts = new Map<string, PromptMetadata[]>();
-  const serverPrompts = new Map<string, Set<string>>();
-  const namingConfig: ToolNamingConfig = options.namingConfig || {
-    strategy: 'namespace',
-    separator: '_',
-  };
-
-  // Create naming functions
-  const generatePublicName = createNamingFunction(namingConfig);
-  const _parsePublicName = createParsingFunction(namingConfig);
-
-  /**
-   * Clear prompts for a specific server
-   */
-  function clearServerPrompts(serverId: string): void {
-    const existingNames = serverPrompts.get(serverId);
-    if (existingNames) {
-      for (const name of existingNames) {
-        const promptList = prompts.get(name);
-        if (promptList) {
-          const filtered = promptList.filter((p) => p.serverId !== serverId);
-          if (filtered.length > 0) {
-            prompts.set(name, filtered);
-          } else {
-            prompts.delete(name);
-          }
-        }
-      }
-      serverPrompts.delete(serverId);
-    }
-  }
+export class PromptRegistry {
+  private prompts: Map<string, PromptInfo> = new Map();
+  private serverPrompts: Map<string, Map<string, PromptInfo>> = new Map();
+  private logger = logger;
 
   /**
    * Register prompts from a server
    */
-  function registerServerPrompts(serverId: string, newPrompts: Prompt[]): void {
-    // Clear existing prompts
-    clearServerPrompts(serverId);
+  registerServerPrompts(serverId: string, prompts: Prompt[]): void {
+    this.logger.debug(
+      `Registering ${prompts.length} prompts from server ${serverId}`,
+    );
 
-    // Register new prompts
-    const promptNames = new Set<string>();
-    for (const prompt of newPrompts) {
-      const publicName = generatePublicName(serverId, prompt.name);
-      const metadata: PromptMetadata = {
+    // Clear existing prompts for this server
+    const existingPrompts = this.serverPrompts.get(serverId);
+    if (existingPrompts) {
+      // Remove from global registry
+      for (const prompt of existingPrompts.values()) {
+        this.prompts.delete(prompt.name);
+      }
+    }
+
+    // Create new map for this server
+    const serverPromptMap = new Map<string, PromptInfo>();
+
+    // Register each prompt
+    for (const prompt of prompts) {
+      const namespacedName = this.getNamespacedName(serverId, prompt.name);
+      const promptInfo: PromptInfo = {
         ...prompt,
-        name: publicName,
+        name: namespacedName,
         serverId,
         originalName: prompt.name,
       };
 
-      // Name-based management
-      const existing = prompts.get(publicName) || [];
-      existing.push(metadata);
-      prompts.set(publicName, existing);
-      promptNames.add(publicName);
+      // Add to server map
+      serverPromptMap.set(prompt.name, promptInfo);
+
+      // Add to global registry
+      this.prompts.set(namespacedName, promptInfo);
+
+      this.logger.debug(`Registered prompt: ${namespacedName}`);
     }
 
-    serverPrompts.set(serverId, promptNames);
+    // Store server map
+    this.serverPrompts.set(serverId, serverPromptMap);
   }
 
   /**
-   * Resolve a public name to server and original name
+   * Unregister all prompts from a server
    */
-  function resolvePrompt(publicName: string): PromptResolveResult | null {
-    const promptList = prompts.get(publicName);
-    if (!promptList || promptList.length === 0) {
-      return null;
+  unregisterServerPrompts(serverId: string): void {
+    const serverPrompts = this.serverPrompts.get(serverId);
+    if (!serverPrompts) {
+      return;
     }
 
-    // Return the first prompt (in case of collisions)
-    const prompt = promptList[0];
-    return {
-      serverId: prompt.serverId,
-      originalName: prompt.originalName,
-      publicName: prompt.name,
-    };
+    // Remove from global registry
+    for (const prompt of serverPrompts.values()) {
+      this.prompts.delete(prompt.name);
+    }
+
+    // Remove server map
+    this.serverPrompts.delete(serverId);
+
+    this.logger.debug(`Unregistered all prompts from server ${serverId}`);
   }
 
   /**
-   * Get prompts for a specific server
+   * Get all prompts
    */
-  function getServerPrompts(serverId: string): Prompt[] {
-    const names = serverPrompts.get(serverId);
-    if (!names) {
-      return [];
-    }
-
-    const result: Prompt[] = [];
-    for (const name of names) {
-      const promptList = prompts.get(name);
-      if (promptList) {
-        const serverPrompt = promptList.find((p) => p.serverId === serverId);
-        if (serverPrompt) {
-          // Return without serverId and originalName metadata
-          const { serverId: _, originalName: __, ...prompt } = serverPrompt;
-          result.push(prompt);
-        }
-      }
-    }
-
-    return result;
+  getAllPrompts(): PromptInfo[] {
+    return Array.from(this.prompts.values());
   }
 
   /**
-   * Get all prompts from all servers
+   * Get prompt by name
    */
-  function getAllPrompts(): Prompt[] {
-    const allPrompts: Prompt[] = [];
-    const seen = new Set<string>();
-
-    for (const [name, promptList] of prompts) {
-      if (!seen.has(name) && promptList.length > 0) {
-        seen.add(name);
-        // Return the first prompt for each name (in case of collisions)
-        const { serverId: _, originalName: __, ...prompt } = promptList[0];
-        allPrompts.push(prompt);
-      }
-    }
-
-    return allPrompts;
+  getPrompt(name: string): PromptInfo | undefined {
+    return this.prompts.get(name);
   }
 
   /**
-   * Get prompt collisions (names with multiple servers)
+   * Get prompts from a specific server
    */
-  function getPromptCollisions(): Map<string, string[]> {
-    const collisions = new Map<string, string[]>();
+  getServerPrompts(serverId: string): PromptInfo[] {
+    const serverPrompts = this.serverPrompts.get(serverId);
+    return serverPrompts ? Array.from(serverPrompts.values()) : [];
+  }
 
-    for (const [name, promptList] of prompts) {
-      if (promptList.length > 1) {
-        const serverIds = [...new Set(promptList.map((p) => p.serverId))];
-        if (serverIds.length > 1) {
-          collisions.set(name, serverIds);
-        }
-      }
-    }
-
-    return collisions;
+  /**
+   * Check if prompt exists
+   */
+  hasPrompt(name: string): boolean {
+    return this.prompts.has(name);
   }
 
   /**
    * Clear all prompts
    */
-  function clear(): void {
-    prompts.clear();
-    serverPrompts.clear();
+  clear(): void {
+    this.prompts.clear();
+    this.serverPrompts.clear();
   }
 
-  // Return the public interface
-  return {
-    registerServerPrompts,
-    clearServerPrompts,
-    resolvePrompt,
-    getServerPrompts,
-    getAllPrompts,
-    getPromptCollisions,
-    clear,
-  };
+  /**
+   * Get namespaced prompt name
+   */
+  private getNamespacedName(serverId: string, promptName: string): string {
+    // Use underscore as separator for consistency with tools
+    return `${serverId}_${promptName}`;
+  }
+
+  /**
+   * Resolve prompt name to server and original name
+   */
+  resolvePrompt(
+    name: string,
+  ): { serverId: string; originalName: string } | undefined {
+    const prompt = this.prompts.get(name);
+    if (!prompt) {
+      return undefined;
+    }
+
+    return {
+      serverId: prompt.serverId,
+      originalName: prompt.originalName,
+    };
+  }
+}
+
+/**
+ * Create a new prompt registry instance
+ */
+export function createPromptRegistry(): PromptRegistry {
+  return new PromptRegistry();
 }

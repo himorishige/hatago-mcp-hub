@@ -1,7 +1,7 @@
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { ErrorHelpers } from '../utils/errors.js';
 
-// STDIOトランスポートのオプション
+// STDIO transport options
 export interface StdioTransportOptions {
   command: string;
   args?: string[];
@@ -10,7 +10,7 @@ export interface StdioTransportOptions {
 }
 
 /**
- * STDIOトランスポート - 子プロセスとの通信を管理
+ * STDIO Transport - Manages communication with child processes
  */
 export class StdioTransport {
   private options: StdioTransportOptions;
@@ -22,62 +22,41 @@ export class StdioTransport {
   }
 
   /**
-   * トランスポートを開始
+   * Start the transport
    */
   async start(): Promise<void> {
     if (this.connected) {
       throw ErrorHelpers.transportAlreadyStarted();
     }
+    // Create MCP client transport
+    // StdioClientTransport manages the process itself
+    this.clientTransport = new StdioClientTransport({
+      command: this.options.command,
+      args: this.options.args,
+      env: {
+        ...process.env,
+        ...this.options.env,
+      } as Record<string, string>,
+    });
 
-    console.log(
-      `Starting STDIO transport: ${this.options.command} ${this.options.args?.join(' ') || ''}`,
-    );
-
-    try {
-      // MCPクライアントトランスポートを作成
-      // StdioClientTransportが自分でプロセスを管理する
-      this.clientTransport = new StdioClientTransport({
-        command: this.options.command,
-        args: this.options.args,
-        env: {
-          ...process.env,
-          ...this.options.env,
-        },
-      });
-
-      this.connected = true;
-      console.log('STDIO transport started');
-    } catch (error) {
-      console.error('Failed to start STDIO transport:', error);
-      throw error;
-    }
+    this.connected = true;
   }
 
   /**
-   * トランスポートを停止
+   * Stop the transport
    */
   async stop(): Promise<void> {
     if (!this.connected) {
       return;
     }
-
-    console.log('Stopping STDIO transport...');
-
-    try {
-      // StdioClientTransportにcloseメソッドがあるか確認が必要
-      // 今のところ、クリーンアップだけ行う
-      this.clientTransport = undefined;
-      this.connected = false;
-
-      console.log('STDIO transport stopped');
-    } catch (error) {
-      console.error('Error stopping STDIO transport:', error);
-      throw error;
-    }
+    // Need to check if StdioClientTransport has close method
+    // For now, just perform cleanup
+    this.clientTransport = undefined;
+    this.connected = false;
   }
 
   /**
-   * クライアントトランスポートを取得
+   * Get client transport
    */
   getClientTransport(): StdioClientTransport {
     if (!this.clientTransport) {
@@ -87,25 +66,24 @@ export class StdioTransport {
   }
 
   /**
-   * 接続状態を取得
+   * Get connection status
    */
   isConnected(): boolean {
     return this.connected;
   }
 
   /**
-   * プロセスIDを取得
+   * Get process ID
    */
   getPid(): number | undefined {
-    // StdioClientTransportがプロセス管理するため、現在は取得不可
+    // Currently unavailable as StdioClientTransport manages the process
     return undefined;
   }
 
   /**
-   * プロセスを再起動
+   * Restart the process
    */
   async restart(): Promise<void> {
-    console.log('Restarting STDIO transport...');
     await this.stop();
     await this.start();
   }

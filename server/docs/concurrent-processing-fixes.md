@@ -1,30 +1,37 @@
 # Concurrent Processing Race Condition Fixes
 
 ## Overview
+
 Successfully addressed concurrent processing race conditions identified in the remaining tasks document. Implemented mutex-based synchronization to prevent data corruption during parallel operations.
 
 ## Issues Fixed
 
 ### 1. Tool Registration Race Condition
+
 **Problem**: `registeredTools.add()` was called inside an async callback without synchronization, allowing concurrent modifications.
 
-**Solution**: 
+**Solution**:
+
 - Added `toolRegistrationMutex` to McpHub class
 - Wrapped entire `updateHubTools()` method in mutex lock
 - Changed method signature to async to properly await mutex
 
 ### 2. Session Operations Race Condition
+
 **Problem**: SessionManager operations could have race conditions during concurrent access.
 
 **Solution**:
+
 - Already had `sessionMutex` (KeyedMutex) implementation
 - Fixed `createSession()` to check for existing sessions before creating new ones
 - All session operations now properly synchronized
 
 ### 3. Mutex Implementation Bug
+
 **Problem**: Initial mutex implementation had a deadlock bug where queued waiters couldn't acquire the lock.
 
 **Fix**:
+
 ```typescript
 // Before (buggy):
 const tryAcquire = () => {
@@ -73,6 +80,7 @@ All tests passing successfully.
 ## Remaining Considerations
 
 While the critical race conditions have been fixed, consider for future improvements:
+
 - Performance monitoring to ensure mutex overhead is acceptable
 - Potential use of read-write locks for read-heavy operations
 - Connection pooling for database operations if added later

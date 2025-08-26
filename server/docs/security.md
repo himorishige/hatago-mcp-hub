@@ -71,6 +71,7 @@ Content-Type: application/json
 ```
 
 Response:
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -82,20 +83,20 @@ Response:
 ##### Custom Token Generation
 
 ```typescript
-import { AuthenticationManager } from '@himorishige/hatago/security'
+import { AuthenticationManager } from "@himorishige/hatago/security";
 
 const authManager = new AuthenticationManager({
   secret: process.env.HATAGO_AUTH_SECRET,
-  expiresIn: '24h'
-})
+  expiresIn: "24h",
+});
 
 const token = authManager.generateToken({
-  sub: 'user-123',
-  username: 'john.doe',
-  roles: ['user', 'mcp-client'],
-  permissions: ['mcp:tools', 'mcp:resources'],
-  sessionId: 'session-456'
-})
+  sub: "user-123",
+  username: "john.doe",
+  roles: ["user", "mcp-client"],
+  permissions: ["mcp:tools", "mcp:resources"],
+  sessionId: "session-456",
+});
 ```
 
 #### Using Authentication
@@ -158,12 +159,12 @@ Hatago implements RBAC to control access to MCP resources.
 ```typescript
 // Permission format: resource:action:scope
 const permissions = [
-  'mcp:tools:*',              // All tool operations
-  'mcp:resources:read',       // Read resources only
-  'mcp:prompts:generate',     // Generate prompts only
-  'server:filesystem:*',      // All operations on filesystem server
-  'admin:servers:manage'      // Server management
-]
+  "mcp:tools:*", // All tool operations
+  "mcp:resources:read", // Read resources only
+  "mcp:prompts:generate", // Generate prompts only
+  "server:filesystem:*", // All operations on filesystem server
+  "admin:servers:manage", // Server management
+];
 ```
 
 #### Role Configuration
@@ -175,11 +176,7 @@ const permissions = [
       "enabled": true,
       "roles": {
         "admin": {
-          "permissions": [
-            "mcp:*:*",
-            "admin:*:*",
-            "server:*:*"
-          ]
+          "permissions": ["mcp:*:*", "admin:*:*", "server:*:*"]
         },
         "user": {
           "permissions": [
@@ -205,24 +202,24 @@ const permissions = [
 #### Custom Authorization
 
 ```typescript
-import { AuthorizationManager } from '@himorishige/hatago/security'
+import { AuthorizationManager } from "@himorishige/hatago/security";
 
-const authzManager = new AuthorizationManager()
+const authzManager = new AuthorizationManager();
 
 // Add custom permission check
-authzManager.addRule('server-specific', async (user, resource, action) => {
-  if (resource.startsWith('server:')) {
-    const serverName = resource.split(':')[1]
-    return user.allowedServers?.includes(serverName) || false
+authzManager.addRule("server-specific", async (user, resource, action) => {
+  if (resource.startsWith("server:")) {
+    const serverName = resource.split(":")[1];
+    return user.allowedServers?.includes(serverName) || false;
   }
-  return true
-})
+  return true;
+});
 
 // Check permissions
 const hasPermission = await authzManager.checkPermission(
   user,
-  'server:filesystem:tools:call'
-)
+  "server:filesystem:tools:call",
+);
 ```
 
 ## Rate Limiting
@@ -294,26 +291,26 @@ X-RateLimit-RetryAfter: 45
 #### Custom Rate Limiting
 
 ```typescript
-import { RateLimiter } from '@himorishige/hatago/security'
+import { RateLimiter } from "@himorishige/hatago/security";
 
 const rateLimiter = new RateLimiter({
   windowMs: 60000,
-  max: 100
-})
+  max: 100,
+});
 
 // Custom key generation
 rateLimiter.setKeyGenerator((req) => {
-  const user = req.user?.id
-  const ip = req.ip
-  return `${user}:${ip}`
-})
+  const user = req.user?.id;
+  const ip = req.ip;
+  return `${user}:${ip}`;
+});
 
 // Custom rate limit rules
-rateLimiter.addRule('expensive-operations', {
+rateLimiter.addRule("expensive-operations", {
   windowMs: 300000, // 5 minutes
   max: 10,
-  filter: (req) => req.body?.method?.includes('generate')
-})
+  filter: (req) => req.body?.method?.includes("generate"),
+});
 ```
 
 ## Circuit Breakers
@@ -364,6 +361,7 @@ Circuit breakers prevent cascade failures by automatically isolating failing ser
 #### Error Classification
 
 Errors are classified by severity:
+
 - **Low**: Authentication, validation errors
 - **Medium**: Business logic errors
 - **High**: Timeout, network errors
@@ -386,25 +384,25 @@ tail -f logs/hatago.log | jq 'select(.component == "circuit-breaker")'
 All incoming requests are validated against schemas:
 
 ```typescript
-import { ValidationManager } from '@himorishige/hatago/security'
+import { ValidationManager } from "@himorishige/hatago/security";
 
-const validator = new ValidationManager()
+const validator = new ValidationManager();
 
 // Add custom validation rules
-validator.addRule('tool-call', {
-  method: { type: 'string', enum: ['tools/call'] },
+validator.addRule("tool-call", {
+  method: { type: "string", enum: ["tools/call"] },
   params: {
-    type: 'object',
+    type: "object",
     properties: {
-      name: { type: 'string', maxLength: 100 },
-      arguments: { type: 'object' }
+      name: { type: "string", maxLength: 100 },
+      arguments: { type: "object" },
     },
-    required: ['name']
-  }
-})
+    required: ["name"],
+  },
+});
 
 // Validate request
-const isValid = validator.validate('tool-call', request)
+const isValid = validator.validate("tool-call", request);
 ```
 
 ### Log Sanitization
@@ -417,13 +415,20 @@ Sensitive data is automatically sanitized from logs:
     "logging": {
       "sanitize": true,
       "maskedFields": [
-        "password", "token", "secret", "key", "auth",
-        "jwt", "bearer", "authorization", "cookie"
+        "password",
+        "token",
+        "secret",
+        "key",
+        "auth",
+        "jwt",
+        "bearer",
+        "authorization",
+        "cookie"
       ],
       "customSanitizer": {
         "patterns": [
           "\\b[A-Za-z0-9+/]{40,}={0,2}\\b", // Base64 tokens
-          "\\bsk-[A-Za-z0-9]{32,}\\b",       // API keys
+          "\\bsk-[A-Za-z0-9]{32,}\\b", // API keys
           "\\b\\d{4}-\\d{4}-\\d{4}-\\d{4}\\b" // Credit cards
         ]
       }
@@ -563,31 +568,32 @@ hatago serve --config config.encrypted --decrypt-key ${ENCRYPTION_KEY}
 ```yaml
 # Security monitoring rules
 rules:
-- alert: AuthenticationFailureSpike
-  expr: rate(hatago_auth_failures[5m]) > 10
-  labels:
-    severity: warning
-  annotations:
-    summary: "High authentication failure rate"
+  - alert: AuthenticationFailureSpike
+    expr: rate(hatago_auth_failures[5m]) > 10
+    labels:
+      severity: warning
+    annotations:
+      summary: "High authentication failure rate"
 
-- alert: RateLimitExceeded
-  expr: rate(hatago_rate_limit_exceeded[1m]) > 5
-  labels:
-    severity: critical
-  annotations:
-    summary: "Rate limiting threshold exceeded"
+  - alert: RateLimitExceeded
+    expr: rate(hatago_rate_limit_exceeded[1m]) > 5
+    labels:
+      severity: critical
+    annotations:
+      summary: "Rate limiting threshold exceeded"
 
-- alert: CircuitBreakerOpen
-  expr: hatago_circuit_breaker_state == 1
-  labels:
-    severity: warning
-  annotations:
-    summary: "Circuit breaker opened for {{ $labels.server }}"
+  - alert: CircuitBreakerOpen
+    expr: hatago_circuit_breaker_state == 1
+    labels:
+      severity: warning
+    annotations:
+      summary: "Circuit breaker opened for {{ $labels.server }}"
 ```
 
 ### Security Checklist
 
 #### Pre-Production
+
 - [ ] Authentication configured and tested
 - [ ] Authorization rules defined and validated
 - [ ] Rate limiting configured appropriately
@@ -600,6 +606,7 @@ rules:
 - [ ] Security tests passing
 
 #### Runtime Monitoring
+
 - [ ] Authentication success/failure rates
 - [ ] Authorization denial patterns
 - [ ] Rate limiting effectiveness

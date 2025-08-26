@@ -3,12 +3,13 @@
 ## 基本コマンド（server/ディレクトリで実行）
 
 ### 開発・ビルド・実行
+
 ```bash
 # 開発サーバー起動（ファイル監視モード）
 pnpm dev
 
 # ビルド（dist/に出力）
-pnpm build  
+pnpm build
 
 # 本番サーバー起動
 pnpm start
@@ -21,6 +22,7 @@ open http://localhost:3000
 ```
 
 ### コード品質管理
+
 ```bash
 # フォーマット（自動修正）
 pnpm format
@@ -33,6 +35,7 @@ pnpm check
 ```
 
 ### テスト
+
 ```bash
 # テスト実行
 pnpm test
@@ -44,6 +47,7 @@ pnpm coverage
 ## Hatago CLIコマンド
 
 ### サーバー管理
+
 ```bash
 # MCP Hubサーバー起動（STDIOモード）
 pnpm cli serve
@@ -59,6 +63,7 @@ pnpm cli reload
 ```
 
 ### MCPサーバー管理（Claude Code互換）
+
 ```bash
 # ローカルSTDIOサーバー（NPX） - Claude Code形式
 pnpm cli mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /tmp
@@ -86,6 +91,7 @@ pnpm cli mcp add old-format "npx @modelcontextprotocol/server-everything"
 ```
 
 ### NPXサーバー管理（個別コマンド）
+
 ```bash
 # NPXサーバー追加
 pnpm cli npx add @modelcontextprotocol/server-filesystem
@@ -106,6 +112,7 @@ pnpm cli npx status <id>
 ```
 
 ### リモートサーバー管理（個別コマンド）
+
 ```bash
 # リモートサーバー追加
 pnpm cli remote add https://mcp.example.com/sse --id example
@@ -118,6 +125,7 @@ pnpm cli remote remove example
 ```
 
 ### セッション管理
+
 ```bash
 # セッション一覧
 pnpm cli session list
@@ -130,6 +138,7 @@ pnpm cli session clear
 ```
 
 ### その他の管理コマンド
+
 ```bash
 # 秘密情報管理
 pnpm cli secret list
@@ -149,6 +158,7 @@ pnpm cli init
 ```
 
 ## パッケージ管理
+
 ```bash
 # 依存関係インストール
 pnpm install
@@ -158,7 +168,8 @@ pnpm add <package>
 pnpm add -D <dev-package>
 ```
 
-## Git関連  
+## Git関連
+
 ```bash
 # ステータス確認
 git status
@@ -171,10 +182,12 @@ git log --oneline -10
 ```
 
 ## タスク完了時の推奨コマンド
+
 1. `pnpm format` - コードフォーマット
-2. `pnpm lint` - リントチェック  
+2. `pnpm lint` - リントチェック
 3. `pnpm test` - テスト実行（テストが存在する場合）
 4. `pnpm build` - ビルドエラーチェック
 
 ## 最終更新日
+
 2025-08-23

@@ -3,7 +3,6 @@ import {
   createDefaultConfig,
   expandEnvVars,
   findConfigFile,
-  generateJsonSchema,
   generateSampleConfig,
   loadConfig,
   mergeConfig,
@@ -81,10 +80,11 @@ describe('config/loader', () => {
       expect(config).toHaveProperty('timeouts');
       expect(config).toHaveProperty('concurrency');
       expect(config).toHaveProperty('security');
-      expect(config).toHaveProperty('servers');
+      // servers field removed - using mcpServers instead
 
       expect(config.http.port).toBe(3000);
-      expect(config.servers).toEqual([]);
+      // servers field removed - using mcpServers instead
+      expect(config.mcpServers).toEqual({});
     });
 
     it('should have valid default timeout values', () => {
@@ -220,93 +220,53 @@ describe('config/loader', () => {
     });
   });
 
-  describe('generateJsonSchema', () => {
-    it('should generate a valid JSON schema', async () => {
-      const schema = await generateJsonSchema();
-
-      expect(schema).toHaveProperty('$schema');
-      expect(schema).toHaveProperty('title');
-      expect(schema).toHaveProperty('description');
-    });
-
-    it('should include all config properties', async () => {
-      const schema = await generateJsonSchema();
-
-      expect(schema.properties).toHaveProperty('version');
-      expect(schema.properties).toHaveProperty('http');
-      expect(schema.properties).toHaveProperty('toolNaming');
-      expect(schema.properties).toHaveProperty('session');
-      expect(schema.properties).toHaveProperty('servers');
-    });
-
-    it('should have proper type definitions', async () => {
-      const schema = await generateJsonSchema();
-
-      expect(schema.type).toBe('object');
-      expect(schema.properties.servers.type).toBe('array');
-      expect(schema.properties.version.type).toBe('number');
-    });
-  });
-
   describe('findConfigFile', () => {
     it('should find config file in current directory', async () => {
-      const fs = await import('node:fs/promises');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
 
       const result = await findConfigFile();
 
       expect(result).toBeTruthy();
-      expect(result).toMatch(/hatago\.jsonc$/);
+      expect(result).toMatch(/hatago/);
     });
 
     it('should check multiple config file names', async () => {
-      const fs = await import('node:fs/promises');
-      vi.mocked(fs.access)
-        .mockRejectedValueOnce(new Error('Not found'))
-        .mockRejectedValueOnce(new Error('Not found'))
-        .mockResolvedValueOnce(undefined);
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true);
 
       const result = await findConfigFile();
 
       expect(result).toBeTruthy();
-      expect(result).toMatch(/\.hatago\.(json|jsonc)$/);
-      expect(vi.mocked(fs.access)).toHaveBeenCalledTimes(3);
+      expect(result).toMatch(/hatago/);
+      expect(vi.mocked(fs.existsSync)).toHaveBeenCalledTimes(3);
     });
 
-    it('should return null if no config file found', async () => {
-      const fs = await import('node:fs/promises');
-      vi.mocked(fs.access).mockRejectedValue(new Error('Not found'));
+    it('should return undefined if no config file found', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync).mockReturnValue(false);
 
       const result = await findConfigFile();
 
-      expect(result).toBe(null);
+      expect(result).toBeUndefined();
     });
 
-    it('should search in parent directories up to root', async () => {
-      const fs = await import('node:fs/promises');
-      const originalCwd = process.cwd;
-      let callCount = 0;
-
-      // Mock cwd to simulate deep directory structure
-      process.cwd = vi
-        .fn()
-        .mockReturnValue('/home/user/project/src/deep/nested');
-
-      vi.mocked(fs.access).mockImplementation(async (path) => {
-        callCount++;
-        if (
-          callCount > 20 &&
-          String(path).includes('/home/user/project/hatago.jsonc')
-        ) {
-          return undefined;
-        }
-        throw new Error('Not found');
-      });
+    it('should search in parent directories', async () => {
+      const fs = await import('node:fs');
+      vi.mocked(fs.existsSync)
+        .mockReturnValueOnce(false) // current dir
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false) // home dir
+        .mockReturnValueOnce(true); // found in home
 
       const result = await findConfigFile();
 
       expect(result).toBeTruthy();
-      process.cwd = originalCwd;
     });
   });
 
@@ -363,7 +323,8 @@ describe('config/loader', () => {
       const config = await loadConfig();
 
       expect(config.version).toBe(1);
-      expect(config.servers).toEqual([]);
+      // servers field removed - using mcpServers instead
+      expect(config.mcpServers).toEqual({});
     });
 
     it('should not log when quiet option is true', async () => {

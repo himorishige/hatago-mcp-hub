@@ -142,14 +142,14 @@ export function createErrorFromUnknown(
  * Hatago Hub custom error class
  */
 export class HatagoError extends Error {
-  public readonly code: ErrorCode;
+  public readonly code: ErrorCode | number; // Accept both string and numeric error codes
   public readonly severity: ErrorSeverity;
   public readonly context: ErrorContext;
   public readonly timestamp: Date;
   public readonly recoverable: boolean;
 
   constructor(
-    code: ErrorCode,
+    code: ErrorCode | number, // Accept both string and numeric error codes
     message: string,
     options?: {
       severity?: ErrorSeverity;
@@ -183,7 +183,7 @@ export class HatagoError extends Error {
    * Convert to JSON format
    */
   toJSON(): {
-    code: ErrorCode;
+    code: ErrorCode | number;
     message: string;
     severity: ErrorSeverity;
     recoverable: boolean;
@@ -295,13 +295,16 @@ export class HatagoError extends Error {
 /**
  * Error handler utility
  */
-const errorHandlers = new Map<ErrorCode, (error: HatagoError) => void>();
+const errorHandlers = new Map<
+  ErrorCode | number,
+  (error: HatagoError) => void
+>();
 
 /**
  * Register an error handler for a specific error code
  */
 export function registerErrorHandler(
-  code: ErrorCode,
+  code: ErrorCode | number,
   handler: (error: HatagoError) => void,
 ): void {
   errorHandlers.set(code, handler);
@@ -1091,6 +1094,33 @@ export const ErrorHelpers = {
     ),
 
   // Generic error creation from unknown type
+  /**
+   * Extract error information from unknown error type
+   */
+  extract(error: unknown): { message: string; code?: string; stack?: string } {
+    if (error instanceof Error) {
+      return {
+        message: error.message,
+        code: (error as any).code,
+        stack: error.stack,
+      };
+    }
+
+    if (typeof error === 'string') {
+      return { message: error };
+    }
+
+    if (error && typeof error === 'object') {
+      return {
+        message: (error as any).message || String(error),
+        code: (error as any).code,
+        stack: (error as any).stack,
+      };
+    }
+
+    return { message: String(error) };
+  },
+
   createErrorFromUnknown: (
     error: Error | unknown,
     code: ErrorCode = ErrorCode.E_SYSTEM_UNKNOWN,

@@ -14,24 +14,19 @@ export function createListCommand(program: Command): void {
     .option('-c, --config <path>', 'Path to config file')
     .action(async (options) => {
       try {
-        // Logger作成
-        const { createLogger, getLogLevel } = await import(
-          '../../utils/logger.js'
+        // Use global logger
+        const { logger } = await import(
+          '../../observability/minimal-logger.js'
         );
-
-        const logger = createLogger({
-          level: getLogLevel({ quiet: false }),
-          component: 'hatago-cli-list',
-        });
 
         // 設定を読み込み
         const config = await loadConfig(options.config);
 
         // CLIレジストリから設定をマージ
-        const { CliRegistryStorage } = await import(
-          '../../storage/cli-registry-storage.js'
+        const { UnifiedFileStorage } = await import(
+          '../../storage/unified-file-storage.js'
         );
-        const cliStorage = new CliRegistryStorage();
+        const cliStorage = new UnifiedFileStorage();
         await cliStorage.init();
         const cliServers = await cliStorage.getServers();
 
@@ -42,7 +37,7 @@ export function createListCommand(program: Command): void {
         };
 
         // MCPハブを作成
-        const hub = new McpHub({ config: mergedConfig, logger });
+        const hub = new McpHub({ config: mergedConfig });
         await hub.initialize();
 
         // ツール一覧を取得
@@ -50,23 +45,19 @@ export function createListCommand(program: Command): void {
         const debugInfo = hub.getRegistry().getDebugInfo();
 
         // 構造化ログとして出力
-        logger.info(
-          {
-            totalServers: debugInfo.totalServers,
-            totalTools: debugInfo.totalTools,
-            namingStrategy: debugInfo.namingStrategy,
-          },
-          '🏨 MCP Hub Status',
-        );
+        logger.info('🏮 MCP Hub Status', {
+          totalServers: debugInfo.totalServers,
+          totalTools: debugInfo.totalTools,
+          namingStrategy: debugInfo.namingStrategy,
+        });
 
         if (debugInfo.collisions.length > 0) {
-          logger.warn(
-            { collisions: debugInfo.collisions },
-            'Tool name collisions detected',
-          );
+          logger.warn('Tool name collisions detected', {
+            collisions: debugInfo.collisions,
+          });
         }
 
-        logger.info({ tools: debugInfo.tools }, 'Available tools');
+        logger.info('Available tools', { tools: debugInfo.tools });
 
         // クリーンアップ
         await hub.shutdown();
@@ -74,11 +65,10 @@ export function createListCommand(program: Command): void {
         // Force process exit to avoid hanging
         process.exit(0);
       } catch (error) {
-        const { logError, createLogger } = await import(
-          '../../utils/logger.js'
+        const { logger } = await import(
+          '../../observability/minimal-logger.js'
         );
-        const logger = createLogger({ component: 'hatago-cli-list' });
-        logError(logger, error, 'Failed to list tools');
+        logger.error('Failed to list tools', { error });
         process.exit(1);
       }
     });
