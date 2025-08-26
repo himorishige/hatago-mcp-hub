@@ -4,6 +4,7 @@
  */
 
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * MCP Server type alias for compatibility
@@ -49,3 +50,23 @@ export interface ProtocolFeatures {
  * Supported protocol version
  */
 export const SUPPORTED_PROTOCOL_VERSION = '2024-11-05';
+
+/**
+ * Tool metadata for registry
+ */
+export interface ToolMetadata {
+  serverId: string;
+  originalName: string;
+  publicName: string;
+  tool: Tool;
+}
+
+/**
+ * Session data
+ */
+export interface Session {
+  id: string;
+  createdAt: Date;
+  lastAccessedAt: Date;
+  ttlSeconds: number;
+}

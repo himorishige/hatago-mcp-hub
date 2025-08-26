@@ -389,9 +389,6 @@ export class McpHub {
       }
     }
 
-    // セッションマネージャーのクリーンアップを開始
-    this.sessionManager.startCleanup();
-
     this.initialized = true;
   }
 

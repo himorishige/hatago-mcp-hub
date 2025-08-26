@@ -1,21 +1,28 @@
 import { createKeyedMutex } from '../utils/mutex.js';
+import {
+  clearSessions,
+  createSession,
+  createSessionState,
+  deleteSession,
+  getActiveSessionCount,
+  getSession,
+  removeExpired,
+  type SessionState,
+  touchSession,
+} from './session-operations.js';
+import type { Session } from './types.js';
 
 /**
  * セッション管理
  */
-export interface Session {
-  id: string;
-  createdAt: Date;
-  lastAccessedAt: Date;
-  ttlSeconds: number;
-}
 
 export class SessionManager {
-  private sessions = new Map<string, Session>();
+  private state: SessionState;
   private cleanupInterval: NodeJS.Timeout | undefined;
   private sessionMutex = createKeyedMutex<string>();
 
-  constructor(private ttlSeconds = 3600) {
+  constructor(ttlSeconds = 3600) {
+    this.state = createSessionState(ttlSeconds);
     // 定期的にセッションをクリーンアップ
     this.startCleanup();
   }
@@ -25,22 +32,17 @@ export class SessionManager {
    */
   async createSession(id: string): Promise<Session> {
     return this.sessionMutex.runExclusive(id, () => {
-      // Check if session already exists
-      const existing = this.sessions.get(id);
-      if (existing && !this.isExpired(existing)) {
-        // Return existing session if not expired
-        existing.lastAccessedAt = new Date();
-        return existing;
+      const oldState = this.state;
+      this.state = createSession(this.state, id);
+
+      // Get the session from the new state
+      const session = this.state.sessions.get(id);
+      if (!session) {
+        // Fallback to old behavior if something went wrong
+        this.state = oldState;
+        throw new Error('Failed to create session');
       }
 
-      // Create new session
-      const session: Session = {
-        id,
-        createdAt: new Date(),
-        lastAccessedAt: new Date(),
-        ttlSeconds: this.ttlSeconds,
-      };
-      this.sessions.set(id, session);
       return session;
     });
   }
@@ -50,19 +52,13 @@ export class SessionManager {
    */
   async getSession(id: string): Promise<Session | undefined> {
     return this.sessionMutex.runExclusive(id, () => {
-      const session = this.sessions.get(id);
-      if (!session) {
-        return undefined;
+      const session = getSession(this.state, id);
+
+      // Touch the session if it exists
+      if (session) {
+        this.state = touchSession(this.state, id);
       }
 
-      // セッションの有効期限をチェック
-      if (this.isExpired(session)) {
-        this.sessions.delete(id);
-        return undefined;
-      }
-
-      // 最終アクセス時刻を更新
-      session.lastAccessedAt = new Date();
       return session;
     });
   }
@@ -72,39 +68,31 @@ export class SessionManager {
    */
   async deleteSession(id: string): Promise<void> {
     return this.sessionMutex.runExclusive(id, () => {
-      this.sessions.delete(id);
+      this.state = deleteSession(this.state, id);
     });
-  }
-
-  /**
-   * セッションが期限切れか確認
-   */
-  private isExpired(session: Session): boolean {
-    const now = Date.now();
-    const lastAccessed = session.lastAccessedAt.getTime();
-    const ttlMs = session.ttlSeconds * 1000;
-    return now - lastAccessed > ttlMs;
   }
 
   /**
    * 定期クリーンアップを開始
    */
-  public startCleanup(): void {
-    // 1分ごとに期限切れセッションをクリーンアップ
+  private startCleanup(): void {
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
-    }, 60000);
+    }, 60000); // 1分ごと
   }
 
   /**
    * 期限切れセッションをクリーンアップ
    */
   private cleanup(): void {
-    for (const [id, session] of this.sessions.entries()) {
-      if (this.isExpired(session)) {
-        this.sessions.delete(id);
-      }
-    }
+    this.state = removeExpired(this.state);
+  }
+
+  /**
+   * アクティブなセッション数を取得
+   */
+  getActiveSessionCount(): number {
+    return getActiveSessionCount(this.state);
   }
 
   /**
@@ -118,18 +106,9 @@ export class SessionManager {
   }
 
   /**
-   * Get active session count
-   */
-  getActiveSessionCount(): number {
-    // Clean up expired sessions first
-    this.cleanup();
-    return this.sessions.size;
-  }
-
-  /**
-   * Clear all sessions
+   * すべてのセッションをクリア
    */
   clear(): void {
-    this.sessions.clear();
+    this.state = clearSessions(this.state);
   }
 }

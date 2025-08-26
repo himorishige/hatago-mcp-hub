@@ -1,50 +1,51 @@
 import { EventEmitter } from 'node:events';
 import type { HatagoConfig } from '../config/types.js';
-import { validateConfig } from '../config/types.js';
+import { type ConfigStore, createConfigStore } from './config-store.js';
 
 /**
  * 設定の世代管理を行うマネージャー
  * 複数世代の設定を保持し、アトミックな切り替えとライフサイクル管理を提供
  */
+/**
+ * Config Manager - thin adapter over config store
+ * Maintains backward compatibility while using functional core
+ */
 export class ConfigManager extends EventEmitter {
-  private currentConfig: HatagoConfig | null = null;
-  private configLock = false;
+  private store: ConfigStore;
+
+  constructor() {
+    super();
+    this.store = createConfigStore();
+
+    // Bridge store events to EventEmitter for backward compatibility
+    this.store.subscribe((config, previousConfig) => {
+      this.emit('config:loaded', {
+        config,
+        previousConfig,
+        timestamp: new Date(),
+      });
+    });
+  }
 
   /**
    * 現在の設定を取得
    */
   getCurrentConfig(): HatagoConfig | null {
-    return this.currentConfig;
+    return this.store.get();
   }
 
   /**
    * 新しい設定を読み込み
    */
   async loadConfig(config: unknown): Promise<HatagoConfig> {
-    // バリデーション
     this.emit('config:validating');
-    const validatedConfig = validateConfig(config);
 
-    // ロックチェック
-    if (this.configLock) {
-      throw new Error('Configuration update is already in progress');
-    }
-
-    this.configLock = true;
     try {
-      const oldConfig = this.currentConfig;
-      this.currentConfig = validatedConfig;
-
-      // イベントを発行
-      this.emit('config:loaded', {
-        config: validatedConfig,
-        previousConfig: oldConfig,
-        timestamp: new Date(),
-      });
-
+      const validatedConfig = this.store.set(config);
       return validatedConfig;
-    } finally {
-      this.configLock = false;
+    } catch (error) {
+      this.emit('config:error', error);
+      throw error;
     }
   }
 
@@ -52,7 +53,7 @@ export class ConfigManager extends EventEmitter {
    * 設定をリロード
    */
   async reloadConfig(config: unknown): Promise<void> {
-    await this.loadConfig(config);
+    await this.store.reload(config);
     this.emit('config:reloaded');
   }
 
@@ -60,7 +61,7 @@ export class ConfigManager extends EventEmitter {
    * シャットダウン
    */
   async shutdown(): Promise<void> {
-    this.currentConfig = null;
+    this.store.clear();
     this.removeAllListeners();
   }
 }

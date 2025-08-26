@@ -6,6 +6,12 @@
 import { spawn } from 'node:child_process';
 import { randomBytes as nodeRandomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
+import {
+  createSemaphore,
+  createTaskQueue,
+  type Semaphore,
+  type TaskQueue,
+} from './concurrency.js';
 
 /**
  * Generate a unique ID
@@ -55,112 +61,69 @@ export async function generateId(length = 21): Promise<string> {
 
 /**
  * Simple semaphore for concurrency control
+ * @deprecated Use createSemaphore from './concurrency.js' instead
  */
 export class SimpleSemaphore {
-  private permits: number;
-  private readonly waiting: Array<() => void> = [];
+  private semaphore: Semaphore;
 
   constructor(permits: number) {
-    this.permits = permits;
+    this.semaphore = createSemaphore(permits);
   }
 
   async acquire(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      if (this.permits > 0) {
-        this.permits--;
-        resolve();
-      } else {
-        this.waiting.push(resolve);
-      }
-    });
+    return this.semaphore.acquire();
   }
 
   release(): void {
-    this.permits++;
-    if (this.waiting.length > 0 && this.permits > 0) {
-      this.permits--;
-      const resolve = this.waiting.shift();
-      resolve?.();
-    }
+    this.semaphore.release();
   }
 
   available(): number {
-    return this.permits;
+    return this.semaphore.available();
   }
 
   isAvailable(): boolean {
-    return this.permits > 0;
+    return this.semaphore.isAvailable();
   }
 }
 
 /**
  * Simple task queue for managing concurrent operations
+ * @deprecated Use createTaskQueue from './concurrency.js' instead
  */
 export class SimpleTaskQueue<_T = unknown> {
-  private readonly semaphore: SimpleSemaphore;
-  private readonly pendingTasks: Array<() => Promise<unknown>> = [];
-  private running = 0;
-  private paused = false;
+  private queue: TaskQueue<_T>;
 
   constructor(concurrency: number) {
-    this.semaphore = new SimpleSemaphore(concurrency);
+    this.queue = createTaskQueue<_T>(concurrency);
   }
 
   async add<R>(fn: () => Promise<R>): Promise<R> {
-    if (this.paused) {
-      return new Promise<R>((resolve, reject) => {
-        this.pendingTasks.push(async () => {
-          try {
-            const result = await fn();
-            resolve(result);
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
-    }
-
-    await this.semaphore.acquire();
-    this.running++;
-
-    try {
-      const result = await fn();
-      return result;
-    } finally {
-      this.running--;
-      this.semaphore.release();
-    }
+    return this.queue.add(fn);
   }
 
   clear(): void {
-    this.pendingTasks.length = 0;
+    this.queue.clear();
   }
 
   size(): number {
-    return this.pendingTasks.length;
+    return this.queue.size();
   }
 
   pending(): number {
-    return this.running;
+    return this.queue.pending();
   }
 
   pause(): void {
-    this.paused = true;
+    this.queue.pause();
   }
 
   resume(): void {
-    this.paused = false;
-    // Process pending tasks
-    while (this.pendingTasks.length > 0 && this.semaphore.isAvailable()) {
-      const task = this.pendingTasks.shift();
-      if (task) {
-        this.add(task);
-      }
-    }
+    this.queue.resume();
   }
 
   async onIdle(): Promise<void> {
-    while (this.running > 0 || this.pendingTasks.length > 0) {
+    while (this.queue.running() > 0 || this.queue.pending() > 0) {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
   }
