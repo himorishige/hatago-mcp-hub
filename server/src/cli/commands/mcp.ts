@@ -5,7 +5,6 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { z } from 'zod';
-import { loadConfig } from '../../config/loader.js';
 import type {
   LocalServerConfig,
   NpxServerConfig,
@@ -31,7 +30,9 @@ const _AddMcpSchema = z.object({
 /**
  * Parse environment variables from array of KEY=VALUE strings
  */
-function parseEnvVars(envArray?: string[]): Record<string, string> | undefined {
+export function parseEnvVars(
+  envArray?: string[],
+): Record<string, string> | undefined {
   if (!envArray || envArray.length === 0) return undefined;
 
   const env: Record<string, string> = {};
@@ -47,7 +48,7 @@ function parseEnvVars(envArray?: string[]): Record<string, string> | undefined {
 /**
  * Parse headers from array of KEY:VALUE strings
  */
-function parseHeaders(
+export function parseHeaders(
   headerArray?: string[],
 ): Record<string, string> | undefined {
   if (!headerArray || headerArray.length === 0) return undefined;
@@ -65,7 +66,7 @@ function parseHeaders(
 /**
  * Create server configuration based on type
  */
-function createServerConfig(
+export function createServerConfig(
   type: 'local' | 'npx' | 'remote',
   config: {
     name: string;
@@ -203,7 +204,7 @@ async function registerAndSaveServer(
 /**
  * Detect server type from command
  */
-function detectServerType(
+export function detectServerType(
   command: string,
   transport?: string,
 ): 'npx' | 'local' | 'remote' {
@@ -280,9 +281,6 @@ Examples (Claude Code compatible):
   
   # With environment variables
   $ pnpm cli mcp add --env API_KEY=secret --env DB_URL=postgres://localhost db -- node ./db-server.js
-  
-  # Backward compatible format (quoted command)
-  $ pnpm cli mcp add filesystem "npx @modelcontextprotocol/server-filesystem /tmp"
 `,
     )
     .action(
@@ -297,17 +295,9 @@ Examples (Claude Code compatible):
           let actualArgs: string[] = [];
 
           if (command && command.length > 0) {
-            // Check if first element contains spaces (old format with quotes)
-            if (command.length === 1 && command[0].includes(' ')) {
-              // Handle quoted command string for backward compatibility
-              const parts = command[0].split(' ');
-              actualCommand = parts[0];
-              actualArgs = parts.slice(1);
-            } else {
-              // Claude Code format: command is an array
-              actualCommand = command[0];
-              actualArgs = command.slice(1);
-            }
+            // Claude Code format only: command is an array
+            actualCommand = command[0];
+            actualArgs = command.slice(1);
           }
 
           if (!actualCommand) {
@@ -386,48 +376,212 @@ Examples (Claude Code compatible):
       }
     });
 
+  // Get command - show details of a single MCP server
+  mcp
+    .command('get <name>')
+    .description('Get details of an MCP server')
+    .option('--json', 'Output as JSON')
+    .option('--probe', 'Connect and probe for tools')
+    .action(
+      async (name: string, options?: { json?: boolean; probe?: boolean }) => {
+        try {
+          await withRegistry(async ({ registry, cliStorage }) => {
+            // Try to get server from registry
+            const servers = registry.listServers();
+            const server = servers.find((s) => s.id === name);
+
+            if (!server) {
+              throw new Error(`Server '${name}' not found`);
+            }
+
+            // Get metadata
+            const cliServers = await cliStorage.getServers();
+            const isCliServer = cliServers.some((s) => s.id === name);
+
+            // Prepare server info
+            const serverInfo: any = {
+              name: server.id,
+              type: server.config.type,
+              status: server.state,
+              source: isCliServer ? 'CLI' : 'Config',
+            };
+
+            // Add command details based on type
+            if (server.config.type === 'local') {
+              const config = server.config as LocalServerConfig;
+              serverInfo.command = config.command;
+              serverInfo.args = config.args;
+              serverInfo.cwd = config.cwd;
+            } else if (server.config.type === 'npx') {
+              const config = server.config as NpxServerConfig;
+              serverInfo.package = config.package;
+              serverInfo.args = config.args;
+            } else if (server.config.type === 'remote') {
+              const config = server.config as RemoteServerConfig;
+              serverInfo.url = config.url;
+              serverInfo.transport = config.transport;
+            }
+
+            // Add environment variables (keys only)
+            if (
+              server.config.env &&
+              Object.keys(server.config.env).length > 0
+            ) {
+              serverInfo.envKeys = Object.keys(server.config.env);
+            }
+
+            // Get tool count if running
+            if (server.state === 'running') {
+              try {
+                const tools = await server.listTools();
+                serverInfo.tools = tools ? tools.length : 0;
+              } catch {
+                serverInfo.tools = 'unavailable';
+              }
+            }
+
+            // Probe for more details if requested
+            if (options?.probe && server.state === 'running') {
+              try {
+                const tools = await server.listTools();
+                if (tools && tools.length > 0) {
+                  serverInfo.toolNames = tools.map((t) => t.name).slice(0, 5);
+                  if (tools.length > 5) {
+                    serverInfo.toolNames.push(`... +${tools.length - 5} more`);
+                  }
+                }
+              } catch (error) {
+                serverInfo.probeError =
+                  error instanceof Error ? error.message : 'Probe failed';
+              }
+            }
+
+            // Output based on format
+            if (options?.json) {
+              console.log(JSON.stringify(serverInfo, null, 2));
+            } else {
+              // Text output
+              console.log(
+                chalk.bold(`
+Server: ${serverInfo.name}`),
+              );
+              console.log(`Type: ${serverInfo.type}`);
+              console.log(
+                `Status: ${serverInfo.status === 'running' ? chalk.green('running') : chalk.gray('stopped')}`,
+              );
+              console.log(`Source: ${serverInfo.source}`);
+
+              if (serverInfo.command) {
+                console.log(
+                  `Command: ${serverInfo.command} ${serverInfo.args?.join(' ') || ''}`,
+                );
+              }
+              if (serverInfo.package) {
+                console.log(`Package: ${serverInfo.package}`);
+                if (serverInfo.args?.length) {
+                  console.log(`Args: ${serverInfo.args.join(' ')}`);
+                }
+              }
+              if (serverInfo.url) {
+                console.log(`URL: ${serverInfo.url}`);
+                console.log(`Transport: ${serverInfo.transport || 'http'}`);
+              }
+              if (serverInfo.cwd) {
+                console.log(`Working Dir: ${serverInfo.cwd}`);
+              }
+              if (serverInfo.envKeys) {
+                console.log(
+                  `Env Variables: ${serverInfo.envKeys.join(', ')} (${serverInfo.envKeys.length} vars)`,
+                );
+              }
+              if (serverInfo.tools !== undefined) {
+                console.log(
+                  `Tools: ${serverInfo.tools === 'unavailable' ? 'unavailable' : `${serverInfo.tools} tools`}`,
+                );
+              }
+              if (serverInfo.toolNames) {
+                console.log(`Tool Names: ${serverInfo.toolNames.join(', ')}`);
+              }
+              if (serverInfo.probeError) {
+                console.log(chalk.red(`Probe Error: ${serverInfo.probeError}`));
+              }
+            }
+          });
+        } catch (error) {
+          handleCliError(error);
+        }
+      },
+    );
+
   // List command
   mcp
     .command('list')
     .description('List all MCP servers')
-    .action(async () => {
+    .option('--json', 'Output as JSON')
+    .action(async (options?: { json?: boolean }) => {
       try {
-        await withRegistry(async ({ registry, cliStorage }) => {
+        await withRegistry(async ({ registry }) => {
           const servers = registry.listServers();
-
-          // Get metadata about which servers are from CLI
-          const cliServers = await cliStorage.getServers();
-          const cliServerIds = new Set(cliServers.map((s) => s.id));
-
-          // Load config to see which are from config file
-          const config = await loadConfig(undefined, { quiet: true });
-          const configServerIds = new Set(
-            (config.servers || []).map((s) => s.id),
-          );
 
           if (servers.length === 0) {
             console.log(chalk.yellow('No MCP servers registered'));
             return;
           }
 
-          console.log(chalk.bold('MCP Servers:'));
+          // JSON output
+          if (options?.json) {
+            const serverList = await Promise.all(
+              servers.map(async (server) => {
+                let tools = 0;
+                if (server.state === 'running') {
+                  try {
+                    const toolList = await server.listTools();
+                    tools = toolList ? toolList.length : 0;
+                  } catch {
+                    // Ignore errors
+                  }
+                }
+                return {
+                  name: server.id,
+                  status: server.state,
+                  type: server.config.type,
+                  tools,
+                };
+              }),
+            );
+            console.log(JSON.stringify(serverList, null, 2));
+            return;
+          }
+
+          // Text output - simplified table format
+          const maxNameLength = Math.max(...servers.map((s) => s.id.length), 4);
+
+          // Get tool counts for running servers
+          const toolCounts = new Map<string, number>();
           for (const server of servers) {
+            if (server.state === 'running') {
+              try {
+                const tools = await server.listTools();
+                toolCounts.set(server.id, tools ? tools.length : 0);
+              } catch {
+                toolCounts.set(server.id, 0);
+              }
+            }
+          }
+
+          // Print servers
+          for (const server of servers) {
+            const name = server.id.padEnd(maxNameLength + 2);
             const status =
               server.state === 'running'
-                ? chalk.green('● running')
-                : chalk.gray('○ stopped');
+                ? chalk.green('[running]')
+                : chalk.gray('[stopped]');
+            const type = server.config.type.padEnd(8);
+            const tools = toolCounts.has(server.id)
+              ? `${toolCounts.get(server.id)} tools`
+              : '-';
 
-            // Determine source
-            let source = '';
-            if (cliServerIds.has(server.id)) {
-              source = chalk.cyan('[cli]');
-            } else if (configServerIds.has(server.id)) {
-              source = chalk.blue('[config]');
-            }
-
-            console.log(
-              `  ${status} ${server.id} ${source} (${server.config.type})`,
-            );
+            console.log(`${name}${status}  ${type}${tools}`);
           }
         });
       } catch (error) {

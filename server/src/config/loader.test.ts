@@ -80,10 +80,11 @@ describe('config/loader', () => {
       expect(config).toHaveProperty('timeouts');
       expect(config).toHaveProperty('concurrency');
       expect(config).toHaveProperty('security');
-      expect(config).toHaveProperty('servers');
+      // servers field removed - using mcpServers instead
 
       expect(config.http.port).toBe(3000);
-      expect(config.servers).toEqual([]);
+      // servers field removed - using mcpServers instead
+      expect(config.mcpServers).toEqual({});
     });
 
     it('should have valid default timeout values', () => {
@@ -322,7 +323,8 @@ describe('config/loader', () => {
       const config = await loadConfig();
 
       expect(config.version).toBe(1);
-      expect(config.servers).toEqual([]);
+      // servers field removed - using mcpServers instead
+      expect(config.mcpServers).toEqual({});
     });
 
     it('should not log when quiet option is true', async () => {

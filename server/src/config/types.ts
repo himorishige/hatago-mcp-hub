@@ -260,37 +260,6 @@ export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
     })
     .optional()
     .describe('Timeout configuration for tool calls'),
-  quirks: z
-    .object({
-      useDirectClient: z
-        .boolean()
-        .optional()
-        .describe(
-          'Use direct Client instead of facade (for servers that reject sessionId)',
-        ),
-      skipProtocolNegotiation: z
-        .boolean()
-        .optional()
-        .describe('Skip protocol negotiation and use default version'),
-      forceProtocolVersion: z
-        .string()
-        .optional()
-        .describe(
-          'Force a specific protocol version (e.g., "2025-03-26" for DeepWiki)',
-        ),
-      assumedCapabilities: z
-        .object({
-          tools: z.boolean().optional(),
-          resources: z.boolean().optional(),
-          prompts: z.boolean().optional(),
-        })
-        .optional()
-        .describe(
-          'Manually set capabilities when server does not provide them',
-        ),
-    })
-    .optional()
-    .describe('Server-specific workarounds and quirks'),
 });
 export type RemoteServerConfig = z.infer<typeof RemoteServerConfigSchema>;
 

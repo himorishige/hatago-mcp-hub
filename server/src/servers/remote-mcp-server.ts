@@ -33,21 +33,87 @@ const DEFAULT_MAX_TIMEOUT = 300000; // 5 minutes
 const DEFAULT_RESET_ON_PROGRESS = true;
 
 /**
- * Known server quirks for specific MCP servers
- * These are applied automatically based on the server URL
+ * Error patterns for automatic issue detection
  */
-const KNOWN_SERVER_QUIRKS: Record<string, RemoteServerConfig['quirks']> = {
-  'mcp.deepwiki.com': {
-    useDirectClient: true,
-    forceProtocolVersion: '2025-03-26',
-    assumedCapabilities: {
-      tools: true,
-      resources: false,
-      prompts: false,
-    },
-  },
-  // Add more server quirks as discovered
+const ERROR_PATTERNS = {
+  SESSION_REJECTED:
+    /unknown field.*sessionId|unsupported parameter.*sessionId/i,
+  VERSION_MISMATCH: /unknown version|upgrade required|426/i,
+  METHOD_NOT_FOUND: /method not found|501|405/i,
+  TRANSPORT_ERROR: /connection refused|ECONNREFUSED|timeout/i,
 };
+
+/**
+ * Connection cache for successful connections (TTL: 24 hours)
+ */
+interface CachedConnection {
+  origin: string;
+  transport: 'sse' | 'http';
+  supportsSessionId: boolean;
+  protocolVersion?: string;
+  lastSuccess: Date;
+}
+
+const connectionCache = new Map<string, CachedConnection>();
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+function getCacheKey(url: URL): string {
+  return `${url.protocol}//${url.host}`;
+}
+
+function getCachedConnection(url: URL): CachedConnection | null {
+  const key = getCacheKey(url);
+  const cached = connectionCache.get(key);
+
+  if (!cached) return null;
+
+  // Check TTL
+  if (Date.now() - cached.lastSuccess.getTime() > CACHE_TTL) {
+    connectionCache.delete(key);
+    return null;
+  }
+
+  return cached;
+}
+
+function setCachedConnection(
+  url: URL,
+  transport: 'sse' | 'http',
+  supportsSessionId: boolean,
+  protocolVersion?: string,
+): void {
+  const key = getCacheKey(url);
+  connectionCache.set(key, {
+    origin: key,
+    transport,
+    supportsSessionId,
+    protocolVersion,
+    lastSuccess: new Date(),
+  });
+}
+
+/**
+ * Detect issue from error message or code
+ */
+function detectIssue(error: any): string | null {
+  const message = error?.message || error?.toString() || '';
+  const code = error?.code;
+
+  if (ERROR_PATTERNS.SESSION_REJECTED.test(message)) {
+    return 'no-session';
+  }
+  if (ERROR_PATTERNS.VERSION_MISMATCH.test(message) || code === 426) {
+    return 'legacy-protocol';
+  }
+  if (ERROR_PATTERNS.METHOD_NOT_FOUND.test(message)) {
+    return 'method-not-found';
+  }
+  if (ERROR_PATTERNS.TRANSPORT_ERROR.test(message)) {
+    return 'transport-error';
+  }
+
+  return null;
+}
 
 /**
  * Server state enum (reuse from npx-mcp-server)
@@ -308,16 +374,114 @@ export class RemoteMcpServer extends EventEmitter {
     baseUrl: URL,
     headers: Record<string, string>,
   ): Promise<RemoteConnection> {
-    // Apply known server quirks automatically
-    const hostname = baseUrl.hostname;
-    const knownQuirks = KNOWN_SERVER_QUIRKS[hostname];
-    const quirks = {
-      ...knownQuirks,
-      ...this.config.quirks, // User config overrides known quirks
-    };
+    // Check connection cache
+    const cached = getCachedConnection(baseUrl);
 
-    // Create client directly instead of using MCPClientFacade
-    const _facade = new Client(
+    // First pass: Try with cached settings or defaults
+    try {
+      const connection = await this.attemptConnection(
+        baseUrl,
+        headers,
+        cached?.supportsSessionId ?? true, // Default to sessionId
+        cached?.transport ||
+          this.config.transport ||
+          this.detectTransport(baseUrl),
+      );
+
+      // Cache successful connection
+      setCachedConnection(
+        baseUrl,
+        connection.transportType === 'sse' ? 'sse' : 'http',
+        true, // sessionId worked
+        connection.protocol?.protocol,
+      );
+
+      return connection;
+    } catch (firstError: any) {
+      logger.debug(`First connection attempt failed: ${firstError.message}`);
+
+      // Second pass: Try alternative based on error
+      const issue = detectIssue(firstError);
+
+      if (issue === 'no-session') {
+        logger.info('Retrying without sessionId...');
+        try {
+          const connection = await this.attemptConnection(
+            baseUrl,
+            headers,
+            false, // No sessionId
+            cached?.transport ||
+              this.config.transport ||
+              this.detectTransport(baseUrl),
+          );
+
+          // Cache successful connection
+          setCachedConnection(
+            baseUrl,
+            connection.transportType === 'sse' ? 'sse' : 'http',
+            false, // sessionId not supported
+            connection.protocol?.protocol,
+          );
+
+          return connection;
+        } catch (secondError) {
+          // Log second error but throw first for better diagnostics
+          logger.debug(`Second attempt also failed: ${secondError.message}`);
+          throw firstError;
+        }
+      }
+
+      // Try switching transport if it was a transport error
+      if (issue === 'transport-error' && this.config.transport !== 'sse') {
+        logger.info('Retrying with SSE transport...');
+        try {
+          const connection = await this.attemptConnection(
+            baseUrl,
+            headers,
+            cached?.supportsSessionId ?? true,
+            'sse',
+          );
+
+          // Cache successful connection
+          setCachedConnection(
+            baseUrl,
+            'sse',
+            cached?.supportsSessionId ?? true,
+            connection.protocol?.protocol,
+          );
+
+          return connection;
+        } catch (secondError) {
+          logger.debug(`SSE attempt also failed: ${secondError.message}`);
+          throw firstError;
+        }
+      }
+
+      // If no specific issue detected or second attempt also failed, throw original error
+      throw firstError;
+    }
+  }
+
+  private detectTransport(url: URL): 'sse' | 'http' {
+    const path = url.pathname.toLowerCase();
+    if (
+      path.endsWith('/sse') ||
+      path.includes('/events') ||
+      path.includes('/stream')
+    ) {
+      return 'sse';
+    }
+    return 'http';
+  }
+
+  private async attemptConnection(
+    baseUrl: URL,
+    headers: Record<string, string>,
+    useSessionId: boolean,
+    transportType: 'sse' | 'http',
+  ): Promise<RemoteConnection> {
+    // Create client
+    const client = new Client(
       {
         name: 'hatago-hub',
         version: '0.3.0-lite',
@@ -327,11 +491,7 @@ export class RemoteMcpServer extends EventEmitter {
       },
     );
 
-    // Choose transport based on configuration
-    const transportType = this.config.transport || 'http';
-
     if (transportType === 'sse') {
-      // Use SSE transport with direct Client (MCPClientFacade has issues with SSE)
       logger.info(`Using SSE transport for ${this.config.id}`);
       const sseTransport = new SSEClientTransport(new URL(baseUrl), {
         headers: {
@@ -339,17 +499,6 @@ export class RemoteMcpServer extends EventEmitter {
           Accept: 'application/json, text/event-stream',
         },
       } as any);
-
-      // Create a direct client instead of using facade for SSE
-      const client = new Client(
-        {
-          name: 'hatago-hub',
-          version: '0.0.2',
-        },
-        {
-          capabilities: {},
-        },
-      );
 
       await this.withTimeout(
         client.connect(sseTransport),
@@ -361,7 +510,7 @@ export class RemoteMcpServer extends EventEmitter {
 
       return {
         client,
-        facade: null as any, // SSE doesn't use facade
+        facade: null as any,
         transport: sseTransport,
         transportType: 'sse',
         protocol: {
@@ -376,242 +525,54 @@ export class RemoteMcpServer extends EventEmitter {
           },
         },
         capabilities: {
-          tools: true, // Assume SSE servers support tools
-          resources: true, // Assume SSE servers support resources
-          prompts: true, // Assume SSE servers support prompts
+          tools: true,
+          resources: true,
+          prompts: true,
         },
       };
     } else {
-      // Try Streamable HTTP first, then fall back to SSE
-      try {
-        logger.info(`Trying Streamable HTTP transport for ${this.config.id}`);
+      // Try Streamable HTTP
+      logger.info(`Trying Streamable HTTP transport for ${this.config.id}`);
 
-        // Check if we should use direct Client based on quirks
-        if (quirks?.useDirectClient) {
-          // Use direct Client to avoid sessionId issues
-          const transport = new StreamableHTTPClientTransport(baseUrl, {
-            headers: {
-              ...headers,
-              Accept: 'application/json',
-            },
-          } as any);
+      const transport = new StreamableHTTPClientTransport(baseUrl, {
+        headers: {
+          ...headers,
+          Accept: 'application/json',
+          // Don't send sessionId if not supported
+          ...(useSessionId ? {} : { 'X-No-Session': 'true' }),
+        },
+      } as any);
 
-          const client = new Client(
-            {
-              name: 'hatago-hub',
-              version: '0.0.2',
-            },
-            {
-              capabilities: {},
-            },
-          );
+      await this.withTimeout(
+        client.connect(transport),
+        this.defaults.connectTimeoutMs,
+        'http connection',
+      );
 
-          const _connectResult = await this.withTimeout(
-            client.connect(transport),
-            this.defaults.connectTimeoutMs,
-            'direct-client-http connection',
-          );
+      logger.info(`🏮 Connected to ${this.config.id} using HTTP transport`);
 
-          logger.info(
-            `🏮 Connected to ${this.config.id} using direct Client (quirks mode)`,
-          );
-
-          // Use quirks-specified protocol version or default
-          const protocolVersion = quirks?.forceProtocolVersion || '0.1.0';
-
-          return {
-            client,
-            facade: null as any, // Direct client doesn't use facade
-            transport,
-            transportType: 'streamable-http',
-            protocol: {
-              protocol: protocolVersion,
-              capabilities: {},
-              serverInfo: undefined,
-              features: {
-                notifications: true,
-                resources: true,
-                prompts: true,
-                tools: true,
-              },
-            },
-            capabilities: quirks?.assumedCapabilities || {
-              tools: true,
-              resources: true,
-              prompts: true,
-            },
-          };
-        } else {
-          // Normal flow for other servers
-          const transport = new StreamableHTTPClientTransport(baseUrl, {
-            headers: {
-              ...headers,
-              Accept: 'application/json',
-            },
-          } as any);
-
-          const client = new Client(
-            {
-              name: 'hatago-hub',
-              version: '0.0.2',
-            },
-            {
-              capabilities: {},
-            },
-          );
-
-          await this.withTimeout(
-            client.connect(transport),
-            this.defaults.connectTimeoutMs,
-            'streamable-http connection',
-          );
-
-          const _protocol = undefined;
-
-          logger.info(
-            `🏮 Connected to ${this.config.id} using streamable-http transport`,
-          );
-
-          return {
-            client,
-            facade: null as any,
-            transport,
-            transportType: 'streamable-http',
-            protocol: {
-              protocol: '0.1.0',
-              capabilities: {},
-              serverInfo: undefined,
-              features: {
-                notifications: true,
-                resources: true,
-                prompts: true,
-                tools: true,
-              },
-            },
-            capabilities: {
-              tools: true,
-              resources: true,
-              prompts: true,
-            },
-          };
-        }
-      } catch (error) {
-        // Check if it's a sessionId error and retry with direct client
-        const errorMessage = String(error);
-        if (
-          !quirks?.useDirectClient &&
-          (errorMessage.includes('-32600') ||
-            errorMessage.includes('sessionId') ||
-            errorMessage.includes('Invalid Request'))
-        ) {
-          logger.info(
-            `Session ID error detected for ${this.config.id}, retrying with direct client`,
-          );
-
-          // Retry with direct client
-          const directTransport = new StreamableHTTPClientTransport(baseUrl, {
-            headers: {
-              ...headers,
-              Accept: 'application/json',
-            },
-          } as any);
-
-          const directClient = new Client(
-            {
-              name: 'hatago-hub',
-              version: '0.0.2',
-            },
-            {
-              capabilities: {},
-            },
-          );
-
-          try {
-            await this.withTimeout(
-              directClient.connect(directTransport),
-              this.defaults.connectTimeoutMs,
-              'fallback-direct-client connection',
-            );
-
-            logger.info(
-              `🏮 Connected to ${this.config.id} using direct Client (auto-fallback)`,
-            );
-
-            return {
-              client: directClient,
-              facade: null as any,
-              transport: directTransport,
-              transportType: 'streamable-http',
-              protocol: {
-                protocol: '0.1.0',
-                capabilities: {},
-                serverInfo: undefined,
-                features: {
-                  notifications: true,
-                  resources: true,
-                  prompts: true,
-                  tools: true,
-                },
-              },
-              capabilities: {
-                tools: true,
-                resources: true,
-                prompts: true,
-              },
-            };
-          } catch (fallbackError) {
-            logger.info(
-              `Direct client fallback also failed for ${this.config.id}: ${fallbackError}`,
-            );
-            // Continue to SSE fallback
-          }
-        }
-
-        // Fall back to SSE
-        logger.info(
-          `Streamable HTTP failed for ${this.config.id}, trying SSE transport: ${error}`,
-        );
-
-        const sseFacade = new Client(
-          {
-            name: 'hatago-hub',
-            version: '0.3.0-lite',
+      return {
+        client,
+        facade: null as any,
+        transport,
+        transportType: 'streamable-http',
+        protocol: {
+          protocol: '0.1.0',
+          capabilities: {},
+          serverInfo: undefined,
+          features: {
+            notifications: true,
+            resources: true,
+            prompts: true,
+            tools: true,
           },
-          {
-            capabilities: {},
-          },
-        );
-
-        const sseTransport = new SSEClientTransport(new URL(baseUrl), {
-          headers: {
-            ...headers,
-            Accept: 'application/json, text/event-stream',
-          },
-        } as any);
-
-        await this.withTimeout(
-          sseFacade.connect(sseTransport),
-          this.defaults.connectTimeoutMs,
-          'sse connection',
-        );
-
-        logger.info(
-          `🏮 Successfully connected to ${this.config.id} using SSE transport`,
-        );
-
-        return {
-          client: sseFacade,
-          facade: sseFacade,
-          transport: sseTransport,
-          transportType: 'sse',
-          protocol: undefined,
-          capabilities: {
-            tools: false,
-            resources: false,
-            prompts: false,
-          },
-        };
-      }
+        },
+        capabilities: {
+          tools: true,
+          resources: true,
+          prompts: true,
+        },
+      };
     }
   }
 

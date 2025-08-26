@@ -101,13 +101,37 @@ hatago reload
 ### MCPサーバー管理（Claude Code互換）
 
 ```bash
-# ローカルコマンドサーバー（Node.js）
+# MCPサーバーの一覧表示
+hatago mcp list
+
+# MCPサーバーの詳細表示
+hatago mcp get <name>
+hatago mcp get <name> --json         # JSON形式で出力
+hatago mcp get <name> --probe        # 接続してツールを取得
+
+# ローカルコマンドサーバーを追加
+hatago mcp add <name> -- <command> [args...]
+
+# リモートサーバーを追加
+hatago mcp add --transport sse <name> <url>
+hatago mcp add --transport http <name> <url>
+hatago mcp add --transport http --header "Authorization:Bearer TOKEN" <name> <url>
+
+# 環境変数付きでサーバーを追加
+hatago mcp add --env KEY=value <name> -- <command> [args...]
+
+# サーバーを削除
+hatago mcp remove <name>
+
+## 例:
+
+# Node.jsサーバー
 hatago mcp add myserver -- node ./server.js arg1 arg2
 
-# ローカルコマンドサーバー（Python）
+# Pythonサーバー
 hatago mcp add python-server -- python ./server.py --port 3001
 
-# ローカルコマンドサーバー（Deno）
+# Denoサーバー
 hatago mcp add deno-server -- deno run --allow-net ./server.ts
 
 # NPXパッケージサーバー
@@ -125,21 +149,11 @@ hatago mcp add --transport http --header "Authorization:Bearer TOKEN" api https:
 # 環境変数の設定
 hatago mcp add --env API_KEY=secret --env DB_URL=postgres://localhost db -- node ./db-server.js
 
-# サーバー一覧表示
-hatago mcp list
-
 # サーバー削除
 hatago mcp remove filesystem
 ```
 
-#### 後方互換性
 
-以前の形式もサポートされています：
-
-```bash
-# 引用符で囲む形式（非推奨だが動作する）
-hatago mcp add filesystem "npx @modelcontextprotocol/server-filesystem /tmp"
-```
 
 ### リモートサーバー管理
 
