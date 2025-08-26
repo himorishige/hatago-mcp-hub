@@ -279,7 +279,7 @@ export class McpHubToolManager {
       const result = await connection.transport.request({
         method: 'tools/call',
         params: {
-          name,
+          name: toolInfo.originalName,
           arguments: args,
         },
       });

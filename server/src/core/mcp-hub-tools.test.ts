@@ -85,6 +85,7 @@ describe('McpHubToolManager', () => {
 
       vi.mocked(mockRegistry.getTool).mockReturnValue({
         name: 'test_tool',
+        originalName: 'test_tool',
         serverId: 'server1',
         description: 'Test tool',
         inputSchema: {},
@@ -115,6 +116,7 @@ describe('McpHubToolManager', () => {
     it('should handle server not connected', async () => {
       vi.mocked(mockRegistry.getTool).mockReturnValue({
         name: 'test_tool',
+        originalName: 'test_tool',
         serverId: 'server1',
         description: 'Test tool',
         inputSchema: {},

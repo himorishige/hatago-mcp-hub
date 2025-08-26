@@ -1053,6 +1053,31 @@ export class RemoteMcpServer extends EventEmitter {
   }
 
   /**
+   * List available prompts
+   */
+  async listPrompts(): Promise<any[]> {
+    if (!this.connection || this.state !== ServerState.RUNNING) {
+      throw ErrorHelpers.serverNotConnected(this.config.id);
+    }
+
+    try {
+      const result = await this.connection.client.listPrompts();
+      return result?.prompts || [];
+    } catch (error) {
+      // Handle connection errors during prompt listing
+      if (
+        error instanceof Error &&
+        (error.message.includes('disconnected') ||
+          error.message.includes('closed') ||
+          error.message.includes('ENOTFOUND'))
+      ) {
+        await this.handleConnectionError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * List available resources
    */
   async listResources(): Promise<Resource[]> {

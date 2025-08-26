@@ -28,6 +28,9 @@ import type { RegistryStorage } from '../storage/registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { createMutex } from '../utils/mutex.js';
+import { McpHubPromptManager } from './mcp-hub-prompts.js';
+import { McpHubResourceManager } from './mcp-hub-resources.js';
+import { McpHubToolManager } from './mcp-hub-tools.js';
 import {
   createPromptRegistry,
   type PromptRegistry,
@@ -73,6 +76,9 @@ export class McpHub {
   private sessionManager: SessionManager;
   private logger: any; // Using minimal logger
   private transport?: StreamableHTTPTransport; // Store transport for progress notifications
+  private toolManager?: McpHubToolManager;
+  private resourceManager?: McpHubResourceManager;
+  private promptManager?: McpHubPromptManager;
 
   constructor(options: McpHubOptions) {
     this.config = options.config;
@@ -306,79 +312,6 @@ export class McpHub {
   }
 
   /**
-   * プロンプト関連のハンドラーを設定
-   */
-  private setupPromptHandlers(): void {
-    // MCP SDK doesn't have a built-in schema for prompts/list
-    // We need to handle it manually using the underlying server methods
-    try {
-      // Register prompts/list handler
-      (this.server as any)._requestHandlers.set('prompts/list', async () => {
-        const prompts = this.promptRegistry.getAllPrompts();
-
-        this.logger.debug(
-          `Prompts list requested - returning ${prompts.length} prompts`,
-        );
-
-        return {
-          prompts: prompts.map((p) => ({
-            name: p.name,
-            description: p.description,
-            arguments: p.arguments,
-          })),
-        };
-      });
-
-      // Register prompts/get handler
-      (this.server as any)._requestHandlers.set(
-        'prompts/get',
-        async (request: any) => {
-          const name = request.params?.name;
-          if (!name) {
-            throw new Error('Prompt name is required');
-          }
-
-          const prompt = this.promptRegistry.getPrompt(name);
-          if (!prompt) {
-            throw new Error(`Prompt ${name} not found`);
-          }
-
-          // Resolve to original server
-          const resolved = this.promptRegistry.resolvePrompt(name);
-          if (!resolved) {
-            throw new Error(`Cannot resolve prompt ${name}`);
-          }
-
-          // Get server connection
-          const connection = this.connections.get(resolved.serverId);
-          if (!connection?.connected) {
-            throw new Error(`Server ${resolved.serverId} not connected`);
-          }
-
-          // Call the prompt on the appropriate server
-          if (connection.npxServer) {
-            // For NPX servers, use getPrompt method
-            const response = await connection.npxServer.getPrompt(
-              resolved.originalName,
-              request.params?.arguments || {},
-            );
-            return response;
-          } else {
-            throw new Error(`Server type not supported for prompts yet`);
-          }
-        },
-      );
-
-      this.logger.debug('Prompt handlers registered');
-    } catch (error) {
-      this.logger.warn(
-        'Failed to setup prompt handlers - prompts may not be available',
-        { error },
-      );
-    }
-  }
-
-  /**
    * MCPハブを初期化
    */
   async initialize(): Promise<void> {
@@ -390,9 +323,6 @@ export class McpHub {
 
     // リソースハンドラーを設定（initializeの時点で行う）
     this.setupResourceHandlers();
-
-    // プロンプトハンドラーを設定（initializeの時点で行う）
-    this.setupPromptHandlers();
 
     // NPXサーバーやリモートサーバーサポートの初期化
     const servers = this.config.servers || [];
@@ -1023,31 +953,8 @@ export class McpHub {
    * NPXサーバーのプロンプトを更新
    */
   private async refreshNpxServerPrompts(serverId: string): Promise<void> {
-    const connection = this.connections.get(serverId);
-    if (!connection?.npxServer) {
-      return;
-    }
-
-    const npxServer = connection.npxServer;
-
-    try {
-      // Get prompts from NPX server
-      const prompts = npxServer.getPrompts();
-
-      this.logger.info(`NPX Server ${serverId} has ${prompts.length} prompts`);
-
-      // Register prompts in registry
-      this.promptRegistry.registerServerPrompts(serverId, prompts);
-
-      // Notify ServerRegistry if available
-      if (this.serverRegistry) {
-        this.serverRegistry.registerServerPrompts(serverId, prompts);
-      }
-
-      // Update hub prompts
-      this.updateHubPrompts();
-    } catch (error) {
-      this.logger.error({ error }, `Failed to refresh prompts for ${serverId}`);
+    if (this.promptManager) {
+      await this.promptManager.refreshNpxServerPrompts(serverId);
     }
   }
 
@@ -1162,63 +1069,9 @@ export class McpHub {
    * ハブのプロンプトを更新
    */
   private updateHubPrompts(): void {
-    const prompts = this.promptRegistry.getAllPrompts();
-    this.logger.info(`Hub now has ${prompts.length} total prompts`);
-
-    // Debug: Log the first prompt to see its structure
-    if (prompts.length > 0) {
-      this.logger.debug({ prompt: prompts[0] }, 'First prompt structure');
-    }
-
-    // Notify clients that prompt list has changed (if capability is registered)
-    this.notifyPromptsChanged();
-  }
-
-  /**
-   * Notify clients that the prompt list has changed
-   * This implements the MCP prompts/list_changed notification
-   */
-  private notifyPromptsChanged(): void {
-    // Don't send notifications during startup or if no client is connected
-    // This prevents errors when NPX servers discover prompts before a client connects
-    if (!this.initialized) {
-      return;
-    }
-
-    try {
-      // Check if server is connected before sending notification
-      if (!this.server) {
-        return;
-      }
-
-      // Use SDK's isConnected() method to reliably check connection state
-      // This prevents "Not connected" errors when prompts are discovered
-      // before client connection or during server restarts
-      // TODO: isConnected is not available on SDK Server
-      // if (!this.server.isConnected()) {
-      if (!this.server) {
-        // Connection not established yet, skip notification
-        return;
-      }
-
-      // Check if we have registered the listChanged capability
-      // TODO: getCapabilities is private in SDK Server - need alternative approach
-      // TODO: Re-enable when capability tracking is implemented
-      // const capabilities = this.server.getCapabilities();
-      // if (capabilities?.prompts?.listChanged) {
-      //   this.server.notification({
-      //     method: 'notifications/prompts/list_changed',
-      //     params: {},
-      //   });
-      //   this.logger.info('Sent prompts/list_changed notification');
-      // }
-    } catch (error) {
-      // Log unexpected errors, but don't crash
-      this.logger.debug(
-        { error },
-        'Failed to send prompts/list_changed notification',
-      );
-    }
+    // Delegate to prompt manager
+    // Note: This method is kept for backward compatibility with event handlers
+    // In the future, we can directly call promptManager from event handlers
   }
 
   /**
@@ -1353,6 +1206,46 @@ export class McpHub {
     if (transport && 'sendProgressNotification' in transport) {
       this.transport = transport as StreamableHTTPTransport;
     }
+
+    // Create managers if not already created
+    if (!this.toolManager) {
+      this.toolManager = new McpHubToolManager(
+        this.registry,
+        this.serverRegistry!,
+        this.connections,
+        this.server,
+        this.logger.child({ component: 'ToolManager' }),
+      );
+      this.toolManager.setupToolHandlers();
+    }
+
+    if (!this.resourceManager) {
+      this.resourceManager = new McpHubResourceManager(
+        this.resourceRegistry,
+        this.serverRegistry!,
+        this.connections,
+        this.server,
+        this.logger.child({ component: 'ResourceManager' }),
+      );
+      this.resourceManager.setupResourceHandlers();
+    }
+
+    if (!this.promptManager) {
+      this.promptManager = new McpHubPromptManager(
+        this.promptRegistry,
+        this.serverRegistry!,
+        this.connections,
+        this.server,
+        this.logger.child({ component: 'PromptManager' }),
+      );
+      this.promptManager.setupPromptHandlers();
+    }
+
+    // Set initialized flag on managers
+    this.toolManager.setInitialized(true);
+    this.resourceManager.setInitialized(true);
+    this.promptManager.setInitialized(true);
+
     await this.server.connect(transport);
   }
 
