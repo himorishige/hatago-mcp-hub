@@ -703,8 +703,8 @@ export class StreamableHTTPTransport implements Transport {
       method: 'notifications/progress',
       params: {
         progressToken,
-        progress: progress ?? 0, // デフォルトは0
-        ...(total !== undefined && total !== null && { total }), // 値がある場合のみ含める
+        progress: progress ?? 0, // Default to 0
+        ...(total !== undefined && total !== null && { total }), // Include only if value exists
       },
     };
 

@@ -961,20 +961,20 @@ export class RemoteMcpServer extends EventEmitter {
     }
 
     try {
-      // RequestOptionsを正しく設定（ユーザー設定を優先）
+      // Configure RequestOptions correctly (prioritize user settings)
       const requestOptions: RequestOptions = {
-        // タイムアウト設定（ユーザー設定 > デフォルト値）
+        // Timeout settings (user settings > default values)
         timeout: this.config.timeouts?.timeout ?? DEFAULT_REMOTE_TIMEOUT,
-        // progress通知でタイムアウトリセット（ユーザー設定 > デフォルト値）
+        // Reset timeout on progress notification (user settings > default values)
         resetTimeoutOnProgress:
           this.config.timeouts?.resetTimeoutOnProgress ??
           DEFAULT_RESET_ON_PROGRESS,
-        // 全体の最大時間（ユーザー設定 > デフォルト値）
+        // Maximum total time (user settings > default values)
         maxTotalTimeout:
           this.config.timeouts?.maxTotalTimeout ?? DEFAULT_MAX_TIMEOUT,
       };
 
-      // progressTokenがある場合は_metaに設定 (for compatibility)
+      // Set _meta if progressToken exists (for compatibility)
       if (progressToken) {
         (requestOptions as any).meta = { progressToken };
       }
@@ -988,7 +988,7 @@ export class RemoteMcpServer extends EventEmitter {
         requestOptions,
       );
 
-      // レスポンスが正しい形式かチェック
+      // Check if response is in correct format
       if (!result || typeof result !== 'object') {
         return {
           content: [
@@ -1001,12 +1001,12 @@ export class RemoteMcpServer extends EventEmitter {
         };
       }
 
-      // CallToolResult形式で返す
+      // Return in CallToolResult format
       if ('content' in result) {
         return result as CallToolResult;
       }
 
-      // 互換性のため、結果をテキストコンテンツとして返す
+      // For compatibility, return result as text content
       return {
         content: [
           {
@@ -1206,7 +1206,7 @@ export class RemoteMcpServer extends EventEmitter {
     try {
       const resourcesResponse = await this.listResources();
 
-      // MCPのlistResourcesレスポンスからリソースを抽出
+      // Extract resources from MCP listResources response
       if (
         resourcesResponse &&
         typeof resourcesResponse === 'object' &&
