@@ -18,6 +18,7 @@ import type {
   CallToolResult,
   ReadResourceResult,
   Resource,
+  ResourceTemplate,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { RemoteServerConfig } from '../config/types.js';
@@ -1102,6 +1103,27 @@ export class RemoteMcpServer extends EventEmitter {
         await this.handleConnectionError(error as Error);
       }
       throw error;
+    }
+  }
+
+  /**
+   * List available resource templates
+   */
+  async listResourceTemplates(): Promise<ResourceTemplate[]> {
+    if (!this.connection || this.state !== ServerState.RUNNING) {
+      throw ErrorHelpers.serverNotConnected(this.config.id);
+    }
+
+    try {
+      const result = await this.connection.client.listResourceTemplates();
+      return result?.resourceTemplates || [];
+    } catch (error) {
+      // Resource templates are optional
+      logger.debug(
+        `Server ${this.config.id} doesn't support resource templates:`,
+        error instanceof Error ? error.message : String(error),
+      );
+      return [];
     }
   }
 

@@ -9,6 +9,7 @@ import type {
   Prompt,
   ReadResourceResult,
   Resource,
+  ResourceTemplate,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { NpxServerConfig } from '../config/types.js';
@@ -47,6 +48,7 @@ export class NpxMcpServer extends EventEmitter {
   private tools: Tool[] = []; // Store discovered tools
   private resources: Resource[] = []; // Store discovered resources
   private prompts: Prompt[] = []; // Store discovered prompts
+  private resourceTemplates: ResourceTemplate[] = []; // Store discovered resource templates
 
   // Default configuration with separated timeouts
   private readonly defaults = {
@@ -101,6 +103,13 @@ export class NpxMcpServer extends EventEmitter {
    */
   getPrompts(): Prompt[] {
     return this.prompts;
+  }
+
+  /**
+   * Get discovered resource templates
+   */
+  getResourceTemplates(): ResourceTemplate[] {
+    return this.resourceTemplates;
   }
 
   /**
@@ -199,6 +208,9 @@ export class NpxMcpServer extends EventEmitter {
 
       // Discover resources (optional, don't fail if not supported)
       await this.discoverResources();
+
+      // Discover resource templates (optional)
+      await this.discoverResourceTemplates();
 
       // Discover prompts (optional, don't fail if not supported)
       await this.discoverPrompts();
@@ -530,6 +542,31 @@ export class NpxMcpServer extends EventEmitter {
       );
       // Don't throw - prompts are optional
       this.prompts = [];
+    }
+  }
+
+  /**
+   * Discover resource templates from the server
+   */
+  private async discoverResourceTemplates(): Promise<void> {
+    if (!this.client) {
+      throw ErrorHelpers.serverNotConnected(this.config.id);
+    }
+
+    try {
+      const result = await this.client.listResourceTemplates();
+      this.resourceTemplates = result?.resourceTemplates || [];
+      logger.info(
+        `Discovered ${this.resourceTemplates.length} resource templates for server ${this.config.id}`,
+      );
+    } catch (error) {
+      // Resource templates are optional, log as debug
+      logger.debug(
+        `Server ${this.config.id} doesn't implement resources/templates/list:`,
+        error instanceof Error ? error.message : String(error),
+      );
+      // Don't throw - resource templates are optional
+      this.resourceTemplates = [];
     }
   }
 
