@@ -2,8 +2,9 @@
  * Tests for pure functional routing logic
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  clearParseCache,
   filterCandidates,
   generatePublicName,
   makeRouteDecision,
@@ -14,6 +15,11 @@ import {
 import type { RegistryState, RouteTarget } from './mcp-router-types.js';
 
 describe('mcp-router-functional', () => {
+  beforeEach(() => {
+    // Clear cache before each test to ensure isolation
+    clearParseCache();
+  });
+
   describe('parsePublicName', () => {
     it('should parse namespace strategy names (suffix)', () => {
       const result = parsePublicName('tool_name_server1', 'namespace', '_');
@@ -60,6 +66,50 @@ describe('mcp-router-functional', () => {
       const result = parsePublicName('toolname', 'namespace', '_');
       expect(result).toBeNull();
     });
+
+    it('should return null for empty or whitespace-only input', () => {
+      expect(parsePublicName('', 'namespace', '_')).toBeNull();
+      expect(parsePublicName('   ', 'namespace', '_')).toBeNull();
+      expect(parsePublicName('tool', 'namespace', '')).toBeNull();
+    });
+
+    it('should cache results for performance', () => {
+      const name = 'cached_tool_server1';
+
+      // First call - should parse
+      const result1 = parsePublicName(name, 'namespace', '_');
+      expect(result1).toEqual({
+        originalName: 'cached_tool',
+        serverId: 'server1',
+      });
+
+      // Second call - should return cached result (same instance)
+      const result2 = parsePublicName(name, 'namespace', '_');
+      expect(result2).toBe(result1); // Same reference
+
+      // Different parameters - should not use cache
+      const result3 = parsePublicName(name, 'alias', '_');
+      expect(result3).not.toBe(result1);
+    });
+
+    it('should handle cache size limits', () => {
+      // Fill cache beyond MAX_CACHE_SIZE (1000)
+      const results = [];
+      for (let i = 0; i < 1100; i++) {
+        const name = `tool_${i}_server`;
+        const result = parsePublicName(name, 'namespace', '_');
+        if (i < 10) {
+          results.push(result);
+        }
+      }
+
+      // Cache should have been pruned, but recent entries should still work
+      const recent = parsePublicName('tool_1099_server', 'namespace', '_');
+      expect(recent).toEqual({
+        originalName: 'tool_1099',
+        serverId: 'server',
+      });
+    });
   });
 
   describe('generatePublicName', () => {
@@ -101,6 +151,20 @@ describe('mcp-router-functional', () => {
         '_',
       );
       expect(result).toBe('tool_name_server1');
+    });
+
+    it('should throw error for too long server ID', () => {
+      const longServerId = 'a'.repeat(101);
+      expect(() =>
+        generatePublicName(longServerId, 'tool', 'namespace', '_'),
+      ).toThrow('Server ID too long (max 100 chars)');
+    });
+
+    it('should throw error for too long name', () => {
+      const longName = 'a'.repeat(201);
+      expect(() =>
+        generatePublicName('server1', longName, 'namespace', '_'),
+      ).toThrow('Name too long (max 200 chars)');
     });
   });
 

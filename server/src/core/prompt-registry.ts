@@ -27,7 +27,7 @@ interface PromptMetadata extends Prompt {
 export class PromptRegistry {
   private prompts: Map<string, PromptMetadata> = new Map();
   private serverPrompts: Map<string, Set<string>> = new Map();
-  private logger = logger.child({ component: 'PromptRegistry' });
+  private logger = logger;
 
   /**
    * Register prompts from a server

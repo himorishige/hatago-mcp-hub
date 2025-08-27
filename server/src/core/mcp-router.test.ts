@@ -344,7 +344,7 @@ describe('McpRouter', () => {
   });
 
   describe('getStats', () => {
-    it('should return router statistics', () => {
+    it('should return router statistics with metrics', () => {
       const toolRegistry = createMockToolRegistry();
       const resourceRegistry = createMockResourceRegistry();
       const promptRegistry = createMockPromptRegistry();
@@ -356,12 +356,83 @@ describe('McpRouter', () => {
       );
       const stats = router.getStats();
 
-      expect(stats).toEqual({
+      expect(stats).toMatchObject({
         toolCount: 5,
         resourceCount: 3,
         promptCount: 2,
         namingStrategy: 'namespace',
+        totalRequests: 0,
       });
+      expect(stats.metrics).toBeDefined();
+      expect(stats.metrics.tools).toEqual({
+        success: 0,
+        failure: 0,
+        totalTime: 0,
+      });
+    });
+  });
+
+  describe('getMetrics', () => {
+    it('should return performance metrics', () => {
+      const toolRegistry = createMockToolRegistry();
+      const resourceRegistry = createMockResourceRegistry();
+      const promptRegistry = createMockPromptRegistry();
+
+      vi.mocked(toolRegistry.resolveTool).mockReturnValue({
+        serverId: 'server1',
+        originalName: 'tool',
+      });
+
+      const router = new McpRouter(
+        toolRegistry,
+        resourceRegistry,
+        promptRegistry,
+      );
+
+      // Make some successful tool calls
+      router.routeTool('tool1');
+      router.routeTool('tool2');
+
+      // Make a failed tool call
+      vi.mocked(toolRegistry.resolveTool).mockReturnValue(undefined);
+      router.routeTool('unknown');
+
+      const metrics = router.getMetrics();
+
+      expect(metrics.tools.success).toBe(2);
+      expect(metrics.tools.failure).toBe(1);
+      expect(metrics.tools.avgTime).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('resetMetrics', () => {
+    it('should reset all metrics', () => {
+      const toolRegistry = createMockToolRegistry();
+      const resourceRegistry = createMockResourceRegistry();
+      const promptRegistry = createMockPromptRegistry();
+
+      vi.mocked(toolRegistry.resolveTool).mockReturnValue({
+        serverId: 'server1',
+        originalName: 'tool',
+      });
+
+      const router = new McpRouter(
+        toolRegistry,
+        resourceRegistry,
+        promptRegistry,
+      );
+
+      // Make some calls
+      router.routeTool('tool1');
+      router.routeTool('tool2');
+
+      // Reset metrics
+      router.resetMetrics();
+
+      const metrics = router.getMetrics();
+      expect(metrics.tools.success).toBe(0);
+      expect(metrics.tools.failure).toBe(0);
+      expect(metrics.tools.totalTime).toBe(0);
     });
   });
 
@@ -394,7 +465,7 @@ describe('McpRouter', () => {
   });
 
   describe('debug logging', () => {
-    it('should log when debug is enabled', () => {
+    it('should log with structured context when debug is enabled', () => {
       const consoleSpy = vi
         .spyOn(console, 'debug')
         .mockImplementation(() => {});
@@ -419,14 +490,17 @@ describe('McpRouter', () => {
 
       router.routeTool('tool_server1');
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[McpRouter] Routing tool:',
-        'tool_server1',
-      );
-      expect(consoleSpy).toHaveBeenCalledWith('[McpRouter] Tool routed to:', {
-        serverId: 'server1',
-        originalName: 'tool',
-      });
+      // Check that structured logging is being used
+      expect(consoleSpy).toHaveBeenCalled();
+      const calls = consoleSpy.mock.calls;
+
+      // Should have logged routing start with context
+      expect(calls[0][0]).toContain('[McpRouter] Routing tool:');
+      expect(calls[0][1]).toContain('tool_server1');
+
+      // Should have logged success with context
+      expect(calls[1][0]).toContain('[McpRouter] Tool routed successfully:');
+      expect(calls[1][1]).toContain('server1');
 
       consoleSpy.mockRestore();
     });

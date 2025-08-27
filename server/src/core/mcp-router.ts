@@ -31,6 +31,15 @@ export interface McpRouterOptions {
 }
 
 /**
+ * Route metrics type
+ */
+interface RouteMetrics {
+  success: number;
+  failure: number;
+  totalTime: number;
+}
+
+/**
  * MCP Router class
  * Handles routing decisions for tools, resources, and prompts
  * Acts as a thin wrapper over pure functional logic
@@ -38,6 +47,16 @@ export interface McpRouterOptions {
 export class McpRouter {
   private namingConfig: ToolNamingConfig;
   private debug: boolean;
+  private routeCount = 0;
+  private routeMetrics: {
+    tools: RouteMetrics;
+    resources: RouteMetrics;
+    prompts: RouteMetrics;
+  } = {
+    tools: { success: 0, failure: 0, totalTime: 0 },
+    resources: { success: 0, failure: 0, totalTime: 0 },
+    prompts: { success: 0, failure: 0, totalTime: 0 },
+  };
 
   constructor(
     private toolRegistry: ToolRegistry,
@@ -58,14 +77,32 @@ export class McpRouter {
    */
   routeTool(
     publicName: string,
-    _context?: RouterContext,
+    context?: RouterContext,
   ): RouteDecision<RouteTarget> {
-    this.logDebug('Routing tool:', publicName);
+    const startTime = Date.now();
+    const requestId = context?.requestId || `req-${++this.routeCount}`;
+
+    this.logDebug('Routing tool:', {
+      publicName,
+      requestId,
+      strategy: this.namingConfig.strategy,
+    });
 
     // Use registry's built-in resolution
     const toolInfo = this.toolRegistry.resolveTool(publicName);
 
+    const elapsed = Date.now() - startTime;
+
     if (!toolInfo) {
+      this.routeMetrics.tools.failure++;
+      this.routeMetrics.tools.totalTime += elapsed;
+
+      this.logDebug('Tool routing failed:', {
+        publicName,
+        requestId,
+        elapsed: `${elapsed}ms`,
+      });
+
       return {
         target: null,
         error: `Tool not found: ${publicName}`,
@@ -77,13 +114,23 @@ export class McpRouter {
       originalName: toolInfo.originalName,
     };
 
-    this.logDebug('Tool routed to:', target);
+    this.routeMetrics.tools.success++;
+    this.routeMetrics.tools.totalTime += elapsed;
+
+    this.logDebug('Tool routed successfully:', {
+      publicName,
+      target,
+      requestId,
+      elapsed: `${elapsed}ms`,
+    });
 
     return {
       target,
       metadata: {
         publicName,
         resolvedBy: 'toolRegistry',
+        requestId,
+        elapsed,
       },
     };
   }
@@ -93,14 +140,31 @@ export class McpRouter {
    */
   routeResource(
     uri: string,
-    _context?: RouterContext,
+    context?: RouterContext,
   ): RouteDecision<ResourceRouteTarget> {
-    this.logDebug('Routing resource:', uri);
+    const startTime = Date.now();
+    const requestId = context?.requestId || `req-${++this.routeCount}`;
+
+    this.logDebug('Routing resource:', {
+      uri,
+      requestId,
+    });
 
     // Use registry's built-in resolution
     const resourceInfo = this.resourceRegistry.resolveResource(uri);
 
+    const elapsed = Date.now() - startTime;
+
     if (!resourceInfo) {
+      this.routeMetrics.resources.failure++;
+      this.routeMetrics.resources.totalTime += elapsed;
+
+      this.logDebug('Resource routing failed:', {
+        uri,
+        requestId,
+        elapsed: `${elapsed}ms`,
+      });
+
       return {
         target: null,
         error: `Resource not found: ${uri}`,
@@ -112,13 +176,23 @@ export class McpRouter {
       originalUri: resourceInfo.originalUri,
     };
 
-    this.logDebug('Resource routed to:', target);
+    this.routeMetrics.resources.success++;
+    this.routeMetrics.resources.totalTime += elapsed;
+
+    this.logDebug('Resource routed successfully:', {
+      uri,
+      target,
+      requestId,
+      elapsed: `${elapsed}ms`,
+    });
 
     return {
       target,
       metadata: {
         uri,
         resolvedBy: 'resourceRegistry',
+        requestId,
+        elapsed,
       },
     };
   }
@@ -128,14 +202,31 @@ export class McpRouter {
    */
   routePrompt(
     name: string,
-    _context?: RouterContext,
+    context?: RouterContext,
   ): RouteDecision<RouteTarget> {
-    this.logDebug('Routing prompt:', name);
+    const startTime = Date.now();
+    const requestId = context?.requestId || `req-${++this.routeCount}`;
+
+    this.logDebug('Routing prompt:', {
+      name,
+      requestId,
+    });
 
     // Use registry's built-in resolution
     const promptInfo = this.promptRegistry.resolvePrompt(name);
 
+    const elapsed = Date.now() - startTime;
+
     if (!promptInfo) {
+      this.routeMetrics.prompts.failure++;
+      this.routeMetrics.prompts.totalTime += elapsed;
+
+      this.logDebug('Prompt routing failed:', {
+        name,
+        requestId,
+        elapsed: `${elapsed}ms`,
+      });
+
       return {
         target: null,
         error: `Prompt not found: ${name}`,
@@ -147,13 +238,23 @@ export class McpRouter {
       originalName: promptInfo.originalName,
     };
 
-    this.logDebug('Prompt routed to:', target);
+    this.routeMetrics.prompts.success++;
+    this.routeMetrics.prompts.totalTime += elapsed;
+
+    this.logDebug('Prompt routed successfully:', {
+      name,
+      target,
+      requestId,
+      elapsed: `${elapsed}ms`,
+    });
 
     return {
       target,
       metadata: {
         name,
         resolvedBy: 'promptRegistry',
+        requestId,
+        elapsed,
       },
     };
   }
@@ -219,11 +320,18 @@ export class McpRouter {
   }
 
   /**
-   * Debug logging helper
+   * Debug logging helper with structured context
    */
-  private logDebug(message: string, ...args: unknown[]): void {
+  private logDebug(message: string, context?: any): void {
     if (this.debug) {
-      console.debug(`[McpRouter] ${message}`, ...args);
+      if (context) {
+        console.debug(
+          `[McpRouter] ${message}`,
+          JSON.stringify(context, null, 2),
+        );
+      } else {
+        console.debug(`[McpRouter] ${message}`);
+      }
     }
   }
 
@@ -235,12 +343,80 @@ export class McpRouter {
     resourceCount: number;
     promptCount: number;
     namingStrategy: string;
+    metrics: {
+      tools: RouteMetrics;
+      resources: RouteMetrics;
+      prompts: RouteMetrics;
+    };
+    totalRequests: number;
   } {
     return {
       toolCount: this.toolRegistry.getToolCount(),
       resourceCount: this.resourceRegistry.getResourceCount(),
       promptCount: this.promptRegistry.getPromptCount(),
       namingStrategy: this.namingConfig.strategy,
+      metrics: {
+        tools: { ...this.routeMetrics.tools },
+        resources: { ...this.routeMetrics.resources },
+        prompts: { ...this.routeMetrics.prompts },
+      },
+      totalRequests: this.routeCount,
+    };
+  }
+
+  /**
+   * Get performance metrics
+   */
+  getMetrics(): {
+    tools: {
+      success: number;
+      failure: number;
+      avgTime: number;
+      totalTime: number;
+    };
+    resources: {
+      success: number;
+      failure: number;
+      avgTime: number;
+      totalTime: number;
+    };
+    prompts: {
+      success: number;
+      failure: number;
+      avgTime: number;
+      totalTime: number;
+    };
+  } {
+    const calculateAvg = (metrics: RouteMetrics) => {
+      const total = metrics.success + metrics.failure;
+      return total > 0 ? metrics.totalTime / total : 0;
+    };
+
+    return {
+      tools: {
+        ...this.routeMetrics.tools,
+        avgTime: calculateAvg(this.routeMetrics.tools),
+      },
+      resources: {
+        ...this.routeMetrics.resources,
+        avgTime: calculateAvg(this.routeMetrics.resources),
+      },
+      prompts: {
+        ...this.routeMetrics.prompts,
+        avgTime: calculateAvg(this.routeMetrics.prompts),
+      },
+    };
+  }
+
+  /**
+   * Reset metrics (useful for testing or periodic resets)
+   */
+  resetMetrics(): void {
+    this.routeCount = 0;
+    this.routeMetrics = {
+      tools: { success: 0, failure: 0, totalTime: 0 },
+      resources: { success: 0, failure: 0, totalTime: 0 },
+      prompts: { success: 0, failure: 0, totalTime: 0 },
     };
   }
 }

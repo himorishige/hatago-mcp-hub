@@ -143,7 +143,12 @@ describe('McpHub', () => {
       ];
 
       hub = new McpHub({ config: mockConfig });
-      const connectSpy = vi.spyOn(hub, 'connectServer').mockResolvedValue();
+      // Spy must be set before initialization
+      const connectSpy = vi
+        .spyOn(hub, 'connectServer')
+        .mockImplementation(async () => {
+          // Mock implementation to avoid actual connection
+        });
 
       await hub.initialize();
 

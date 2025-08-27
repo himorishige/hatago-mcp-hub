@@ -11,48 +11,93 @@ import type {
   RouteTarget,
 } from './mcp-router-types.js';
 
+// Cache for parsePublicName results
+// Key format: `${publicName}:${strategy}:${separator}`
+const parseCache = new Map<string, RouteTarget | null>();
+const MAX_CACHE_SIZE = 1000; // Prevent unbounded growth
+
 /**
  * Parse a public name to extract the original name and server ID
- * Supports multiple naming strategies
+ * Supports multiple naming strategies with caching for performance
  */
 export function parsePublicName(
   publicName: string,
   strategy: ToolNamingStrategy = 'namespace',
   separator = '_',
 ): RouteTarget | null {
+  // Input validation
+  if (!publicName?.trim() || !separator) {
+    return null;
+  }
+
+  // Check cache
+  const cacheKey = `${publicName}:${strategy}:${separator}`;
+  if (parseCache.has(cacheKey)) {
+    return parseCache.get(cacheKey)!;
+  }
+
+  let result: RouteTarget | null = null;
+
   switch (strategy) {
     case 'namespace': {
       // Server ID is suffix: toolName_serverId
       const lastSeparatorIndex = publicName.lastIndexOf(separator);
-      if (lastSeparatorIndex === -1) return null;
-
-      return {
-        originalName: publicName.substring(0, lastSeparatorIndex),
-        serverId: publicName.substring(lastSeparatorIndex + separator.length),
-      };
+      if (lastSeparatorIndex === -1) {
+        result = null;
+      } else {
+        result = {
+          originalName: publicName.substring(0, lastSeparatorIndex),
+          serverId: publicName.substring(lastSeparatorIndex + separator.length),
+        };
+      }
+      break;
     }
 
     case 'alias': {
       // Server ID is prefix: serverId_toolName
       const firstSeparatorIndex = publicName.indexOf(separator);
-      if (firstSeparatorIndex === -1) return null;
-
-      return {
-        serverId: publicName.substring(0, firstSeparatorIndex),
-        originalName: publicName.substring(
-          firstSeparatorIndex + separator.length,
-        ),
-      };
+      if (firstSeparatorIndex === -1) {
+        result = null;
+      } else {
+        result = {
+          serverId: publicName.substring(0, firstSeparatorIndex),
+          originalName: publicName.substring(
+            firstSeparatorIndex + separator.length,
+          ),
+        };
+      }
+      break;
     }
 
     case 'error': {
       // No namespace, return as-is (will likely cause errors if duplicates exist)
-      return null;
+      result = null;
+      break;
     }
 
     default:
-      return null;
+      result = null;
   }
+
+  // Store in cache (with size limit)
+  if (parseCache.size >= MAX_CACHE_SIZE) {
+    // Simple LRU: clear half the cache when full
+    const entriesToDelete = Math.floor(MAX_CACHE_SIZE / 2);
+    const keys = Array.from(parseCache.keys());
+    for (let i = 0; i < entriesToDelete; i++) {
+      parseCache.delete(keys[i]);
+    }
+  }
+  parseCache.set(cacheKey, result);
+
+  return result;
+}
+
+/**
+ * Clear the parse cache (useful for testing or memory management)
+ */
+export function clearParseCache(): void {
+  parseCache.clear();
 }
 
 /**
@@ -64,6 +109,17 @@ export function generatePublicName(
   strategy: ToolNamingStrategy = 'namespace',
   separator = '_',
 ): string {
+  // DoS protection: limit name lengths
+  const MAX_SERVER_ID_LENGTH = 100;
+  const MAX_NAME_LENGTH = 200;
+
+  if (serverId.length > MAX_SERVER_ID_LENGTH) {
+    throw new Error(`Server ID too long (max ${MAX_SERVER_ID_LENGTH} chars)`);
+  }
+  if (originalName.length > MAX_NAME_LENGTH) {
+    throw new Error(`Name too long (max ${MAX_NAME_LENGTH} chars)`);
+  }
+
   switch (strategy) {
     case 'namespace':
       // Append server ID as suffix
