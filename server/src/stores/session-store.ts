@@ -3,7 +3,7 @@ import { createKeyedMutex } from '../utils/mutex.js';
 import { generateId } from '../utils/node-utils.js';
 
 /**
- * ツール実行履歴
+ * Tool execution history
  */
 export interface ToolCallHistory {
   id: string;
@@ -16,51 +16,51 @@ export interface ToolCallHistory {
 }
 
 /**
- * セッション状態
+ * Session state
  */
 export interface SessionState {
   id: string;
   createdAt: Date;
   lastAccessedAt: Date;
   ttlSeconds: number;
-  generationId?: string; // 設定世代ID
+  generationId?: string; // Configuration generation ID
   metadata: Record<string, unknown>;
 }
 
 /**
- * 共有セッション
+ * Shared session
  */
 export interface SharedSession extends SessionState {
-  sharedToken?: string; // 共有用トークン
-  tokenExpiresAt?: Date; // トークン有効期限
-  clients: Set<string>; // 接続中のクライアントID
-  history: ToolCallHistory[]; // 実行履歴
-  locks: Map<string, string>; // リソースロック (resource -> clientId)
-  version: number; // 楽観的ロック用バージョン
+  sharedToken?: string; // Sharing token
+  tokenExpiresAt?: Date; // Token expiration
+  clients: Set<string>; // Connected client IDs
+  history: ToolCallHistory[]; // Execution history
+  locks: Map<string, string>; // Resource locks (resource -> clientId)
+  version: number; // Version for optimistic locking
 }
 
 /**
- * セッションストアのインターフェース
+ * Session store interface
  */
 export interface ISessionStore {
-  // 基本操作
+  // Basic operations
   create(session: SessionState): Promise<void>;
   get(id: string): Promise<SharedSession | null>;
   update(id: string, session: Partial<SharedSession>): Promise<void>;
   delete(id: string): Promise<void>;
   exists(id: string): Promise<boolean>;
 
-  // 共有機能
+  // Sharing features
   generateShareToken(sessionId: string, ttlSeconds: number): Promise<string>;
   getByShareToken(token: string): Promise<SharedSession | null>;
   addClient(sessionId: string, clientId: string): Promise<void>;
   removeClient(sessionId: string, clientId: string): Promise<void>;
 
-  // 履歴管理
+  // History management
   addHistory(sessionId: string, history: ToolCallHistory): Promise<void>;
   getHistory(sessionId: string, limit?: number): Promise<ToolCallHistory[]>;
 
-  // ロック管理
+  // Lock management
   acquireLock(
     sessionId: string,
     resource: string,
@@ -72,13 +72,13 @@ export interface ISessionStore {
     clientId: string,
   ): Promise<void>;
 
-  // ユーティリティ
+  // Utilities
   cleanup(): Promise<void>;
   getActiveSessions(): Promise<SharedSession[]>;
 }
 
 /**
- * メモリベースのセッションストア（開発用）
+ * Memory-based session store (for development)
  */
 export class MemorySessionStore implements ISessionStore {
   private sessions = new Map<string, SharedSession>();
@@ -106,13 +106,13 @@ export class MemorySessionStore implements ISessionStore {
         return null;
       }
 
-      // TTLチェック
+      // TTL check
       if (this.isExpired(session)) {
         this.sessions.delete(id);
         return null;
       }
 
-      // 最終アクセス時刻を更新
+      // Update last access time
       session.lastAccessedAt = new Date();
       return session;
     });
@@ -125,7 +125,7 @@ export class MemorySessionStore implements ISessionStore {
         throw ErrorHelpers.sessionNotFound(id);
       }
 
-      // バージョンチェック（楽観的ロック）
+      // Version check (optimistic locking)
       if (updates.version && updates.version !== session.version) {
         throw ErrorHelpers.sessionVersionConflict(
           id,
@@ -134,7 +134,7 @@ export class MemorySessionStore implements ISessionStore {
         );
       }
 
-      // 更新を適用
+      // Apply updates
       Object.assign(session, updates);
       session.version++;
       session.lastAccessedAt = new Date();
