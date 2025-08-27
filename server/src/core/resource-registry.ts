@@ -27,6 +27,7 @@ export interface ResourceRegistry {
   getServerResources: (serverId: string) => Resource[];
   getAllResources: () => Resource[];
   getResourceCollisions: () => Map<string, string[]>;
+  getResourceCount: () => number;
   clear: () => void;
 }
 
@@ -200,6 +201,7 @@ export function createResourceRegistry(
     getServerResources,
     getAllResources,
     getResourceCollisions,
+    getResourceCount: () => resources.size,
     clear,
   };
 }
