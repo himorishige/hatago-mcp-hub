@@ -22,6 +22,7 @@ import type {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { RemoteServerConfig } from '../config/types.js';
+import { APP_NAME, APP_VERSION } from '../constants.js';
 
 import type { NegotiatedProtocol } from '../core/types.js';
 import { logger } from '../observability/minimal-logger.js';
@@ -157,6 +158,7 @@ export interface RemoteConnection {
  */
 export class RemoteMcpServer extends EventEmitter {
   private config: RemoteServerConfig;
+  private logger = logger;
   private connection: RemoteConnection | null = null;
   private state: ServerState = ServerState.STOPPED;
   private reconnectCount = 0;
@@ -497,8 +499,8 @@ export class RemoteMcpServer extends EventEmitter {
     // Create client
     const client = new Client(
       {
-        name: 'hatago-hub',
-        version: '0.3.0-lite',
+        name: APP_NAME,
+        version: APP_VERSION,
       },
       {
         capabilities: {},
@@ -959,20 +961,20 @@ export class RemoteMcpServer extends EventEmitter {
     }
 
     try {
-      // RequestOptionsを正しく設定（ユーザー設定を優先）
+      // Configure RequestOptions correctly (prioritize user settings)
       const requestOptions: RequestOptions = {
-        // タイムアウト設定（ユーザー設定 > デフォルト値）
+        // Timeout settings (user settings > default values)
         timeout: this.config.timeouts?.timeout ?? DEFAULT_REMOTE_TIMEOUT,
-        // progress通知でタイムアウトリセット（ユーザー設定 > デフォルト値）
+        // Reset timeout on progress notification (user settings > default values)
         resetTimeoutOnProgress:
           this.config.timeouts?.resetTimeoutOnProgress ??
           DEFAULT_RESET_ON_PROGRESS,
-        // 全体の最大時間（ユーザー設定 > デフォルト値）
+        // Maximum total time (user settings > default values)
         maxTotalTimeout:
           this.config.timeouts?.maxTotalTimeout ?? DEFAULT_MAX_TIMEOUT,
       };
 
-      // progressTokenがある場合はmetaに設定（SDKの正しい使い方）
+      // Set _meta if progressToken exists (for compatibility)
       if (progressToken) {
         (requestOptions as any).meta = { progressToken };
       }
@@ -986,7 +988,7 @@ export class RemoteMcpServer extends EventEmitter {
         requestOptions,
       );
 
-      // レスポンスが正しい形式かチェック
+      // Check if response is in correct format
       if (!result || typeof result !== 'object') {
         return {
           content: [
@@ -999,12 +1001,12 @@ export class RemoteMcpServer extends EventEmitter {
         };
       }
 
-      // CallToolResult形式で返す
+      // Return in CallToolResult format
       if ('content' in result) {
         return result as CallToolResult;
       }
 
-      // 互換性のため、結果をテキストコンテンツとして返す
+      // For compatibility, return result as text content
       return {
         content: [
           {
@@ -1037,7 +1039,9 @@ export class RemoteMcpServer extends EventEmitter {
     }
 
     try {
+      this.logger.info(`Calling listTools for ${this.config.id}...`);
       const result = await this.connection.client.listTools();
+      this.logger.info(`listTools response for ${this.config.id}:`, result);
       return result?.tools || [];
     } catch (error) {
       // Handle connection errors during tool listing
@@ -1155,6 +1159,39 @@ export class RemoteMcpServer extends EventEmitter {
   }
 
   /**
+   * Get a prompt from the remote server
+   */
+  async getPrompt(
+    name: string,
+    args?: Record<string, string>,
+  ): Promise<unknown> {
+    if (!this.connection || this.state !== ServerState.RUNNING) {
+      throw ErrorHelpers.serverNotConnected(this.config.id);
+    }
+
+    try {
+      return await this.connection.client.getPrompt({
+        name,
+        arguments: args,
+      });
+    } catch (error) {
+      // Handle connection errors during prompt retrieval
+      if (
+        error instanceof Error &&
+        (error.message.includes('disconnected') ||
+          error.message.includes('Connection closed'))
+      ) {
+        logger.error(
+          `Connection lost while getting prompt for ${this.config.id}:`,
+          error.message,
+        );
+        await this.handleConnectionError(error as Error);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Discover available resources from the remote server
    */
   async discoverResources(): Promise<unknown[]> {
@@ -1169,7 +1206,7 @@ export class RemoteMcpServer extends EventEmitter {
     try {
       const resourcesResponse = await this.listResources();
 
-      // MCPのlistResourcesレスポンスからリソースを抽出
+      // Extract resources from MCP listResources response
       if (
         resourcesResponse &&
         typeof resourcesResponse === 'object' &&
@@ -1205,18 +1242,11 @@ export class RemoteMcpServer extends EventEmitter {
   async discoverTools(): Promise<any[]> {
     const toolsResponse = await this.listTools();
 
-    // MCPのlistToolsレスポンスから完全なツール情報を返す
-    if (
-      toolsResponse &&
-      typeof toolsResponse === 'object' &&
-      'tools' in toolsResponse
-    ) {
-      const response = toolsResponse as { tools: unknown };
-      if (Array.isArray(response.tools)) {
-        return response.tools.filter(
-          (tool) => tool && typeof tool === 'object' && 'name' in tool,
-        );
-      }
+    // listTools already returns the tools array
+    if (Array.isArray(toolsResponse)) {
+      return toolsResponse.filter(
+        (tool) => tool && typeof tool === 'object' && 'name' in tool,
+      );
     }
 
     return [];

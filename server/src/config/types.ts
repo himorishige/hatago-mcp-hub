@@ -1,19 +1,19 @@
 import { z } from 'zod';
 
-// ツール命名戦略
+// Tool naming strategy
 export const ToolNamingStrategySchema = z.enum(['namespace', 'alias', 'error']);
 export type ToolNamingStrategy = z.infer<typeof ToolNamingStrategySchema>;
 
-// ツール命名設定
+// Tool naming configuration
 export const ToolNamingConfigSchema = z.object({
   strategy: ToolNamingStrategySchema.default('namespace'),
-  separator: z.string().default('_'), // Claude Code互換のためアンダースコア
+  separator: z.string().default('_'), // Underscore for Claude Code compatibility
   format: z.string().default('{serverId}_{toolName}'),
-  aliases: z.record(z.string()).optional(), // ツール名のエイリアス定義
+  aliases: z.record(z.string()).optional(), // Tool name alias definitions
 });
 export type ToolNamingConfig = z.infer<typeof ToolNamingConfigSchema>;
 
-// セッション設定
+// Session configuration
 export const SessionConfigSchema = z.object({
   ttlSeconds: z.number().default(3600),
   persist: z.boolean().default(false),
@@ -21,7 +21,7 @@ export const SessionConfigSchema = z.object({
 });
 export type SessionConfig = z.infer<typeof SessionConfigSchema>;
 
-// セッション共有設定
+// Session sharing configuration
 export const SessionSharingConfigSchema = z.object({
   enabled: z.boolean().default(false),
   maxClientsPerSession: z.number().default(5),
@@ -29,18 +29,18 @@ export const SessionSharingConfigSchema = z.object({
     .enum(['first-wins', 'last-wins', 'manual'])
     .default('first-wins'),
   syncIntervalMs: z.number().default(1000),
-  tokenTtlSeconds: z.number().default(86400), // 24時間
+  tokenTtlSeconds: z.number().default(86400), // 24 hours
 });
 export type SessionSharingConfig = z.infer<typeof SessionSharingConfigSchema>;
 
-// HTTPサーバー設定
+// HTTP server configuration
 export const HttpConfigSchema = z.object({
   port: z.number().default(3000),
   host: z.string().default('localhost'),
 });
 export type HttpConfig = z.infer<typeof HttpConfigSchema>;
 
-// タイムアウト設定
+// Timeout configuration
 export const TimeoutsConfigSchema = z.object({
   spawnMs: z.number().default(8000),
   healthcheckMs: z.number().default(2000),
@@ -48,7 +48,7 @@ export const TimeoutsConfigSchema = z.object({
 });
 export type TimeoutsConfig = z.infer<typeof TimeoutsConfigSchema>;
 
-// 並列実行設定
+// Concurrency configuration
 export const ConcurrencyConfigSchema = z.object({
   global: z.number().default(4),
   serverInit: z.number().optional(),
@@ -56,7 +56,7 @@ export const ConcurrencyConfigSchema = z.object({
 });
 export type ConcurrencyConfig = z.infer<typeof ConcurrencyConfigSchema>;
 
-// セキュリティ設定
+// Security configuration
 export const SecurityConfigSchema = z.object({
   redactKeys: z
     .array(z.string())
@@ -65,98 +65,98 @@ export const SecurityConfigSchema = z.object({
 });
 export type SecurityConfig = z.infer<typeof SecurityConfigSchema>;
 
-// ポリシールール
+// Policy rule
 export const PolicyRuleSchema = z.object({
   id: z.string(),
   name: z.string(),
   effect: z.enum(['allow', 'deny']),
-  principal: z.string().optional(), // ユーザー/アプリ識別子
-  tool: z.string(), // ツール名パターン（ワイルドカード対応）
-  conditions: z.record(z.unknown()).optional(), // 追加条件
+  principal: z.string().optional(), // User/app identifier
+  tool: z.string(), // Tool name pattern (wildcard supported)
+  conditions: z.record(z.unknown()).optional(), // Additional conditions
 });
 export type PolicyRule = z.infer<typeof PolicyRuleSchema>;
 
-// ポリシー設定
+// Policy configuration
 export const PolicyConfigSchema = z.object({
   enabled: z.boolean().default(false),
-  dryRun: z.boolean().default(true), // 最初はドライランから開始
-  defaultEffect: z.enum(['allow', 'deny']).default('deny'), // デフォルト拒否
+  dryRun: z.boolean().default(true), // Start with dry run first
+  defaultEffect: z.enum(['allow', 'deny']).default('deny'), // Default deny
   rules: z.array(PolicyRuleSchema).default([]),
   auditLog: z.boolean().default(true),
 });
 export type PolicyConfig = z.infer<typeof PolicyConfigSchema>;
 
-// Registry永続化設定
+// Registry persistence configuration
 export const RegistryPersistConfigSchema = z.object({
   enabled: z.boolean().default(false),
   type: z.enum(['memory', 'file']).default('memory'),
-  saveIntervalMs: z.number().default(5000), // 5秒ごとに保存
-  retainDays: z.number().default(7), // 7日間保持
+  saveIntervalMs: z.number().default(5000), // Save every 5 seconds
+  retainDays: z.number().default(7), // Retain for 7 days
 });
 export type RegistryPersistConfig = z.infer<typeof RegistryPersistConfigSchema>;
 
-// Registry設定
+// Registry configuration
 export const RegistryConfigSchema = z.object({
   persist: RegistryPersistConfigSchema.optional(),
-  healthCheckIntervalMs: z.number().default(30000), // 30秒ごとにヘルスチェック
+  healthCheckIntervalMs: z.number().default(30000), // Health check every 30 seconds
   maxRestarts: z.number().default(3),
   restartDelayMs: z.number().default(5000),
 });
 export type RegistryConfig = z.infer<typeof RegistryConfigSchema>;
 
-// 世代管理設定
+// Generation management configuration
 export const GenerationConfigSchema = z.object({
   autoReload: z.boolean().default(true),
   watchPaths: z.array(z.string()).default(['.hatago/config.jsonc']),
-  gracePeriodMs: z.number().default(30000), // 30秒の猶予期間
-  maxGenerations: z.number().default(3), // 保持する最大世代数
+  gracePeriodMs: z.number().default(30000), // 30 seconds grace period
+  maxGenerations: z.number().default(3), // Maximum generations to retain
 });
 export type GenerationConfig = z.infer<typeof GenerationConfigSchema>;
 
-// ロールオーバー設定
+// Rollover configuration
 export const RolloverConfigSchema = z.object({
   enabled: z.boolean().default(false),
   healthCheckIntervalMs: z.number().default(5000),
-  drainTimeoutMs: z.number().default(60000), // 60秒でドレイン
-  errorRateThreshold: z.number().default(0.1), // 10%エラー率で自動ロールバック
-  warmupTimeMs: z.number().default(10000), // 10秒のウォームアップ
+  drainTimeoutMs: z.number().default(60000), // Drain in 60 seconds
+  errorRateThreshold: z.number().default(0.1), // Auto rollback at 10% error rate
+  warmupTimeMs: z.number().default(10000), // 10 seconds warmup
 });
 export type RolloverConfig = z.infer<typeof RolloverConfigSchema>;
 
-// レプリケーション設定
+// Replication configuration
 export const ReplicationConfigSchema = z.object({
   enabled: z.boolean().default(false),
   store: z.enum(['memory', 'file', 'redis']).default('memory'),
-  syncIntervalMs: z.number().default(1000), // 1秒ごとに同期
+  syncIntervalMs: z.number().default(1000), // Sync every 1 second
   primaryNode: z.string().optional(),
   nodes: z.array(z.string()).default([]),
 });
 export type ReplicationConfig = z.infer<typeof ReplicationConfigSchema>;
 
-// トランスポートタイプ
+// Transport type
 export const TransportTypeSchema = z.enum(['stdio', 'http', 'websocket']);
 export type TransportType = z.infer<typeof TransportTypeSchema>;
 
-// サーバータイプ
+// Server type
 export const ServerTypeSchema = z.enum(['local', 'remote', 'npx']);
 export type ServerType = z.infer<typeof ServerTypeSchema>;
 
-// 起動モード
+// Startup mode
 export const StartModeSchema = z.enum(['eager', 'lazy']);
 export type StartMode = z.infer<typeof StartModeSchema>;
 
-// ツールフィルター設定
+// Tool filter configuration
 export const ToolsConfigSchema = z.object({
   include: z.array(z.string()).default(['*']),
   exclude: z.array(z.string()).optional(),
-  prefix: z.string().optional(), // サーバー固有のプレフィックス
-  aliases: z.record(z.string()).optional(), // ツール単位のエイリアス
+  prefix: z.string().optional(), // Server-specific prefix
+  aliases: z.record(z.string()).optional(), // Per-tool aliases
 });
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
 
-// ベースサーバー設定
+// Base server configuration
 export const BaseServerConfigSchema = z.object({
-  id: z.string(), // サーバーID（アンダースコア推奨）
+  id: z.string(), // Server ID (underscore recommended)
   type: ServerTypeSchema,
   start: StartModeSchema.default('lazy'),
   tools: ToolsConfigSchema.optional(),
@@ -409,7 +409,7 @@ export function validateConfig(config: unknown): HatagoConfig {
   return HatagoConfigSchema.parse(config);
 }
 
-// 設定のデフォルト値を取得
+// Get configuration default values
 export function getDefaultConfig(): HatagoConfig {
   return HatagoConfigSchema.parse({});
 }

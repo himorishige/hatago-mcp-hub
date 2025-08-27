@@ -330,9 +330,7 @@ export class StreamableHTTPTransport implements Transport {
         // Check if this specific session is already initialized
         if (this.#initializedSessions.has(requestSessionId)) {
           // Allow re-initialization for the same session (for reconnection scenarios)
-          console.log(
-            `[DEBUG] Session ${requestSessionId} is being re-initialized`,
-          );
+          // Debug: Session is being re-initialized
           // Update the session timestamp to keep it alive
           this.#initializedSessions.set(requestSessionId, true);
         }
@@ -642,9 +640,7 @@ export class StreamableHTTPTransport implements Transport {
       // Set the session ID in response header for client tracking
       ctx.header('mcp-session-id', ephemeralSessionId);
 
-      console.error(
-        `[DEBUG] Auto-created ephemeral session: ${ephemeralSessionId}`,
-      );
+      // Debug: Auto-created ephemeral session
       return true;
     }
 
@@ -668,7 +664,7 @@ export class StreamableHTTPTransport implements Transport {
       this.sessionId = sessionId;
       this.#initializedSessions.set(sessionId, true);
 
-      console.error(`[DEBUG] Auto-initialized session: ${sessionId}`);
+      // Debug: Auto-initialized session
     }
 
     return true;
@@ -707,8 +703,8 @@ export class StreamableHTTPTransport implements Transport {
       method: 'notifications/progress',
       params: {
         progressToken,
-        progress: progress ?? 0, // デフォルトは0
-        ...(total !== undefined && total !== null && { total }), // 値がある場合のみ含める
+        progress: progress ?? 0, // Default to 0
+        ...(total !== undefined && total !== null && { total }), // Include only if value exists
       },
     };
 

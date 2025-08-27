@@ -6,6 +6,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { APP_VERSION } from '../constants.js';
 
 // Transport is the common interface for SSEClientTransport and StreamableHTTPClientTransport
 type Transport = SSEClientTransport | StreamableHTTPClientTransport;
@@ -178,15 +179,16 @@ export class RemoteConnectionManager {
     );
 
     if (transportType === 'sse') {
-      // SSEClientTransport may not support headers option directly
-      const sseTransport = new SSEClientTransport(new URL(url), headers);
+      // SSEClientTransport requires headers in requestInit
+      const sseTransport = new SSEClientTransport(new URL(url), {
+        requestInit: { headers },
+      });
       return sseTransport;
     } else {
-      // StreamableHTTPClientTransport may not support headers option directly
-      const httpTransport = new StreamableHTTPClientTransport(
-        new URL(url),
-        headers,
-      );
+      // StreamableHTTPClientTransport requires headers in requestInit
+      const httpTransport = new StreamableHTTPClientTransport(new URL(url), {
+        requestInit: { headers },
+      });
       return httpTransport;
     }
   }
@@ -223,7 +225,7 @@ export class RemoteConnectionManager {
       const client = new Client(
         {
           name: `hatago-hub-${this.config.id}`,
-          version: '0.2.0',
+          version: APP_VERSION,
         },
         {
           capabilities: {

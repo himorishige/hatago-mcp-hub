@@ -17,6 +17,7 @@ import type {
 } from '../config/types.js';
 
 import { logger } from '../observability/minimal-logger.js';
+import type { Platform } from '../platform/types.js';
 import type { RegistryStorage } from '../storage/registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
 // import { sanitizeLog } from '../utils/security.js';
@@ -52,6 +53,7 @@ export interface ServerRegistryConfig {
   discoveryTimeoutMs?: number;
   maxHealthCheckFailures?: number; // Max consecutive failures before auto-restart
   autoRestartOnHealthFailure?: boolean; // Enable auto-restart on health check failure
+  platform?: Platform; // Platform abstraction (optional for backward compatibility)
 }
 
 /**
@@ -61,6 +63,7 @@ export class ServerRegistry extends EventEmitter {
   private servers = new Map<string, RegisteredServer>();
 
   private config: ServerRegistryConfig;
+  private platform?: Platform;
   private healthCheckInterval: unknown = null;
 
   private storage: RegistryStorage | null = null;
@@ -90,6 +93,7 @@ export class ServerRegistry extends EventEmitter {
       ...config,
     };
     this.storage = storage || null;
+    this.platform = config?.platform;
   }
 
   /**

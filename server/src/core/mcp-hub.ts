@@ -16,14 +16,15 @@ import {
   type ReadResourceResult,
   type Resource,
 } from '@modelcontextprotocol/sdk/types.js';
-
 import type {
   HatagoConfig,
   NpxServerConfig,
   RemoteServerConfig,
   ServerConfig,
 } from '../config/types.js';
+import { APP_NAME, APP_VERSION } from '../constants.js';
 import type { StreamableHTTPTransport } from '../hono-mcp/index.js';
+import type { Platform } from '../platform/types.js';
 import type { CustomStdioTransport as StdioTransport } from '../servers/custom-stdio-transport.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
@@ -64,6 +65,7 @@ export interface McpConnection {
 // MCP Hub options
 export interface McpHubOptions {
   config: HatagoConfig;
+  platform?: Platform; // Optional for backward compatibility
 }
 
 /**
@@ -84,6 +86,7 @@ export class McpHub {
   private toolRegistrationMutex = createKeyedMutex<string>(); // Per-server mutex for tool registration
   private sessionManager: SessionManager;
   private logger: any; // Using minimal logger
+  private platform?: Platform; // Platform abstraction (optional for backward compatibility)
   private transport?: StreamableHTTPTransport; // Store transport for progress notifications
   private toolManager?: McpHubToolManager;
   private resourceManager?: McpHubResourceManager;
@@ -91,14 +94,15 @@ export class McpHub {
 
   constructor(options: McpHubOptions) {
     this.config = options.config;
+    this.platform = options.platform;
 
-    // Create logger for McpHub
-    this.logger = logger;
+    // Create logger - use platform logger if available, otherwise default
+    this.logger = this.platform?.logger || logger;
 
     // Create MCP server
     this.server = new McpServer({
-      name: 'hatago-hub',
-      version: '0.0.2',
+      name: APP_NAME,
+      version: APP_VERSION,
     });
 
     // Initialize tool registry
@@ -385,7 +389,9 @@ export class McpHub {
         storage = new UnifiedFileStorage('.hatago/registry.json');
       }
 
-      this.serverRegistry = new ServerRegistry(storage);
+      this.serverRegistry = new ServerRegistry(storage, {
+        platform: this.platform,
+      });
       await this.serverRegistry.initialize();
     }
 
@@ -612,11 +618,23 @@ export class McpHub {
             this.logger.info(
               `NPX server ${serverId} started, discovering tools and resources...`,
             );
+            // Update tools and resources immediately
             await Promise.all([
               this.refreshNpxServerTools(serverId),
               this.refreshNpxServerResources(serverId),
-              this.refreshNpxServerPrompts(serverId),
             ]);
+
+            // Update prompts after promptManager is initialized
+            if (this.promptManager) {
+              await this.refreshNpxServerPrompts(serverId);
+            } else {
+              // Defer prompt refresh until after initialization
+              setTimeout(async () => {
+                if (this.promptManager) {
+                  await this.refreshNpxServerPrompts(serverId);
+                }
+              }, 100);
+            }
           }
         });
 
@@ -653,12 +671,26 @@ export class McpHub {
         await Promise.all([
           this.refreshNpxServerTools(serverId),
           this.refreshNpxServerResources(serverId),
-          this.refreshNpxServerPrompts(serverId),
           this.refreshNpxServerResourceTemplates(serverId),
         ]);
 
+        // Update prompts after promptManager is initialized
+        if (this.promptManager) {
+          await this.refreshNpxServerPrompts(serverId);
+        } else {
+          setTimeout(async () => {
+            if (this.promptManager) {
+              await this.refreshNpxServerPrompts(serverId);
+            }
+          }, 100);
+        }
+
         this.logger.info(`Connected to NPX server ${serverId}`);
-      } else if (type === 'remote') {
+      } else if (
+        (type as string) === 'remote' ||
+        (type as string) === 'http' ||
+        (type as string) === 'sse'
+      ) {
         // リモートサーバーは起動と接続を行う
         if (!this.serverRegistry) {
           this.serverRegistry = new ServerRegistry();
@@ -678,8 +710,23 @@ export class McpHub {
             this.logger.info(
               `Remote server ${serverId} started, discovering tools and resources...`,
             );
-            // ServerRegistryが既にdiscoverToolsを呼んでいるので、ここでは呼ばない
-            // ツールとリソースはconnectServerの最後で一度だけ取得する
+
+            // Re-discover tools, resources, and prompts after reconnection
+            try {
+              await Promise.all([
+                this.refreshRemoteServerTools(serverId),
+                this.refreshRemoteServerResources(serverId),
+                this.refreshRemoteServerResourceTemplates(serverId),
+              ]);
+              this.logger.info(
+                `Successfully re-discovered capabilities for ${serverId} after reconnection`,
+              );
+            } catch (error) {
+              this.logger.error(
+                { error },
+                `Failed to re-discover capabilities for ${serverId} after reconnection`,
+              );
+            }
           }
         });
 
@@ -705,12 +752,23 @@ export class McpHub {
         };
         this.connections.set(serverId, connection);
 
-        // ツール/リソース/テンプレートを並列で取得して登録
+        // ツール/リソース/プロンプト/テンプレートを並列で取得して登録
         await Promise.all([
           this.refreshRemoteServerTools(serverId),
           this.refreshRemoteServerResources(serverId),
           this.refreshRemoteServerResourceTemplates(serverId),
         ]);
+
+        // Update prompts after promptManager is initialized
+        if (this.promptManager) {
+          await this.promptManager.refreshRemoteServerPrompts(serverId);
+        } else {
+          setTimeout(async () => {
+            if (this.promptManager) {
+              await this.promptManager.refreshRemoteServerPrompts(serverId);
+            }
+          }, 100);
+        }
 
         this.logger.info(`Connected to remote server ${serverId}`);
       } else if (type === 'local') {
@@ -778,7 +836,7 @@ export class McpHub {
           serverId,
           npxServer: localServer, // NpxMcpServerインスタンスをnpxServerとして保存
           connected: true,
-          type: 'local',
+          type: 'npx', // Local servers use NpxMcpServer, so type should be 'npx'
         };
         this.connections.set(serverId, connection);
 
@@ -786,9 +844,19 @@ export class McpHub {
         await Promise.all([
           this.refreshNpxServerTools(serverId),
           this.refreshNpxServerResources(serverId),
-          this.refreshNpxServerPrompts(serverId),
           this.refreshNpxServerResourceTemplates(serverId),
         ]);
+
+        // Update prompts after promptManager is initialized
+        if (this.promptManager) {
+          await this.refreshNpxServerPrompts(serverId);
+        } else {
+          setTimeout(async () => {
+            if (this.promptManager) {
+              await this.refreshNpxServerPrompts(serverId);
+            }
+          }, 100);
+        }
 
         this.logger.info(`Connected to local server ${serverId}`);
       } else {
@@ -894,7 +962,7 @@ export class McpHub {
    * リモートサーバーのツールを更新
    */
   private async refreshRemoteServerTools(serverId: string): Promise<void> {
-    this.logger.info(`[DEBUG] refreshRemoteServerTools called for ${serverId}`);
+    this.logger.debug(`$1`);
     if (!this.serverRegistry) {
       return;
     }
@@ -909,7 +977,7 @@ export class McpHub {
           hasInstance: !!registered?.instance,
         },
       },
-      `[DEBUG] Registered server`,
+      `Registered server`,
     );
 
     // toolsが配列でない場合は修正
@@ -918,9 +986,7 @@ export class McpHub {
     }
 
     if (!registered?.tools) {
-      this.logger.info(
-        `[DEBUG] No tools found for ${serverId}, attempting discovery...`,
-      );
+      this.logger.debug(`$1`);
 
       // リモートサーバーから直接ツールを取得
       if (registered?.instance && 'discoverTools' in registered.instance) {
@@ -928,9 +994,7 @@ export class McpHub {
           const tools = await (
             registered.instance as RemoteMcpServer
           ).discoverTools();
-          this.logger.info(
-            `[DEBUG] Discovered ${tools.length} tools from ${serverId}`,
-          );
+          this.logger.debug(`$1`);
 
           // ツールをServerRegistryに登録
           this.serverRegistry.registerServerTools(serverId, tools);
@@ -938,9 +1002,7 @@ export class McpHub {
           // 再度取得
           const updatedRegistered = this.serverRegistry.getServer(serverId);
           if (!updatedRegistered?.tools) {
-            this.logger.info(
-              `[DEBUG] Still no tools after discovery for ${serverId}`,
-            );
+            this.logger.debug(`$1`);
             return;
           }
         } catch (error) {
@@ -948,9 +1010,7 @@ export class McpHub {
           return;
         }
       } else {
-        this.logger.info(
-          `[DEBUG] Server ${serverId} doesn't support tool discovery`,
-        );
+        this.logger.debug(`$1`);
         return;
       }
     }
@@ -1055,8 +1115,15 @@ export class McpHub {
    * NPXサーバーのプロンプトを更新
    */
   private async refreshNpxServerPrompts(serverId: string): Promise<void> {
+    this.logger.debug(
+      `[McpHub] refreshNpxServerPrompts called for ${serverId}`,
+    );
     if (this.promptManager) {
       await this.promptManager.refreshNpxServerPrompts(serverId);
+    } else {
+      this.logger.warn(
+        `[McpHub] promptManager not initialized for ${serverId}`,
+      );
     }
   }
 
@@ -1064,9 +1131,7 @@ export class McpHub {
    * リモートサーバーのリソースを更新
    */
   private async refreshRemoteServerResources(serverId: string): Promise<void> {
-    this.logger.info(
-      `[DEBUG] refreshRemoteServerResources called for ${serverId}`,
-    );
+    this.logger.debug(`$1`);
     if (!this.serverRegistry) {
       return;
     }
@@ -1081,9 +1146,7 @@ export class McpHub {
 
       // リモートサーバーから直接リソースを取得
       const resources = await remoteServer.discoverResources();
-      this.logger.info(
-        `[DEBUG] Discovered ${resources.length} resources from ${serverId}`,
-      );
+      this.logger.debug(`$1`);
 
       // ServerRegistryにリソースを登録
       this.serverRegistry.registerServerResources(
@@ -1145,7 +1208,7 @@ export class McpHub {
    */
   private updateHubResources(): void {
     const resources = this.resourceRegistry.getAllResources();
-    this.logger.info(`Hub now has ${resources.length} total resources`);
+    this.logger.debug(`Hub now has ${resources.length} total resources`);
 
     // Debug: Log the first resource to see its structure
     if (resources.length > 0) {
@@ -1219,7 +1282,7 @@ export class McpHub {
     // Use keyed mutex to prevent concurrent registration per server
     await this.toolRegistrationMutex.runExclusive(serverId, async () => {
       const tools = this.registry.getAllTools();
-      this.logger.info(`Hub now has ${tools.length} total tools`);
+      this.logger.debug(`Hub now has ${tools.length} total tools`);
       // Debug: Log the first tool to see its structure
       if (tools.length > 0) {
         this.logger.debug(
@@ -1345,6 +1408,11 @@ export class McpHub {
     // Store transport for progress notifications (only if it's StreamableHTTPTransport)
     if (transport && 'sendProgressNotification' in transport) {
       this.transport = transport as StreamableHTTPTransport;
+
+      // Update transport in existing tool manager
+      if (this.toolManager) {
+        this.toolManager.setTransport(this.transport);
+      }
     }
 
     // Create managers if not already created
@@ -1355,6 +1423,7 @@ export class McpHub {
         this.connections,
         this.server,
         this.logger.child({ component: 'ToolManager' }),
+        this.transport,
       );
       this.toolManager.setupToolHandlers();
     }
@@ -1385,6 +1454,20 @@ export class McpHub {
     this.toolManager.setInitialized(true);
     this.resourceManager.setInitialized(true);
     this.promptManager.setInitialized(true);
+
+    // Refresh prompts for all connected servers
+    this.logger.debug('Refreshing prompts for all connected servers...');
+    for (const connection of this.connections.values()) {
+      if (connection.serverId) {
+        if (connection.type === 'npx') {
+          await this.refreshNpxServerPrompts(connection.serverId);
+        } else if (connection.type === 'remote') {
+          await this.promptManager.refreshRemoteServerPrompts(
+            connection.serverId,
+          );
+        }
+      }
+    }
 
     await this.server.connect(transport);
   }

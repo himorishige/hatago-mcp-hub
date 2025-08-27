@@ -13,6 +13,7 @@ import type {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { NpxServerConfig } from '../config/types.js';
+import { APP_VERSION } from '../constants.js';
 
 import { ErrorHelpers } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
@@ -115,11 +116,23 @@ export class NpxMcpServer extends EventEmitter {
   /**
    * Call a tool on the server
    */
-  async callTool(name: string, args: unknown): Promise<unknown> {
+  async callTool(
+    name: string,
+    args: unknown,
+    progressToken?: string | number,
+  ): Promise<unknown> {
     if (!this.client) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
-    return await this.client.callTool({ name, arguments: args as any });
+
+    const params: any = { name, arguments: args as any };
+
+    // Add progressToken to _meta if provided (for compatibility)
+    if (progressToken !== undefined) {
+      params._meta = { progressToken };
+    }
+
+    return await this.client.callTool(params);
   }
 
   /**
@@ -401,7 +414,7 @@ export class NpxMcpServer extends EventEmitter {
     this.client = new Client(
       {
         name: `hatago-hub-${this.config.id}`,
-        version: '0.0.2',
+        version: APP_VERSION,
       },
       {
         capabilities: {
@@ -505,7 +518,7 @@ export class NpxMcpServer extends EventEmitter {
     } catch (error) {
       // Resources are optional, log as debug
       logger.debug(
-        `Server ${this.config.id} doesn't implement $1:`,
+        `Server ${this.config.id} doesn't implement method:`,
         error instanceof Error ? error.message : String(error),
       );
       // Don't throw - resources are optional
@@ -537,7 +550,7 @@ export class NpxMcpServer extends EventEmitter {
     } catch (error) {
       // Prompts are optional, log as debug
       logger.debug(
-        `Server ${this.config.id} doesn't implement $1:`,
+        `Server ${this.config.id} doesn't implement method:`,
         error instanceof Error ? error.message : String(error),
       );
       // Don't throw - prompts are optional

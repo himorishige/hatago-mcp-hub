@@ -3,8 +3,8 @@
   "logLevel": "debug",
   "mcpServers": {
     "deepwiki": {
-      "url": "https://mcp.deepwiki.com/sse",
-      "type": "sse",
+      "url": "https://mcp.deepwiki.com/mcp",
+      "type": "http",
       "hatagoOptions": {
         "start": "lazy",
         "timeouts": {

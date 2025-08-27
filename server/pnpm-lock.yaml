@@ -32,6 +32,9 @@ importers:
       "@types/node":
         specifier: ^20.11.17
         version: 20.19.11
+      "@types/ws":
+        specifier: ^8.18.1
+        version: 8.18.1
       chalk:
         specifier: ^5.6.0
         version: 5.6.0
@@ -792,6 +795,12 @@ packages:
     resolution:
       {
         integrity: sha512-uug3FEEGv0r+jrecvUUpbY8lLisvIjg6AAic6a2bSP5OEOLeJsDSnvhCDov7ipFFMXS3orMpzlmi0ZcuGkBbow==,
+      }
+
+  "@types/ws@8.18.1":
+    resolution:
+      {
+        integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==,
       }
 
   "@vitest/expect@3.2.4":
@@ -2315,6 +2324,10 @@ snapshots:
   "@types/node@20.19.11":
     dependencies:
       undici-types: 6.21.0
+
+  "@types/ws@8.18.1":
+    dependencies:
+      "@types/node": 20.19.11
 
   "@vitest/expect@3.2.4":
     dependencies:

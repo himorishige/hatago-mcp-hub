@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago",
-  "version": "0.3.0",
+  "version": "0.0.1",
   "description": "Hatago MCP Hub - Lightweight MCP server management",
   "type": "module",
   "main": "./dist/index.js",
@@ -46,6 +46,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@types/node": "^20.11.17",
+    "@types/ws": "^8.18.1",
     "chalk": "^5.6.0",
     "tsdown": "^0.14.2",
     "tsx": "^4.7.1",

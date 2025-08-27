@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import type { HatagoConfig } from '../../config/types.js';
+import { APP_NAME, APP_VERSION } from '../../constants.js';
 import type { McpHub } from '../../core/mcp-hub.js';
 
 /**
@@ -20,8 +21,8 @@ export function createHttpApp(
   app.get('/health', (c) =>
     c.json({
       ok: true,
-      name: 'hatago-hub',
-      version: '0.0.2',
+      name: APP_NAME,
+      version: APP_VERSION,
       timestamp: new Date().toISOString(),
     }),
   );
@@ -43,7 +44,7 @@ export function createHttpApp(
     c.html(`<!doctype html>
 <meta charset="utf-8"/>
 <title>🏮 Hatago MCP Hub</title>
-<h1>🏮 Hatago MCP Hub v0.0.2</h1>
+<h1>🏮 Hatago MCP Hub v${APP_VERSION}</h1>
 <p>MCP endpoint: <code>POST /mcp</code></p>
 <p>Tools list: <code>GET /tools</code></p>
 <p>Health check: <code>GET /health</code></p>

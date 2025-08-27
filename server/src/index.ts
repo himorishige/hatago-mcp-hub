@@ -8,6 +8,8 @@
 // Configuration
 export * from './config/loader.js';
 export * from './config/types.js';
+// Re-export version and features from constants for backward compatibility
+export { APP_VERSION as VERSION, FEATURES } from './constants.js';
 export * from './core/error-recovery.js';
 export { retryWithBackoff } from './core/error-recovery.js';
 // Core functionality
@@ -38,16 +40,3 @@ export {
   isErrorCode,
 } from './utils/errors.js';
 export * from './utils/result.js';
-
-/**
- * Version information
- */
-export const VERSION = '0.3.0-lite';
-export const FEATURES = {
-  core: true,
-  security: 'minimal',
-  observability: 'minimal',
-  errorRecovery: true,
-  connectionManagement: true,
-  enterprise: false,
-} as const;

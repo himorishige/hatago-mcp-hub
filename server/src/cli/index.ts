@@ -17,6 +17,7 @@ if (
 }
 
 import { Command } from 'commander';
+import { APP_VERSION } from '../constants.js';
 
 // Import only essential command handlers
 import { createListCommand } from './commands/list.js';
@@ -28,7 +29,7 @@ const program = new Command();
 program
   .name('hatago')
   .description('🏮 Hatago MCP Hub - Lightweight MCP server management')
-  .version('0.2.0');
+  .version(APP_VERSION);
 
 // Register essential commands only
 createServeCommand(program);
