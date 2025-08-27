@@ -7,6 +7,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import { APP_NAME, APP_VERSION, MCP_PROTOCOL_VERSION } from '../constants.js';
 import type { NegotiatedProtocol } from '../core/types.js';
 import { ErrorHelpers } from '../utils/errors.js';
 
@@ -232,11 +233,11 @@ export class CustomStdioTransport extends EventEmitter implements Transport {
         id: 1,
         method: 'initialize',
         params: {
-          protocolVersion: '2024-11-05',
+          protocolVersion: MCP_PROTOCOL_VERSION,
           capabilities: {},
           clientInfo: {
-            name: 'hatago-hub',
-            version: '0.3.0-lite',
+            name: APP_NAME,
+            version: APP_VERSION,
           },
         },
       };

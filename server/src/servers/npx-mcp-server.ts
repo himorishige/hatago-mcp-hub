@@ -13,6 +13,7 @@ import type {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { NpxServerConfig } from '../config/types.js';
+import { APP_VERSION } from '../constants.js';
 
 import { ErrorHelpers } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
@@ -413,7 +414,7 @@ export class NpxMcpServer extends EventEmitter {
     this.client = new Client(
       {
         name: `hatago-hub-${this.config.id}`,
-        version: '0.0.2',
+        version: APP_VERSION,
       },
       {
         capabilities: {

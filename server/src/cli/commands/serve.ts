@@ -7,6 +7,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { Command } from 'commander';
 import { loadConfig } from '../../config/loader.js';
 import type { HatagoConfig } from '../../config/types.js';
+import { APP_VERSION } from '../../constants.js';
 import { McpHub } from '../../core/mcp-hub.js';
 import {
   LogLevel,
@@ -140,7 +141,7 @@ function setupLogging(options: ServeOptions): void {
 
   // Log startup
   logger.info('Starting Hatago MCP Hub', {
-    version: '0.2.0-lite',
+    version: APP_VERSION,
     mode: options.mode || 'stdio',
   });
 }
@@ -293,7 +294,7 @@ async function startHttpMode(
   );
 
   // Add health endpoint
-  app.get('/health', (c) => c.json({ status: 'ok', version: '0.2.0-lite' }));
+  app.get('/health', (c) => c.json({ status: 'ok', version: APP_VERSION }));
 
   // Setup MCP endpoints
   const { setupSessionEndpoints } = await import(

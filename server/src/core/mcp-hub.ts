@@ -16,13 +16,13 @@ import {
   type ReadResourceResult,
   type Resource,
 } from '@modelcontextprotocol/sdk/types.js';
-
 import type {
   HatagoConfig,
   NpxServerConfig,
   RemoteServerConfig,
   ServerConfig,
 } from '../config/types.js';
+import { APP_NAME, APP_VERSION } from '../constants.js';
 import type { StreamableHTTPTransport } from '../hono-mcp/index.js';
 import type { Platform } from '../platform/types.js';
 import type { CustomStdioTransport as StdioTransport } from '../servers/custom-stdio-transport.js';
@@ -101,8 +101,8 @@ export class McpHub {
 
     // Create MCP server
     this.server = new McpServer({
-      name: 'hatago-hub',
-      version: '0.0.2',
+      name: APP_NAME,
+      version: APP_VERSION,
     });
 
     // Initialize tool registry

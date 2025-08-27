@@ -22,6 +22,7 @@ import type {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { RemoteServerConfig } from '../config/types.js';
+import { APP_NAME, APP_VERSION } from '../constants.js';
 
 import type { NegotiatedProtocol } from '../core/types.js';
 import { logger } from '../observability/minimal-logger.js';
@@ -498,8 +499,8 @@ export class RemoteMcpServer extends EventEmitter {
     // Create client
     const client = new Client(
       {
-        name: 'hatago-hub',
-        version: '0.3.0-lite',
+        name: APP_NAME,
+        version: APP_VERSION,
       },
       {
         capabilities: {},

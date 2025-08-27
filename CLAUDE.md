@@ -151,7 +151,7 @@ hatago session clear         # Clear all sessions
 - **Local servers**: Use Zod schema objects for tool inputs, not JSON Schema
 - **Working directory**: Local servers use config file location as default cwd
 
-## Simplified to Lite Version (v0.3.0-lite) - 2024-12-26
+## Simplified to Lite Version (v0.0.1) - 2024-12-26
 
 ### Major Simplification
 

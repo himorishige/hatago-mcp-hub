@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import type { HatagoConfig } from '../../config/types.js';
+import { APP_NAME, APP_VERSION } from '../../constants.js';
 import type { McpHub } from '../../core/mcp-hub.js';
 
 /**
@@ -20,8 +21,8 @@ export function createHttpApp(
   app.get('/health', (c) =>
     c.json({
       ok: true,
-      name: 'hatago-hub',
-      version: '0.0.2',
+      name: APP_NAME,
+      version: APP_VERSION,
       timestamp: new Date().toISOString(),
     }),
   );

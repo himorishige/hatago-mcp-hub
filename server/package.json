@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago",
-  "version": "0.3.0",
+  "version": "0.0.1",
   "description": "Hatago MCP Hub - Lightweight MCP server management",
   "type": "module",
   "main": "./dist/index.js",
