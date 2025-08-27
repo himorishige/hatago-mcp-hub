@@ -50,8 +50,9 @@ export type TimeoutsConfig = z.infer<typeof TimeoutsConfigSchema>;
 
 // 並列実行設定
 export const ConcurrencyConfigSchema = z.object({
-  global: z.number().default(8),
-  perServer: z.record(z.number()).optional(),
+  global: z.number().default(4),
+  serverInit: z.number().optional(),
+  warmup: z.number().optional(),
 });
 export type ConcurrencyConfig = z.infer<typeof ConcurrencyConfigSchema>;
 

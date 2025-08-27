@@ -355,7 +355,11 @@ export class McpHub {
 
     // 設定されたサーバーを接続 (並列実行)
     this.logger.info(`Found ${servers.length} servers in config`);
-    const queue = createTaskQueue<void>(this.config.concurrency?.global ?? 4);
+    const queue = createTaskQueue<void>(
+      this.config.concurrency?.serverInit ??
+        this.config.concurrency?.global ??
+        4,
+    );
     await Promise.all(
       servers.map((serverConfig) =>
         queue.add(async () => {
@@ -394,8 +398,14 @@ export class McpHub {
 
     this.logger.info('🔥 Warming up NPX packages...');
 
-    // Run warmup in parallel for all NPX servers
-    const warmupPromises = npxServers.map(async (serverConfig) => {
+    // Run warmup in parallel for all NPX servers with concurrency control
+    const queue = createTaskQueue<void>(
+      this.config.concurrency?.warmup ??
+        this.config.concurrency?.global ??
+        4,
+    );
+    const warmupPromises = npxServers.map((serverConfig) =>
+      queue.add(async () => {
       try {
         const npxConfig = serverConfig as NpxServerConfig;
 
@@ -505,7 +515,8 @@ export class McpHub {
         this.logger.info(`  ⚠️  Failed to warm up ${serverConfig.id}: ${error}`);
         // Don't fail the whole initialization
       }
-    });
+      }),
+    );
 
     // Use allSettled to track success/failure
     const results = await Promise.allSettled(warmupPromises);
@@ -833,7 +844,7 @@ export class McpHub {
       // ハブのツールを更新
       await this.updateHubTools(serverId);
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error({ error }, `Failed to refresh ${serverId} tools`);
     }
   }
 
@@ -891,7 +902,10 @@ export class McpHub {
             return;
           }
         } catch (error) {
-          this.logger.error({ error }, `$2`);
+          this.logger.error(
+            { error },
+            `Failed to refresh ${serverId} tools`,
+          );
           return;
         }
       } else {
@@ -924,7 +938,7 @@ export class McpHub {
       // ハブのツールを更新
       await this.updateHubTools(serverId);
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error({ error }, `Failed to refresh ${serverId} tools`);
     }
   }
 
@@ -958,7 +972,10 @@ export class McpHub {
       // ハブのリソースを更新
       this.updateHubResources();
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error(
+        { error },
+        `Failed to refresh ${serverId} resources`,
+      );
     }
   }
 
@@ -1011,7 +1028,10 @@ export class McpHub {
       // ハブのリソースを更新
       this.updateHubResources();
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error(
+        { error },
+        `Failed to refresh ${serverId} resources`,
+      );
     }
   }
 
