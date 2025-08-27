@@ -349,7 +349,7 @@ export class McpHub {
   }
 
   /**
-   * MCPハブを初期化
+   * Initialize MCP Hub
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
@@ -1038,7 +1038,7 @@ export class McpHub {
         `NPX Server ${serverId} has ${resourceTemplates.length} resource templates`,
       );
 
-      // テンプレートレジストリに登録
+      // Register templates to registry
       this.resourceTemplateRegistry.registerTemplates(
         serverId,
         resourceTemplates,
@@ -1127,7 +1127,7 @@ export class McpHub {
         `Remote Server ${serverId} has ${resourceTemplates.length} resource templates`,
       );
 
-      // テンプレートレジストリに登録
+      // Register templates to registry
       this.resourceTemplateRegistry.registerTemplates(
         serverId,
         resourceTemplates,

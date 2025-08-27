@@ -39,6 +39,10 @@ export class ResourceTemplateRegistry {
    * Register resource templates from a server
    */
   registerTemplates(serverId: string, templates: ResourceTemplate[]): void {
+    if (!serverId?.trim()) {
+      throw new Error('Server ID is required');
+    }
+
     logger.debug(
       `Registering ${templates.length} templates for server ${serverId}`,
     );
@@ -50,8 +54,8 @@ export class ResourceTemplateRegistry {
     const serverTemplateSet = new Set<string>();
     this.serverTemplates.set(serverId, serverTemplateSet);
 
-    // Register each template
-    for (const template of templates) {
+    // Register each template using functional approach
+    templates.forEach((template) => {
       const formattedName = this.formatTemplateName(serverId, template.name);
 
       const metadata: ResourceTemplateMetadata = {
@@ -69,7 +73,7 @@ export class ResourceTemplateRegistry {
       logger.debug(
         `Registered template: ${formattedName} from server: ${serverId}`,
       );
-    }
+    });
   }
 
   /**
