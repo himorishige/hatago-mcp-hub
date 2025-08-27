@@ -103,15 +103,30 @@ export class McpHubResourceManager {
           );
         }
 
-        // Read resource through transport
+        // Read resource through appropriate method based on connection type
         this.logger.info(
           `Forwarding resource read ${uri} to server ${serverId}`,
         );
         try {
-          const result = await connection.transport.request({
-            method: 'resources/read',
-            params: { uri: originalUri },
-          });
+          let result: unknown = null;
+
+          if (connection.type === 'npx' && connection.npxServer) {
+            // NPX server - use the server instance directly
+            result = await connection.npxServer.readResource(originalUri);
+          } else if (connection.type === 'remote' && connection.remoteServer) {
+            // Remote server - use the server instance directly
+            result = await connection.remoteServer.readResource(originalUri);
+          } else if (connection.transport) {
+            // Local server - use transport.request
+            result = await connection.transport.request({
+              method: 'resources/read',
+              params: { uri: originalUri },
+            });
+          } else {
+            throw new Error(
+              `No valid method to read resource for connection type: ${connection.type}`,
+            );
+          }
 
           this.logger.debug(`Resource read ${uri} succeeded`);
           return result;
@@ -134,22 +149,16 @@ export class McpHubResourceManager {
       .find((s) => s.id === serverId);
     if (!server) return;
 
-    this.logger.debug(
-      `[DEBUG] refreshNpxServerResources called for ${serverId}`,
-    );
+    this.logger.debug(`$1`);
 
     const serverInstance = server.instance as NpxMcpServer | undefined;
     if (!serverInstance || typeof serverInstance.getResources !== 'function') {
-      this.logger.debug(
-        `[DEBUG] No resources found for ${serverId}, server might not support resources`,
-      );
+      this.logger.debug(`$1`);
       return;
     }
 
     const resources = serverInstance.getResources();
-    this.logger.debug(
-      `[DEBUG] Discovered ${resources.length} resources from ${serverId}`,
-    );
+    this.logger.debug(`$1`);
 
     // Register all resources
     this.resourceRegistry.registerServerResources(serverId, resources);
@@ -162,21 +171,19 @@ export class McpHubResourceManager {
    * Refresh resources for remote server
    */
   async refreshRemoteServerResources(serverId: string): Promise<void> {
-    this.logger.debug(
-      `[DEBUG] refreshRemoteServerResources called for ${serverId}`,
-    );
+    this.logger.debug(`$1`);
 
     const server = this.serverRegistry
       .listServers()
       .find((s) => s.id === serverId);
     if (!server) {
-      this.logger.debug(`[DEBUG] Server ${serverId} not found`);
+      this.logger.debug(`$1`);
       return;
     }
 
     const serverInstance = server.instance as RemoteMcpServer | undefined;
     if (!serverInstance) {
-      this.logger.debug(`[DEBUG] No instance for ${serverId}`);
+      this.logger.debug(`$1`);
       return;
     }
 
@@ -190,9 +197,7 @@ export class McpHubResourceManager {
         return;
       }
 
-      this.logger.debug(
-        `[DEBUG] Discovered ${resources.length} resources from ${serverId}`,
-      );
+      this.logger.debug(`$1`);
 
       // Register all resources
       this.resourceRegistry.registerServerResources(serverId, resources);
@@ -212,7 +217,7 @@ export class McpHubResourceManager {
    */
   private updateHubResources(): void {
     const resources = this.resourceRegistry.getAllResources();
-    this.logger.info(`Hub now has ${resources.length} total resources`);
+    this.logger.debug(`Hub now has ${resources.length} total resources`);
 
     // Debug: Log the first resource to see its structure
     if (resources.length > 0) {
@@ -291,9 +296,7 @@ export class McpHubResourceManager {
     // This is a placeholder for future prompt support
     const prompts = serverInstance.getPrompts?.() ?? [];
     if (prompts.length > 0) {
-      this.logger.debug(
-        `[DEBUG] Discovered ${prompts.length} prompts from ${serverId}`,
-      );
+      this.logger.debug(`$1`);
       // TODO: Register prompts when prompt registry is implemented
     }
 
@@ -306,7 +309,7 @@ export class McpHubResourceManager {
    */
   private updateHubPrompts(): void {
     const prompts: any[] = []; // TODO: Add proper type
-    this.logger.info(`Hub now has ${prompts.length} total prompts`);
+    this.logger.debug(`Hub now has ${prompts.length} total prompts`);
 
     // Debug: Log the first prompt to see its structure
     if (prompts.length > 0) {

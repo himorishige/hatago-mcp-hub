@@ -81,4 +81,6 @@ export interface McpConnection {
   client?: any;
   process?: any;
   transport?: any;
+  npxServer?: any; // NPX server instance
+  remoteServer?: any; // Remote server instance
 }

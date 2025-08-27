@@ -111,16 +111,34 @@ export class McpHubPromptManager {
           );
         }
 
-        // Get prompt through transport
+        // Get prompt through appropriate method based on connection type
         this.logger.info(`Forwarding prompt get ${name} to server ${serverId}`);
         try {
-          const result = await connection.transport.request({
-            method: 'prompts/get',
-            params: {
-              name: originalName,
-              arguments: args,
-            },
-          });
+          let result: unknown = null;
+
+          if (connection.type === 'npx' && connection.npxServer) {
+            // NPX server - use the server instance directly
+            result = await connection.npxServer.getPrompt(originalName, args);
+          } else if (connection.type === 'remote' && connection.remoteServer) {
+            // Remote server - use the server instance directly
+            result = await connection.remoteServer.getPrompt(
+              originalName,
+              args,
+            );
+          } else if (connection.transport) {
+            // Local server - use transport.request
+            result = await connection.transport.request({
+              method: 'prompts/get',
+              params: {
+                name: originalName,
+                arguments: args,
+              },
+            });
+          } else {
+            throw new Error(
+              `No valid method to get prompt for connection type: ${connection.type}`,
+            );
+          }
 
           this.logger.debug(`Prompt get ${name} succeeded`);
           return result;
@@ -138,10 +156,14 @@ export class McpHubPromptManager {
    * Refresh prompts for NPX server
    */
   async refreshNpxServerPrompts(serverId: string): Promise<void> {
+    this.logger.debug(`refreshNpxServerPrompts called for ${serverId}`);
     const server = this.serverRegistry
       .listServers()
       .find((s) => s.id === serverId);
-    if (!server) return;
+    if (!server) {
+      this.logger.debug(`Server ${serverId} not found in registry`);
+      return;
+    }
 
     const serverInstance = server.instance as NpxMcpServer | undefined;
     if (!serverInstance || typeof serverInstance.getPrompts !== 'function') {
@@ -154,12 +176,14 @@ export class McpHubPromptManager {
     // Note: Prompts are not yet implemented in registry
     // This is a placeholder for future prompt support
     const prompts = serverInstance.getPrompts?.() ?? [];
+    this.logger.debug(`Got ${prompts.length} prompts from ${serverId}`);
     if (prompts.length > 0) {
-      this.logger.debug(
-        `[DEBUG] Discovered ${prompts.length} prompts from ${serverId}`,
-      );
+      this.logger.debug(`$1`);
       // Register all prompts
       this.promptRegistry.registerServerPrompts(serverId, prompts);
+      this.logger.debug(`Registered ${prompts.length} prompts for ${serverId}`);
+    } else {
+      this.logger.debug(`No prompts found for ${serverId}`);
     }
 
     // Update hub prompts
@@ -170,21 +194,19 @@ export class McpHubPromptManager {
    * Refresh prompts for remote server
    */
   async refreshRemoteServerPrompts(serverId: string): Promise<void> {
-    this.logger.debug(
-      `[DEBUG] refreshRemoteServerPrompts called for ${serverId}`,
-    );
+    this.logger.debug(`$1`);
 
     const server = this.serverRegistry
       .listServers()
       .find((s) => s.id === serverId);
     if (!server) {
-      this.logger.debug(`[DEBUG] Server ${serverId} not found`);
+      this.logger.debug(`$1`);
       return;
     }
 
     const serverInstance = server.instance as RemoteMcpServer | undefined;
     if (!serverInstance) {
-      this.logger.debug(`[DEBUG] No instance for ${serverId}`);
+      this.logger.debug(`$1`);
       return;
     }
 
@@ -198,9 +220,7 @@ export class McpHubPromptManager {
         return;
       }
 
-      this.logger.debug(
-        `[DEBUG] Discovered ${prompts.length} prompts from ${serverId}`,
-      );
+      this.logger.debug(`$1`);
 
       // Register all prompts
       this.promptRegistry.registerServerPrompts(serverId, prompts);
@@ -220,7 +240,7 @@ export class McpHubPromptManager {
    */
   private updateHubPrompts(): void {
     const prompts = this.promptRegistry.getAllPrompts();
-    this.logger.info(`Hub now has ${prompts.length} total prompts`);
+    this.logger.debug(`Hub now has ${prompts.length} total prompts`);
 
     // Debug: Log the first prompt to see its structure
     if (prompts.length > 0) {

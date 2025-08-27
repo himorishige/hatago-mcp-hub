@@ -1,25 +1,26 @@
-import { EventEmitter } from 'node:events';
+/**
+ * Config Manager - Platform-agnostic implementation
+ * Uses EventBus interface instead of EventEmitter
+ */
 import type { HatagoConfig } from '../config/types.js';
+import type { EventBus } from '../platform/types.js';
 import { type ConfigStore, createConfigStore } from './config-store.js';
 
 /**
- * 設定の世代管理を行うマネージャー
- * 複数世代の設定を保持し、アトミックな切り替えとライフサイクル管理を提供
+ * Config Manager with platform-agnostic event handling
  */
-/**
- * Config Manager - thin adapter over config store
- * Maintains backward compatibility while using functional core
- */
-export class ConfigManager extends EventEmitter {
+export class ConfigManager {
   private store: ConfigStore;
+  private events: EventBus;
+  private unsubscribe?: () => void;
 
-  constructor() {
-    super();
+  constructor(events: EventBus) {
     this.store = createConfigStore();
+    this.events = events;
 
-    // Bridge store events to EventEmitter for backward compatibility
-    this.store.subscribe((config, previousConfig) => {
-      this.emit('config:loaded', {
+    // Bridge store events to EventBus
+    this.unsubscribe = this.store.subscribe((config, previousConfig) => {
+      this.events.emit('config:loaded', {
         config,
         previousConfig,
         timestamp: new Date(),
@@ -38,13 +39,13 @@ export class ConfigManager extends EventEmitter {
    * 新しい設定を読み込み
    */
   async loadConfig(config: unknown): Promise<HatagoConfig> {
-    this.emit('config:validating');
+    this.events.emit('config:validating', {});
 
     try {
       const validatedConfig = this.store.set(config);
       return validatedConfig;
     } catch (error) {
-      this.emit('config:error', error);
+      this.events.emit('config:error', { error });
       throw error;
     }
   }
@@ -54,14 +55,42 @@ export class ConfigManager extends EventEmitter {
    */
   async reloadConfig(config: unknown): Promise<void> {
     await this.store.reload(config);
-    this.emit('config:reloaded');
+    this.events.emit('config:reloaded', {});
+  }
+
+  /**
+   * Subscribe to config events
+   */
+  on(event: string, handler: (payload: unknown) => void): () => void {
+    return this.events.on(event, handler);
+  }
+
+  /**
+   * Emit an event (for compatibility)
+   */
+  emit(event: string, payload?: unknown): void {
+    this.events.emit(event, payload || {});
+  }
+
+  /**
+   * Remove all listeners for an event
+   */
+  removeAllListeners(event?: string): void {
+    if (event) {
+      this.events.off(event);
+    }
+    // Note: removing all listeners across all events is not supported
+    // in the EventBus interface - this is intentional for better isolation
   }
 
   /**
    * シャットダウン
    */
   async shutdown(): Promise<void> {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
     this.store.clear();
-    this.removeAllListeners();
+    // Note: EventBus cleanup is handled by the Platform
   }
 }

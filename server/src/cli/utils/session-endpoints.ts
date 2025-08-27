@@ -46,9 +46,9 @@ export function setupSessionEndpoints(app: Hono, hub: McpHub): void {
         });
 
         // Connect transport to server
-        process.stderr.write('[DEBUG] Connecting new transport to server...\n');
+        // Debug: Connecting new transport to server
         await hub.serve(transport);
-        process.stderr.write('[DEBUG] Transport connected successfully\n');
+        // Debug: Transport connected successfully
 
         // Store transport for this session
         transports.set(sessionId, transport);
@@ -59,8 +59,7 @@ export function setupSessionEndpoints(app: Hono, hub: McpHub): void {
           throw new Error(`Transport not found for session ${clientSessionId}`);
         }
         transport = existingTransport;
-        process.stderr.write(`[DEBUG] Using existing transport for session: ${clientSessionId}
-`);
+        // Debug: Using existing transport for session
       } else {
         // No session or session not found
         return c.json(

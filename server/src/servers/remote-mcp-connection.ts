@@ -178,15 +178,16 @@ export class RemoteConnectionManager {
     );
 
     if (transportType === 'sse') {
-      // SSEClientTransport may not support headers option directly
-      const sseTransport = new SSEClientTransport(new URL(url), headers);
+      // SSEClientTransport requires headers in requestInit
+      const sseTransport = new SSEClientTransport(new URL(url), {
+        requestInit: { headers },
+      });
       return sseTransport;
     } else {
-      // StreamableHTTPClientTransport may not support headers option directly
-      const httpTransport = new StreamableHTTPClientTransport(
-        new URL(url),
-        headers,
-      );
+      // StreamableHTTPClientTransport requires headers in requestInit
+      const httpTransport = new StreamableHTTPClientTransport(new URL(url), {
+        requestInit: { headers },
+      });
       return httpTransport;
     }
   }
