@@ -1,376 +1,284 @@
-# Hatago Architecture Guide
+# Hatago アーキテクチャガイド
 
-This guide explains the internal architecture of Hatago MCP Hub, based on the FastMCP 2.0 design principles with a focus on proxy architecture and capability graph management.
+本ガイドでは、Hatago MCP Hubの内部アーキテクチャについて説明します。マルチランタイム対応のためのプラットフォーム抽象化レイヤーと軽量実装アプローチを含みます。
 
-## Overview
+## 概要
 
-Hatago is built around a **Proxy Architecture** that provides unified management of multiple MCP servers through a **Capability Graph** concept. Instead of treating servers as isolated units, Hatago views them as nodes in a graph where capabilities can be composed, proxied, and managed transparently.
+Hatagoは3つの主要な原則に基づいて構築されています：
 
-## Core Architecture
+1. **プラットフォーム抽象化** - Node.js、Cloudflare Workers、および将来のランタイムに対応するランタイム非依存設計
+2. **軽量コア** - 最小限の依存関係とオプショナルなエンタープライズ機能
+3. **プロキシアーキテクチャ** - ケイパビリティグラフによる複数MCPサーバーの統合管理
+
+## レイヤードアーキテクチャ
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   Client Layer                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Claude    │  │  HTTP API   │  │   Other MCP         │  │
-│  │   Client    │  │   Client    │  │   Clients           │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────┬───────────┬───────────────────┬───────────────┘
-              │           │                   │
-┌─────────────▼───────────▼───────────────────▼───────────────┐
-│                    Transport Layer                          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │    STDIO    │  │  HTTP/SSE   │  │     WebSocket       │  │
-│  │  Transport  │  │  Transport  │  │     Transport       │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────┬───────────┬───────────────────┬───────────────┘
-              │           │                   │
-┌─────────────▼───────────▼───────────────────▼───────────────┐
-│                      Core Hub                               │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              Session Manager                            │ │
-│  │  ┌─────────────────────────────────────────────────────┐│ │
-│  │  │            Capability Graph                         ││ │
-│  │  └─────────────────────────────────────────────────────┘│ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────┬───────────┬───────────────────┬───────────────┘
-              │           │                   │
-┌─────────────▼───────────▼───────────────────▼───────────────┐
-│                    Proxy Layer                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Proxy     │  │   Proxy     │  │     Proxy           │  │
-│  │   Tool      │  │ Resource    │  │    Prompt           │  │
-│  │  Manager    │  │  Manager    │  │   Manager           │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────┬───────────┬───────────────────┬───────────────┘
-              │           │                   │
-┌─────────────▼───────────▼───────────────────▼───────────────┐
-│                   Server Nodes                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │    NPX      │  │   Remote    │  │    Decorator        │  │
-│  │   Server    │  │   Server    │  │     Server          │  │
-│  │    Node     │  │    Node     │  │      Node           │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────┬───────────┬───────────────────┬───────────────┘
-              │           │                   │
-┌─────────────▼───────────▼───────────────────▼───────────────┐
-│                  Cross-Cutting Concerns                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │Observability│  │  Security   │  │    Developer        │  │
-│  │ • Tracing   │  │ • Auth      │  │     Tools           │  │
-│  │ • Metrics   │  │ • Rate Limit│  │ • Type Gen          │  │
-│  │ • Health    │  │ • Circuit   │  │ • Decorators        │  │
-│  │ • Logging   │  │   Breaker   │  │ • Testing           │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+│                   アプリケーションレイヤー                    │
+│          (Hono HTTPサーバー / CLI / API)                     │
+├─────────────────────────────────────────────────────────────┤
+│                      コアレイヤー                            │
+│     (McpHub、レジストリ、セッションマネージャー、管理機能)      │
+├─────────────────────────────────────────────────────────────┤
+│              プラットフォーム抽象化レイヤー                    │
+│               (プラットフォームインターフェース)               │
+├─────────────────────────────────────────────────────────────┤
+│            ランタイム実装レイヤー                            │
+│        (Node.js / Workers / Deno / Bun)                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Key Architectural Concepts
+## プラットフォーム抽象化
 
-### 1. Capability Graph
+プラットフォーム抽象化レイヤーにより、Hatagoは統一されたインターフェースを通じて複数のJavaScriptランタイムで動作可能です：
 
-The **Capability Graph** is the central organizing principle of Hatago. Instead of managing servers as isolated entities, it treats them as nodes in a graph where:
-
-- **Nodes** represent MCP servers with their capabilities (tools, resources, prompts)
-- **Edges** represent relationships and dependencies between servers
-- **Composition** allows combining capabilities from multiple servers
-- **Collision Detection** automatically handles tool name conflicts with prefixes
-
-#### Benefits:
-
-- **Unified View**: Single interface to access capabilities from multiple servers
-- **Intelligent Routing**: Requests are routed to the appropriate server based on capability
-- **Dependency Management**: Servers can depend on other servers' capabilities
-- **Hot Swapping**: Servers can be added/removed without affecting others
-
-### 2. Proxy Pattern
-
-The **Proxy Layer** provides transparent access to server capabilities through manager classes:
+### コアプラットフォームインターフェース
 
 ```typescript
-interface ProxyToolManager {
-  // Provides unified access to all tools across servers
-  listTools(sessionId?: string): Promise<Tool[]>;
-  callTool(
-    name: string,
-    args: any,
-    sessionId?: string,
-  ): Promise<CallToolResult>;
-}
-
-interface ProxyResourceManager {
-  // Provides unified access to all resources across servers
-  listResources(sessionId?: string): Promise<Resource[]>;
-  readResource(uri: string, sessionId?: string): Promise<ReadResourceResult>;
+interface Platform {
+  capabilities: RuntimeCapabilities;
+  storage: Storage; // ファイルまたはKVストレージ
+  events: EventBus; // イベントエミッター抽象化
+  transport: MCPTransport; // MCP通信
+  logger: Logger; // ロギング抽象化
+  crypto: Crypto; // 暗号化操作
+  process: ProcessRunner; // 子プロセス管理
 }
 ```
 
-#### Key Features:
+### ランタイムケイパビリティ
 
-- **Transparent Proxying**: Clients see a single unified interface
-- **Session Isolation**: Each client session has isolated state
-- **Error Handling**: Circuit breakers prevent cascade failures
-- **Load Distribution**: Requests are distributed across available servers
+| ランタイム | ファイルシステム | 子プロセス | TCPソケット | WebSocket | MCP種別            |
+| ---------- | ---------------- | ---------- | ----------- | --------- | ------------------ |
+| Node.js    | ✅               | ✅         | ✅          | ✅        | local, npx, remote |
+| Workers    | ❌               | ❌         | ❌          | ✅        | remoteのみ         |
+| Deno       | ✅               | ✅         | ✅          | ✅        | local, npx, remote |
+| Bun        | ✅               | ✅         | ✅          | ✅        | local, npx, remote |
 
-### 3. Transport Abstraction
+### 実装状況
 
-All communication is abstracted through the `Transport` interface:
+- **✅ Node.js**: 全サーバータイプに対応した完全実装
+- **✅ Cloudflare Workers**: KVストレージを使用したリモートサーバー
+- **🚧 Deno**: Node.js実装を使用（ネイティブ対応予定）
+- **🚧 Bun**: Node.js実装を使用（最適化予定）
+
+## コアアーキテクチャ（Lite版）
+
+Lite版は最小限の依存関係で必須のMCP Hub機能に焦点を当てています：
+
+### 必須コンポーネント
+
+```
+src/
+├── core/              # コアMCP Hub機能
+│   ├── mcp-hub.ts           # メインハブオーケストレーター（約500行）
+│   ├── mcp-hub-tools.ts     # ツール管理（分離済み）
+│   ├── mcp-hub-resources.ts # リソース管理（分離済み）
+│   ├── mcp-hub-prompts.ts   # プロンプト管理（分離済み）
+│   ├── session-manager.ts   # セッション分離
+│   ├── tool-registry.ts     # ツールレジストリ
+│   ├── resource-registry.ts # リソースレジストリ
+│   ├── prompt-registry.ts   # プロンプトレジストリ
+│   └── config-manager.ts    # 設定管理
+├── platform/          # プラットフォーム抽象化レイヤー
+│   ├── types.ts             # プラットフォームインターフェース
+│   ├── detector.ts          # ランタイム検出
+│   ├── node/               # Node.js実装
+│   └── workers/            # Cloudflare Workers実装
+├── servers/           # MCPサーバー実装
+│   ├── server-registry.ts   # サーバーライフサイクル管理
+│   ├── npx-mcp-server.ts   # NPXパッケージ実行
+│   ├── remote-mcp-server.ts # リモートサーバー接続
+│   └── custom-stdio-transport.ts # STDIOトランスポート
+├── transport/         # 通信レイヤー
+│   ├── stdio.ts            # STDIOトランスポート
+│   └── http.ts             # HTTP/SSEトランスポート
+├── storage/           # データ永続化
+│   ├── unified-file-storage.ts   # ファイルベースストレージ
+│   └── memory-registry-storage.ts # インメモリストレージ
+├── cli/               # コマンドラインインターフェース
+│   ├── index.ts            # CLIエントリーポイント
+│   └── commands/           # 個別コマンド
+└── utils/             # ユーティリティ
+    ├── logger.ts           # シンプルロギング
+    ├── errors.ts           # エラーハンドリング
+    └── mutex.ts            # 並行制御
+```
+
+### コア機能
+
+- **MCP Hubサーバー**: 複数MCPサーバーの統合管理
+- **セッション管理**: mcp-session-idヘッダーによる分離
+- **衝突回避**: ツール名の自動プレフィックス付与
+- **マルチトランスポート**: STDIO（デフォルト）とHTTP/SSEサポート
+- **マルチサーバー**: NPX、リモート、ローカルサーバーサポート
+- **ホットリロード**: 再起動なしでの設定変更
+- **シンプルロギング**: 重いフレームワークを使用しないコンソールベース
+
+## ケイパビリティグラフ＆プロキシパターン
+
+Hatagoは、サーバーを独立したユニットとして扱うのではなく、ケイパビリティグラフを使用します：
+
+### ケイパビリティグラフ
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ケイパビリティグラフ                       │
+│  ┌─────────┐      ┌─────────┐      ┌─────────────────────┐ │
+│  │ サーバー1 │──────│ サーバー2 │──────│     サーバー3        │ │
+│  │ ツール:3  │      │ ツール:5  │      │     ツール:2         │ │
+│  │ リソース:2 │      │ リソース:4 │      │     プロンプト:1     │ │
+│  └─────────┘      └─────────┘      └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     プロキシレイヤー                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │ツールマネージャ│  │リソースMgr   │  │プロンプトマネージャ   │ │
+│  │ 10ツール     │  │ 6リソース    │  │  1プロンプト        │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 利点
+
+- **統一インターフェース**: 全サーバーケイパビリティのための単一API
+- **インテリジェントルーティング**: 適切なサーバーへの自動リクエストルーティング
+- **衝突検出**: 名前の衝突を防ぐ自動プレフィックス付与
+- **ホットスワッピング**: 他に影響を与えずにサーバーを追加/削除
+
+## データフロー
+
+### ツール呼び出しフロー
+
+```
+1. クライアントリクエスト (STDIO/HTTP)
+   ↓
+2. トランスポートレイヤー
+   ↓
+3. プラットフォーム抽象化 (ランタイム固有の処理)
+   ↓
+4. セッションマネージャー (分離)
+   ↓
+5. ツールマネージャー (衝突回避付きルーティング)
+   ↓
+6. サーバーレジストリ (サーバー選択)
+   ↓
+7. サーバーノード (実行)
+   ↓
+8. レスポンス (逆フロー)
+```
+
+### プラットフォーム検出と初期化
 
 ```typescript
-interface Transport {
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  send<T>(method: string, params?: any): Promise<T>;
-  isConnected(): boolean;
+// 自動ランタイム検出とプラットフォーム作成
+const platform = detectAndCreatePlatform({
+  storage: { type: "file", path: "./.hatago" },
+  logger: { level: "info" },
+});
+
+// プラットフォームでハブを初期化
+const hub = new McpHub(platform);
+```
+
+## オプショナルなエンタープライズ機能
+
+エンタープライズ機能は条件付きで読み込むことで、コアを軽量に保ちます：
+
+### 機能フラグ
+
+```json
+{
+  "features": {
+    "healthCheck": false, // ヘルスモニタリング
+    "metrics": false, // Prometheusメトリクス
+    "tracing": false, // 分散トレーシング
+    "authentication": false, // JWT認証
+    "rateLimit": false, // レート制限
+    "circuitBreaker": false // サーキットブレーカー
+  }
 }
 ```
 
-Implementations:
+### 条件付き読み込み
 
-- **STDIOTransport**: For local process communication
-- **HTTPTransport**: For HTTP-based MCP servers
-- **SSETransport**: For Server-Sent Events
-- **WebSocketTransport**: For WebSocket connections
-- **DecoratorTransport**: For in-process decorator-based servers
-
-## Layer Details
-
-### Core Layer (`src/core/`)
-
-**Purpose**: Fundamental components for MCP Hub functionality
-
-- **HatagoHub**: Main orchestration class
-- **ServerRegistry**: Manages server instances and lifecycle
-- **SessionManager**: Handles client session isolation
-- **ConfigManager**: Hot-reloadable configuration management
-
-Key patterns:
-
-- Event-driven architecture for loose coupling
-- Dependency injection for testability
-- Immutable configuration objects
-
-### Proxy Layer (`src/proxy/`)
-
-**Purpose**: Transparent proxying and capability composition
-
-- **ProxyToolManager**: Aggregates and routes tool calls
-- **ProxyResourceManager**: Aggregates and routes resource access
-- **ProxyPromptManager**: Aggregates and routes prompt generation
-- **CapabilityGraph**: Manages server relationships and dependencies
-
-Key patterns:
-
-- Proxy pattern for transparent access
-- Strategy pattern for routing decisions
-- Observer pattern for capability changes
-
-### Observability Layer (`src/observability/`)
-
-**Purpose**: Monitoring, tracing, and operational visibility
-
-- **DistributedTracing**: AsyncLocalStorage-based trace context
-- **MetricsCollector**: Prometheus-compatible metrics
-- **HealthMonitor**: Kubernetes-compatible health checks
-- **StructuredLogger**: JSON logging with sanitization
-
-Key patterns:
-
-- Aspect-Oriented Programming for cross-cutting concerns
-- Context propagation through AsyncLocalStorage
-- Middleware pattern for HTTP instrumentation
-
-### Security Layer (`src/security/`)
-
-**Purpose**: Authentication, authorization, and protection
-
-- **AuthenticationManager**: JWT-based authentication
-- **AuthorizationManager**: Role-based access control
-- **RateLimiter**: Sliding window rate limiting
-- **CircuitBreaker**: Failure isolation and recovery
-
-Key patterns:
-
-- Middleware pattern for HTTP security
-- Strategy pattern for different auth methods
-- State machine pattern for circuit breaker
-
-## Data Flow
-
-### Tool Call Flow
-
-```
-1. Client Request
-   ↓
-2. Transport Layer (STDIO/HTTP/SSE/WS)
-   ↓
-3. Session Manager (isolate by session-id)
-   ↓
-4. Security Layer (auth, rate limit)
-   ↓
-5. Observability Layer (trace, metrics)
-   ↓
-6. Proxy Tool Manager (route to server)
-   ↓
-7. Server Node (execute tool)
-   ↓
-8. Circuit Breaker (handle failures)
-   ↓
-9. Response Flow (reverse of above)
+```typescript
+// 機能が有効な場合のみ読み込む
+if (config.features?.healthCheck) {
+  const { HealthMonitor } = await import("./enterprise/health.js");
+  const monitor = new HealthMonitor(hub);
+  monitor.start();
+}
 ```
 
-### Configuration Hot Reload
+## サーバータイプ
 
-```
-1. Configuration Change Detected
-   ↓
-2. Config Manager validates new config
-   ↓
-3. Create new Generation with new config
-   ↓
-4. Update Server Registry with new servers
-   ↓
-5. Update Capability Graph with new capabilities
-   ↓
-6. Emit 'servers-changed' event
-   ↓
-7. Proxy Managers rebuild routing tables
-   ↓
-8. Old generation marked for cleanup
-```
+### ローカルサーバー
 
-## Design Principles
+- **実行**: 任意のコマンドによる子プロセス
+- **トランスポート**: STDIO
+- **ユースケース**: 任意の言語のカスタムMCPサーバー
 
-### 1. **Layered Architecture**
+### NPXサーバー
 
-- Clear separation of concerns across layers
-- Each layer has a single responsibility
-- Dependencies flow downward only
+- **実行**: npx経由のnpmパッケージ
+- **トランスポート**: STDIO
+- **ユースケース**: 公開されたMCPパッケージ
 
-### 2. **Composition over Inheritance**
+### リモートサーバー
 
-- Prefer composition for building complex functionality
-- Use dependency injection for flexibility
-- Avoid deep inheritance hierarchies
+- **実行**: ネットワーク接続
+- **トランスポート**: HTTP/SSE/WebSocket
+- **ユースケース**: クラウドホストのMCPサービス
 
-### 3. **Event-Driven Communication**
+## 設計原則
 
-- Use events for loose coupling between components
-- Enable reactive programming patterns
-- Support hot-pluggable components
+1. **プラットフォーム非依存**: ランタイムに依存しないコアロジック
+2. **軽量コア**: 最小限の依存関係、オプショナルな機能
+3. **継承より合成**: モジュラー、合成可能なコンポーネント
+4. **フェイルセーフデフォルト**: 最小限の設定で動作
+5. **段階的な拡張**: 必要に応じて複雑性を追加
+6. **セッション分離**: 各クライアントが独立した状態を持つ
 
-### 4. **Immutable Data Structures**
+## パフォーマンス特性
 
-- Configuration objects are immutable
-- State changes create new objects
-- Easier reasoning about concurrent operations
+### Lite版の利点
 
-### 5. **Fail-Safe Defaults**
+- **起動時間**: フルバージョンより約50%高速
+- **メモリ使用量**: 約30%削減
+- **バンドルサイズ**: 約60%小さい
+- **依存関係**: コア依存関係は4つのみ
 
-- System works with minimal configuration
-- Graceful degradation when components fail
-- Circuit breakers prevent cascade failures
+### 最適化戦略
 
-### 6. **Observability First**
+- HTTPクライアントの接続プーリング
+- オプショナル機能の遅延読み込み
+- 効率的なセッション管理
+- 最小限の抽象化オーバーヘッド
 
-- All operations are traceable
-- Metrics are collected by default
-- Structured logging for analysis
+## 拡張ポイント
 
-## Extension Points
+### 新しいランタイムの追加
 
-## Server Types
+1. `Platform`インターフェースを実装
+2. ランタイム検出ロジックを追加
+3. ランタイム固有の実装を作成
+4. プラットフォーム検出器に登録
 
-Hatago supports multiple server types, each with its own execution model:
+### 新しいサーバータイプの追加
 
-### Local Servers
+1. `ServerNode`基底クラスを拡張
+2. 必要なトランスポートを実装
+3. `ServerRegistry`に登録
+4. 設定スキーマを追加
 
-Local servers run arbitrary commands (node, python, deno, etc.) as child processes:
+### エンタープライズ機能の追加
 
-- **Execution**: Spawned as child processes with STDIO transport
-- **Configuration**: Support for command, args, cwd, and environment variables
-- **Implementation**: Shares execution logic with NPX servers via `NpxMcpServer` class
-- **Use Case**: Running custom MCP servers written in any language
+1. `enterprise/`に機能モジュールを作成
+2. 設定に機能フラグを追加
+3. 条件付き読み込みを実装
+4. 設定オプションをドキュメント化
 
-### NPX Servers
-
-NPX servers run npm packages directly:
-
-- **Execution**: Uses `npx` to run packages without global installation
-- **Caching**: Leverages npm cache for faster startup
-- **Configuration**: Package name, version, and arguments
-- **Use Case**: Running published MCP server packages
-
-### Remote Servers
-
-Remote servers connect to HTTP/SSE/WebSocket endpoints:
-
-- **Execution**: No local process, connects over network
-- **Transport**: HTTP, SSE, or WebSocket protocols
-- **Configuration**: URL, authentication, and health check settings
-- **Use Case**: Connecting to cloud-hosted MCP services
-
-### Decorator Servers (Experimental)
-
-In-process servers defined using TypeScript decorators:
-
-- **Execution**: Runs within the Hatago process
-- **Performance**: No IPC overhead
-- **Configuration**: Class-based with decorator metadata
-- **Use Case**: Quick prototyping and embedded servers
-
-### Adding New Server Types
-
-1. Create a new `ServerNode` implementation
-2. Implement the required `Transport` interface
-3. Register with `ServerRegistry`
-4. Add configuration schema
-
-### Adding New Transports
-
-1. Implement the `Transport` interface
-2. Handle connection lifecycle properly
-3. Add error handling and reconnection logic
-4. Integrate with observability layer
-
-### Adding New Security Features
-
-1. Create middleware for HTTP layer
-2. Implement strategy for different auth methods
-3. Integrate with existing AuthenticationManager
-4. Add configuration options
-
-### Adding New Observability Features
-
-1. Extend existing collectors/monitors
-2. Use AsyncLocalStorage for context propagation
-3. Follow structured logging patterns
-4. Export metrics in standard formats
-
-## Performance Considerations
-
-### Memory Management
-
-- Connection pooling for HTTP clients
-- Proper cleanup of resources
-- Avoiding memory leaks in long-running sessions
-
-### Latency Optimization
-
-- Minimize proxy overhead
-- Use connection pooling
-- Implement request caching where appropriate
-
-### Scalability
-
-- Stateless design for horizontal scaling
-- Circuit breakers prevent resource exhaustion
-- Rate limiting protects against abuse
-
-### Monitoring
-
-- Track key performance metrics
-- Use distributed tracing for bottleneck identification
-- Health checks for operational status
-
-This architecture provides a solid foundation for building a scalable, reliable, and maintainable MCP Hub while maintaining simplicity and developer-friendliness.
+このアーキテクチャは、シンプルさとパフォーマンスを維持しながら、最小限のデプロイメントからエンタープライズインストールまでスケール可能な、軽量でマルチランタイム対応のMCP Hubのための堅固な基盤を提供します。

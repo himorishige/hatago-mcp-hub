@@ -27,8 +27,9 @@
 ### アーキテクチャ設計
 
 「細い腰」アーキテクチャを採用：
+
 - Input Layer (Hono)
-- Core Layer (ビジネスロジック)  
+- Core Layer (ビジネスロジック)
 - Output Layer (Runtime Adapters)
 
 ### 次のステップ (Phase 2)

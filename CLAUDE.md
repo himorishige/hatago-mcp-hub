@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hatago MCP Hub (Lite) is an ultra-lightweight MCP (Model Context Protocol) Hub server built on top of Hono. It provides unified management for multiple MCP servers with tool name collision avoidance and session management. This is a simplified version with minimal dependencies and direct Node.js implementations.
+Hatago MCP Hub is a multi-runtime MCP (Model Context Protocol) Hub server built on top of Hono. It provides unified management for multiple MCP servers with tool name collision avoidance and session management. The architecture uses a platform abstraction layer to support multiple JavaScript runtimes.
 
 ## Tech Stack
 
-- **Runtime**: Node.js 20+
+- **Runtime**: Node.js 20+ / Cloudflare Workers / Deno / Bun
 - **Language**: TypeScript with ESM modules
 - **Web Framework**: Hono
 - **MCP SDK**: @modelcontextprotocol/sdk (requires Zod schemas for tools)
@@ -17,7 +17,7 @@ Hatago MCP Hub (Lite) is an ultra-lightweight MCP (Model Context Protocol) Hub s
 - **Linter/Formatter**: Biome
 - **Package Manager**: pnpm
 
-## Project Structure (Lite Version)
+## Project Structure
 
 ```
 /
@@ -38,6 +38,11 @@ Hatago MCP Hub (Lite) is an ultra-lightweight MCP (Model Context Protocol) Hub s
 │   │   │   ├── prompt-registry.ts    # Prompt registry
 │   │   │   ├── config-manager.ts     # Simple config management
 │   │   │   └── types.ts              # Core types
+│   │   ├── platform/   # Platform abstraction layer (NEW)
+│   │   │   ├── types.ts             # Platform interfaces
+│   │   │   ├── detector.ts          # Runtime detection
+│   │   │   ├── node/               # Node.js implementation
+│   │   │   └── workers/            # Cloudflare Workers implementation
 │   │   ├── servers/    # MCP server implementations
 │   │   │   ├── server-registry.ts    # Server management
 │   │   │   ├── npx-mcp-server.ts     # NPX server support
@@ -60,8 +65,6 @@ Hatago MCP Hub (Lite) is an ultra-lightweight MCP (Model Context Protocol) Hub s
 │   ├── package.json
 │   └── tsconfig.json
 └── docs/               # Documentation
-
-Total: ~40 TypeScript files (excluding tests)
 ```
 
 ## Essential Development Commands
@@ -206,13 +209,13 @@ The project has been significantly simplified from its original implementation t
 
 ### Current Architecture
 
-- **Direct Implementation**: No runtime abstraction layer
-- **Simple Storage**: 2 types (File/Memory) instead of 3
+- **Platform Abstraction**: Runtime-agnostic design via platform interfaces
+- **Multi-Runtime Support**: Node.js, Cloudflare Workers, Deno, Bun
+- **Simple Storage**: 2 types (File/Memory)
 - **Basic Config**: Direct config loading without generation
-- **Node.js Native**: Direct use of Node.js APIs
 - **Minimal Dependencies**: Reduced external library usage
 
-### Key Features Retained (Lite Version)
+### Key Features Retained
 
 - **Core MCP Hub**: Tool/Resource/Prompt management
 - **Multi-Server**: NPX, Remote, and Local server support
@@ -232,13 +235,13 @@ The project has been significantly simplified from its original implementation t
 4. Use development server for rapid iteration: `hatago dev`
 5. Generate types when adding new MCP servers: `hatago generate types`
 
-### Architecture Guidelines (Lite Version)
+### Architecture Guidelines
 
-1. **Simple Direct Implementation**: No complex abstractions
-2. **Node.js Native**: Use built-in Node.js APIs directly
-3. **Minimal Layers**: Core functionality only
+1. **Platform Abstraction Layer**: All runtime-specific code through platform interfaces
+2. **Runtime Detection**: Automatic detection and adaptation to runtime environment
+3. **Minimal Layers**: Core functionality with clean separation of concerns
 4. **Error Handling**: Simple error handling with recovery
-5. **Direct File Access**: No runtime abstraction for file operations
+5. **Dependency Injection**: Platform capabilities injected into core components
 
 ### Code Standards
 
