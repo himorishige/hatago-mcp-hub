@@ -37,11 +37,11 @@ export class McpHubToolManager {
     this.logger = logger;
     this.registeredTools = new Set();
     this.toolRegistrationMutex = createMutex();
-    this.initialized = false;
+    (this as any).initialized = false;
   }
 
   setInitialized(value: boolean): void {
-    this.initialized = value;
+    (this as any).initialized = value;
   }
 
   /**

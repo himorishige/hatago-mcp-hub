@@ -25,13 +25,14 @@ import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
 import type { RegistryStorage } from '../storage/registry-storage.js';
+import { createTaskQueue } from '../utils/concurrency.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { createKeyedMutex } from '../utils/mutex.js';
-import { createTaskQueue } from '../utils/concurrency.js';
 import { McpHubPromptManager } from './mcp-hub-prompts.js';
 import { McpHubResourceManager } from './mcp-hub-resources.js';
 import { McpHubToolManager } from './mcp-hub-tools.js';
+import { McpRouter } from './mcp-router.js';
 import {
   createPromptRegistry,
   type PromptRegistry,
@@ -68,6 +69,7 @@ export class McpHub {
   private registry: ToolRegistry;
   private resourceRegistry: ResourceRegistry;
   private promptRegistry: PromptRegistry;
+  private router: McpRouter;
   private connections = new Map<string, McpConnection>();
   private config: HatagoConfig;
   private initialized = false;
@@ -105,6 +107,17 @@ export class McpHub {
 
     // Initialize prompt registry
     this.promptRegistry = createPromptRegistry();
+
+    // Initialize router
+    this.router = new McpRouter(
+      this.registry,
+      this.resourceRegistry,
+      this.promptRegistry,
+      {
+        namingConfig: this.config.toolNaming,
+        debug: this.config.logLevel === 'debug',
+      },
+    );
 
     // Initialize session manager
     const sessionTtl = this.config.session?.ttlSeconds ?? 3600;
@@ -274,13 +287,13 @@ export class McpHub {
       async (request: ReadResourceRequest): Promise<ReadResourceResult> => {
         const { uri } = request.params;
 
-        // Resolve resource
-        const resolved = this.resourceRegistry.resolveResource(uri);
-        if (!resolved) {
+        // Use router to resolve resource
+        const routeDecision = this.router.routeResource(uri);
+        if (!routeDecision.target) {
           throw ErrorHelpers.resourceNotFound(uri);
         }
 
-        const { serverId, originalUri } = resolved;
+        const { serverId, originalUri } = routeDecision.target;
 
         // Get server connection
         const connection = this.connections.get(serverId);
@@ -400,121 +413,121 @@ export class McpHub {
 
     // Run warmup in parallel for all NPX servers with concurrency control
     const queue = createTaskQueue<void>(
-      this.config.concurrency?.warmup ??
-        this.config.concurrency?.global ??
-        4,
+      this.config.concurrency?.warmup ?? this.config.concurrency?.global ?? 4,
     );
     const warmupPromises = npxServers.map((serverConfig) =>
       queue.add(async () => {
-      try {
-        const npxConfig = serverConfig as NpxServerConfig;
+        try {
+          const npxConfig = serverConfig as NpxServerConfig;
 
-        // Get package name from either package property or args
-        let packageName: string | undefined = npxConfig.package;
+          // Get package name from either package property or args
+          let packageName: string | undefined = npxConfig.package;
 
-        if (!packageName && npxConfig.args) {
-          // Extract package name from args (skip -y flag)
-          const argsWithoutFlags = npxConfig.args.filter(
-            (arg) => !arg.startsWith('-'),
-          );
-          packageName = argsWithoutFlags[0];
-        }
+          if (!packageName && npxConfig.args) {
+            // Extract package name from args (skip -y flag)
+            const argsWithoutFlags = npxConfig.args.filter(
+              (arg) => !arg.startsWith('-'),
+            );
+            packageName = argsWithoutFlags[0];
+          }
 
-        if (!packageName) {
-          this.logger.warn(
-            `  ⚠️  Cannot determine package name for ${serverConfig.id}, skipping warmup`,
-          );
-          return;
-        }
+          if (!packageName) {
+            this.logger.warn(
+              `  ⚠️  Cannot determine package name for ${serverConfig.id}, skipping warmup`,
+            );
+            return;
+          }
 
-        const packageSpec = npxConfig.version
-          ? `${packageName}@${npxConfig.version}`
-          : packageName;
+          const packageSpec = npxConfig.version
+            ? `${packageName}@${npxConfig.version}`
+            : packageName;
 
-        this.logger.info(`  📦 Pre-caching ${packageSpec}...`);
+          this.logger.info(`  📦 Pre-caching ${packageSpec}...`);
 
-        // Run npx to trigger installation without executing the package
-        const { spawn } = await import('node:child_process');
-        const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+          // Run npx to trigger installation without executing the package
+          const { spawn } = await import('node:child_process');
+          const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
-        // Use -p to install package and -c to run a harmless command
-        // This ensures package is cached without executing it
-        const nodeCommand =
-          process.platform === 'win32'
-            ? 'node -e "process.exit(0)"'
-            : "node -e 'process.exit(0)'";
+          // Use -p to install package and -c to run a harmless command
+          // This ensures package is cached without executing it
+          const nodeCommand =
+            process.platform === 'win32'
+              ? 'node -e "process.exit(0)"'
+              : "node -e 'process.exit(0)'";
 
-        await new Promise<void>((resolve, reject) => {
-          const warmupProcess = spawn(
-            command,
-            ['-y', '-p', packageSpec, '-c', nodeCommand],
-            {
-              stdio: 'pipe',
-              env: {
-                ...process.env,
-                NO_COLOR: '1',
-                FORCE_COLOR: '0',
-                npm_config_loglevel: 'silent',
-                npm_config_progress: 'false',
+          await new Promise<void>((resolve, reject) => {
+            const warmupProcess = spawn(
+              command,
+              ['-y', '-p', packageSpec, '-c', nodeCommand],
+              {
+                stdio: 'pipe',
+                env: {
+                  ...process.env,
+                  NO_COLOR: '1',
+                  FORCE_COLOR: '0',
+                  npm_config_loglevel: 'silent',
+                  npm_config_progress: 'false',
+                },
               },
-            },
-          );
+            );
 
-          let hasExited = false;
-          let _stderr = '';
+            let hasExited = false;
+            let _stderr = '';
 
-          warmupProcess.stderr?.on('data', (data) => {
-            _stderr += data.toString();
-          });
+            warmupProcess.stderr?.on('data', (data) => {
+              _stderr += data.toString();
+            });
 
-          warmupProcess.on('error', (error) => {
-            if (!hasExited) {
-              hasExited = true;
-              this.logger.info(
-                `  ⚠️  Failed to warm up ${packageSpec}: ${error.message}`,
-              );
-              // Record cache failure
-
-              reject(error); // Reject on error for tracking
-            }
-          });
-
-          warmupProcess.on('exit', (code) => {
-            if (!hasExited) {
-              hasExited = true;
-              if (code === 0) {
-                this.logger.info(`  ✅ ${packageSpec} cached`);
-                // Record successful cache
-
-                resolve();
-              } else {
-                // With -p/-c approach, non-zero exit usually means npm error
+            warmupProcess.on('error', (error) => {
+              if (!hasExited) {
+                hasExited = true;
                 this.logger.info(
-                  `  ⚠️  ${packageSpec} warmup exited with code ${code}`,
+                  `  ⚠️  Failed to warm up ${packageSpec}: ${error.message}`,
                 );
                 // Record cache failure
 
-                reject(new Error(`Warmup failed with code ${code}`));
+                reject(error); // Reject on error for tracking
               }
-            }
+            });
+
+            warmupProcess.on('exit', (code) => {
+              if (!hasExited) {
+                hasExited = true;
+                if (code === 0) {
+                  this.logger.info(`  ✅ ${packageSpec} cached`);
+                  // Record successful cache
+
+                  resolve();
+                } else {
+                  // With -p/-c approach, non-zero exit usually means npm error
+                  this.logger.info(
+                    `  ⚠️  ${packageSpec} warmup exited with code ${code}`,
+                  );
+                  // Record cache failure
+
+                  reject(new Error(`Warmup failed with code ${code}`));
+                }
+              }
+            });
+
+            // Set a timeout for warmup
+            setTimeout(() => {
+              if (!hasExited) {
+                hasExited = true;
+                warmupProcess.kill('SIGTERM');
+                this.logger.info(`  ⚠️  ${packageSpec} warmup timeout`);
+                // Record cache failure on timeout
+
+                reject(new Error('Warmup timeout'));
+              }
+            }, 30000); // 30 second timeout for warmup
           });
-
-          // Set a timeout for warmup
-          setTimeout(() => {
-            if (!hasExited) {
-              hasExited = true;
-              warmupProcess.kill('SIGTERM');
-              this.logger.info(`  ⚠️  ${packageSpec} warmup timeout`);
-              // Record cache failure on timeout
-
-              reject(new Error('Warmup timeout'));
-            }
-          }, 30000); // 30 second timeout for warmup
-        });
-      } catch (error) {
-        this.logger.info(`  ⚠️  Failed to warm up ${serverConfig.id}: ${error}`);
-        // Don't fail the whole initialization
-      }
+        } catch (error) {
+          this.logger.info(
+            `  ⚠️  Failed to warm up ${serverConfig.id}: ${error}`,
+          );
+          // Don't fail the whole initialization
+        }
       }),
     );
 
@@ -902,10 +915,7 @@ export class McpHub {
             return;
           }
         } catch (error) {
-          this.logger.error(
-            { error },
-            `Failed to refresh ${serverId} tools`,
-          );
+          this.logger.error({ error }, `Failed to refresh ${serverId} tools`);
           return;
         }
       } else {
@@ -972,10 +982,7 @@ export class McpHub {
       // ハブのリソースを更新
       this.updateHubResources();
     } catch (error) {
-      this.logger.error(
-        { error },
-        `Failed to refresh ${serverId} resources`,
-      );
+      this.logger.error({ error }, `Failed to refresh ${serverId} resources`);
     }
   }
 
@@ -1028,10 +1035,7 @@ export class McpHub {
       // ハブのリソースを更新
       this.updateHubResources();
     } catch (error) {
-      this.logger.error(
-        { error },
-        `Failed to refresh ${serverId} resources`,
-      );
+      this.logger.error({ error }, `Failed to refresh ${serverId} resources`);
     }
   }
 
@@ -1170,14 +1174,16 @@ export class McpHub {
       }
     }
 
-    // ツール情報を取得
-    const toolInfo = this.registry.resolveTool(publicName);
-    if (!toolInfo) {
-      throw new Error(`Tool not found: ${publicName}`);
+    // Use router to resolve the tool
+    const routeDecision = this.router.routeTool(publicName, { requestId });
+    if (!routeDecision.target) {
+      throw new Error(routeDecision.error || `Tool not found: ${publicName}`);
     }
 
+    const { serverId, originalName } = routeDecision.target;
+
     // 実際のツール呼び出しはMcpHubが各接続に委譲
-    const connection = this.connections.get(toolInfo.serverId);
+    const connection = this.connections.get(serverId);
 
     // NPX/Remoteサーバーの場合はclientを使用
     if (connection?.client) {
@@ -1185,7 +1191,7 @@ export class McpHub {
         {
           method: 'tools/call',
           params: {
-            name: toolInfo.originalName,
+            name: originalName,
             arguments: processedArgs,
           },
         } as any,
@@ -1197,12 +1203,12 @@ export class McpHub {
     // serverRegistryを使用する場合（NPX/Remote/Localサーバー）
     if (this.serverRegistry) {
       const servers = this.serverRegistry.listServers();
-      const server = servers.find((s) => s.id === toolInfo.serverId);
+      const server = servers.find((s) => s.id === serverId);
       if (server?.instance) {
         // RemoteMcpServerの場合
         if ('callTool' in server.instance) {
           const result = await (server.instance as any).callTool(
-            toolInfo.originalName,
+            originalName,
             processedArgs,
             progressToken,
           );
@@ -1214,7 +1220,7 @@ export class McpHub {
             {
               method: 'tools/call',
               params: {
-                name: toolInfo.originalName,
+                name: originalName,
                 arguments: processedArgs,
                 _meta: progressToken ? { progressToken } : undefined,
               },
@@ -1227,7 +1233,7 @@ export class McpHub {
     }
 
     throw new Error(
-      `Server connection not found or unable to call tool: ${toolInfo.serverId}`,
+      `Server connection not found or unable to call tool: ${serverId}`,
     );
   }
 

@@ -14,100 +14,103 @@ export interface PromptInfo extends Prompt {
 }
 
 /**
+ * Prompt metadata stored in registry
+ */
+interface PromptMetadata extends Prompt {
+  serverId: string;
+  originalName: string;
+}
+
+/**
  * Registry for managing prompts from multiple servers
  */
 export class PromptRegistry {
-  private prompts: Map<string, PromptInfo> = new Map();
-  private serverPrompts: Map<string, Map<string, PromptInfo>> = new Map();
+  private prompts: Map<string, PromptMetadata> = new Map();
+  private serverPrompts: Map<string, Set<string>> = new Map();
   private logger = logger;
 
   /**
    * Register prompts from a server
    */
   registerServerPrompts(serverId: string, prompts: Prompt[]): void {
-    this.logger.debug(
+    this.logger.info(
       `Registering ${prompts.length} prompts from server ${serverId}`,
     );
 
     // Clear existing prompts for this server
-    const existingPrompts = this.serverPrompts.get(serverId);
-    if (existingPrompts) {
-      // Remove from global registry
-      for (const prompt of existingPrompts.values()) {
-        this.prompts.delete(prompt.name);
-      }
-    }
+    this.unregisterServerPrompts(serverId);
 
-    // Create new map for this server
-    const serverPromptMap = new Map<string, PromptInfo>();
+    // Track prompt names for this server
+    const promptNames = new Set<string>();
 
-    // Register each prompt
     for (const prompt of prompts) {
+      // Generate namespaced name
       const namespacedName = this.getNamespacedName(serverId, prompt.name);
-      const promptInfo: PromptInfo = {
+
+      const metadata: PromptMetadata = {
         ...prompt,
         name: namespacedName,
         serverId,
         originalName: prompt.name,
       };
 
-      // Add to server map
-      serverPromptMap.set(prompt.name, promptInfo);
+      this.prompts.set(namespacedName, metadata);
+      promptNames.add(namespacedName);
 
-      // Add to global registry
-      this.prompts.set(namespacedName, promptInfo);
-
-      this.logger.debug(`Registered prompt: ${namespacedName}`);
+      this.logger.debug(
+        `Registered prompt ${prompt.name} as ${namespacedName}`,
+      );
     }
 
-    // Store server map
-    this.serverPrompts.set(serverId, serverPromptMap);
+    // Track which prompts belong to this server
+    this.serverPrompts.set(serverId, promptNames);
   }
 
   /**
    * Unregister all prompts from a server
    */
   unregisterServerPrompts(serverId: string): void {
-    const serverPrompts = this.serverPrompts.get(serverId);
-    if (!serverPrompts) {
+    const promptNames = this.serverPrompts.get(serverId);
+    if (!promptNames) {
       return;
     }
 
-    // Remove from global registry
-    for (const prompt of serverPrompts.values()) {
-      this.prompts.delete(prompt.name);
+    for (const name of promptNames) {
+      this.prompts.delete(name);
     }
 
-    // Remove server map
     this.serverPrompts.delete(serverId);
-
-    this.logger.debug(`Unregistered all prompts from server ${serverId}`);
+    this.logger.info(`Unregistered prompts from server ${serverId}`);
   }
 
   /**
    * Get all prompts
    */
-  getAllPrompts(): PromptInfo[] {
+  getAllPrompts(): Prompt[] {
     return Array.from(this.prompts.values());
   }
 
   /**
-   * Get prompt by name
+   * Get a prompt by name
    */
-  getPrompt(name: string): PromptInfo | undefined {
+  getPrompt(name: string): Prompt | undefined {
     return this.prompts.get(name);
   }
 
   /**
-   * Get prompts from a specific server
+   * Get all prompts from a specific server
    */
-  getServerPrompts(serverId: string): PromptInfo[] {
-    const serverPrompts = this.serverPrompts.get(serverId);
-    return serverPrompts ? Array.from(serverPrompts.values()) : [];
+  getServerPrompts(serverId: string): Prompt[] {
+    const promptNames = this.serverPrompts.get(serverId);
+    return promptNames
+      ? Array.from(promptNames)
+          .map((name) => this.prompts.get(name)!)
+          .filter(Boolean)
+      : [];
   }
 
   /**
-   * Check if prompt exists
+   * Check if a prompt exists
    */
   hasPrompt(name: string): boolean {
     return this.prompts.has(name);
@@ -122,27 +125,34 @@ export class PromptRegistry {
   }
 
   /**
-   * Get namespaced prompt name
+   * Get prompt count
    */
-  private getNamespacedName(serverId: string, promptName: string): string {
-    // Use underscore as separator for consistency with tools
-    return `${serverId}_${promptName}`;
+  getPromptCount(): number {
+    return this.prompts.size;
   }
 
   /**
-   * Resolve prompt name to server and original name
+   * Generate namespaced name
+   */
+  private getNamespacedName(serverId: string, promptName: string): string {
+    // Use underscore separator for Claude Code compatibility
+    return `${promptName}_${serverId}`;
+  }
+
+  /**
+   * Resolve prompt name to get server ID and original name
    */
   resolvePrompt(
-    name: string,
-  ): { serverId: string; originalName: string } | undefined {
-    const prompt = this.prompts.get(name);
-    if (!prompt) {
-      return undefined;
+    namespacedName: string,
+  ): { serverId: string; originalName: string } | null {
+    const metadata = this.prompts.get(namespacedName);
+    if (!metadata) {
+      return null;
     }
 
     return {
-      serverId: prompt.serverId,
-      originalName: prompt.originalName,
+      serverId: metadata.serverId,
+      originalName: metadata.originalName,
     };
   }
 }
