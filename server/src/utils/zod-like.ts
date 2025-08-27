@@ -3,7 +3,7 @@
  * Creates Zod-compatible schemas from JSON Schema
  */
 
-import { z } from 'zod';
+import { type ZodTypeAny, z } from 'zod';
 
 /**
  * Convert JSON Schema to Zod schema
@@ -40,7 +40,10 @@ export function createZodLikeSchema(jsonSchema: JSONSchema): z.ZodSchema {
     // Handle required fields
     if (!jsonSchema.required || jsonSchema.required.length === 0) {
       // Make all fields optional if no required array
-      schema = schema.partial() as z.ZodObject<any, any>;
+      schema = schema.partial() as z.ZodObject<
+        Record<string, ZodTypeAny>,
+        'strip'
+      >;
     }
 
     return schema;

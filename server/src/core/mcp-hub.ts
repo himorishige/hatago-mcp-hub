@@ -21,11 +21,12 @@ import type {
 } from '../config/types.js';
 import type { StreamableHTTPTransport } from '../hono-mcp/index.js';
 import type { CustomStdioTransport as StdioTransport } from '../servers/custom-stdio-transport.js';
-import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
-import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
+import { NpxMcpServer } from '../servers/npx-mcp-server.js';
+import { RemoteMcpServer } from '../servers/remote-mcp-server.js';
 import { ServerRegistry } from '../servers/server-registry.js';
 import type { RegistryStorage } from '../storage/registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
+import type { Logger } from '../utils/logger.js';
 import { logger } from '../utils/logger.js';
 import { createMutex } from '../utils/mutex.js';
 import { McpHubPromptManager } from './mcp-hub-prompts.js';
@@ -63,7 +64,7 @@ export interface McpHubOptions {
  * MCP Hub - Manages multiple MCP servers in a unified way
  */
 export class McpHub {
-  private server: any; // McpServer - using any due to SDK type issues
+  private server: McpServer;
   private registry: ToolRegistry;
   private resourceRegistry: ResourceRegistry;
   private promptRegistry: PromptRegistry;
@@ -74,7 +75,7 @@ export class McpHub {
   private registeredTools = new Set<string>(); // Track registered tools to avoid duplicates
   private toolRegistrationMutex = createMutex(); // Mutex for tool registration
   private sessionManager: SessionManager;
-  private logger: any; // Using minimal logger
+  private logger: Logger;
   private transport?: StreamableHTTPTransport; // Store transport for progress notifications
   private toolManager?: McpHubToolManager;
   private resourceManager?: McpHubResourceManager;
@@ -183,11 +184,14 @@ export class McpHub {
     // Explicitly set tools/call handler
     this.server.setRequestHandler(
       CallToolRequestSchema,
-      async (request: any, extra: any) => {
+      async (
+        request: CallToolRequest,
+        extra?: { requestId?: string | number },
+      ) => {
         // Request structure debug log removed
 
         // Use request.params or request directly
-        const params = (request as any).params || request;
+        const params = request.params || request;
         const progressToken = params._meta?.progressToken;
 
         // Set interval for sending progress notifications
@@ -199,7 +203,9 @@ export class McpHub {
           'sendProgressNotification' in this.transport
         ) {
           // Get requestId from extra or request id
-          const requestId = extra?.requestId || (request as any).id;
+          const requestId =
+            extra?.requestId ||
+            (request as CallToolRequest & { id?: string | number }).id;
 
           progressInterval = setInterval(() => {
             try {
@@ -209,7 +215,7 @@ export class McpHub {
                 'sendProgressNotification' in this.transport
               ) {
                 this.transport.sendProgressNotification(
-                  requestId,
+                  requestId || 0,
                   progressToken,
                   progressCount++, // Send incrementing number
                   // total is omitted (when unknown)
@@ -221,7 +227,10 @@ export class McpHub {
         }
 
         try {
-          const result = await this.callTool(params, extra?.requestId);
+          const result = await this.callTool(
+            { params, method: 'tools/call' },
+            extra?.requestId,
+          );
           // Stop progress notifications
           if (progressInterval) {
             clearInterval(progressInterval);
@@ -1119,13 +1128,19 @@ export class McpHub {
    */
   async callTool(
     request: CallToolRequest,
-    requestId?: string | number,
+    _requestId?: string | number,
   ): Promise<CallToolResult> {
-    const publicName = (request as any).name || request.params?.name;
-    const toolArgs = (request as any).arguments || request.params?.arguments;
+    // Handle both direct properties and params object
+    const requestWithParams = request as CallToolRequest & {
+      name?: string;
+      arguments?: unknown;
+      _meta?: { progressToken?: string };
+    };
+    const publicName = requestWithParams.name || request.params?.name;
+    const toolArgs = requestWithParams.arguments || request.params?.arguments;
     const progressToken =
-      (request as any)._meta?.progressToken ||
-      (request as any).params?._meta?.progressToken;
+      requestWithParams._meta?.progressToken ||
+      request.params?._meta?.progressToken;
 
     // 引数の型を確認して必要に応じて変換
     let processedArgs = toolArgs;
@@ -1148,17 +1163,17 @@ export class McpHub {
 
     // NPX/Remoteサーバーの場合はclientを使用
     if (connection?.client) {
-      const result = await connection.client.request(
+      const result = (await connection.client.request(
         {
           method: 'tools/call',
           params: {
             name: toolInfo.originalName,
             arguments: processedArgs,
           },
-        } as any,
-        requestId as any,
-      );
-      return result;
+        },
+        CallToolRequestSchema,
+      )) as unknown as CallToolResult;
+      return result || { content: [] };
     }
 
     // serverRegistryを使用する場合（NPX/Remote/Localサーバー）
@@ -1167,28 +1182,21 @@ export class McpHub {
       const server = servers.find((s) => s.id === toolInfo.serverId);
       if (server?.instance) {
         // RemoteMcpServerの場合
-        if ('callTool' in server.instance) {
-          const result = await (server.instance as any).callTool(
+        if (server.instance instanceof RemoteMcpServer) {
+          const result = await server.instance.callTool(
             toolInfo.originalName,
-            processedArgs,
+            (processedArgs || {}) as Record<string, unknown>,
             progressToken,
           );
           return result;
         }
-        // Clientインスタンスの場合（NPXサーバーなど）
-        else if ('request' in server.instance) {
-          const result = await (server.instance as any).request(
-            {
-              method: 'tools/call',
-              params: {
-                name: toolInfo.originalName,
-                arguments: processedArgs,
-                _meta: progressToken ? { progressToken } : undefined,
-              },
-            },
-            requestId,
+        // NpxMcpServerの場合
+        else if (server.instance instanceof NpxMcpServer) {
+          const result = await server.instance.callTool(
+            toolInfo.originalName,
+            (processedArgs || {}) as Record<string, unknown>,
           );
-          return result;
+          return result as CallToolResult;
         }
       }
     }
@@ -1201,17 +1209,23 @@ export class McpHub {
   /**
    * MCPサーバーを起動（STDIOトランスポート用）
    */
-  async serve(transport: StreamableHTTPTransport | any): Promise<void> {
+  async serve(
+    transport: StreamableHTTPTransport | StdioTransport | unknown,
+  ): Promise<void> {
     // Store transport for progress notifications (only if it's StreamableHTTPTransport)
-    if (transport && 'sendProgressNotification' in transport) {
+    if (
+      transport &&
+      typeof transport === 'object' &&
+      'sendProgressNotification' in transport
+    ) {
       this.transport = transport as StreamableHTTPTransport;
     }
 
     // Create managers if not already created
-    if (!this.toolManager) {
+    if (!this.toolManager && this.serverRegistry) {
       this.toolManager = new McpHubToolManager(
         this.registry,
-        this.serverRegistry!,
+        this.serverRegistry,
         this.connections,
         this.server,
         this.logger.child({ component: 'ToolManager' }),
@@ -1219,10 +1233,10 @@ export class McpHub {
       this.toolManager.setupToolHandlers();
     }
 
-    if (!this.resourceManager) {
+    if (!this.resourceManager && this.serverRegistry) {
       this.resourceManager = new McpHubResourceManager(
         this.resourceRegistry,
-        this.serverRegistry!,
+        this.serverRegistry,
         this.connections,
         this.server,
         this.logger.child({ component: 'ResourceManager' }),
@@ -1230,10 +1244,10 @@ export class McpHub {
       this.resourceManager.setupResourceHandlers();
     }
 
-    if (!this.promptManager) {
+    if (!this.promptManager && this.serverRegistry) {
       this.promptManager = new McpHubPromptManager(
         this.promptRegistry,
-        this.serverRegistry!,
+        this.serverRegistry,
         this.connections,
         this.server,
         this.logger.child({ component: 'PromptManager' }),
@@ -1242,11 +1256,13 @@ export class McpHub {
     }
 
     // Set initialized flag on managers
-    this.toolManager.setInitialized(true);
-    this.resourceManager.setInitialized(true);
-    this.promptManager.setInitialized(true);
+    this.toolManager?.setInitialized(true);
+    this.resourceManager?.setInitialized(true);
+    this.promptManager?.setInitialized(true);
 
-    await this.server.connect(transport);
+    await this.server.connect(
+      transport as import('@modelcontextprotocol/sdk/shared/transport.js').Transport,
+    );
   }
 
   /**

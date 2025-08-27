@@ -1,17 +1,20 @@
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ServerRegistry } from '../servers/server-registry.js';
+import type { Logger } from '../utils/logger.js';
 import { McpHubToolManager } from './mcp-hub-tools.js';
+import type { ToolRegistry } from './tool-registry.js';
 
 describe('McpHubToolManager', () => {
   let toolManager: McpHubToolManager;
   let mockServer: Server;
-  let mockRegistry: any;
-  let mockLogger: any;
+  let mockRegistry: Partial<ToolRegistry>;
+  let mockLogger: Partial<Logger>;
 
   beforeEach(() => {
     mockServer = {
       _requestHandlers: new Map(),
-    } as any;
+    } as unknown as Server;
 
     mockRegistry = {
       registerTool: vi.fn(),
@@ -32,15 +35,15 @@ describe('McpHubToolManager', () => {
       child: vi.fn(() => mockLogger),
     };
 
-    const mockServerRegistry = {} as any;
+    const mockServerRegistry = {} as ServerRegistry;
     const mockConnections = new Map();
 
     toolManager = new McpHubToolManager(
-      mockRegistry,
-      mockServerRegistry,
+      mockRegistry as ToolRegistry,
+      mockServerRegistry as ServerRegistry,
       mockConnections,
       mockServer,
-      mockLogger,
+      mockLogger as Logger,
     );
   });
 
@@ -76,11 +79,11 @@ describe('McpHubToolManager', () => {
 
       const mockConnections = new Map([['server1', mockConnection]]);
       const mockToolManager = new McpHubToolManager(
-        mockRegistry,
-        {} as any,
+        mockRegistry as ToolRegistry,
+        {} as ServerRegistry,
         mockConnections,
         mockServer,
-        mockLogger,
+        mockLogger as Logger,
       );
 
       vi.mocked(mockRegistry.getTool).mockReturnValue({

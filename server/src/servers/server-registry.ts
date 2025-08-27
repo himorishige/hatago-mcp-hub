@@ -18,10 +18,39 @@ import type {
 
 import { logger } from '../observability/minimal-logger.js';
 import type { RegistryStorage } from '../storage/registry-storage.js';
+import type { ServerState as StorageServerState } from '../storage/types.js';
 import { ErrorHelpers } from '../utils/errors.js';
 // import { sanitizeLog } from '../utils/security.js';
 import { NpxMcpServer, ServerState } from './npx-mcp-server.js';
 import { RemoteMcpServer } from './remote-mcp-server.js';
+
+/**
+ * Server event argument types
+ */
+interface ServerEventArgs {
+  serverId: string;
+}
+
+interface ServerCrashedEventArgs extends ServerEventArgs {
+  code?: number;
+  signal?: string;
+}
+
+interface ServerErrorEventArgs extends ServerEventArgs {
+  error: Error;
+}
+
+interface ToolDiscoveredEventArgs extends ServerEventArgs {
+  tools: Tool[];
+}
+
+interface ResourceDiscoveredEventArgs extends ServerEventArgs {
+  resources: Resource[];
+}
+
+interface PromptDiscoveredEventArgs extends ServerEventArgs {
+  prompts: Prompt[];
+}
 
 /**
  * Registered server information
@@ -57,6 +86,34 @@ export interface ServerRegistryConfig {
 /**
  * Registry for managing MCP servers
  */
+/**
+ * Convert internal ServerState enum to storage state string
+ */
+function toStorageState(state: ServerState): StorageServerState['state'] {
+  switch (state) {
+    case ServerState.STOPPED:
+      return 'stopped';
+    case ServerState.STARTING:
+    case ServerState.INITIALIZED:
+    case ServerState.TOOLS_DISCOVERING:
+    case ServerState.TOOLS_READY:
+    case ServerState.RESOURCES_DISCOVERING:
+    case ServerState.RESOURCES_READY:
+    case ServerState.PROMPTS_DISCOVERING:
+    case ServerState.PROMPTS_READY:
+    case ServerState.READY:
+    case ServerState.RUNNING:
+      return 'running';
+    case ServerState.STOPPING:
+      return 'stopped';
+    case ServerState.CRASHED:
+    case ServerState.ERROR:
+      return 'failed';
+    default:
+      return 'pending';
+  }
+}
+
 export class ServerRegistry extends EventEmitter {
   private servers = new Map<string, RegisteredServer>();
 
@@ -164,8 +221,9 @@ export class ServerRegistry extends EventEmitter {
       await this.storage.saveServerState(config.id, {
         id: config.id,
         type: config.type,
-        state: registered.state as any,
-        lastStartedAt: registered.state === 'running' ? new Date() : undefined,
+        state: toStorageState(registered.state),
+        lastStartedAt:
+          registered.state === ServerState.RUNNING ? new Date() : undefined,
         discoveredTools: registered.tools?.map((t) => t.name),
       });
     }
@@ -214,8 +272,9 @@ export class ServerRegistry extends EventEmitter {
       await this.storage.saveServerState(config.id, {
         id: config.id,
         type: config.type,
-        state: registered.state as any,
-        lastStartedAt: registered.state === 'running' ? new Date() : undefined,
+        state: toStorageState(registered.state),
+        lastStartedAt:
+          registered.state === ServerState.RUNNING ? new Date() : undefined,
         discoveredTools: registered.tools?.map((t) => t.name),
       });
     }
@@ -270,9 +329,9 @@ export class ServerRegistry extends EventEmitter {
       env: config.env,
       // Use cwd from config if provided, otherwise use workspace path
       workDir: config.cwd || workDir,
-      autoRestart: (config as any).autoRestart,
-      maxRestarts: (config as any).maxRestarts,
-      restartDelayMs: (config as any).restartDelayMs,
+      autoRestart: undefined, // Local servers don't have auto-restart config
+      maxRestarts: undefined,
+      restartDelayMs: undefined,
     };
 
     const server = new NpxMcpServer(npxLikeConfig);
@@ -297,8 +356,9 @@ export class ServerRegistry extends EventEmitter {
       await this.storage.saveServerState(config.id, {
         id: config.id,
         type: config.type,
-        state: registered.state as any,
-        lastStartedAt: registered.state === 'running' ? new Date() : undefined,
+        state: toStorageState(registered.state),
+        lastStartedAt:
+          registered.state === ServerState.RUNNING ? new Date() : undefined,
         discoveredTools: registered.tools?.map((t) => t.name),
       });
     }
@@ -330,7 +390,9 @@ export class ServerRegistry extends EventEmitter {
     }
 
     // This should never happen (all types are handled above)
-    throw new Error(`Unknown server type: ${(config as any).type}`);
+    throw new Error(
+      `Unknown server type: ${(config as { type: string }).type}`,
+    );
   }
 
   /**
@@ -341,8 +403,9 @@ export class ServerRegistry extends EventEmitter {
     type ListenerFunc = (...args: unknown[]) => void;
     const listeners = new Map<string, ListenerFunc>();
 
-    const startingListener = (args: any) => {
-      const { serverId } = args;
+    const startingListener = (args: unknown) => {
+      const typedArgs = args as ServerEventArgs;
+      const { serverId } = typedArgs;
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.STARTING;
@@ -350,10 +413,11 @@ export class ServerRegistry extends EventEmitter {
       this.emit('server:starting', { serverId });
     };
     listeners.set('starting', startingListener);
-    server.on('starting', startingListener);
+    server.on('starting', startingListener as (...args: unknown[]) => void);
 
-    const startedListener = async (args: any) => {
-      const { serverId } = args;
+    const startedListener = async (args: unknown) => {
+      const typedArgs = args as ServerEventArgs;
+      const { serverId } = typedArgs;
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.RUNNING;
@@ -364,10 +428,11 @@ export class ServerRegistry extends EventEmitter {
       this.emit('server:started', { serverId });
     };
     listeners.set('started', startedListener);
-    server.on('started', startedListener);
+    server.on('started', startedListener as (...args: unknown[]) => void);
 
-    const stoppingListener = (args: any) => {
-      const { serverId } = args;
+    const stoppingListener = (args: unknown) => {
+      const typedArgs = args as ServerEventArgs;
+      const { serverId } = typedArgs;
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.STOPPING;
@@ -375,10 +440,11 @@ export class ServerRegistry extends EventEmitter {
       this.emit('server:stopping', { serverId });
     };
     listeners.set('stopping', stoppingListener);
-    server.on('stopping', stoppingListener);
+    server.on('stopping', stoppingListener as (...args: unknown[]) => void);
 
-    const stoppedListener = (args: any) => {
-      const { serverId } = args;
+    const stoppedListener = (args: unknown) => {
+      const typedArgs = args as ServerEventArgs;
+      const { serverId } = typedArgs;
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.STOPPED;
@@ -386,10 +452,11 @@ export class ServerRegistry extends EventEmitter {
       this.emit('server:stopped', { serverId });
     };
     listeners.set('stopped', stoppedListener);
-    server.on('stopped', stoppedListener);
+    server.on('stopped', stoppedListener as (...args: unknown[]) => void);
 
-    const crashedListener = (args: any) => {
-      const { serverId, code, signal } = args;
+    const crashedListener = (args: unknown) => {
+      const typedArgs = args as ServerCrashedEventArgs;
+      const { serverId, code, signal } = typedArgs;
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.state = ServerState.CRASHED;
@@ -397,18 +464,20 @@ export class ServerRegistry extends EventEmitter {
       this.emit('server:crashed', { serverId, code, signal });
     };
     listeners.set('crashed', crashedListener);
-    server.on('crashed', crashedListener);
+    server.on('crashed', crashedListener as (...args: unknown[]) => void);
 
-    const errorListener = (args: any) => {
-      const { serverId, error } = args;
+    const errorListener = (args: unknown) => {
+      const typedArgs = args as ServerErrorEventArgs;
+      const { serverId, error } = typedArgs;
       this.emit('server:error', { serverId, error });
     };
     listeners.set('error', errorListener);
-    server.on('error', errorListener);
+    server.on('error', errorListener as (...args: unknown[]) => void);
 
     // Tools discovered event listener
-    const toolsDiscoveredListener = (args: any) => {
-      const { serverId, tools } = args;
+    const toolsDiscoveredListener = (args: unknown) => {
+      const typedArgs = args as ToolDiscoveredEventArgs;
+      const { serverId, tools } = typedArgs;
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.tools = tools;
@@ -416,11 +485,15 @@ export class ServerRegistry extends EventEmitter {
       }
     };
     listeners.set('tools-discovered', toolsDiscoveredListener);
-    server.on('tools-discovered', toolsDiscoveredListener);
+    server.on(
+      'tools-discovered',
+      toolsDiscoveredListener as (...args: unknown[]) => void,
+    );
 
     // Resources discovered event listener
-    const resourcesDiscoveredListener = (args: any) => {
-      const { serverId, resources } = args;
+    const resourcesDiscoveredListener = (args: unknown) => {
+      const typedArgs = args as ResourceDiscoveredEventArgs;
+      const { serverId, resources } = typedArgs;
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.resources = resources;
@@ -428,11 +501,15 @@ export class ServerRegistry extends EventEmitter {
       }
     };
     listeners.set('resources-discovered', resourcesDiscoveredListener);
-    server.on('resources-discovered', resourcesDiscoveredListener);
+    server.on(
+      'resources-discovered',
+      resourcesDiscoveredListener as (...args: unknown[]) => void,
+    );
 
     // Prompts discovered event listener
-    const promptsDiscoveredListener = (args: any) => {
-      const { serverId, prompts } = args;
+    const promptsDiscoveredListener = (args: unknown) => {
+      const typedArgs = args as PromptDiscoveredEventArgs;
+      const { serverId, prompts } = typedArgs;
       const registered = this.servers.get(serverId);
       if (registered) {
         registered.prompts = prompts;
@@ -440,7 +517,10 @@ export class ServerRegistry extends EventEmitter {
       }
     };
     listeners.set('prompts-discovered', promptsDiscoveredListener);
-    server.on('prompts-discovered', promptsDiscoveredListener);
+    server.on(
+      'prompts-discovered',
+      promptsDiscoveredListener as (...args: unknown[]) => void,
+    );
 
     // Store listeners map for cleanup (WeakMap prevents memory leaks)
     this.serverListeners.set(server, listeners);
@@ -469,7 +549,7 @@ export class ServerRegistry extends EventEmitter {
 
     // Stop the server if it's running
     if (registered.instance && registered.state !== ServerState.STOPPED) {
-      await (registered.instance as any).stop?.();
+      await registered.instance.stop();
     }
 
     // Clean up workspace directory if it exists
@@ -547,7 +627,7 @@ export class ServerRegistry extends EventEmitter {
       );
     }
 
-    await (registered.instance as any).stop?.();
+    await registered.instance.stop();
 
     // Update storage
     if (this.storage) {
@@ -783,7 +863,7 @@ export class ServerRegistry extends EventEmitter {
         await this.storage.saveServerState(registered.id, {
           id: registered.id,
           type: registered.config.type,
-          state: registered.state as any,
+          state: toStorageState(registered.state),
           failureCount: registered.healthCheckFailures,
           lastFailureAt: new Date(),
           lastFailureReason: registered.lastHealthCheckError,
@@ -1025,7 +1105,7 @@ export class ServerRegistry extends EventEmitter {
 
     for (const registered of this.servers.values()) {
       if (registered.instance && registered.state !== ServerState.STOPPED) {
-        promises.push((registered.instance as any).stop?.());
+        promises.push(registered.instance.stop());
       }
     }
 

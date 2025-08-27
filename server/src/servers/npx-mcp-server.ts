@@ -26,9 +26,15 @@ export enum ServerState {
   INITIALIZED = 'initialized',
   TOOLS_DISCOVERING = 'tools_discovering',
   TOOLS_READY = 'tools_ready',
+  RESOURCES_DISCOVERING = 'resources_discovering',
+  RESOURCES_READY = 'resources_ready',
+  PROMPTS_DISCOVERING = 'prompts_discovering',
+  PROMPTS_READY = 'prompts_ready',
+  READY = 'ready',
   RUNNING = 'running',
   STOPPING = 'stopping',
   CRASHED = 'crashed',
+  ERROR = 'error',
 }
 
 /**
@@ -110,7 +116,10 @@ export class NpxMcpServer extends EventEmitter {
     if (!this.client) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
-    return await this.client.callTool({ name, arguments: args as any });
+    return await this.client.callTool({
+      name,
+      arguments: args as Record<string, unknown>,
+    });
   }
 
   /**
@@ -377,7 +386,11 @@ export class NpxMcpServer extends EventEmitter {
 
     // Handle transport errors (CustomStdioTransport has event emitter)
     if (this.transport && 'on' in this.transport) {
-      (this.transport as any).on('error', (error: any) => {
+      (
+        this.transport as {
+          on: (event: string, handler: (error: Error) => void) => void;
+        }
+      ).on('error', (error: Error) => {
         logger.error(
           `❌ Transport error for ${this.config.id}: ${error.message}`,
           `Package: ${this.config.package}`,
@@ -403,7 +416,9 @@ export class NpxMcpServer extends EventEmitter {
     // Connect to the server
     try {
       logger.debug(`🔄 Connecting to ${this.config.id}...`);
-      await this.client.connect(this.transport as any);
+      await this.client.connect(
+        this.transport as StdioClientTransport | CustomStdioTransport,
+      );
       logger.debug(`🏢 Server ${this.config.id} initialized successfully`);
     } catch (error) {
       logger.error(
@@ -543,7 +558,10 @@ export class NpxMcpServer extends EventEmitter {
     if (!this.client) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
-    return await this.client.getPrompt({ name, arguments: args as any });
+    return await this.client.getPrompt({
+      name,
+      arguments: args as Record<string, string>,
+    });
   }
 
   /**
@@ -623,6 +641,13 @@ export class NpxMcpServer extends EventEmitter {
   /**
    * Restart the server
    */
+  /**
+   * Stop the server (alias for disconnect)
+   */
+  async stop(): Promise<void> {
+    await this.disconnect();
+  }
+
   /**
    * Disconnect from server
    */

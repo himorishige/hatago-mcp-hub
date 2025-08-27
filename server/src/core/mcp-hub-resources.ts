@@ -53,74 +53,85 @@ export class McpHubResourceManager {
 
     // List available resources
     // Use internal _requestHandlers as Server class doesn't expose resource handler methods
-    (this.server as any)._requestHandlers.set(
-      'resources/list',
-      async (_request: any) => {
-        const resources = this.resourceRegistry.getAllResources();
-        this.logger.debug(`Listing ${resources.length} resources`);
+    (
+      this.server as unknown as {
+        _requestHandlers: Map<string, (request: unknown) => Promise<unknown>>;
+      }
+    )._requestHandlers.set('resources/list', async (_request: unknown) => {
+      const resources = this.resourceRegistry.getAllResources();
+      this.logger.debug(`Listing ${resources.length} resources`);
 
-        return {
-          resources: resources.map((resource) => ({
-            uri: resource.uri,
-            name: resource.name,
-            description: resource.description,
-            mimeType: resource.mimeType,
-          })),
-        };
-      },
-    );
+      return {
+        resources: resources.map((resource) => ({
+          uri: resource.uri,
+          name: resource.name,
+          description: resource.description,
+          mimeType: resource.mimeType,
+        })),
+      };
+    });
 
     // Read resource content
-    (this.server as any)._requestHandlers.set(
-      'resources/read',
-      async (request: any) => {
-        const { uri } = request.params;
-        this.logger.info(`Reading resource: ${uri}`);
+    (
+      this.server as unknown as {
+        _requestHandlers: Map<string, (request: unknown) => Promise<unknown>>;
+      }
+    )._requestHandlers.set('resources/read', async (request: unknown) => {
+      const { uri } = (request as { params: { uri: string } }).params;
+      this.logger.info(`Reading resource: ${uri}`);
 
-        // Find resource registration
-        const resourceInfo = this.resourceRegistry.resolveResource(uri);
-        if (!resourceInfo) {
-          throw new HatagoError(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            `Resource ${uri} not found`,
-            {
-              context: { uri },
-            },
-          );
-        }
+      // Find resource registration
+      const resourceInfo = this.resourceRegistry.resolveResource(uri);
+      if (!resourceInfo) {
+        throw new HatagoError(
+          ErrorCode.RESOURCE_NOT_FOUND,
+          `Resource ${uri} not found`,
+          {
+            context: { uri },
+          },
+        );
+      }
 
-        const { originalUri, serverId } = resourceInfo;
+      const { originalUri, serverId } = resourceInfo;
 
-        // Find server connection
-        const connection = this.connections.get(serverId);
-        if (!connection) {
+      // Find server connection
+      const connection = this.connections.get(serverId);
+      if (!connection) {
+        throw new HatagoError(
+          ErrorCode.SERVER_NOT_CONNECTED,
+          `Server ${serverId} not connected`,
+          {
+            context: { serverId, uri },
+          },
+        );
+      }
+
+      // Read resource through transport
+      this.logger.info(`Forwarding resource read ${uri} to server ${serverId}`);
+      try {
+        if (!connection.transport) {
           throw new HatagoError(
             ErrorCode.SERVER_NOT_CONNECTED,
-            `Server ${serverId} not connected`,
-            {
-              context: { serverId, uri },
-            },
+            `Transport not available for server ${serverId}`,
+            { context: { serverId, uri } },
           );
         }
+        const result = await (
+          connection.transport as unknown as {
+            request: (params: unknown) => Promise<unknown>;
+          }
+        ).request({
+          method: 'resources/read',
+          params: { uri: originalUri },
+        });
 
-        // Read resource through transport
-        this.logger.info(
-          `Forwarding resource read ${uri} to server ${serverId}`,
-        );
-        try {
-          const result = await connection.transport.request({
-            method: 'resources/read',
-            params: { uri: originalUri },
-          });
-
-          this.logger.debug(`Resource read ${uri} succeeded`);
-          return result;
-        } catch (error) {
-          this.logger.error({ error }, `Resource read ${uri} failed`);
-          throw error;
-        }
-      },
-    );
+        this.logger.debug(`Resource read ${uri} succeeded`);
+        return result;
+      } catch (error) {
+        this.logger.error({ error }, `Resource read ${uri} failed`);
+        throw error;
+      }
+    });
 
     this.logger.info('Resource handlers registered');
   }
@@ -305,7 +316,7 @@ export class McpHubResourceManager {
    * Update hub prompts
    */
   private updateHubPrompts(): void {
-    const prompts: any[] = []; // TODO: Add proper type
+    const prompts: unknown[] = []; // TODO: Add proper type
     this.logger.info(`Hub now has ${prompts.length} total prompts`);
 
     // Debug: Log the first prompt to see its structure

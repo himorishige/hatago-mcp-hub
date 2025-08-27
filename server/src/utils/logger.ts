@@ -57,13 +57,13 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     return levels.indexOf(logLevel) <= currentLevelIndex;
   };
 
-  const log = (level: string, obj: any, msg?: string) => {
+  const log = (level: string, obj: unknown, msg?: string) => {
     if (!shouldLog(level)) return;
 
     const timestamp = new Date().toISOString();
 
     // Handle different input types
-    let logObj: any;
+    let logObj: Record<string, unknown>;
     if (typeof obj === 'string') {
       // If first argument is string, treat it as the message
       logObj = {
@@ -72,14 +72,28 @@ export function createLogger(options: LoggerOptions = {}): Logger {
         component,
         msg: obj,
       };
-    } else {
-      // Otherwise, spread the object
+    } else if (typeof obj === 'object' && obj !== null) {
+      // Otherwise, spread the object if it's an object
+      const objRecord = obj as Record<string, unknown>;
       logObj = {
         timestamp,
         level,
         component,
-        ...obj,
-        msg: msg || obj.msg || obj.message || '',
+        ...objRecord,
+        msg:
+          msg ||
+          (objRecord.msg as string | undefined) ||
+          (objRecord.message as string | undefined) ||
+          '',
+      };
+    } else {
+      // For primitive types, just use as data
+      logObj = {
+        timestamp,
+        level,
+        component,
+        data: obj,
+        msg: msg || '',
       };
     }
 
@@ -89,16 +103,16 @@ export function createLogger(options: LoggerOptions = {}): Logger {
   };
 
   const logger: Logger = {
-    error: (obj: any, msg?: string) => log('error', obj, msg),
-    warn: (obj: any, msg?: string) => log('warn', obj, msg),
-    info: (obj: any, msg?: string) => log('info', obj, msg),
-    debug: (obj: any, msg?: string) => log('debug', obj, msg),
-    child: (bindings: Record<string, any>) => {
+    error: (obj: unknown, msg?: string) => log('error', obj, msg),
+    warn: (obj: unknown, msg?: string) => log('warn', obj, msg),
+    info: (obj: unknown, msg?: string) => log('info', obj, msg),
+    debug: (obj: unknown, msg?: string) => log('debug', obj, msg),
+    child: (bindings: Record<string, unknown>) => {
       return createLogger({
         ...options,
-        component: bindings.component || component,
-        profile: bindings.profile || options.profile,
-        reqId: bindings.req_id || options.reqId,
+        component: (bindings.component as string) || component,
+        profile: (bindings.profile as string | undefined) || options.profile,
+        reqId: (bindings.req_id as string | undefined) || options.reqId,
       });
     },
   };

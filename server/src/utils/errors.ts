@@ -1101,7 +1101,7 @@ export const ErrorHelpers = {
     if (error instanceof Error) {
       return {
         message: error.message,
-        code: (error as any).code,
+        code: (error as { code?: string }).code,
         stack: error.stack,
       };
     }
@@ -1111,10 +1111,11 @@ export const ErrorHelpers = {
     }
 
     if (error && typeof error === 'object') {
+      const obj = error as { message?: string; code?: string; stack?: string };
       return {
-        message: (error as any).message || String(error),
-        code: (error as any).code,
-        stack: (error as any).stack,
+        message: obj.message || String(error),
+        code: obj.code,
+        stack: obj.stack,
       };
     }
 

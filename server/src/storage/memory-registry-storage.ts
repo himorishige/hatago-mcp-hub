@@ -2,11 +2,12 @@
  * Memory-based registry storage implementation
  */
 
+import type { ServerConfig } from '../config/types.js';
 import type { RegistryStorage, ServerState } from './registry-storage.js';
 
 export function createMemoryRegistryStorage(): RegistryStorage {
   const states: Map<string, ServerState> = new Map();
-  const servers: Map<string, any> = new Map();
+  const servers: Map<string, ServerConfig> = new Map();
 
   return {
     async init(): Promise<void> {
@@ -15,7 +16,7 @@ export function createMemoryRegistryStorage(): RegistryStorage {
 
     // === Server Configuration Methods ===
 
-    async addServer(config: any): Promise<void> {
+    async addServer(config: ServerConfig): Promise<void> {
       servers.set(config.id, config);
     },
 
@@ -26,11 +27,11 @@ export function createMemoryRegistryStorage(): RegistryStorage {
       return existed;
     },
 
-    async getServers(): Promise<any[]> {
+    async getServers(): Promise<ServerConfig[]> {
       return Array.from(servers.values());
     },
 
-    async getServer(id: string): Promise<any | undefined> {
+    async getServer(id: string): Promise<ServerConfig | undefined> {
       return servers.get(id);
     },
 

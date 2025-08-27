@@ -51,85 +51,100 @@ export class McpHubPromptManager {
 
     // List available prompts
     // Use internal _requestHandlers as Server class doesn't expose prompt handler methods
-    (this.server as any)._requestHandlers.set(
-      'prompts/list',
-      async (_request: any) => {
-        const prompts = this.promptRegistry.getAllPrompts();
-        this.logger.debug(`Listing ${prompts.length} prompts`);
+    (
+      this.server as unknown as {
+        _requestHandlers: Map<string, (request: unknown) => Promise<unknown>>;
+      }
+    )._requestHandlers.set('prompts/list', async (_request: unknown) => {
+      const prompts = this.promptRegistry.getAllPrompts();
+      this.logger.debug(`Listing ${prompts.length} prompts`);
 
-        return {
-          prompts: prompts.map((prompt) => ({
-            name: prompt.name,
-            description: prompt.description,
-            arguments: prompt.arguments,
-          })),
-        };
-      },
-    );
+      return {
+        prompts: prompts.map((prompt) => ({
+          name: prompt.name,
+          description: prompt.description,
+          arguments: prompt.arguments,
+        })),
+      };
+    });
 
     // Get prompt by name
-    (this.server as any)._requestHandlers.set(
-      'prompts/get',
-      async (request: any) => {
-        const { name, arguments: args } = request.params;
-        this.logger.info(`Getting prompt: ${name}`);
+    (
+      this.server as unknown as {
+        _requestHandlers: Map<string, (request: unknown) => Promise<unknown>>;
+      }
+    )._requestHandlers.set('prompts/get', async (request: unknown) => {
+      const { name, arguments: args } = (
+        request as { params: { name: string; arguments?: unknown } }
+      ).params;
+      this.logger.info(`Getting prompt: ${name}`);
 
-        const promptInfo = this.promptRegistry.getPrompt(name);
-        if (!promptInfo) {
-          throw new HatagoError(
-            ErrorCode.PROMPT_NOT_FOUND,
-            `Prompt ${name} not found`,
-            {
-              context: { promptName: name },
-            },
-          );
-        }
+      const promptInfo = this.promptRegistry.getPrompt(name);
+      if (!promptInfo) {
+        throw new HatagoError(
+          ErrorCode.PROMPT_NOT_FOUND,
+          `Prompt ${name} not found`,
+          {
+            context: { promptName: name },
+          },
+        );
+      }
 
-        // Resolve to get server information
-        const resolved = this.promptRegistry.resolvePrompt(name);
-        if (!resolved) {
-          throw new HatagoError(
-            ErrorCode.PROMPT_NOT_FOUND,
-            `Cannot resolve prompt ${name}`,
-            {
-              context: { promptName: name },
-            },
-          );
-        }
+      // Resolve to get server information
+      const resolved = this.promptRegistry.resolvePrompt(name);
+      if (!resolved) {
+        throw new HatagoError(
+          ErrorCode.PROMPT_NOT_FOUND,
+          `Cannot resolve prompt ${name}`,
+          {
+            context: { promptName: name },
+          },
+        );
+      }
 
-        const { originalName, serverId } = resolved;
+      const { originalName, serverId } = resolved;
 
-        // Find server connection
-        const connection = this.connections.get(serverId);
-        if (!connection) {
+      // Find server connection
+      const connection = this.connections.get(serverId);
+      if (!connection) {
+        throw new HatagoError(
+          ErrorCode.SERVER_NOT_CONNECTED,
+          `Server ${serverId} not connected`,
+          {
+            context: { serverId, promptName: name },
+          },
+        );
+      }
+
+      // Get prompt through transport
+      this.logger.info(`Forwarding prompt get ${name} to server ${serverId}`);
+      try {
+        if (!connection.transport) {
           throw new HatagoError(
             ErrorCode.SERVER_NOT_CONNECTED,
-            `Server ${serverId} not connected`,
-            {
-              context: { serverId, promptName: name },
-            },
+            `Transport not available for server ${serverId}`,
+            { context: { serverId, promptName: name } },
           );
         }
+        const result = await (
+          connection.transport as unknown as {
+            request: (params: unknown) => Promise<unknown>;
+          }
+        ).request({
+          method: 'prompts/get',
+          params: {
+            name: originalName,
+            arguments: args,
+          },
+        });
 
-        // Get prompt through transport
-        this.logger.info(`Forwarding prompt get ${name} to server ${serverId}`);
-        try {
-          const result = await connection.transport.request({
-            method: 'prompts/get',
-            params: {
-              name: originalName,
-              arguments: args,
-            },
-          });
-
-          this.logger.debug(`Prompt get ${name} succeeded`);
-          return result;
-        } catch (error) {
-          this.logger.error({ error }, `Prompt get ${name} failed`);
-          throw error;
-        }
-      },
-    );
+        this.logger.debug(`Prompt get ${name} succeeded`);
+        return result;
+      } catch (error) {
+        this.logger.error({ error }, `Prompt get ${name} failed`);
+        throw error;
+      }
+    });
 
     this.logger.info('Prompt handlers registered');
   }

@@ -37,11 +37,10 @@ export class McpHubToolManager {
     this.logger = logger;
     this.registeredTools = new Set();
     this.toolRegistrationMutex = createMutex();
-    this.initialized = false;
   }
 
-  setInitialized(value: boolean): void {
-    this.initialized = value;
+  setInitialized(_value: boolean): void {
+    // No longer needed, kept for compatibility
   }
 
   /**
@@ -55,7 +54,11 @@ export class McpHubToolManager {
 
     // List available tools
     // Use internal _requestHandlers as Server class doesn't expose tool handler methods
-    (this.server as any)._requestHandlers.set('tools/list', async () => {
+    (
+      this.server as unknown as {
+        _requestHandlers: Map<string, (request: unknown) => Promise<unknown>>;
+      }
+    )._requestHandlers.set('tools/list', async () => {
       const tools = this.registry.getAllTools();
       this.logger.debug(`Listing ${tools.length} tools`);
 
@@ -69,36 +72,35 @@ export class McpHubToolManager {
     });
 
     // Handle tool calls
-    (this.server as any)._requestHandlers.set(
-      'tools/call',
-      async (request: any) => {
-        const { name, arguments: args } = request.params;
-        this.logger.info(`Calling tool: ${name}`);
+    (
+      this.server as unknown as {
+        _requestHandlers: Map<string, (request: unknown) => Promise<unknown>>;
+      }
+    )._requestHandlers.set('tools/call', async (request: unknown) => {
+      const { name, arguments: args } = (
+        request as { params: { name: string; arguments?: unknown } }
+      ).params;
+      this.logger.info(`Calling tool: ${name}`);
 
-        try {
-          const result = await this.callTool(name, args);
-          return result;
-        } catch (error) {
-          this.logger.error({ error }, `Tool call failed: ${name}`);
+      try {
+        const result = await this.callTool(name, args);
+        return result;
+      } catch (error) {
+        this.logger.error({ error }, `Tool call failed: ${name}`);
 
-          if (error instanceof HatagoError) {
-            throw error;
-          }
-
-          // Wrap unknown errors
-          throw new HatagoError(
-            ErrorCode.TOOL_NOT_FOUND,
-            `Tool ${name} failed`,
-            {
-              context: {
-                toolName: name,
-                originalError: error,
-              },
-            },
-          );
+        if (error instanceof HatagoError) {
+          throw error;
         }
-      },
-    );
+
+        // Wrap unknown errors
+        throw new HatagoError(ErrorCode.TOOL_NOT_FOUND, `Tool ${name} failed`, {
+          context: {
+            toolName: name,
+            originalError: error,
+          },
+        });
+      }
+    });
 
     this.logger.info('Tool handlers registered');
   }
@@ -276,7 +278,18 @@ export class McpHubToolManager {
     // Call tool through transport
     this.logger.info(`Forwarding tool call ${name} to server ${serverId}`);
     try {
-      const result = await connection.transport.request({
+      if (!connection.transport) {
+        throw new HatagoError(
+          ErrorCode.SERVER_NOT_CONNECTED,
+          `Transport not available for server ${serverId}`,
+          { context: { serverId, toolName: name } },
+        );
+      }
+      const result = await (
+        connection.transport as unknown as {
+          request: (params: unknown) => Promise<unknown>;
+        }
+      ).request({
         method: 'tools/call',
         params: {
           name: toolInfo.originalName,

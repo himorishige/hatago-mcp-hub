@@ -3,7 +3,11 @@
  * Handles initialization sequence and protocol framing correctly
  */
 
-import { type ChildProcess, spawn } from 'node:child_process';
+import {
+  type ChildProcess,
+  type StdioOptions,
+  spawn,
+} from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -51,7 +55,7 @@ export class CustomStdioTransport extends EventEmitter implements Transport {
 
     // Prepare spawn options with optimized environment
     const spawnOptions = {
-      stdio: ['pipe', 'pipe', 'pipe'] as any,
+      stdio: ['pipe', 'pipe', 'pipe'] as StdioOptions,
       shell: false,
       cwd: this.options.cwd || process.cwd(),
       env: {
@@ -252,16 +256,26 @@ export class CustomStdioTransport extends EventEmitter implements Transport {
       }
 
       // Store negotiated protocol
+      const result = (
+        response as {
+          result?: {
+            serverInfo?: unknown;
+            capabilities?: Record<string, unknown>;
+          };
+        }
+      ).result;
       this.negotiatedProtocol = {
         protocol: '2024-11-05',
-        serverInfo: (response as any).result?.serverInfo,
+        serverInfo: result?.serverInfo as
+          | { name: string; version: string }
+          | undefined,
         features: {
           notifications: true,
           resources: true,
           prompts: true,
           tools: true,
         },
-        capabilities: (response as any).result?.capabilities || {},
+        capabilities: result?.capabilities || {},
       };
 
       // Send initialized notification
@@ -272,9 +286,9 @@ export class CustomStdioTransport extends EventEmitter implements Transport {
       });
 
       console.log(
-        `✅ Server initialized with protocol: ${this.negotiatedProtocol.protocol}`,
+        `✅ Server initialized with protocol: ${this.negotiatedProtocol?.protocol || 'unknown'}`,
       );
-      if (this.negotiatedProtocol.serverInfo) {
+      if (this.negotiatedProtocol?.serverInfo) {
         console.log(
           `   Server: ${this.negotiatedProtocol.serverInfo.name} v${this.negotiatedProtocol.serverInfo.version}`,
         );

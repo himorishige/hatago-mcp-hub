@@ -2,6 +2,8 @@
  * Storage types
  */
 
+import type { ServerConfig } from '../config/types.js';
+
 export interface ServerState {
   id: string;
   type: 'local' | 'remote' | 'npx';
@@ -25,7 +27,7 @@ export interface RegistryStorage {
   /**
    * Add or update a server configuration
    */
-  addServer?(config: any): Promise<void>;
+  addServer?(config: ServerConfig): Promise<void>;
 
   /**
    * Remove a server configuration
@@ -35,12 +37,12 @@ export interface RegistryStorage {
   /**
    * Get all server configurations
    */
-  getServers?(): Promise<any[]>;
+  getServers?(): Promise<ServerConfig[]>;
 
   /**
    * Get a specific server configuration
    */
-  getServer?(id: string): Promise<any | undefined>;
+  getServer?(id: string): Promise<ServerConfig | undefined>;
 
   /**
    * Check if a server exists

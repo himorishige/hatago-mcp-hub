@@ -27,6 +27,11 @@ export enum LogLevel {
 /**
  * Log entry structure
  */
+/**
+ * Log data can be any structured data
+ */
+export type LogData = Record<string, unknown> | Error | unknown;
+
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
@@ -34,8 +39,8 @@ export interface LogEntry {
   requestId?: string;
   sessionId?: string;
   serverId?: string;
-  error?: any;
-  data?: Record<string, any>;
+  error?: Error | unknown;
+  data?: Record<string, unknown>;
 }
 
 /**
@@ -145,7 +150,11 @@ export class MinimalLogger {
     });
   }
 
-  private createEntry(level: LogLevel, message: string, data?: any): LogEntry {
+  private createEntry(
+    level: LogLevel,
+    message: string,
+    data?: LogData,
+  ): LogEntry {
     const ctx = requestContext.getStore();
     return {
       timestamp: new Date().toISOString(),
@@ -154,7 +163,9 @@ export class MinimalLogger {
       requestId: ctx?.requestId,
       sessionId: ctx?.sessionId,
       serverId: ctx?.serverId,
-      ...(data && { data }),
+      ...(data && typeof data === 'object'
+        ? { data: data as Record<string, unknown> }
+        : {}),
     };
   }
 
@@ -178,12 +189,12 @@ export class MinimalLogger {
       output += ` ${JSON.stringify(entry.data)}`;
     }
     if (entry.error) {
-      output += `\n${entry.error.stack || entry.error}`;
+      output += `\n${(entry.error as { stack?: string }).stack || entry.error}`;
     }
     return output;
   }
 
-  private log(level: LogLevel, message: string, data?: any): void {
+  private log(level: LogLevel, message: string, data?: LogData): void {
     if (level > this.level) return;
 
     const entry = this.createEntry(level, message, data);
@@ -211,23 +222,23 @@ export class MinimalLogger {
     }
   }
 
-  error(message: string, data?: any): void {
+  error(message: string, data?: LogData): void {
     this.log(LogLevel.ERROR, message, data);
   }
 
-  warn(message: string, data?: any): void {
+  warn(message: string, data?: LogData): void {
     this.log(LogLevel.WARN, message, data);
   }
 
-  info(message: string, data?: any): void {
+  info(message: string, data?: LogData): void {
     this.log(LogLevel.INFO, message, data);
   }
 
-  debug(message: string, data?: any): void {
+  debug(message: string, data?: LogData): void {
     this.log(LogLevel.DEBUG, message, data);
   }
 
-  trace(message: string, data?: any): void {
+  trace(message: string, data?: LogData): void {
     this.log(LogLevel.TRACE, message, data);
   }
 

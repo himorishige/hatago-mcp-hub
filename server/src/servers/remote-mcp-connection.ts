@@ -235,13 +235,13 @@ export class RemoteConnectionManager {
       );
 
       // Connect to server and get initialization result
-      const initResult: any = await client.connect(transport);
+      await client.connect(transport);
 
-      // Get server info from initialization result
-      const serverInfo = initResult?.serverInfo;
-      const protocol = initResult?.protocolVersion || 'unknown';
-      const serverName = serverInfo?.name || 'unknown';
-      const serverVersion = serverInfo?.version || 'unknown';
+      // Note: client.connect() returns void. Server info might be available through client properties
+      // after connection, but the SDK doesn't expose them directly. Using defaults for now.
+      const serverName = 'unknown';
+      const serverVersion = 'unknown';
+      const protocol = 'unknown';
 
       this.logger.info(
         `Connected to ${serverName} v${serverVersion} (protocol: ${protocol})`,

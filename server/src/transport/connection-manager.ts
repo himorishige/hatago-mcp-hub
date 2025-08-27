@@ -11,6 +11,7 @@
 
 import type { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '../observability/minimal-logger.js';
 
 /**
@@ -80,8 +81,8 @@ export abstract class ConnectionManager extends EventEmitter {
   protected pendingRequests = new Map<
     string,
     {
-      resolve: (value: any) => void;
-      reject: (error: any) => void;
+      resolve: (value: JSONRPCMessage) => void;
+      reject: (error: Error) => void;
       timeout: NodeJS.Timeout;
     }
   >();
@@ -176,7 +177,11 @@ export abstract class ConnectionManager extends EventEmitter {
   /**
    * Send message with timeout and backpressure
    */
-  async sendMessage(id: string, message: any, timeout?: number): Promise<any> {
+  async sendMessage(
+    id: string,
+    message: JSONRPCMessage,
+    timeout?: number,
+  ): Promise<JSONRPCMessage> {
     // Check connection state
     if (this.state !== ConnectionState.CONNECTED) {
       throw new Error(`Cannot send message in state: ${this.state}`);
@@ -248,7 +253,7 @@ export abstract class ConnectionManager extends EventEmitter {
   /**
    * Handle received message
    */
-  protected handleMessage(id: string, message: any): void {
+  protected handleMessage(id: string, message: JSONRPCMessage): void {
     this.stats.messagesReceived++;
     this.stats.lastActivity = Date.now();
     this.resetIdleTimer();
@@ -347,7 +352,10 @@ export abstract class ConnectionManager extends EventEmitter {
    */
   protected abstract doConnect(): Promise<void>;
   protected abstract doDisconnect(): Promise<void>;
-  protected abstract doSendMessage(id: string, message: any): Promise<void>;
+  protected abstract doSendMessage(
+    id: string,
+    message: JSONRPCMessage,
+  ): Promise<void>;
   protected abstract sendHeartbeat(): Promise<void>;
 }
 
@@ -429,8 +437,8 @@ export class ProcessManager {
   /**
    * Get process statistics
    */
-  getStats(): Record<string, any> {
-    const stats: Record<string, any> = {};
+  getStats(): Record<string, unknown> {
+    const stats: Record<string, unknown> = {};
 
     for (const [id, entry] of this.processes.entries()) {
       stats[id] = {

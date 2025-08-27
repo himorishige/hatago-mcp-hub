@@ -145,9 +145,11 @@ function convertJsonSchemaToZod(schema: JsonSchema | undefined): z.ZodTypeAny {
 
         // Handle additionalProperties
         if (schema.additionalProperties === false) {
-          objectSchema = objectSchema.strict() as any;
+          objectSchema =
+            objectSchema.strict() as unknown as typeof objectSchema;
         } else if (schema.additionalProperties === true) {
-          objectSchema = objectSchema.passthrough() as any;
+          objectSchema =
+            objectSchema.passthrough() as unknown as typeof objectSchema;
         }
 
         return objectSchema;

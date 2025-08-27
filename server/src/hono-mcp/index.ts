@@ -24,34 +24,35 @@ import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { ErrorHelpers } from '../utils/errors.js';
 
+// Type definition for stream mapping data
+type StreamMappingData = {
+  ctx: {
+    header: (name: string, value: string) => void;
+    json: (data: unknown) => void;
+    body: (data: string) => void;
+  };
+  createdAt: number;
+  notifications?: JSONRPCMessage[];
+  resolveResponse?: () => void;
+  streamWriter?: WritableStreamDefaultWriter<string>;
+  keepaliveInterval?: NodeJS.Timeout;
+  stream?: {
+    closed: boolean;
+    close: () => void;
+    write: (data: string) => Promise<unknown>; // Returns Promise<StreamingApi> for Hono
+    onAbort: (callback: () => void) => void;
+  }; // SSE stream
+};
+
 export class StreamableHTTPTransport implements Transport {
-  #started = false;
-  #initializedSessions = new Map<string, boolean>();
-  #onsessioninitialized?: (sessionId: string) => void;
   #sessionIdGenerator?: () => string;
+  #enableJsonResponse = true;
   #eventStore?: EventStore;
-  #enableJsonResponse = false;
+  #onsessioninitialized?: (sessionId: string) => void;
+  #initializedSessions = new Set<string>();
+  #started = false;
 
-  #streamMapping = new Map<
-    string,
-    {
-      ctx: {
-        header: (name: string, value: string) => void;
-        json: (data: unknown) => void;
-        body: (data: string) => void;
-      };
-
-      createdAt: number;
-      notifications?: JSONRPCMessage[];
-      resolveResponse?: () => void; // Response resolver
-      streamWriter?: any; // Stream writer for NDJSON streaming
-      stream?: {
-        closed: boolean;
-        close: () => void;
-        write: (data: string) => Promise<void>;
-      }; // SSE stream
-    }
-  >();
+  #streamMapping = new Map<string, StreamMappingData>();
   #requestToStreamMapping = new Map<RequestId, string>();
   #requestResponseMap = new Map<RequestId, JSONRPCMessage>();
 
@@ -334,7 +335,7 @@ export class StreamableHTTPTransport implements Transport {
             `[DEBUG] Session ${requestSessionId} is being re-initialized`,
           );
           // Update the session timestamp to keep it alive
-          this.#initializedSessions.set(requestSessionId, true);
+          this.#initializedSessions.add(requestSessionId);
         }
 
         if (messages.length > 1) {
@@ -352,7 +353,7 @@ export class StreamableHTTPTransport implements Transport {
         }
         // Use the same session ID we validated above
         this.sessionId = requestSessionId;
-        this.#initializedSessions.set(requestSessionId, true);
+        this.#initializedSessions.add(requestSessionId);
 
         // If we have a session ID and an onsessioninitialized handler, call it immediately
         // This is needed in cases where the server needs to keep track of multiple sessions
@@ -384,14 +385,14 @@ export class StreamableHTTPTransport implements Transport {
       // All remaining cases have requests
       // Check if any message has a progress token or if it's a long-running operation
       const hasProgressToken = messages.some(
-        (msg: any) =>
+        (msg) =>
           isJSONRPCRequest(msg) &&
           msg.params?._meta?.progressToken !== undefined,
       );
 
       // Check if this is a tools/call request (potentially long-running)
       const isToolCall = messages.some(
-        (msg: any) => isJSONRPCRequest(msg) && msg.method === 'tools/call',
+        (msg) => isJSONRPCRequest(msg) && msg.method === 'tools/call',
       );
 
       // Use SSE for long-running operations or when progress token is present
@@ -412,14 +413,21 @@ export class StreamableHTTPTransport implements Transport {
 
         // Use Hono's streamSSE helper for proper SSE support
         return streamSSE(ctx, async (stream) => {
-          const streamData: any = {
+          const streamData: {
+            ctx: typeof ctx;
+            stream: typeof stream;
+            notifications: JSONRPCMessage[];
+            createdAt: number;
+            keepaliveInterval?: NodeJS.Timeout;
+            resolveResponse?: () => void;
+          } = {
             ctx,
             stream,
             notifications: [],
             createdAt: Date.now(),
           };
 
-          this.#streamMapping.set(streamId, streamData);
+          this.#streamMapping.set(streamId, streamData as StreamMappingData);
 
           // Map request IDs to this stream
           for (const message of messages) {
@@ -540,7 +548,7 @@ export class StreamableHTTPTransport implements Transport {
                         '[DEBUG StreamableHTTP] Resolving promise with body data',
                       );
                       clearTimeout(timeoutId);
-                      resolve(data as any);
+                      resolve(JSON.parse(data));
                     },
                   },
                   createdAt: Date.now(),
@@ -637,7 +645,7 @@ export class StreamableHTTPTransport implements Transport {
       const ephemeralSessionId =
         this.#sessionIdGenerator?.() || crypto.randomUUID();
       this.sessionId = ephemeralSessionId;
-      this.#initializedSessions.set(ephemeralSessionId, true);
+      this.#initializedSessions.add(ephemeralSessionId);
 
       // Set the session ID in response header for client tracking
       ctx.header('mcp-session-id', ephemeralSessionId);
@@ -666,7 +674,7 @@ export class StreamableHTTPTransport implements Transport {
     if (!this.#initializedSessions.has(sessionId)) {
       // For flexible session management, auto-initialize unknown sessions
       this.sessionId = sessionId;
-      this.#initializedSessions.set(sessionId, true);
+      this.#initializedSessions.add(sessionId);
 
       console.error(`[DEBUG] Auto-initialized session: ${sessionId}`);
     }
@@ -778,7 +786,7 @@ export class StreamableHTTPTransport implements Transport {
     if (isNotification) {
       console.log(
         '[DEBUG StreamableHTTP] Processing notification:',
-        (message as any).method,
+        isNotification ? (message as { method: string }).method : 'unknown',
       );
 
       // For SSE streams, send the notification immediately

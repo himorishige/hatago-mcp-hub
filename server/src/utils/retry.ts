@@ -75,7 +75,7 @@ export function isRetryableError(error: unknown): boolean {
 
     // HTTP status codes (if available)
     if ('statusCode' in error) {
-      const status = (error as any).statusCode;
+      const status = (error as { statusCode: number }).statusCode;
       // Retry on 5xx errors and some 4xx
       if (status >= 500 || status === 429 || status === 408) {
         return true;
@@ -91,13 +91,13 @@ export function isRetryableError(error: unknown): boolean {
  */
 export function withRetry(options: RetryOptions = {}) {
   return (
-    _target: any,
+    _target: unknown,
     _propertyKey: string,
     descriptor: PropertyDescriptor,
   ) => {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       return callWithRetry(() => originalMethod.apply(this, args), options);
     };
 

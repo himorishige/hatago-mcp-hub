@@ -1,18 +1,21 @@
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ServerRegistry } from '../servers/server-registry.js';
+import type { Logger } from '../utils/logger.js';
 import { McpHubPromptManager } from './mcp-hub-prompts.js';
+import type { PromptRegistry } from './prompt-registry.js';
 
 describe('McpHubPromptManager', () => {
   let promptManager: McpHubPromptManager;
   let mockServer: Server;
-  let mockRegistry: any;
-  let mockServerRegistry: any;
-  let mockLogger: any;
+  let mockRegistry: Partial<PromptRegistry>;
+  let mockServerRegistry: Partial<ServerRegistry>;
+  let mockLogger: Partial<Logger>;
 
   beforeEach(() => {
     mockServer = {
       _requestHandlers: new Map(),
-    } as any;
+    } as unknown as Server;
 
     mockRegistry = {
       registerPrompt: vi.fn(),
@@ -42,11 +45,11 @@ describe('McpHubPromptManager', () => {
     const mockConnections = new Map();
 
     promptManager = new McpHubPromptManager(
-      mockRegistry,
-      mockServerRegistry,
+      mockRegistry as PromptRegistry,
+      mockServerRegistry as ServerRegistry,
       mockConnections,
       mockServer,
-      mockLogger,
+      mockLogger as Logger,
     );
   });
 

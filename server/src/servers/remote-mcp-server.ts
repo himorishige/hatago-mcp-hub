@@ -16,6 +16,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type {
   CallToolResult,
+  Prompt,
   ReadResourceResult,
   Resource,
   Tool,
@@ -104,9 +105,10 @@ function setCachedConnection(
 /**
  * Detect issue from error message or code
  */
-function detectIssue(error: any): string | null {
-  const message = error?.message || error?.toString() || '';
-  const code = error?.code;
+function detectIssue(error: unknown): string | null {
+  const message =
+    (error as { message?: string })?.message || error?.toString() || '';
+  const code = (error as { code?: number })?.code;
 
   if (ERROR_PATTERNS.SESSION_REJECTED.test(message)) {
     return 'no-session';
@@ -406,8 +408,10 @@ export class RemoteMcpServer extends EventEmitter {
       );
 
       return connection;
-    } catch (firstError: any) {
-      logger.debug(`First connection attempt failed: ${firstError.message}`);
+    } catch (firstError) {
+      logger.debug(
+        `First connection attempt failed: ${firstError instanceof Error ? firstError.message : String(firstError)}`,
+      );
 
       // Second pass: Try alternative based on error
       const issue = detectIssue(firstError);
@@ -489,8 +493,8 @@ export class RemoteMcpServer extends EventEmitter {
 
   private async attemptConnection(
     baseUrl: URL,
-    headers: Record<string, string>,
-    useSessionId: boolean,
+    _headers: Record<string, string>,
+    _useSessionId: boolean,
     transportType: 'sse' | 'http',
   ): Promise<RemoteConnection> {
     // Create client
@@ -506,12 +510,7 @@ export class RemoteMcpServer extends EventEmitter {
 
     if (transportType === 'sse') {
       logger.info(`Using SSE transport for ${this.config.id}`);
-      const sseTransport = new SSEClientTransport(new URL(baseUrl), {
-        headers: {
-          ...headers,
-          Accept: 'application/json, text/event-stream',
-        },
-      } as any);
+      const sseTransport = new SSEClientTransport(new URL(baseUrl), {});
 
       await this.withTimeout(
         client.connect(sseTransport),
@@ -523,7 +522,7 @@ export class RemoteMcpServer extends EventEmitter {
 
       return {
         client,
-        facade: null as any,
+        facade: undefined,
         transport: sseTransport,
         transportType: 'sse',
         protocol: {
@@ -547,14 +546,7 @@ export class RemoteMcpServer extends EventEmitter {
       // Try Streamable HTTP
       logger.info(`Trying Streamable HTTP transport for ${this.config.id}`);
 
-      const transport = new StreamableHTTPClientTransport(baseUrl, {
-        headers: {
-          ...headers,
-          Accept: 'application/json',
-          // Don't send sessionId if not supported
-          ...(useSessionId ? {} : { 'X-No-Session': 'true' }),
-        },
-      } as any);
+      const transport = new StreamableHTTPClientTransport(baseUrl, {});
 
       await this.withTimeout(
         client.connect(transport),
@@ -566,7 +558,7 @@ export class RemoteMcpServer extends EventEmitter {
 
       return {
         client,
-        facade: null as any,
+        facade: undefined,
         transport,
         transportType: 'streamable-http',
         protocol: {
@@ -721,9 +713,13 @@ export class RemoteMcpServer extends EventEmitter {
                   method: 'ping',
                   params: {},
                 },
-                {} as any,
+                {} as import('zod').ZodType<
+                  object,
+                  import('zod').ZodTypeDef,
+                  object
+                >,
               )
-              .catch((error: any) => {
+              .catch((error) => {
                 // If ping is not supported, consider it healthy (non-fatal)
                 if (
                   error?.code === -32601 ||
@@ -973,7 +969,11 @@ export class RemoteMcpServer extends EventEmitter {
 
       // progressTokenがある場合はmetaに設定（SDKの正しい使い方）
       if (progressToken) {
-        (requestOptions as any).meta = { progressToken };
+        (
+          requestOptions as RequestOptions & {
+            meta?: { progressToken: string };
+          }
+        ).meta = { progressToken: progressToken as string };
       }
 
       const result = await this.connection.client.callTool(
@@ -1055,7 +1055,7 @@ export class RemoteMcpServer extends EventEmitter {
   /**
    * List available prompts
    */
-  async listPrompts(): Promise<any[]> {
+  async listPrompts(): Promise<Prompt[]> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
     }
@@ -1159,11 +1159,11 @@ export class RemoteMcpServer extends EventEmitter {
           return resources;
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       // Handle Method not found gracefully (non-fatal)
       if (
-        error?.code === -32601 ||
-        error?.message?.includes('Method not found')
+        (error as { code?: number })?.code === -32601 ||
+        (error as { message?: string })?.message?.includes('Method not found')
       ) {
         logger.warn(
           `Server ${this.config.id} doesn't support resources/list method`,
@@ -1180,7 +1180,7 @@ export class RemoteMcpServer extends EventEmitter {
   /**
    * Discover available tools from the remote server
    */
-  async discoverTools(): Promise<any[]> {
+  async discoverTools(): Promise<Tool[]> {
     const toolsResponse = await this.listTools();
 
     // MCPのlistToolsレスポンスから完全なツール情報を返す
