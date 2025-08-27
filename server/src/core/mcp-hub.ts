@@ -7,12 +7,16 @@ import {
   type ListResourcesRequest,
   ListResourcesRequestSchema,
   type ListResourcesResult,
+  type ListResourceTemplatesRequest,
+  ListResourceTemplatesRequestSchema,
+  type ListResourceTemplatesResult,
   ListToolsRequestSchema,
   type ReadResourceRequest,
   ReadResourceRequestSchema,
   type ReadResourceResult,
   type Resource,
 } from '@modelcontextprotocol/sdk/types.js';
+
 import type {
   HatagoConfig,
   NpxServerConfig,
@@ -41,6 +45,7 @@ import {
   createResourceRegistry,
   type ResourceRegistry,
 } from './resource-registry.js';
+import { ResourceTemplateRegistry } from './resource-template-registry.js';
 import { SessionManager } from './session-manager.js';
 import { ToolRegistry } from './tool-registry.js';
 
@@ -69,6 +74,7 @@ export class McpHub {
   private registry: ToolRegistry;
   private resourceRegistry: ResourceRegistry;
   private promptRegistry: PromptRegistry;
+  private resourceTemplateRegistry: ResourceTemplateRegistry;
   private router: McpRouter;
   private connections = new Map<string, McpConnection>();
   private config: HatagoConfig;
@@ -107,6 +113,11 @@ export class McpHub {
 
     // Initialize prompt registry
     this.promptRegistry = createPromptRegistry();
+
+    // Initialize resource template registry
+    this.resourceTemplateRegistry = new ResourceTemplateRegistry(
+      this.config.toolNaming,
+    );
 
     // Initialize router
     this.router = new McpRouter(
@@ -321,12 +332,24 @@ export class McpHub {
       },
     );
 
-    // Set resources/templates/list handler (future support)
-    // this.server.setRequestHandler('resources/templates/list', ...);
+    // Set resources/templates/list handler
+    this.server.setRequestHandler(
+      ListResourceTemplatesRequestSchema,
+      async (
+        _request: ListResourceTemplatesRequest,
+      ): Promise<ListResourceTemplatesResult> => {
+        const allTemplates = this.resourceTemplateRegistry.getAllTemplates();
+
+        // TODO: Add pagination support (cursor parameter)
+        return {
+          resourceTemplates: allTemplates,
+        };
+      },
+    );
   }
 
   /**
-   * MCPハブを初期化
+   * Initialize MCP Hub
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
@@ -626,11 +649,12 @@ export class McpHub {
         };
         this.connections.set(serverId, connection);
 
-        // ツール/リソース/プロンプトを並列で取得して登録
+        // ツール/リソース/プロンプト/テンプレートを並列で取得して登録
         await Promise.all([
           this.refreshNpxServerTools(serverId),
           this.refreshNpxServerResources(serverId),
           this.refreshNpxServerPrompts(serverId),
+          this.refreshNpxServerResourceTemplates(serverId),
         ]);
 
         this.logger.info(`Connected to NPX server ${serverId}`);
@@ -681,10 +705,11 @@ export class McpHub {
         };
         this.connections.set(serverId, connection);
 
-        // ツールとリソースを並列で取得して登録
+        // ツール/リソース/テンプレートを並列で取得して登録
         await Promise.all([
           this.refreshRemoteServerTools(serverId),
           this.refreshRemoteServerResources(serverId),
+          this.refreshRemoteServerResourceTemplates(serverId),
         ]);
 
         this.logger.info(`Connected to remote server ${serverId}`);
@@ -757,11 +782,12 @@ export class McpHub {
         };
         this.connections.set(serverId, connection);
 
-        // ツール/リソース/プロンプトを並列で取得して登録
+        // ツール/リソース/プロンプト/テンプレートを並列で取得して登録
         await Promise.all([
           this.refreshNpxServerTools(serverId),
           this.refreshNpxServerResources(serverId),
           this.refreshNpxServerPrompts(serverId),
+          this.refreshNpxServerResourceTemplates(serverId),
         ]);
 
         this.logger.info(`Connected to local server ${serverId}`);
@@ -813,6 +839,9 @@ export class McpHub {
 
       // リソースをレジストリから削除
       this.resourceRegistry.clearServerResources(serverId);
+
+      // リソーステンプレートをレジストリから削除
+      this.resourceTemplateRegistry.clearServerTemplates(serverId);
 
       // プロンプトをレジストリから削除
 
@@ -987,6 +1016,42 @@ export class McpHub {
   }
 
   /**
+   * NPXサーバーのリソーステンプレートを更新
+   */
+  private async refreshNpxServerResourceTemplates(
+    serverId: string,
+  ): Promise<void> {
+    if (!this.serverRegistry) {
+      return;
+    }
+
+    const registered = this.serverRegistry.getServer(serverId);
+    if (!registered?.instance) {
+      return;
+    }
+
+    try {
+      const npxServer = registered.instance as NpxMcpServer;
+      const resourceTemplates = npxServer.getResourceTemplates();
+
+      this.logger.info(
+        `NPX Server ${serverId} has ${resourceTemplates.length} resource templates`,
+      );
+
+      // Register templates to registry
+      this.resourceTemplateRegistry.registerTemplates(
+        serverId,
+        resourceTemplates,
+      );
+    } catch (error) {
+      this.logger.error(
+        { error },
+        `Failed to refresh ${serverId} resource templates`,
+      );
+    }
+  }
+
+  /**
    * NPXサーバーのプロンプトを更新
    */
   private async refreshNpxServerPrompts(serverId: string): Promise<void> {
@@ -1036,6 +1101,42 @@ export class McpHub {
       this.updateHubResources();
     } catch (error) {
       this.logger.error({ error }, `Failed to refresh ${serverId} resources`);
+    }
+  }
+
+  /**
+   * リモートサーバーのリソーステンプレートを更新
+   */
+  private async refreshRemoteServerResourceTemplates(
+    serverId: string,
+  ): Promise<void> {
+    if (!this.serverRegistry) {
+      return;
+    }
+
+    const registered = this.serverRegistry.getServer(serverId);
+    if (!registered?.instance) {
+      return;
+    }
+
+    try {
+      const remoteServer = registered.instance as RemoteMcpServer;
+      const resourceTemplates = await remoteServer.listResourceTemplates();
+
+      this.logger.info(
+        `Remote Server ${serverId} has ${resourceTemplates.length} resource templates`,
+      );
+
+      // Register templates to registry
+      this.resourceTemplateRegistry.registerTemplates(
+        serverId,
+        resourceTemplates,
+      );
+    } catch (error) {
+      this.logger.error(
+        { error },
+        `Failed to refresh ${serverId} resource templates`,
+      );
     }
   }
 
