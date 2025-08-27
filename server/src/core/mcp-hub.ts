@@ -27,7 +27,8 @@ import { ServerRegistry } from '../servers/server-registry.js';
 import type { RegistryStorage } from '../storage/registry-storage.js';
 import { ErrorHelpers } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
-import { createMutex } from '../utils/mutex.js';
+import { createKeyedMutex } from '../utils/mutex.js';
+import { createTaskQueue } from '../utils/concurrency.js';
 import { McpHubPromptManager } from './mcp-hub-prompts.js';
 import { McpHubResourceManager } from './mcp-hub-resources.js';
 import { McpHubToolManager } from './mcp-hub-tools.js';
@@ -72,7 +73,7 @@ export class McpHub {
   private initialized = false;
   private serverRegistry?: ServerRegistry;
   private registeredTools = new Set<string>(); // Track registered tools to avoid duplicates
-  private toolRegistrationMutex = createMutex(); // Mutex for tool registration
+  private toolRegistrationMutex = createKeyedMutex<string>(); // Per-server mutex for tool registration
   private sessionManager: SessionManager;
   private logger: any; // Using minimal logger
   private transport?: StreamableHTTPTransport; // Store transport for progress notifications
@@ -329,12 +330,14 @@ export class McpHub {
     const hasNpxServers = servers.some((s) => s.type === 'npx');
     const hasRemoteServers = servers.some((s) => s.type === 'remote');
 
+    let warmupPromise: Promise<void> | undefined;
+
     if (hasNpxServers || hasRemoteServers) {
       if (hasNpxServers) {
         // Workspace directory removed (not needed in lite version)
 
-        // Warm up NPX packages to populate cache
-        await this.warmupNpxPackages();
+        // Warm up NPX packages to populate cache (run concurrently)
+        warmupPromise = this.warmupNpxPackages();
       }
 
       // Create storage based on config
@@ -350,18 +353,32 @@ export class McpHub {
       await this.serverRegistry.initialize();
     }
 
-    // 設定されたサーバーを接続
+    // 設定されたサーバーを接続 (並列実行)
     this.logger.info(`Found ${servers.length} servers in config`);
-    for (const serverConfig of servers) {
-      this.logger.debug(`Checking server ${serverConfig.id}`);
-      try {
-        await this.connectServer(serverConfig);
-      } catch (error) {
-        this.logger.error(
-          `Failed to connect server ${serverConfig.id}: ${error}`,
-        );
-        // エラーが発生しても続行
-      }
+    const queue = createTaskQueue<void>(
+      this.config.concurrency?.serverInit ??
+        this.config.concurrency?.global ??
+        4,
+    );
+    await Promise.all(
+      servers.map((serverConfig) =>
+        queue.add(async () => {
+          this.logger.debug(`Checking server ${serverConfig.id}`);
+          try {
+            await this.connectServer(serverConfig);
+          } catch (error) {
+            this.logger.error(
+              `Failed to connect server ${serverConfig.id}: ${error}`,
+            );
+            // エラーが発生しても続行
+          }
+        }),
+      ),
+    );
+
+    // Wait for NPX warmup to complete if it was started
+    if (warmupPromise) {
+      await warmupPromise;
     }
 
     this.initialized = true;
@@ -381,8 +398,14 @@ export class McpHub {
 
     this.logger.info('🔥 Warming up NPX packages...');
 
-    // Run warmup in parallel for all NPX servers
-    const warmupPromises = npxServers.map(async (serverConfig) => {
+    // Run warmup in parallel for all NPX servers with concurrency control
+    const queue = createTaskQueue<void>(
+      this.config.concurrency?.warmup ??
+        this.config.concurrency?.global ??
+        4,
+    );
+    const warmupPromises = npxServers.map((serverConfig) =>
+      queue.add(async () => {
       try {
         const npxConfig = serverConfig as NpxServerConfig;
 
@@ -492,7 +515,8 @@ export class McpHub {
         this.logger.info(`  ⚠️  Failed to warm up ${serverConfig.id}: ${error}`);
         // Don't fail the whole initialization
       }
-    });
+      }),
+    );
 
     // Use allSettled to track success/failure
     const results = await Promise.allSettled(warmupPromises);
@@ -552,12 +576,11 @@ export class McpHub {
             this.logger.info(
               `NPX server ${serverId} started, discovering tools and resources...`,
             );
-            // ツールを再発見
-            await this.refreshNpxServerTools(serverId);
-            // リソースを再発見
-            await this.refreshNpxServerResources(serverId);
-            // プロンプトを再発見
-            await this.refreshNpxServerPrompts(serverId);
+            await Promise.all([
+              this.refreshNpxServerTools(serverId),
+              this.refreshNpxServerResources(serverId),
+              this.refreshNpxServerPrompts(serverId),
+            ]);
           }
         });
 
@@ -590,12 +613,12 @@ export class McpHub {
         };
         this.connections.set(serverId, connection);
 
-        // ツールを取得して登録
-        await this.refreshNpxServerTools(serverId);
-        // リソースを取得して登録
-        await this.refreshNpxServerResources(serverId);
-        // プロンプトを取得して登録
-        await this.refreshNpxServerPrompts(serverId);
+        // ツール/リソース/プロンプトを並列で取得して登録
+        await Promise.all([
+          this.refreshNpxServerTools(serverId),
+          this.refreshNpxServerResources(serverId),
+          this.refreshNpxServerPrompts(serverId),
+        ]);
 
         this.logger.info(`Connected to NPX server ${serverId}`);
       } else if (type === 'remote') {
@@ -645,10 +668,11 @@ export class McpHub {
         };
         this.connections.set(serverId, connection);
 
-        // ツールを取得して登録（リモートサーバーの場合はRegistryから取得）
-        await this.refreshRemoteServerTools(serverId);
-        // リソースを取得して登録
-        await this.refreshRemoteServerResources(serverId);
+        // ツールとリソースを並列で取得して登録
+        await Promise.all([
+          this.refreshRemoteServerTools(serverId),
+          this.refreshRemoteServerResources(serverId),
+        ]);
 
         this.logger.info(`Connected to remote server ${serverId}`);
       } else if (type === 'local') {
@@ -680,7 +704,7 @@ export class McpHub {
           'tools-discovered',
           async ({ serverId: discoveredId }) => {
             if (discoveredId === serverId) {
-              await this.updateHubTools();
+              await this.updateHubTools(serverId);
             }
           },
         );
@@ -720,12 +744,12 @@ export class McpHub {
         };
         this.connections.set(serverId, connection);
 
-        // ツールを取得して登録
-        await this.refreshNpxServerTools(serverId);
-        // リソースを取得して登録
-        await this.refreshNpxServerResources(serverId);
-        // プロンプトを取得して登録
-        await this.refreshNpxServerPrompts(serverId);
+        // ツール/リソース/プロンプトを並列で取得して登録
+        await Promise.all([
+          this.refreshNpxServerTools(serverId),
+          this.refreshNpxServerResources(serverId),
+          this.refreshNpxServerPrompts(serverId),
+        ]);
 
         this.logger.info(`Connected to local server ${serverId}`);
       } else {
@@ -818,9 +842,9 @@ export class McpHub {
       this.registry.registerServerTools(serverId, tools);
 
       // ハブのツールを更新
-      await this.updateHubTools();
+      await this.updateHubTools(serverId);
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error({ error }, `Failed to refresh ${serverId} tools`);
     }
   }
 
@@ -878,7 +902,10 @@ export class McpHub {
             return;
           }
         } catch (error) {
-          this.logger.error({ error }, `$2`);
+          this.logger.error(
+            { error },
+            `Failed to refresh ${serverId} tools`,
+          );
           return;
         }
       } else {
@@ -909,9 +936,9 @@ export class McpHub {
       this.registry.registerServerTools(serverId, tools);
 
       // ハブのツールを更新
-      await this.updateHubTools();
+      await this.updateHubTools(serverId);
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error({ error }, `Failed to refresh ${serverId} tools`);
     }
   }
 
@@ -945,7 +972,10 @@ export class McpHub {
       // ハブのリソースを更新
       this.updateHubResources();
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error(
+        { error },
+        `Failed to refresh ${serverId} resources`,
+      );
     }
   }
 
@@ -998,7 +1028,10 @@ export class McpHub {
       // ハブのリソースを更新
       this.updateHubResources();
     } catch (error) {
-      this.logger.error({ error }, `$2`);
+      this.logger.error(
+        { error },
+        `Failed to refresh ${serverId} resources`,
+      );
     }
   }
 
@@ -1077,9 +1110,9 @@ export class McpHub {
   /**
    * ハブのツールを更新
    */
-  private async updateHubTools(): Promise<void> {
-    // Use mutex to prevent concurrent tool registration
-    await this.toolRegistrationMutex.runExclusive(async () => {
+  private async updateHubTools(serverId: string): Promise<void> {
+    // Use keyed mutex to prevent concurrent registration per server
+    await this.toolRegistrationMutex.runExclusive(serverId, async () => {
       const tools = this.registry.getAllTools();
       this.logger.info(`Hub now has ${tools.length} total tools`);
       // Debug: Log the first tool to see its structure

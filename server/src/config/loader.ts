@@ -123,7 +123,7 @@ export function createDefaultConfig(): HatagoConfig {
       toolCallMs: 20000,
     },
     concurrency: {
-      global: 8,
+      global: 4,
     },
     security: {
       redactKeys: ['password', 'apiKey', 'token', 'secret'],
@@ -376,13 +376,13 @@ export function generateSampleConfig(): string {
   // Concurrency limits
   "concurrency": {
     // Maximum concurrent operations across all servers
-    "global": 8,
-    
-    // Per-server concurrency limits
-    // Overrides global limit for specific servers
-    "perServer": {
-      // "example-local": 3
-    }
+    "global": 4,
+
+    // Concurrency for server initialization
+    "serverInit": 4,
+
+    // Concurrency for NPX package warmup
+    "warmup": 4
   },
   
   // Security configuration

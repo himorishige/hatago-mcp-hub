@@ -262,13 +262,13 @@ export const CONFIG_SCHEMA = {
           properties: {
             global: {
               type: 'number',
-              default: 8,
+              default: 4,
             },
-            perServer: {
-              type: 'object',
-              additionalProperties: {
-                type: 'number',
-              },
+            serverInit: {
+              type: 'number',
+            },
+            warmup: {
+              type: 'number',
             },
           },
           additionalProperties: false,
