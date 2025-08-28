@@ -1,0 +1,28 @@
+{
+  "name": "@hatago/example-hono-mcp-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsdown",
+    "start": "node dist/index.js",
+    "test": "curl -X POST http://localhost:8787/mcp -H 'Content-Type: application/json' -H 'Accept: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'"
+  },
+  "dependencies": {
+    "@hatago/hub": "workspace:*",
+    "@hatago/transport": "workspace:*",
+    "@hono/node-server": "^1.13.7",
+    "hono": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "eventsource": "^4.0.0",
+    "tsdown": "^0.14.2",
+    "tsx": "^4.20.5",
+    "typescript": "~5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,6 +1,6 @@
+import { ToolRegistry } from '@hatago/runtime';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ToolRegistry } from './tool-registry.js';
 
 describe('ToolRegistry', () => {
   let registry: ToolRegistry;

@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "logLevel": "debug",
+  "mcpServers": {
+    "deepwiki_sse": {
+      "url": "https://mcp.deepwiki.com/sse",
+      "type": "sse",
+      "hatagoOptions": {
+        "start": "eager",
+        "timeouts": {
+          "timeout": 60000,
+          "maxTotalTimeout": 300000,
+          "resetTimeoutOnProgress": true
+        }
+      }
+    },
+    "deepwiki_streamable": {
+      "url": "https://mcp.deepwiki.com/mcp",
+      "type": "streamable-http",
+      "hatagoOptions": {
+        "start": "eager",
+        "timeouts": {
+          "timeout": 60000,
+          "maxTotalTimeout": 300000,
+          "resetTimeoutOnProgress": true
+        }
+      }
+    },
+    "test-server": {
+      "command": "node",
+      "args": [
+        "/Users/morishige/ghq/github.com/himorishige/hatago-hub/server/examples/test-mcp-server.js"
+      ],
+      "hatagoOptions": {
+        "start": "eager"
+      }
+    },
+    "everything": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "hatagoOptions": {
+        "start": "eager"
+      }
+    }
+  }
+}

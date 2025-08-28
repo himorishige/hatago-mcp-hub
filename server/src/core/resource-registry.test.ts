@@ -1,9 +1,6 @@
+import { createResourceRegistry, type ResourceRegistry } from '@hatago/runtime';
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  createResourceRegistry,
-  type ResourceRegistry,
-} from './resource-registry.js';
 
 describe('createResourceRegistry', () => {
   let registry: ResourceRegistry;

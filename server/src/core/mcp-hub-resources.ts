@@ -3,6 +3,7 @@
  * Handles resource registration, discovery, and access
  */
 
+import type { ResourceRegistry } from '@hatago/runtime';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
@@ -10,7 +11,6 @@ import type { ServerRegistry } from '../servers/server-registry.js';
 import { ErrorCode } from '../utils/error-codes.js';
 import { HatagoError } from '../utils/errors.js';
 import type { Logger } from '../utils/logger.js';
-import type { ResourceRegistry } from './resource-registry.js';
 import type { McpConnection } from './types.js';
 
 export class McpHubResourceManager {

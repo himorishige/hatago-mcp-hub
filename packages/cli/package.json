@@ -1,0 +1,48 @@
+{
+  "name": "@hatago/cli",
+  "version": "0.1.0",
+  "description": "CLI for Hatago MCP Hub",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "hatago": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@hatago/core": "workspace:*",
+    "@hatago/runtime": "workspace:*",
+    "@hatago/transport": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.17.4",
+    "commander": "^14.0.0",
+    "chalk": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsdown": "^0.14.2",
+    "typescript": "~5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "hatago",
+    "mcp",
+    "cli",
+    "model-context-protocol"
+  ],
+  "license": "Apache-2.0"
+}

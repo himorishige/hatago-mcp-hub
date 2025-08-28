@@ -63,7 +63,7 @@ export interface MCPTransport {
    * Open a transport connection
    */
   open(
-    type: 'stdio' | 'ws' | 'http',
+    type: 'stdio' | 'ws' | 'http' | 'sse',
     opts: MCPTransportOptions,
   ): Promise<MCPConnection>;
 }

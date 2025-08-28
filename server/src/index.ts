@@ -5,18 +5,25 @@
  * Focused on performance, simplicity, and reliability.
  */
 
+// Error recovery now from @hatago/runtime
+// Registry and session management now from @hatago/runtime
+export {
+  CircuitBreaker,
+  McpRouter,
+  PromptRegistry,
+  ResourceRegistry,
+  retryWithBackoff,
+  SessionManager,
+  ToolRegistry,
+  withRetry,
+} from '@hatago/runtime';
 // Configuration
 export * from './config/loader.js';
 export * from './config/types.js';
 // Re-export version and features from constants for backward compatibility
 export { APP_VERSION as VERSION, FEATURES } from './constants.js';
-export * from './core/error-recovery.js';
-export { retryWithBackoff } from './core/error-recovery.js';
 // Core functionality
 export * from './core/mcp-hub.js';
-export * from './core/resource-registry.js';
-export * from './core/session-manager.js';
-export * from './core/tool-registry.js';
 export * from './observability/minimal-logger.js';
 // Minimal security and observability
 export * from './security/minimal-security.js';

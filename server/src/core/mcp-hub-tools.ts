@@ -3,6 +3,8 @@
  * Handles tool registration, discovery, and invocation
  */
 
+import type { ToolRegistry } from '@hatago/runtime';
+import { createMutex, type Mutex } from '@hatago/runtime';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { NpxMcpServer } from '../servers/npx-mcp-server.js';
 import type { RemoteMcpServer } from '../servers/remote-mcp-server.js';
@@ -10,8 +12,6 @@ import type { ServerRegistry } from '../servers/server-registry.js';
 import { ErrorCode } from '../utils/error-codes.js';
 import { HatagoError } from '../utils/errors.js';
 import type { Logger } from '../utils/logger.js';
-import { createMutex, type Mutex } from '../utils/mutex.js';
-import type { ToolRegistry } from './tool-registry.js';
 import type { McpConnection } from './types.js';
 
 export class McpHubToolManager {

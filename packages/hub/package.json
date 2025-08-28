@@ -1,0 +1,44 @@
+{
+  "name": "@hatago/hub",
+  "version": "0.1.0",
+  "description": "User-friendly facade for Hatago MCP Hub",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./hub-streamable": {
+      "import": "./dist/hub-streamable.js",
+      "types": "./dist/hub-streamable.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "lint": "biome lint ./src",
+    "format": "biome format --write ./src"
+  },
+  "dependencies": {
+    "@hatago/core": "workspace:*",
+    "@hatago/runtime": "workspace:*",
+    "@hatago/transport": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.17.4",
+    "hono": "^4.9.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "eventsource": "^4.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "license": "MIT"
+}

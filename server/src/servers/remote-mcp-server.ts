@@ -59,7 +59,7 @@ const ERROR_PATTERNS = {
  */
 interface CachedConnection {
   origin: string;
-  transport: 'sse' | 'http';
+  transport: 'sse' | 'http' | 'streamable-http';
   supportsSessionId: boolean;
   protocolVersion?: string;
   lastSuccess: Date;
@@ -89,7 +89,7 @@ function getCachedConnection(url: URL): CachedConnection | null {
 
 function setCachedConnection(
   url: URL,
-  transport: 'sse' | 'http',
+  transport: 'sse' | 'http' | 'streamable-http',
   supportsSessionId: boolean,
   protocolVersion?: string,
 ): void {
@@ -397,13 +397,17 @@ export class RemoteMcpServer extends EventEmitter {
         cached?.supportsSessionId ?? true, // Default to sessionId
         (cached?.transport ||
           this.config.transport ||
-          this.detectTransport(baseUrl)) as 'sse' | 'http',
+          this.detectTransport(baseUrl)) as 'sse' | 'http' | 'streamable-http',
       );
 
       // Cache successful connection
       setCachedConnection(
         baseUrl,
-        connection.transportType === 'sse' ? 'sse' : 'http',
+        connection.transportType === 'sse'
+          ? 'sse'
+          : connection.transportType === 'streamable-http'
+            ? 'streamable-http'
+            : 'http',
         true, // sessionId worked
         connection.protocol?.protocol,
       );
@@ -424,13 +428,20 @@ export class RemoteMcpServer extends EventEmitter {
             false, // No sessionId
             (cached?.transport ||
               this.config.transport ||
-              this.detectTransport(baseUrl)) as 'sse' | 'http',
+              this.detectTransport(baseUrl)) as
+              | 'sse'
+              | 'http'
+              | 'streamable-http',
           );
 
           // Cache successful connection
           setCachedConnection(
             baseUrl,
-            connection.transportType === 'sse' ? 'sse' : 'http',
+            connection.transportType === 'sse'
+              ? 'sse'
+              : connection.transportType === 'streamable-http'
+                ? 'streamable-http'
+                : 'http',
             false, // sessionId not supported
             connection.protocol?.protocol,
           );
@@ -478,7 +489,19 @@ export class RemoteMcpServer extends EventEmitter {
     }
   }
 
-  private detectTransport(url: URL): 'sse' | 'http' {
+  private detectTransport(url: URL): 'sse' | 'http' | 'streamable-http' {
+    // Check config first
+    if (this.config.transport === 'streamable-http') {
+      return 'streamable-http';
+    }
+    if (this.config.transport === 'sse') {
+      return 'sse';
+    }
+    if (this.config.transport === 'http') {
+      return 'http';
+    }
+
+    // Auto-detect from path
     const path = url.pathname.toLowerCase();
     if (
       path.endsWith('/sse') ||
@@ -487,6 +510,9 @@ export class RemoteMcpServer extends EventEmitter {
     ) {
       return 'sse';
     }
+    if (path.endsWith('/mcp')) {
+      return 'streamable-http';
+    }
     return 'http';
   }
 
@@ -494,7 +520,7 @@ export class RemoteMcpServer extends EventEmitter {
     baseUrl: URL,
     headers: Record<string, string>,
     useSessionId: boolean,
-    transportType: 'sse' | 'http',
+    transportType: 'sse' | 'http' | 'streamable-http',
   ): Promise<RemoteConnection> {
     // Create client
     const client = new Client(
@@ -546,7 +572,10 @@ export class RemoteMcpServer extends EventEmitter {
           prompts: true,
         },
       };
-    } else {
+    } else if (
+      transportType === 'http' ||
+      transportType === 'streamable-http'
+    ) {
       // Try Streamable HTTP
       logger.info(`Trying Streamable HTTP transport for ${this.config.id}`);
 

@@ -2,8 +2,8 @@
  * Tests for SessionManager
  */
 
+import { SessionManager } from '@hatago/runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SessionManager } from './session-manager.js';
 
 describe('SessionManager', () => {
   let sessionManager: SessionManager;
