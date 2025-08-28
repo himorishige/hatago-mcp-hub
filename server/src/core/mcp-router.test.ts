@@ -2,11 +2,13 @@
  * Tests for MCP Router class
  */
 
+import type {
+  PromptRegistry,
+  ResourceRegistry,
+  ToolRegistry,
+} from '@hatago/runtime';
+import { McpRouter } from '@hatago/runtime';
 import { describe, expect, it, vi } from 'vitest';
-import { McpRouter } from './mcp-router.js';
-import type { PromptRegistry } from './prompt-registry.js';
-import type { ResourceRegistry } from './resource-registry.js';
-import type { ToolRegistry } from './tool-registry.js';
 
 describe('McpRouter', () => {
   const createMockToolRegistry = (): ToolRegistry => {
@@ -138,7 +140,7 @@ describe('McpRouter', () => {
         originalUri: 'file:///original/path',
       });
       expect(result.error).toBeUndefined();
-      expect(result.metadata?.uri).toBe('file:///path_server1');
+      expect(result.metadata?.publicName).toBe('file:///path_server1');
       expect(result.metadata?.resolvedBy).toBe('resourceRegistry');
     });
 
@@ -184,7 +186,7 @@ describe('McpRouter', () => {
         originalName: 'original_prompt',
       });
       expect(result.error).toBeUndefined();
-      expect(result.metadata?.name).toBe('prompt_server1');
+      expect(result.metadata?.publicName).toBe('prompt_server1');
       expect(result.metadata?.resolvedBy).toBe('promptRegistry');
     });
 

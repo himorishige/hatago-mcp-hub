@@ -1,4 +1,6 @@
-import { createKeyedMutex } from '../utils/mutex.js';
+import { randomUUID } from 'node:crypto';
+import type { Session } from '@hatago/core';
+import { createKeyedMutex } from '../mutex.js';
 import {
   clearSessions,
   createSession,
@@ -9,8 +11,7 @@ import {
   removeExpired,
   type SessionState,
   touchSession,
-} from './session-operations.js';
-import type { Session } from './types.js';
+} from './operations.js';
 
 /**
  * Session management
@@ -93,6 +94,29 @@ export class SessionManager {
    */
   getActiveSessionCount(): number {
     return getActiveSessionCount(this.state);
+  }
+
+  /**
+   * List all sessions
+   */
+  async list(): Promise<Session[]> {
+    // Convert Map values to array
+    return Array.from(this.state.sessions.values());
+  }
+
+  /**
+   * Create a session (alias for createSession for compatibility)
+   */
+  async create(id?: string): Promise<Session> {
+    const sessionId = id || randomUUID();
+    return this.createSession(sessionId);
+  }
+
+  /**
+   * Destroy a session (alias for deleteSession)
+   */
+  async destroy(id: string): Promise<void> {
+    return this.deleteSession(id);
   }
 
   /**

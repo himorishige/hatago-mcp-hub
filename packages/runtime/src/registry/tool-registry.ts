@@ -1,5 +1,5 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolNamingConfig, ToolNamingStrategy } from '../config/types.js';
+import type { ToolMetadata } from '@hatago/core';
 import {
   clearRegistry,
   clearServerTools,
@@ -11,7 +11,7 @@ import {
   registerServerTools,
   type ToolRegistryState,
 } from './tool-registry-functional.js';
-import type { ToolMetadata } from './types.js';
+import type { ToolNamingConfig, ToolNamingStrategy } from './types.js';
 
 // Tool name collision information
 export interface ToolCollision {

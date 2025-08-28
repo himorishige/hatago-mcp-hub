@@ -14,6 +14,7 @@ import type {
 } from '../types.js';
 import { WorkersCrypto } from './crypto.js';
 import { WorkersEventBus } from './events.js';
+import { WorkersKVStorage } from './kv-storage.js';
 import { WorkersLogger } from './logger.js';
 import { WorkersProcessRunner } from './process.js';
 import { KVStorage, WorkersMemoryStorage } from './storage.js';
@@ -65,7 +66,11 @@ export class WorkersPlatform implements Platform {
  * Workers-specific platform configuration
  */
 export interface WorkersPlatformConfig extends PlatformConfig {
-  kv?: KVNamespace; // Cloudflare KV namespace for storage
+  kv?: KVNamespace; // Cloudflare KV namespace for storage (deprecated)
+  kvNamespaces?: {
+    config?: KVNamespace;
+    sessions?: KVNamespace;
+  };
 }
 
 /**
@@ -76,7 +81,13 @@ export async function createWorkersPlatform(
 ): Promise<Platform> {
   // Create storage - use KV if provided, otherwise memory storage
   let storage: Storage;
-  if (config?.kv) {
+  if (config?.kvNamespaces) {
+    storage = new WorkersKVStorage({
+      configNamespace: config.kvNamespaces.config,
+      sessionNamespace: config.kvNamespaces.sessions,
+    });
+  } else if (config?.kv) {
+    // Backward compatibility
     storage = new KVStorage(config.kv);
   } else {
     storage = new WorkersMemoryStorage();
@@ -109,6 +120,7 @@ export async function createWorkersPlatform(
 
 export { WorkersCrypto } from './crypto.js';
 export { WorkersEventBus } from './events.js';
+export { WorkersKVStorage } from './kv-storage.js';
 export { WorkersLogger } from './logger.js';
 export { WorkersProcessRunner } from './process.js';
 // Export individual implementations for direct use

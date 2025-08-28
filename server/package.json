@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Hatago MCP Hub - Lightweight MCP server management",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
@@ -11,7 +12,10 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "browser": "./dist/workers/entry.workers.js",
+      "workerd": "./dist/workers/entry.workers.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -25,9 +29,13 @@
   "scripts": {
     "dev": "tsx src/cli/index.ts serve",
     "build": "tsdown && pnpm build:schema",
+    "build:workers": "tsdown --config tsdown.config.workers.ts",
+    "build:all": "pnpm build && pnpm build:workers",
     "build:schema": "tsx scripts/generate-schema.ts",
     "start": "node dist/cli/index.js serve",
     "cli": "tsx src/cli/index.ts",
+    "dev:workers": "wrangler dev",
+    "deploy:workers": "wrangler deploy",
     "format": "biome format src --write",
     "lint": "biome lint src --write",
     "check": "biome check src --write",
@@ -36,6 +44,8 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@hatago/core": "workspace:*",
+    "@hatago/runtime": "workspace:*",
     "@hono/node-server": "^1.19.0",
     "@modelcontextprotocol/sdk": "^1.17.3",
     "commander": "^14.0.0",
@@ -52,6 +62,7 @@
     "tsx": "^4.7.1",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
+    "wrangler": "^4.33.0",
     "zod-to-json-schema": "^3.24.6"
   },
   "engines": {

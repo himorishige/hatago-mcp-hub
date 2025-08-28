@@ -1,0 +1,154 @@
+/**
+ * Config command - Manage Hatago configuration
+ */
+
+import type { Command } from 'commander';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
+
+interface HatagoConfig {
+  port?: number;
+  host?: string;
+  servers?: any[];
+  session?: {
+    timeout?: number;
+    maxSessions?: number;
+  };
+}
+
+export function setupConfigCommand(program: Command): void {
+  const config = program
+    .command('config')
+    .description('Manage Hatago configuration');
+
+  // Show config
+  config
+    .command('show')
+    .description('Show current configuration')
+    .action(() => {
+      const config = loadConfig();
+      console.log('Current configuration:');
+      console.log(JSON.stringify(config, null, 2));
+    });
+
+  // Set config value
+  config
+    .command('set <key> <value>')
+    .description('Set a configuration value')
+    .action((key: string, value: string) => {
+      const config = loadConfig();
+      
+      // Parse nested keys
+      const keys = key.split('.');
+      let target: any = config;
+      
+      for (let i = 0; i < keys.length - 1; i++) {
+        const k = keys[i];
+        if (!(k in target)) {
+          target[k] = {};
+        }
+        target = target[k];
+      }
+      
+      const lastKey = keys[keys.length - 1];
+      
+      // Try to parse value as JSON
+      try {
+        target[lastKey] = JSON.parse(value);
+      } catch {
+        // If not valid JSON, treat as string
+        target[lastKey] = value;
+      }
+      
+      saveConfig(config);
+      console.log(`Set ${key} = ${value}`);
+    });
+
+  // Get config value
+  config
+    .command('get <key>')
+    .description('Get a configuration value')
+    .action((key: string) => {
+      const config = loadConfig();
+      
+      // Parse nested keys
+      const keys = key.split('.');
+      let value: any = config;
+      
+      for (const k of keys) {
+        if (value && typeof value === 'object' && k in value) {
+          value = value[k];
+        } else {
+          console.log(`Key "${key}" not found`);
+          return;
+        }
+      }
+      
+      console.log(JSON.stringify(value, null, 2));
+    });
+
+  // Reset config
+  config
+    .command('reset')
+    .description('Reset configuration to defaults')
+    .action(() => {
+      const defaultConfig: HatagoConfig = {
+        port: 3000,
+        host: '127.0.0.1',
+        servers: [],
+        session: {
+          timeout: 3600000,
+          maxSessions: 100
+        }
+      };
+      
+      saveConfig(defaultConfig);
+      console.log('Configuration reset to defaults');
+    });
+}
+
+function getConfigPath(): string {
+  return join(homedir(), '.hatago', 'config.json');
+}
+
+function loadConfig(): HatagoConfig {
+  const configPath = getConfigPath();
+  if (!existsSync(configPath)) {
+    return {
+      port: 3000,
+      host: '127.0.0.1',
+      servers: [],
+      session: {
+        timeout: 3600000,
+        maxSessions: 100
+      }
+    };
+  }
+
+  try {
+    const content = readFileSync(configPath, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error loading configuration:', error);
+    return {};
+  }
+}
+
+function saveConfig(config: HatagoConfig): void {
+  const configPath = getConfigPath();
+  const configDir = join(homedir(), '.hatago');
+
+  // Create directory if it doesn't exist
+  if (!existsSync(configDir)) {
+    const { mkdirSync } = require('fs');
+    mkdirSync(configDir, { recursive: true });
+  }
+
+  try {
+    writeFileSync(configPath, JSON.stringify(config, null, 2));
+  } catch (error) {
+    console.error('Error saving configuration:', error);
+    process.exit(1);
+  }
+}

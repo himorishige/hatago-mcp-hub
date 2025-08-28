@@ -8,8 +8,6 @@
  * - Basic performance tracking
  */
 
-import { AsyncLocalStorage } from 'node:async_hooks';
-import { randomBytes } from 'node:crypto';
 import type { Context } from 'hono';
 
 /**
@@ -49,15 +47,73 @@ export interface RequestContext {
 }
 
 /**
- * AsyncLocalStorage for request context
+ * AsyncLocalStorage for request context (Node.js only)
  */
-export const requestContext = new AsyncLocalStorage<RequestContext>();
+let asyncLocalStorage: any = null;
+let getRandomBytes: ((size: number) => Buffer) | null = null;
+
+// Runtime detection
+const isNode = typeof process !== 'undefined' && process.versions?.node;
+
+// Initialize Node.js specific modules dynamically
+if (isNode) {
+  // Dynamic import for Node.js modules to avoid Workers build warnings
+  (async () => {
+    try {
+      const { AsyncLocalStorage } = await import('node:async_hooks');
+      const { randomBytes } = await import('node:crypto');
+      asyncLocalStorage = new AsyncLocalStorage<RequestContext>();
+      getRandomBytes = randomBytes;
+    } catch {
+      // Fallback for environments where these modules are not available
+    }
+  })();
+}
+
+/**
+ * Request context abstraction
+ */
+export const requestContext = {
+  run<T>(
+    context: RequestContext,
+    callback: () => T | Promise<T>,
+  ): T | Promise<T> {
+    if (asyncLocalStorage) {
+      return asyncLocalStorage.run(context, callback);
+    }
+    // In Workers, we don't have AsyncLocalStorage, so just run the callback
+    return callback();
+  },
+  getStore(): RequestContext | undefined {
+    if (asyncLocalStorage) {
+      return asyncLocalStorage.getStore();
+    }
+    return undefined;
+  },
+};
 
 /**
  * Generate request ID
  */
 export function generateRequestId(): string {
-  return randomBytes(8).toString('hex');
+  if (getRandomBytes) {
+    // Node.js environment
+    return getRandomBytes(8).toString('hex');
+  } else {
+    // Workers/Browser environment - use Web Crypto API
+    const array = new Uint8Array(8);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(array);
+    } else {
+      // Fallback to Math.random (less secure but works everywhere)
+      for (let i = 0; i < array.length; i++) {
+        array[i] = Math.floor(Math.random() * 256);
+      }
+    }
+    return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join(
+      '',
+    );
+  }
 }
 
 /**

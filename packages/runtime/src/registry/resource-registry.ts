@@ -1,5 +1,5 @@
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolNamingConfig } from '../config/types.js';
+import type { ToolNamingConfig } from './types.js';
 import {
   createNamingFunction,
   createParsingFunction,
@@ -85,29 +85,31 @@ export function createResourceRegistry(
     // Register new resources
     const resourceUris = new Set<string>();
     for (const resource of newResources) {
-      const publicUri = generatePublicUri(serverId, resource.uri);
+      // Keep original URI, only namespace the name
+      const namespacedName = resource.name ? generatePublicUri(serverId, resource.name) : resource.name;
       const metadata: ResourceMetadata = {
         ...resource,
-        uri: publicUri,
+        name: namespacedName,
+        uri: resource.uri,  // Keep original URI
         serverId,
         originalUri: resource.uri,
       };
 
-      // URI-based management
-      const existing = resources.get(publicUri) || [];
+      // URI-based management - use original URI as key
+      const existing = resources.get(resource.uri) || [];
       existing.push(metadata);
-      resources.set(publicUri, existing);
-      resourceUris.add(publicUri);
+      resources.set(resource.uri, existing);
+      resourceUris.add(resource.uri);
     }
 
     serverResources.set(serverId, resourceUris);
   }
 
   /**
-   * Resolve a public URI to server and original URI
+   * Resolve a URI to server and original URI
    */
-  function resolveResource(publicUri: string): ResourceResolveResult | null {
-    const resourceList = resources.get(publicUri);
+  function resolveResource(uri: string): ResourceResolveResult | null {
+    const resourceList = resources.get(uri);
     if (!resourceList || resourceList.length === 0) {
       return null;
     }
@@ -117,7 +119,7 @@ export function createResourceRegistry(
     return {
       serverId: resource.serverId,
       originalUri: resource.originalUri,
-      publicUri: resource.uri,
+      publicUri: uri,
     };
   }
 
