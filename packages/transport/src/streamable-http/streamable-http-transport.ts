@@ -53,6 +53,7 @@ export class StreamableHTTPTransport implements Transport {
   private requestToStreamMapping = new Map<RequestId, string>();
   private requestResponseMap = new Map<RequestId, JSONRPCMessage>();
   private progressTokenToStream = new Map<string | number, string>(); // progressToken -> streamId
+  private sessionIdToStream = new Map<string, string>(); // sessionId -> streamId
   
   // Cleanup settings
   private readonly maxMapSize = 1000;
@@ -269,10 +270,21 @@ export class StreamableHTTPTransport implements Transport {
       keepaliveInterval
     });
     
+    // Map sessionId to streamId
+    this.sessionIdToStream.set(sessionId, streamId);
+    
     // Clean up on close
     sseStream.onAbort?.(() => {
       clearInterval(keepaliveInterval);
       this.streamMapping.delete(streamId);
+      
+      // Clean up sessionId mapping
+      for (const [sid, sId] of this.sessionIdToStream.entries()) {
+        if (sId === streamId) {
+          this.sessionIdToStream.delete(sid);
+          break;
+        }
+      }
       
       // Clean up any progressToken mappings for this stream
       const tokensToDelete: Array<string | number> = [];
@@ -368,6 +380,10 @@ export class StreamableHTTPTransport implements Transport {
       isJSONRPCRequest(msg) && msg.method === 'tools/call'
     );
     
+    // Check if there's an existing SSE stream for this session (from GET request)
+    const sessionId = headers['mcp-session-id'];
+    const existingStreamId = sessionId ? this.sessionIdToStream.get(sessionId) : undefined;
+    
     // Use SSE for long-running operations
     if ((hasProgressToken || isToolCall) && sseStream && headers['accept']?.includes('text/event-stream')) {
       const streamId = crypto.randomUUID();
@@ -388,7 +404,9 @@ export class StreamableHTTPTransport implements Transport {
           
           // Map progressToken to stream if present
           if (message.params?._meta?.progressToken) {
-            this.progressTokenToStream.set(message.params._meta.progressToken, streamId);
+            // If there's an existing GET SSE stream for this session, map to that instead
+            const streamIdToUse = existingStreamId || streamId;
+            this.progressTokenToStream.set(message.params._meta.progressToken, streamIdToUse);
           }
         }
       }
@@ -434,6 +452,11 @@ export class StreamableHTTPTransport implements Transport {
     const responses: JSONRPCMessage[] = [];
     
     for (const message of messages) {
+      // Map progressToken to existing GET SSE stream if available
+      if (isJSONRPCRequest(message) && message.params?._meta?.progressToken && existingStreamId) {
+        this.progressTokenToStream.set(message.params._meta.progressToken, existingStreamId);
+      }
+      
       this.onmessage?.(message);
       
       if (isJSONRPCRequest(message)) {

@@ -217,7 +217,7 @@ export class HatagoHub {
     
     for (let i = 0; i < maxRetries; i++) {
       try {
-        const transport = this.wrapTransport(createTransport(), id);
+        const transport = this.wrapTransport(await createTransport(), id);
         const client = new Client({
           name: `hatago-hub-${id}`,
           version: '0.1.0'
@@ -333,7 +333,7 @@ export class HatagoHub {
     this.logger.info(`Connecting to server: ${id}`, { spec });
     
     // Create transport factory based on spec
-    const createTransport = () => {
+    const createTransport = async () => {
       if (spec.command) {
         // Local server via stdio
         this.logger.debug(`Creating StdioClientTransport for ${id}`, { 
@@ -354,6 +354,11 @@ export class HatagoHub {
         // Remote HTTP server
         this.logger.debug(`Creating HTTPClientTransport (via SSE) for ${id}`, { url: spec.url });
         return new SSEClientTransport(new URL(spec.url));
+      } else if (spec.url && spec.type === 'streamable-http') {
+        // Streamable HTTP server
+        const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
+        this.logger.debug(`Creating StreamableHTTPClientTransport for ${id}`, { url: spec.url });
+        return new StreamableHTTPClientTransport(new URL(spec.url));
       } else {
         throw new Error(`Invalid server specification for ${id}`);
       }
@@ -1010,7 +1015,8 @@ export class HatagoHub {
           
           // Register progress token with SSE manager if present (for legacy support)
           if (progressToken && sessionId && this.sseManager) {
-            this.sseManager.registerProgressToken(progressToken, sessionId);
+            this.logger.info(`[Hub] Registering progress token`, { progressToken, sessionId });
+            this.sseManager.registerProgressToken(progressToken.toString(), sessionId);
           }
           
           // Parse tool name to find server
@@ -1027,6 +1033,7 @@ export class HatagoHub {
           // This prevents duplicate progress notifications from the normal tool handler
           if (this.streamableTransport && serverId && progressToken) {
             const client = this.clients.get(serverId);
+            const server = this.servers.get(serverId);
             if (client) {
               // Direct call to client with progress support
               const transport = this.streamableTransport;
@@ -1061,10 +1068,24 @@ export class HatagoHub {
                         message: progress.message
                       }
                     };
-                    await transport.send(notification);
+                    
+                    // Send to StreamableHTTP client
+                    if (transport) {
+                      await transport.send(notification);
+                    }
+                    
+                    // Also send to SSE clients if registered
+                    if (progressToken && this.sseManager) {
+                      this.sseManager.sendProgress(progressToken.toString(), {
+                        progressToken: progressToken.toString(),
+                        progress: progress.progress || 0,
+                        total: progress.total,
+                        message: progress.message
+                      });
+                    }
                   },
-                  timeout: 30000,
-                  maxTotalTimeout: 300000
+                  timeout: server?.spec?.timeout || 30000,
+                  maxTotalTimeout: server?.spec?.timeout ? server.spec.timeout * 10 : 300000
                 }
               );
               

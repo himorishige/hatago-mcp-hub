@@ -13,48 +13,51 @@ import { handleMCPEndpoint } from '@hatago/hub/hub-streamable';
 
 async function main() {
   console.log('🏮 Starting Hatago Example Hub...');
-  
+
   // Create Hatago Hub with config
   const configPath = process.env.HATAGO_CONFIG || './hatago-test.config.json';
   const hub = createHub({ configFile: configPath });
-  
+
   // Initialize hub
   await hub.start();
-  
+
   // Create Hono app
   const app = new Hono();
 
   // Middleware
-  app.use('*', cors({
-    origin: ['http://localhost:*', 'http://127.0.0.1:*'],
-    credentials: true,
-    allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id']
-  }));
+  app.use(
+    '*',
+    cors({
+      origin: ['http://localhost:*', 'http://127.0.0.1:*'],
+      credentials: true,
+      allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id'],
+    })
+  );
 
   // Health check
-  app.get('/health', c => 
-    c.json({ 
-      status: 'ok', 
-      uptime: process.uptime() 
+  app.get('/health', (c) =>
+    c.json({
+      status: 'ok',
+      uptime: process.uptime(),
     })
   );
 
   // MCP endpoint - use StreamableHTTP handler
-  app.all('/mcp', async c => {
+  app.all('/mcp', async (c) => {
     return await handleMCPEndpoint(hub, c);
   });
-  
+
   // SSE endpoint for progress notifications
-  app.get('/events', async c => {
+  app.get('/events', async (c) => {
     const clientId = c.req.query('clientId') || `client-${Date.now()}`;
     const sseManager = hub.getSSEManager();
-    
+
     console.log(`📡 SSE client connected: ${clientId}`);
-    
+
     return streamSSE(c, async (stream) => {
       // Register client with SSE manager
       sseManager.addClient(clientId, stream);
-      
+
       // Keep connection alive
       const keepAliveInterval = setInterval(() => {
         try {
@@ -64,14 +67,14 @@ async function main() {
           clearInterval(keepAliveInterval);
         }
       }, 30000); // Every 30 seconds
-      
+
       // Clean up on disconnect
       stream.onAbort(() => {
         console.log(`📡 SSE client disconnected: ${clientId}`);
         clearInterval(keepAliveInterval);
         sseManager.removeClient(clientId);
       });
-      
+
       // Keep stream open
       await new Promise(() => {}); // Never resolves, keeps connection open
     });
@@ -80,11 +83,11 @@ async function main() {
   // Start HTTP server
   const port = Number(process.env.PORT || 8787);
   const hostname = process.env.HOST || '127.0.0.1';
-  
-  const server = serve({ 
-    fetch: app.fetch, 
+
+  const server = serve({
+    fetch: app.fetch,
     port,
-    hostname
+    hostname,
   });
 
   console.log('');
@@ -99,7 +102,7 @@ async function main() {
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     console.log(`\n👋 Received ${signal}, shutting down gracefully...`);
-    
+
     try {
       await hub.stop();
       server.close();

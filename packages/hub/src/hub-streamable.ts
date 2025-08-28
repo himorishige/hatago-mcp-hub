@@ -67,6 +67,17 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
   }
 
   const method = c.req.method;
+  const acceptHeader = c.req.header('Accept');
+  const sessionId = c.req.header('mcp-session-id');
+  
+  // Debug logging for MCP Inspector
+  console.log('[Hub] Incoming request:', {
+    method,
+    path: c.req.path,
+    acceptHeader,
+    sessionId,
+    headers: Object.fromEntries(c.req.raw.headers.entries())
+  });
   
   // Handle SSE request
   if (method === 'GET' && c.req.header('Accept')?.includes('text/event-stream')) {
@@ -95,7 +106,8 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
     const isToolCall = body.method === 'tools/call';
     const acceptsSSE = c.req.header('Accept')?.includes('text/event-stream');
     
-    if ((hasProgressToken || isToolCall) && acceptsSSE) {
+    // Always use SSE if client accepts it and it's a tool call with progress token
+    if (acceptsSSE && isToolCall && hasProgressToken) {
       // Use SSE response
       return streamSSE(c, async (stream) => {
         const sseStream = createSSEAdapter(stream);

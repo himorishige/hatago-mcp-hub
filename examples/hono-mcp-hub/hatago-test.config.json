@@ -2,11 +2,23 @@
   "version": 1,
   "logLevel": "debug",
   "mcpServers": {
-    "deepwiki": {
-      "url": "https://mcp.deepwiki.com/mcp",
-      "type": "http",
+    "deepwiki_sse": {
+      "url": "https://mcp.deepwiki.com/sse",
+      "type": "sse",
       "hatagoOptions": {
-        "start": "lazy",
+        "start": "eager",
+        "timeouts": {
+          "timeout": 60000,
+          "maxTotalTimeout": 300000,
+          "resetTimeoutOnProgress": true
+        }
+      }
+    },
+    "deepwiki_streamable": {
+      "url": "https://mcp.deepwiki.com/mcp",
+      "type": "streamable-http",
+      "hatagoOptions": {
+        "start": "eager",
         "timeouts": {
           "timeout": 60000,
           "maxTotalTimeout": 300000,

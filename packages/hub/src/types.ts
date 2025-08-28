@@ -16,7 +16,7 @@ export interface ServerSpec {
   
   // Remote server
   url?: string;
-  type?: 'http' | 'sse' | 'ws';
+  type?: 'http' | 'sse' | 'ws' | 'streamable-http';
   headers?: Record<string, string>;
   
   // Common options
