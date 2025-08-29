@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../schemas/config.schema.json",
+  "version": 1,
+  "mcpServers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ]
+    }
+  }
+}

@@ -18,7 +18,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown",
+    "build": "pnpm build:schema && tsdown",
+    "build:schema": "cd ../../server && npx tsx scripts/generate-schema.ts",
     "dev": "tsx watch src/cli.ts",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",

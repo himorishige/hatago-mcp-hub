@@ -3,12 +3,33 @@
  */
 
 /**
- * Simple command-line argument parser
+ * Parsed command-line arguments
  */
-export function parseArgs(args: string[]): Record<string, string | boolean> {
-  const result: Record<string, string | boolean> = {};
+export interface ParsedArgs {
+  command?: string;
+  flags: Record<string, string | boolean>;
+  positional: string[];
+}
 
-  for (let i = 0; i < args.length; i++) {
+/**
+ * Simple command-line argument parser with command support
+ */
+export function parseArgs(args: string[]): ParsedArgs {
+  const result: ParsedArgs = {
+    flags: {},
+    positional: [],
+  };
+
+  let i = 0;
+
+  // First non-flag argument is the command
+  if (args.length > 0 && !args[0].startsWith("--")) {
+    result.command = args[0];
+    i = 1;
+  }
+
+  // Parse remaining arguments
+  for (; i < args.length; i++) {
     const arg = args[i];
 
     if (arg.startsWith("--")) {
@@ -17,14 +38,36 @@ export function parseArgs(args: string[]): Record<string, string | boolean> {
 
       // Check if next argument is a value (not another flag)
       if (nextArg && !nextArg.startsWith("--")) {
-        result[key] = nextArg;
+        result.flags[key] = nextArg;
         i++; // Skip next argument
       } else {
         // Boolean flag
-        result[key] = true;
+        result.flags[key] = true;
       }
+    } else {
+      // Positional argument
+      result.positional.push(arg);
     }
   }
 
   return result;
+}
+
+/**
+ * Generate a default hatago.config.json file following the schema
+ */
+export function generateDefaultConfig(): string {
+  const defaultConfig = {
+    $schema: "../../../schemas/config.schema.json",
+    version: 1,
+    mcpServers: {
+      deepwiki: {
+        type: "remote" as const,
+        url: "https://mcp.deepwiki.com/mcp",
+        transport: "streamable-http" as const,
+      },
+    },
+  };
+
+  return JSON.stringify(defaultConfig, null, 2);
 }

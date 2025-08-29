@@ -1,0 +1,47 @@
+{
+  "name": "hatago-hub",
+  "description": "Hatago MCP Hub configuration",
+  "version": "1.0.0",
+  "hub": {
+    "sessionExpiry": 3600000,
+    "maxSessions": 100,
+    "toolPrefix": true,
+    "resourcePrefix": true,
+    "promptPrefix": true
+  },
+  "servers": [
+    {
+      "id": "filesystem",
+      "name": "File System Server",
+      "description": "Access to local file system",
+      "type": "npx",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ],
+      "enabled": true
+    }
+  ],
+  "transport": {
+    "http": {
+      "port": 3000,
+      "host": "localhost",
+      "cors": {
+        "enabled": true,
+        "origins": [
+          "*"
+        ]
+      }
+    },
+    "sse": {
+      "enabled": true,
+      "heartbeatInterval": 30000
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json"
+  }
+}
