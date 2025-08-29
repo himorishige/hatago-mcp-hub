@@ -1,5 +1,5 @@
 import type { Session } from "@hatago/core";
-import { randomUUID } from "node:crypto";
+import { getPlatform } from "../platform/index.js";
 import { createKeyedMutex } from "../mutex.js";
 import {
   clearSessions,
@@ -108,7 +108,8 @@ export class SessionManager {
    * Create a session (alias for createSession for compatibility)
    */
   async create(id?: string): Promise<Session> {
-    const sessionId = id || randomUUID();
+    const platform = getPlatform();
+    const sessionId = id || platform.randomUUID();
     return this.createSession(sessionId);
   }
 
