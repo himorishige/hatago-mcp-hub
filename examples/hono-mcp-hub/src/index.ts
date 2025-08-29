@@ -4,11 +4,8 @@
  * Using @hatago/hub for minimal boilerplate
  */
 
-import { createHub } from "@hatago/hub";
-import {
-  createEventsEndpoint,
-  handleMCPEndpoint,
-} from "@hatago/hub/hub-streamable";
+import { createEventsEndpoint } from "@hatago/hub";
+import { createHub, handleMCPEndpoint } from "@hatago/hub/node";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
