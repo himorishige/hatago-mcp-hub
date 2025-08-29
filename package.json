@@ -1,9 +1,14 @@
 {
   "scripts": {
     "format": "pnpm prettier:fix",
-    "prettier:fix": "prettier --write \"**/*.{md,mdx,html,css,scss,less,yaml,yml,graphql}\""
+    "prettier:fix": "prettier --write \"**/*.{md,mdx,html,css,scss,less,yaml,yml,graphql}\"",
+    "biome:check": "pnpm -r --no-bail run biome:check",
+    "biome:check:fix": "pnpm -r run biome:check:fix",
+    "biome:lint": "pnpm -r --no-bail run biome:lint",
+    "biome:format": "pnpm -r run biome:format"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.2.0",
     "prettier": "^3.6.2"
   }
 }

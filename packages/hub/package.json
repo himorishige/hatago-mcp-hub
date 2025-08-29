@@ -33,6 +33,10 @@
     "test:node": "vitest --config vitest.config.ts",
     "test:workers": "vitest --config vitest.config.workers.ts",
     "test:all": "npm run test:node && npm run test:workers",
+    "biome:check": "npx biome check ./src",
+    "biome:check:fix": "npx biome check --write ./src",
+    "biome:lint": "npx biome lint ./src",
+    "biome:format": "npx biome format --write ./src",
     "lint": "biome lint ./src",
     "format": "biome format --write ./src"
   },

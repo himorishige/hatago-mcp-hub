@@ -35,7 +35,11 @@
     "build": "tsdown",
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "biome:check": "npx biome check ./src",
+    "biome:check:fix": "npx biome check --write ./src",
+    "biome:lint": "npx biome lint ./src",
+    "biome:format": "npx biome format --write ./src"
   },
   "dependencies": {
     "@hatago/core": "workspace:*",

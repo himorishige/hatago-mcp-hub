@@ -20,6 +20,10 @@
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "test": "vitest",
+    "biome:check": "npx biome check ./src",
+    "biome:check:fix": "npx biome check --write ./src",
+    "biome:lint": "npx biome lint ./src",
+    "biome:format": "npx biome format --write ./src",
     "lint": "biome lint ./src",
     "format": "biome format --write ./src"
   },
