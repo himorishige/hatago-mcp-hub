@@ -1,0 +1,20 @@
+{
+  "name": "hatago-node-example",
+  "version": "0.1.0",
+  "description": "Minimal Node.js example for Hatago MCP Hub",
+  "type": "module",
+  "scripts": {
+    "start": "node --loader ts-node/esm src/index.ts",
+    "dev": "node --watch --loader ts-node/esm src/index.ts"
+  },
+  "dependencies": {
+    "@hatago/hub": "workspace:*",
+    "@hono/node-server": "^1.14.0",
+    "hono": "^4.9.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}

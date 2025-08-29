@@ -12,17 +12,17 @@
 export type {
   ITransport,
   TransportOptions,
-  ProcessTransportOptions,
   HttpTransportOptions,
   WebSocketTransportOptions,
   ITransportFactory
 } from './types.js';
 
-// Implementations
-export { ProcessTransport } from './process-transport.js';
+// Node.js specific exports are in './stdio.js'
+// Use dynamic import when needed:
+// const { StdioClientTransport } = await import('@hatago/transport/stdio');
 
-// Re-export MCP SDK transports for convenience
-export { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+// Export type for StdioClientTransport without importing the implementation
+export type { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 export { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 
 // StreamableHTTP Transport

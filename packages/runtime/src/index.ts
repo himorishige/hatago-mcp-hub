@@ -2,6 +2,7 @@
  * @hatago/runtime - Runtime components for Hatago MCP Hub
  * 
  * This package provides core runtime functionality including:
+ * - Platform abstraction layer
  * - Session management
  * - Registry management (tools, resources, prompts)
  * - Message routing
@@ -9,6 +10,22 @@
  * 
  * Dependency direction: core → runtime → transport → cli
  */
+
+// Platform abstraction
+export { 
+  setPlatform, 
+  getPlatform, 
+  isPlatformInitialized,
+  resetPlatform,
+  UnsupportedFeatureError
+} from './platform/index.js';
+export type { 
+  Platform, 
+  PlatformOptions, 
+  ConfigStore, 
+  SessionStore,
+  SpawnOptions 
+} from './platform/index.js';
 
 // Session management
 export * from './session/index.js';

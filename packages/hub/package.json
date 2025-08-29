@@ -7,8 +7,18 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "workerd": "./dist/workers-entry.js",
+      "node": "./dist/node-entry.js",
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./node": {
+      "import": "./dist/node-entry.js",
+      "types": "./dist/node-entry.d.ts"
+    },
+    "./workers": {
+      "import": "./dist/workers-entry.js",
+      "types": "./dist/workers-entry.d.ts"
     },
     "./hub-streamable": {
       "import": "./dist/hub-streamable.js",
@@ -20,6 +30,9 @@
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "test": "vitest",
+    "test:node": "vitest --config vitest.config.ts",
+    "test:workers": "vitest --config vitest.config.workers.ts",
+    "test:all": "npm run test:node && npm run test:workers",
     "lint": "biome lint ./src",
     "format": "biome format --write ./src"
   },
@@ -31,8 +44,11 @@
     "hono": "^4.9.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
     "@types/node": "^20.17.10",
+    "@cloudflare/vitest-pool-workers": "^0.8.68",
     "eventsource": "^4.0.0",
+    "miniflare": "^3.20241205.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },

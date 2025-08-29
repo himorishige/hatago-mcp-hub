@@ -1,0 +1,53 @@
+name = "hatago-mcp-hub-workers"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Account and deployment settings
+# account_id = "your-account-id"
+# workers_dev = true
+# route = "example.com/*"
+
+# KV Namespaces for configuration and cache
+kv_namespaces = [
+  { binding = "CONFIG_KV", id = "your-config-kv-id", preview_id = "your-config-kv-preview-id" },
+  { binding = "CACHE_KV", id = "your-cache-kv-id", preview_id = "your-cache-kv-preview-id" }
+]
+
+# Durable Objects for session management
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDurableObject"
+script_name = "hatago-mcp-hub-workers"
+
+# Service Bindings for connector isolation (optional, for production)
+# [[services]]
+# binding = "CONNECTOR_HTTP"
+# service = "hatago-connector-http"
+# environment = "production"
+
+# Environment variables
+[vars]
+LOG_LEVEL = "info"
+HUB_VERSION = "0.1.0"
+
+# Development settings
+[env.development]
+vars = { LOG_LEVEL = "debug" }
+
+# Production settings
+[env.production]
+vars = { LOG_LEVEL = "warn" }
+
+# Build configuration
+[build]
+command = "npm run build"
+watch_paths = ["src/**/*.ts"]
+
+# Observability
+[observability]
+enabled = true
+
+# Limits (using defaults, can be adjusted)
+# [limits]
+# cpu_ms = 50  # Default for free plan

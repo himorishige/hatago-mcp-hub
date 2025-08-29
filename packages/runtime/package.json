@@ -10,6 +10,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./platform": {
+      "types": "./dist/platform/index.d.ts",
+      "workerd": "./dist/platform/workers.js",
+      "node": "./dist/platform/node.js",
+      "default": "./dist/platform/index.js"
+    },
+    "./platform/node": {
+      "types": "./dist/platform/node.d.ts",
+      "import": "./dist/platform/node.js"
+    },
+    "./platform/workers": {
+      "types": "./dist/platform/workers.d.ts",
+      "import": "./dist/platform/workers.js"
     }
   },
   "files": [
@@ -28,6 +42,7 @@
     "@modelcontextprotocol/sdk": "^1.17.3"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
     "tsdown": "^0.14.2",
     "typescript": "^5.8.3"
   },
