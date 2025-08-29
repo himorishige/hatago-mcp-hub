@@ -5,7 +5,7 @@
  * Uses dependency injection pattern to avoid runtime detection issues.
  */
 
-import type { Platform, PlatformOptions } from './types.js';
+import type { Platform } from './types.js';
 
 // Global platform instance (injected at startup)
 let _platform: Platform | null = null;

@@ -13,12 +13,16 @@ import type { Logger } from './logger.js';
 /**
  * Start the MCP server in STDIO mode
  */
-export async function startStdio(config: any, logger: Logger): Promise<void> {
+export async function startStdio(
+  config: any,
+  logger: Logger,
+  watchConfig = false,
+): Promise<void> {
   // Ensure stdout is for protocol only
   process.stdout.setDefaultEncoding('utf8');
 
   // Create hub instance
-  const hub = createHub({ configFile: config.path });
+  const hub = createHub({ configFile: config.path, watchConfig });
   await hub.start();
 
   logger.info('Hatago MCP Hub started in STDIO mode');
@@ -264,63 +268,14 @@ async function processMessage(hub: HatagoHub, message: any): Promise<any> {
         // This is a notification, no response needed
         return null;
 
-      case 'tools/list': {
-        const tools = await hub.listTools();
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: { tools },
-        };
-      }
-
-      case 'tools/call': {
-        const result = await hub.callTool({
-          name: params.name,
-          arguments: params.arguments,
-          progressToken: params._meta?.progressToken,
-        });
-        return {
-          jsonrpc: '2.0',
-          id,
-          result,
-        };
-      }
-
-      case 'resources/list': {
-        const resources = await hub.listResources();
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: { resources },
-        };
-      }
-
-      case 'resources/read': {
-        const content = await hub.readResource(params.uri);
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: content,
-        };
-      }
-
-      case 'prompts/list': {
-        const prompts = await hub.listPrompts();
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: { prompts },
-        };
-      }
-
-      case 'prompts/get': {
-        const prompt = await hub.getPrompt(params.name, params.arguments);
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: prompt,
-        };
-      }
+      case 'tools/list':
+      case 'tools/call':
+      case 'resources/list':
+      case 'resources/read':
+      case 'prompts/list':
+      case 'prompts/get':
+        // Forward to hub's JSON-RPC handler
+        return hub.handleJsonRpcRequest(message);
 
       default:
         return {

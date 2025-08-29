@@ -46,7 +46,7 @@ export class SessionDurableObject {
   private eventSubscribers: Map<string, EventSubscriber>;
   private websockets: Set<WebSocket>;
 
-  constructor(state: DurableObjectState, env: any) {
+  constructor(state: DurableObjectState, _env: any) {
     this.state = state;
     this.eventSubscribers = new Map();
     this.websockets = new Set();
@@ -91,7 +91,7 @@ export class SessionDurableObject {
   /**
    * WebSocket upgrade handler with hibernation support
    */
-  private async handleWebSocketUpgrade(request: Request): Promise<Response> {
+  private async handleWebSocketUpgrade(_request: Request): Promise<Response> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
 
@@ -146,7 +146,7 @@ export class SessionDurableObject {
             }),
           );
       }
-    } catch (error) {
+    } catch (_error) {
       ws.send(
         JSON.stringify({
           type: 'error',
@@ -159,7 +159,7 @@ export class SessionDurableObject {
   /**
    * Subscribe WebSocket to events
    */
-  private subscribeWebSocket(ws: WebSocket, events: string[]) {
+  private subscribeWebSocket(_ws: WebSocket, _events: string[]) {
     // Implementation for WebSocket event subscription
     // Store WebSocket reference for event broadcasting
   }
@@ -247,7 +247,7 @@ export class SessionDurableObject {
   /**
    * Handle cleanup requests
    */
-  private async handleCleanupRequest(request: Request): Promise<Response> {
+  private async handleCleanupRequest(_request: Request): Promise<Response> {
     // Clean up expired progress tokens
     const now = Date.now();
     const expiredTokens = Array.from(this.sessionData.progressTokens.entries())
@@ -395,7 +395,6 @@ export class SessionDurableObject {
  * Event subscriber for SSE clients
  */
 class EventSubscriber {
-  private clientId: string;
   private listeners: Map<string, ((...args: any[]) => any)[]>;
 
   constructor(clientId: string) {
@@ -407,7 +406,7 @@ class EventSubscriber {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
-    this.listeners.get(event)!.push(callback);
+    this.listeners.get(event)?.push(callback);
   }
 
   emit(event: string, data: any) {

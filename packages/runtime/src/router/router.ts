@@ -4,7 +4,6 @@
 
 import type { Prompt, Resource, Tool } from '@hatago/core';
 import {
-  filterByServer,
   generatePublicName,
   groupByServer,
   parsePublicName,
@@ -17,7 +16,6 @@ import type {
   RouteDecision,
   RouterConfig,
   RouterContext,
-  RouteTarget,
   ToolRegistryInterface,
 } from './router-types.js';
 

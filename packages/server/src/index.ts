@@ -7,7 +7,6 @@
 
 import { loadConfig } from './config.js';
 import { startHttp } from './http.js';
-import type { Logger } from './logger.js';
 import { startStdio } from './stdio.js';
 
 export { loadConfig } from './config.js';

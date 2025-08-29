@@ -1,12 +1,13 @@
 #!/usr/bin/env node
+
 /**
  * Hatago CLI - Command-line interface for Hatago MCP Hub
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import { setupConfigCommand } from './commands/config.js';
 import { setupMcpCommand } from './commands/mcp.js';
 import { setupServeCommand } from './commands/serve.js';

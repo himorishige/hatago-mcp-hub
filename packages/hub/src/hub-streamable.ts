@@ -94,8 +94,8 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
   }
 
   const method = c.req.method;
-  const acceptHeader = c.req.header('Accept');
-  const sessionId = c.req.header('mcp-session-id');
+  const _acceptHeader = c.req.header('Accept');
+  const _sessionId = c.req.header('mcp-session-id');
 
   // Debug logging disabled to prevent stdout pollution in STDIO mode
   // To enable debug logging, use proper logger instance with stderr output

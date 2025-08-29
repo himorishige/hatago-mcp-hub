@@ -13,7 +13,6 @@ import type {
   PlatformOptions,
   SessionStore,
 } from './types.js';
-import { UnsupportedFeatureError } from './types.js';
 
 /**
  * Cloudflare Workers environment bindings
@@ -239,7 +238,7 @@ class KVSessionStore implements SessionStore {
  */
 export function createWorkersPlatform(
   env: WorkersEnv,
-  options: PlatformOptions = {},
+  _options: PlatformOptions = {},
 ): Platform {
   // Choose session store based on available bindings
   const sessionStore = env.SESSION_DO

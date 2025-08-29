@@ -27,6 +27,14 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 - **進捗通知** - SSEによるリアルタイムプログレス通知
 - **観測性** - 構造化ログ、メトリクス、診断ツール
 
+### 🔧 新機能 (v0.2.0)
+
+- **設定検証** - Zodスキーマによる実行時の型安全性
+- **通知システム** - サーバー状態変化の追跡とレート制限付き通知
+- **ホットリロード** - `--watch`フラグで設定ファイルの自動再読み込み
+- **サーバー無効化** - `disabled`フラグで一時的にサーバーを無効化
+- **きめ細かいタイムアウト** - 接続/リクエスト/キープアライブの個別設定
+
 ## 📦 インストール
 
 ```bash
@@ -80,6 +88,45 @@ hatago mcp list
 
 # サーバーの削除
 hatago mcp remove filesystem
+```
+
+### 設定ファイル例
+
+`hatago.config.json`:
+
+```json
+{
+  "version": 1,
+  "logLevel": "info",
+  "notifications": {
+    "enabled": true,
+    "rateLimitSec": 60,
+    "severity": ["warn", "error"]
+  },
+  "mcpServers": {
+    "filesystem": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "disabled": false,
+      "timeouts": {
+        "connectMs": 5000,
+        "requestMs": 30000,
+        "keepAliveMs": 60000
+      }
+    }
+  }
+}
+```
+
+### 開発モード起動
+
+```bash
+# 設定ファイル監視モード（ホットリロード）
+hatago serve --http --config hatago.config.json --watch
+
+# HTTPモードでデバッグ
+hatago serve --http --port 3929 --log-level debug
 ```
 
 ## 📚 ドキュメント

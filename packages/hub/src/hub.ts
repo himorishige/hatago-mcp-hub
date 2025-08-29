@@ -17,6 +17,10 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CreateMessageRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { UnsupportedFeatureError } from './errors.js';
 import { Logger } from './logger.js';
+import {
+  type NotificationConfig,
+  NotificationManager,
+} from './notification-manager.js';
 import { SSEManager } from './sse-manager.js';
 import type {
   CallOptions,
@@ -50,7 +54,7 @@ class CapabilityRegistry {
     if (!this.serverCapabilities.has(serverId)) {
       this.serverCapabilities.set(serverId, new Map());
     }
-    this.serverCapabilities.get(serverId)!.set(method, support);
+    this.serverCapabilities.get(serverId)?.set(method, support);
   }
 
   // Get server capability support status
@@ -106,12 +110,19 @@ export class HatagoHub {
   // StreamableHTTP Transport
   private streamableTransport?: StreamableHTTPTransport;
 
+  // Notification Manager
+  private notificationManager?: NotificationManager;
+
+  // Config file watcher
+  private configWatcher?: any;
+
   // Options
   protected options: Required<HubOptions>;
 
   constructor(options: HubOptions = {}) {
     this.options = {
       configFile: options.configFile || '',
+      watchConfig: options.watchConfig || false,
       sessionTTL: options.sessionTTL || 3600,
       defaultTimeout: options.defaultTimeout || 30000,
       namingStrategy: options.namingStrategy || 'namespace',
@@ -190,6 +201,47 @@ export class HatagoHub {
     }
 
     return this;
+  }
+
+  /**
+   * Remove a server
+   */
+  async removeServer(id: string): Promise<void> {
+    const client = this.clients.get(id);
+    if (client) {
+      try {
+        await client.close();
+      } catch (error) {
+        this.logger.error(`Failed to close client ${id}`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      this.clients.delete(id);
+    }
+
+    const server = this.servers.get(id);
+    if (server) {
+      // Unregister tools
+      if (server.tools.length > 0) {
+        this.toolRegistry.clearServerTools(id);
+        for (const tool of server.tools) {
+          this.toolInvoker.unregisterHandler(tool.name);
+        }
+      }
+
+      // Unregister resources
+      if (server.resources.length > 0) {
+        this.resourceRegistry.clearServerResources(id);
+      }
+
+      // Unregister prompts
+      if (server.prompts.length > 0) {
+        this.promptRegistry.unregisterServerPrompts(id);
+      }
+
+      this.servers.delete(id);
+      this.emit('server:disconnected', { serverId: id });
+    }
   }
 
   /**
@@ -306,11 +358,16 @@ export class HatagoHub {
                   });
 
                   // Send the request
-                  this.streamableTransport!.send(samplingRequest).catch(reject);
+                  this.streamableTransport?.send(samplingRequest).catch(reject);
 
                   // Set a timeout
                   setTimeout(() => {
                     (this as any).samplingSolvers?.delete(samplingId);
+                    this.notificationManager?.notifyTimeout(
+                      id,
+                      'sampling',
+                      30000,
+                    );
                     reject(new Error('Sampling request timeout'));
                   }, 30000);
                 });
@@ -442,9 +499,9 @@ export class HatagoHub {
       // Prepare all tools with handlers
       const toolsWithHandlers = toolArray.map((tool: any) => ({
         ...tool,
-        handler: async (args: any, progressCallback?: any) => {
+        handler: async (args: any, _progressCallback?: any) => {
           // Store current streamableTransport for progress notifications
-          const transport = this.streamableTransport;
+          const _transport = this.streamableTransport;
 
           // Use high-level callTool API with progress support
           const result = await client.callTool(
@@ -583,7 +640,7 @@ export class HatagoHub {
             | undefined;
           const solver = solvers?.get(msg.id);
           if (solver) {
-            solvers!.delete(msg.id);
+            solvers?.delete(msg.id);
             if (msg.error) {
               solver.reject(new Error(msg.error.message || 'Sampling failed'));
             } else {
@@ -613,21 +670,49 @@ export class HatagoHub {
         const configContent = readFileSync(configPath, 'utf-8');
         const config = JSON.parse(configContent);
 
+        // Initialize notification manager if configured
+        if (config.notifications) {
+          const notificationConfig: NotificationConfig = {
+            enabled: config.notifications.enabled ?? false,
+            rateLimitSec: config.notifications.rateLimitSec ?? 60,
+            severity: config.notifications.severity ?? ['warn', 'error'],
+          };
+          this.notificationManager = new NotificationManager(
+            notificationConfig,
+            this.logger,
+          );
+        }
+
         // Process MCP servers from config
         if (config.mcpServers) {
           for (const [id, serverConfig] of Object.entries(config.mcpServers)) {
+            // Skip disabled servers
+            if ((serverConfig as any).disabled === true) {
+              this.logger.info(`Skipping disabled server: ${id}`);
+              continue;
+            }
+
             const spec = this.normalizeServerSpec(serverConfig as any);
 
             // Check if server should be started eagerly
             const hatagoOptions = (serverConfig as any).hatagoOptions || {};
             if (hatagoOptions.start !== 'lazy') {
               try {
+                this.notificationManager?.notifyServerStatus(id, 'starting');
                 await this.addServer(id, spec);
                 this.logger.info(`Connected to server: ${id}`);
+                this.notificationManager?.notifyServerStatus(id, 'connected');
               } catch (error) {
+                const errorMessage =
+                  error instanceof Error ? error.message : String(error);
                 this.logger.error(`Failed to connect to server ${id}`, {
-                  error: error instanceof Error ? error.message : String(error),
+                  error: errorMessage,
                 });
+                this.notificationManager?.notifyServerStatus(
+                  id,
+                  'error',
+                  errorMessage,
+                );
                 // Continue with other servers
               }
             }
@@ -647,6 +732,11 @@ export class HatagoHub {
           });
         }
         throw error;
+      }
+
+      // Set up config file watching if enabled
+      if (this.options.watchConfig) {
+        await this.setupConfigWatcher();
       }
     }
 
@@ -676,7 +766,16 @@ export class HatagoHub {
     }
 
     // Common options
-    spec.timeout = config.hatagoOptions?.timeouts?.timeout || config.timeout;
+    // Support for new Zod schema structure
+    if (config.timeouts) {
+      // Use server-specific timeouts if available
+      spec.timeout = config.timeouts.requestMs;
+      spec.connectTimeout = config.timeouts.connectMs;
+      spec.keepAliveTimeout = config.timeouts.keepAliveMs;
+    } else {
+      // Fallback to old config structure
+      spec.timeout = config.hatagoOptions?.timeouts?.timeout || config.timeout;
+    }
     spec.reconnect = config.hatagoOptions?.reconnect;
     spec.reconnectDelay = config.hatagoOptions?.reconnectDelay;
 
@@ -684,9 +783,193 @@ export class HatagoHub {
   }
 
   /**
+   * Set up config file watcher
+   */
+  private async setupConfigWatcher(): Promise<void> {
+    if (!this.options.configFile) {
+      return;
+    }
+
+    try {
+      const { watch } = await import('node:fs');
+      const { resolve } = await import('node:path');
+
+      const configPath = resolve(this.options.configFile);
+
+      this.logger.info('Setting up config file watcher', { path: configPath });
+
+      // Create a debounced reload function to avoid multiple reloads
+      let reloadTimeout: NodeJS.Timeout | undefined;
+
+      this.configWatcher = watch(configPath, async (eventType) => {
+        if (eventType === 'change') {
+          // Clear existing timeout
+          if (reloadTimeout) {
+            clearTimeout(reloadTimeout);
+          }
+
+          // Set a new timeout to debounce rapid changes
+          reloadTimeout = setTimeout(async () => {
+            this.logger.info('Config file changed, reloading...');
+            await this.reloadConfig();
+          }, 1000); // Wait 1 second after last change
+        }
+      });
+
+      this.logger.info('Config file watcher started');
+    } catch (error) {
+      this.logger.error('Failed to set up config watcher', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Reload configuration
+   */
+  private async reloadConfig(): Promise<void> {
+    if (!this.options.configFile) {
+      return;
+    }
+
+    try {
+      const { readFileSync } = await import('node:fs');
+      const { resolve } = await import('node:path');
+
+      const configPath = resolve(this.options.configFile);
+      const configContent = readFileSync(configPath, 'utf-8');
+      const newConfig = JSON.parse(configContent);
+
+      // Validate config using Zod
+      const { safeParseConfig, formatConfigError } = await import(
+        '@hatago/core/schemas'
+      );
+      const parseResult = safeParseConfig(newConfig);
+
+      if (!parseResult.success) {
+        const errorMessage = formatConfigError(parseResult.error);
+        this.logger.error('Invalid config file', { error: errorMessage });
+        this.notificationManager?.notifyConfigReload(false, errorMessage);
+        return;
+      }
+
+      const config = parseResult.data;
+
+      // Update notification manager if configured
+      if (config.notifications) {
+        const notificationConfig: NotificationConfig = {
+          enabled: config.notifications.enabled ?? false,
+          rateLimitSec: config.notifications.rateLimitSec ?? 60,
+          severity: (config.notifications.severity as any[]) ?? [
+            'warn',
+            'error',
+          ],
+        };
+
+        if (this.notificationManager) {
+          // Update existing notification manager
+          this.notificationManager = new NotificationManager(
+            notificationConfig,
+            this.logger,
+          );
+        } else {
+          // Create new notification manager
+          this.notificationManager = new NotificationManager(
+            notificationConfig,
+            this.logger,
+          );
+        }
+      }
+
+      // Track servers to add/remove
+      const newServerIds = new Set(Object.keys(config.mcpServers || {}));
+      const existingServerIds = new Set(this.servers.keys());
+
+      // Remove servers that are no longer in config
+      for (const id of existingServerIds) {
+        if (!newServerIds.has(id)) {
+          this.logger.info(`Removing server ${id} (no longer in config)`);
+          await this.removeServer(id);
+        }
+      }
+
+      // Add or update servers
+      if (config.mcpServers) {
+        for (const [id, serverConfig] of Object.entries(config.mcpServers)) {
+          // Skip disabled servers
+          if ((serverConfig as any).disabled === true) {
+            // If server exists and is now disabled, remove it
+            if (existingServerIds.has(id)) {
+              this.logger.info(`Removing server ${id} (now disabled)`);
+              await this.removeServer(id);
+            } else {
+              this.logger.info(`Skipping disabled server: ${id}`);
+            }
+            continue;
+          }
+
+          const spec = this.normalizeServerSpec(serverConfig as any);
+
+          // Check if server should be started eagerly
+          const hatagoOptions = (serverConfig as any).hatagoOptions || {};
+          if (hatagoOptions.start !== 'lazy') {
+            try {
+              // If server already exists, check if spec has changed
+              if (existingServerIds.has(id)) {
+                const existingServer = this.servers.get(id);
+                if (
+                  existingServer &&
+                  JSON.stringify(existingServer.spec) !== JSON.stringify(spec)
+                ) {
+                  this.logger.info(`Reloading server ${id} (config changed)`);
+                  await this.removeServer(id);
+                  this.notificationManager?.notifyServerStatus(id, 'starting');
+                  await this.addServer(id, spec);
+                  this.notificationManager?.notifyServerStatus(id, 'connected');
+                }
+              } else {
+                // New server
+                this.logger.info(`Adding new server: ${id}`);
+                this.notificationManager?.notifyServerStatus(id, 'starting');
+                await this.addServer(id, spec);
+                this.notificationManager?.notifyServerStatus(id, 'connected');
+              }
+            } catch (error) {
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
+              this.logger.error(`Failed to connect to server ${id}`, {
+                error: errorMessage,
+              });
+              this.notificationManager?.notifyServerStatus(
+                id,
+                'error',
+                errorMessage,
+              );
+            }
+          }
+        }
+      }
+
+      this.logger.info('Configuration reloaded successfully');
+      this.notificationManager?.notifyConfigReload(true);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to reload config', { error: errorMessage });
+      this.notificationManager?.notifyConfigReload(false, errorMessage);
+    }
+  }
+
+  /**
    * Stop the hub
    */
   async stop(): Promise<void> {
+    // Stop config watcher if exists
+    if (this.configWatcher) {
+      this.configWatcher.close();
+      this.configWatcher = undefined;
+    }
+
     // Disconnect all servers
     for (const [id, client] of this.clients) {
       try {
@@ -907,7 +1190,7 @@ export class HatagoHub {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
-    this.eventHandlers.get(event)!.add(handler);
+    this.eventHandlers.get(event)?.add(handler);
   }
 
   off(event: HubEvent, handler: HubEventHandler): void {
@@ -1043,7 +1326,7 @@ export class HatagoHub {
   /**
    * Handle JSON-RPC request
    */
-  private async handleJsonRpcRequest(
+  public async handleJsonRpcRequest(
     body: any,
     sessionId?: string,
   ): Promise<any> {
@@ -1090,7 +1373,7 @@ export class HatagoHub {
               | Map<string, any>
               | undefined;
             if (solvers) {
-              for (const [samplingId, solver] of solvers.entries()) {
+              for (const [_samplingId, solver] of solvers.entries()) {
                 if (solver.progressToken === notificationProgressToken) {
                   // Forward progress to the server that requested sampling
                   const client = this.clients.get(solver.serverId);
@@ -1392,7 +1675,7 @@ export class HatagoHub {
               | undefined;
             const solver = solvers?.get(id);
             if (solver) {
-              solvers!.delete(id);
+              solvers?.delete(id);
               if (body.error) {
                 solver.reject(
                   new Error(body.error.message || 'Sampling failed'),

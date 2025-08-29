@@ -29,7 +29,7 @@ export class ProcessTransport implements ITransport {
     const frame = `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`;
 
     return new Promise((resolve, reject) => {
-      this.process!.stdin!.write(frame, (error) => {
+      this.process?.stdin?.write(frame, (error) => {
         if (error) {
           reject(error);
         } else {

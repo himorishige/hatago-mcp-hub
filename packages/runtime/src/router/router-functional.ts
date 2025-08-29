@@ -82,7 +82,7 @@ export function parsePublicName(
 export function resolveRoute(
   publicName: string,
   resolver: (name: string) => RouteTarget | null,
-  config: RouterConfig = {},
+  _config: RouterConfig = {},
   resolvedBy: string = 'registry',
 ): RouteDecision {
   try {

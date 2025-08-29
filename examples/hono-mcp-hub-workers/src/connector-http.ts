@@ -193,7 +193,7 @@ async function handleStream(request: Request, env: Env): Promise<Response> {
           throw new Error(`Server returned ${response.status}`);
         }
 
-        const reader = response.body!.getReader();
+        const reader = response.body?.getReader();
 
         // Forward SSE data with backpressure handling
         while (true) {

@@ -15,6 +15,7 @@
  *   --stdio              Run in STDIO mode (default, for Claude Code)
  *   --http               Run in HTTP mode (for development/debugging)
  *   --config <path>      Path to configuration file
+ *   --watch              Watch config file for changes and auto-reload
  *   --host <string>      Host to bind (HTTP mode only, default: 127.0.0.1)
  *   --port <number>      Port to bind (HTTP mode only, default: 3929)
  *   --log-level <level>  Log level (silent|error|warn|info|debug|trace)
@@ -22,7 +23,7 @@
  *   --version            Show version
  */
 
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { loadConfig } from './config.js';
 import { startHttp } from './http.js';
 import { Logger } from './logger.js';
@@ -93,6 +94,7 @@ Options:
   --stdio              Run in STDIO mode (default, for Claude Code)
   --http               Run in HTTP mode (for development/debugging)
   --config <path>      Path to configuration file
+  --watch              Watch config file for changes and auto-reload
   --host <string>      Host to bind (HTTP mode only, default: 127.0.0.1)
   --port <number>      Port to bind (HTTP mode only, default: 3929)
   --log-level <level>  Log level (silent|error|warn|info|debug|trace)
@@ -170,9 +172,12 @@ async function main() {
         ? 'http'
         : 'stdio';
 
+    // Get watch flag
+    const watchConfig = args.flags.watch as boolean;
+
     if (mode === 'stdio') {
       logger.debug('Starting in STDIO mode');
-      await startStdio(config, logger);
+      await startStdio(config, logger, watchConfig);
     } else {
       const host =
         (args.flags.host as string) ?? process.env.HATAGO_HOST ?? '127.0.0.1';
@@ -184,6 +189,7 @@ async function main() {
         host,
         port,
         logger,
+        watchConfig,
       });
     }
   } catch (error) {

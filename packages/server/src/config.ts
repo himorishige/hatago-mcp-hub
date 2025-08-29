@@ -3,20 +3,31 @@
  *
  * Loads and validates configuration files.
  * Supports JSON and JSONC (with comments).
+ * Uses Zod for runtime validation.
  */
 
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
+import {
+  formatConfigError,
+  type HatagoConfig,
+  safeParseConfig,
+} from '@hatago/core/schemas';
 import type { Logger } from './logger.js';
 
 /**
  * Load configuration from file
+ * @returns Validated configuration with metadata
  */
 export async function loadConfig(
   configPath: string,
   logger: Logger,
-): Promise<any> {
+): Promise<{
+  path: string;
+  exists: boolean;
+  data: HatagoConfig;
+}> {
   // Resolve path relative to CWD
   const absolutePath = isAbsolute(configPath)
     ? configPath
@@ -25,10 +36,18 @@ export async function loadConfig(
   // Check if file exists (optional)
   if (!existsSync(absolutePath)) {
     logger.debug(`Config file not found: ${absolutePath}, using defaults`);
+
+    // Return validated defaults
+    const defaultConfig = safeParseConfig({});
+    if (!defaultConfig.success) {
+      // This should never happen with empty object
+      throw new Error('Failed to create default configuration');
+    }
+
     return {
       path: absolutePath,
       exists: false,
-      data: {},
+      data: defaultConfig.data,
     };
   }
 
@@ -38,20 +57,34 @@ export async function loadConfig(
 
     // Parse JSON/JSONC (strip comments)
     const jsonContent = stripJsonComments(content);
-    const data = JSON.parse(jsonContent);
+    const rawData = JSON.parse(jsonContent);
 
-    logger.debug(`Loaded config from ${absolutePath}`);
+    // Validate with Zod
+    const parseResult = safeParseConfig(rawData);
+
+    if (!parseResult.success) {
+      // Format error for human readability
+      const errorMessage = formatConfigError(parseResult.error);
+      logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    logger.debug(`Loaded and validated config from ${absolutePath}`);
 
     return {
       path: absolutePath,
       exists: true,
-      data,
+      data: parseResult.data,
     };
   } catch (error) {
     logger.error(`Failed to load config from ${absolutePath}:`, error);
-    throw new Error(
-      `Invalid configuration file: ${error instanceof Error ? error.message : String(error)}`,
-    );
+
+    // Re-throw with better message
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON in configuration file: ${error.message}`);
+    }
+
+    throw error;
   }
 }
 

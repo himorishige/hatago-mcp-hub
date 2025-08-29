@@ -258,6 +258,54 @@ server.registerTool(
 );
 ```
 
+## Version History
+
+### v0.2.0 - 2024-12-29 (New Features from Cline Implementation)
+
+#### Added Features
+
+##### Phase 1: Foundation (Configuration & Validation)
+
+- **Zod Schema Validation**: Runtime type-safe configuration using Zod schemas
+- **Disabled Server Flag**: Skip servers with `disabled: true` in config
+- **Fine-grained Timeouts**: Separate `connectMs`, `requestMs`, `keepAliveMs` settings
+
+##### Phase 2: Notification System
+
+- **NotificationManager**: Simple notification system with rate limiting
+- **Server Status Notifications**: Track server lifecycle (starting, connected, error)
+- **Config Reload Notifications**: Alert on configuration changes
+- **Timeout Notifications**: Warn when operations timeout
+
+##### Phase 3: Config File Watching
+
+- **Hot Reload Support**: `--watch` flag enables automatic config reloading
+- **Intelligent Reload**: Detects added/removed/modified servers
+- **Debounced Updates**: 1-second delay to batch rapid changes
+
+#### Configuration Example
+
+```json
+{
+  "version": 1,
+  "notifications": {
+    "enabled": true,
+    "rateLimitSec": 60,
+    "severity": ["info", "warn", "error"]
+  },
+  "mcpServers": {
+    "example": {
+      "disabled": false,
+      "timeouts": {
+        "connectMs": 5000,
+        "requestMs": 30000,
+        "keepAliveMs": 60000
+      }
+    }
+  }
+}
+```
+
 ## Simplified to Lite Version (v0.0.1) - 2024-12-26
 
 ### Major Simplification

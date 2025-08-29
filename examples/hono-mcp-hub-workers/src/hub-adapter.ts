@@ -20,7 +20,7 @@ export async function createHubAdapter(env: Env, sessionDO: any) {
     /**
      * Handle JSON-RPC requests
      */
-    async handleJsonRpcRequest(body: any, sessionId: string) {
+    async handleJsonRpcRequest(body: any, _sessionId: string) {
       const { method, params, id } = body;
 
       try {

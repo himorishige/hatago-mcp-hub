@@ -13,5 +13,7 @@ export * from './errors/index.js';
 export * from './events/index.js';
 // Logger interface
 export * from './logger.js';
+// Configuration schemas
+export * from './schemas.js';
 // Protocol and types
 export * from './types/index.js';

@@ -5,8 +5,8 @@
  * for MCP protocol communication.
  */
 
-import type { LogData, Logger, LogLevel } from '@hatago/core';
-import { LOG_LEVELS, shouldLog } from '@hatago/core';
+import type { Logger, LogLevel } from '@hatago/core';
+import { shouldLog } from '@hatago/core';
 
 export interface StdioSafeLoggerOptions {
   level?: LogLevel;
@@ -60,7 +60,7 @@ export class StdioSafeLogger implements Logger {
         }`;
 
     // CRITICAL: Write to stderr only, never stdout
-    process.stderr.write(line + '\n');
+    process.stderr.write(`${line}\n`);
   }
 
   error(obj: unknown, msg?: string): void {

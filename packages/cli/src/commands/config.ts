@@ -2,10 +2,10 @@
  * Config command - Manage Hatago configuration
  */
 
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import type { Command } from 'commander';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
 
 interface HatagoConfig {
   port?: number;
@@ -141,7 +141,7 @@ function saveConfig(config: HatagoConfig): void {
 
   // Create directory if it doesn't exist
   if (!existsSync(configDir)) {
-    const { mkdirSync } = require('fs');
+    const { mkdirSync } = require('node:fs');
     mkdirSync(configDir, { recursive: true });
   }
 

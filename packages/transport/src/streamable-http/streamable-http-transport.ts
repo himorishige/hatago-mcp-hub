@@ -84,7 +84,7 @@ export class StreamableHTTPTransport implements Transport {
     }
 
     // Close all streams
-    for (const [streamId, streamData] of this.streamMapping.entries()) {
+    for (const [_streamId, streamData] of this.streamMapping.entries()) {
       if (streamData.keepaliveInterval) {
         clearInterval(streamData.keepaliveInterval);
       }
@@ -541,21 +541,6 @@ export class StreamableHTTPTransport implements Transport {
 
     // Return success even without valid session
     return { status: 200 };
-  }
-
-  private validateSession(
-    headers: Record<string, string | undefined>,
-  ): boolean {
-    if (!this.sessionIdGenerator) {
-      return true;
-    }
-
-    const sessionId = headers['mcp-session-id'];
-    if (!sessionId) {
-      return false;
-    }
-
-    return this.initializedSessions.has(sessionId);
   }
 
   private startCleanupInterval(): void {

@@ -17,16 +17,17 @@ interface HttpOptions {
   host: string;
   port: number;
   logger: Logger;
+  watchConfig?: boolean;
 }
 
 /**
  * Start the MCP server in HTTP mode
  */
 export async function startHttp(options: HttpOptions): Promise<void> {
-  const { config, host, port, logger } = options;
+  const { config, host, port, logger, watchConfig = false } = options;
 
   // Create hub instance
-  const hub = createHub({ configFile: config.path });
+  const hub = createHub({ configFile: config.path, watchConfig });
   await hub.start();
 
   // Create Hono app

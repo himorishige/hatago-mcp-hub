@@ -20,7 +20,9 @@ export interface ServerSpec {
   headers?: Record<string, string>;
 
   // Common options
-  timeout?: number;
+  timeout?: number; // Request timeout (backwards compatibility)
+  connectTimeout?: number; // Connection timeout
+  keepAliveTimeout?: number; // Keep-alive timeout
   reconnect?: boolean;
   reconnectDelay?: number;
 }
@@ -30,6 +32,7 @@ export interface ServerSpec {
  */
 export interface HubOptions {
   configFile?: string;
+  watchConfig?: boolean; // Enable config file watching
   sessionTTL?: number;
   defaultTimeout?: number;
   namingStrategy?: 'none' | 'namespace' | 'prefix';

@@ -56,7 +56,7 @@ export class ToolInvoker {
    * Call a tool by name
    */
   async callTool(
-    sessionId: string,
+    _sessionId: string,
     toolName: string,
     args: any,
     options?: Partial<ToolInvokerOptions>,
@@ -98,7 +98,7 @@ export class ToolInvoker {
       const progressHandler =
         options?.progressToken && this.sseManager
           ? (progress: number, total?: number, message?: string) => {
-              this.sseManager!.sendProgress(options.progressToken!, {
+              this.sseManager?.sendProgress(options.progressToken!, {
                 progressToken: options.progressToken,
                 progress,
                 total,
@@ -197,7 +197,7 @@ export class ToolInvoker {
   /**
    * List available tools
    */
-  listTools(sessionId?: string): any[] {
+  listTools(_sessionId?: string): any[] {
     return this.toolRegistry.getAllTools();
   }
 

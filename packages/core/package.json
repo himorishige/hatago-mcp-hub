@@ -1,6 +1,6 @@
 {
   "name": "@hatago/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Core types and protocol definitions for Hatago MCP Hub",
   "type": "module",
   "sideEffects": false,
@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas.d.ts",
+      "import": "./dist/schemas.js"
     }
   },
   "files": [
@@ -28,7 +32,8 @@
     "biome:format": "npx biome format --write ./src"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.3"
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "tsdown": "^0.14.2",
