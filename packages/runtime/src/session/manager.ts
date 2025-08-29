@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import type { Session } from '@hatago/core';
-import { createKeyedMutex } from '../mutex.js';
+import type { Session } from "@hatago/core";
+import { randomUUID } from "node:crypto";
+import { createKeyedMutex } from "../mutex.js";
 import {
   clearSessions,
   createSession,
@@ -11,7 +11,7 @@ import {
   removeExpired,
   type SessionState,
   touchSession,
-} from './operations.js';
+} from "./operations.js";
 
 /**
  * Session management
@@ -19,7 +19,7 @@ import {
 
 export class SessionManager {
   private state: SessionState;
-  private cleanupInterval: NodeJS.Timeout | undefined;
+  private cleanupInterval: ReturnType<typeof setInterval> | undefined;
   private sessionMutex = createKeyedMutex<string>();
 
   constructor(ttlSeconds = 3600) {
@@ -41,7 +41,7 @@ export class SessionManager {
       if (!session) {
         // Fallback to old behavior if something went wrong
         this.state = oldState;
-        throw new Error('Failed to create session');
+        throw new Error("Failed to create session");
       }
 
       return session;

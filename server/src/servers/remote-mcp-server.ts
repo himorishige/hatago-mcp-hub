@@ -2,7 +2,7 @@
  * Remote MCP Server implementation for HTTP/SSE connections
  */
 
-import { EventEmitter } from 'node:events';
+import { EventEmitter } from "node:events";
 
 // RequestOptions is not directly exported, define our own
 type RequestOptions = {
@@ -11,28 +11,28 @@ type RequestOptions = {
   resetTimeoutOnProgress?: boolean;
 };
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type {
   CallToolResult,
   ReadResourceResult,
   Resource,
   ResourceTemplate,
   Tool,
-} from '@modelcontextprotocol/sdk/types.js';
-import type { RemoteServerConfig } from '../config/types.js';
-import { APP_NAME, APP_VERSION } from '../constants.js';
+} from "@modelcontextprotocol/sdk/types.js";
+import type { RemoteServerConfig } from "../config/types.js";
+import { APP_NAME, APP_VERSION } from "../constants.js";
 
-import type { NegotiatedProtocol } from '../core/types.js';
-import { logger } from '../observability/minimal-logger.js';
+import type { NegotiatedProtocol } from "../core/types.js";
+import { logger } from "../observability/minimal-logger.js";
 
 import {
   ErrorCode,
   ErrorHelpers,
   ErrorSeverity,
   HatagoError,
-} from '../utils/errors.js';
+} from "../utils/errors.js";
 
 // import { sanitizeLog } from '../utils/security.js';
 
@@ -59,7 +59,7 @@ const ERROR_PATTERNS = {
  */
 interface CachedConnection {
   origin: string;
-  transport: 'sse' | 'http' | 'streamable-http';
+  transport: "sse" | "http" | "streamable-http";
   supportsSessionId: boolean;
   protocolVersion?: string;
   lastSuccess: Date;
@@ -89,9 +89,9 @@ function getCachedConnection(url: URL): CachedConnection | null {
 
 function setCachedConnection(
   url: URL,
-  transport: 'sse' | 'http' | 'streamable-http',
+  transport: "sse" | "http" | "streamable-http",
   supportsSessionId: boolean,
-  protocolVersion?: string,
+  protocolVersion?: string
 ): void {
   const key = getCacheKey(url);
   connectionCache.set(key, {
@@ -107,20 +107,20 @@ function setCachedConnection(
  * Detect issue from error message or code
  */
 function detectIssue(error: any): string | null {
-  const message = error?.message || error?.toString() || '';
+  const message = error?.message || error?.toString() || "";
   const code = error?.code;
 
   if (ERROR_PATTERNS.SESSION_REJECTED.test(message)) {
-    return 'no-session';
+    return "no-session";
   }
   if (ERROR_PATTERNS.VERSION_MISMATCH.test(message) || code === 426) {
-    return 'legacy-protocol';
+    return "legacy-protocol";
   }
   if (ERROR_PATTERNS.METHOD_NOT_FOUND.test(message)) {
-    return 'method-not-found';
+    return "method-not-found";
   }
   if (ERROR_PATTERNS.TRANSPORT_ERROR.test(message)) {
-    return 'transport-error';
+    return "transport-error";
   }
 
   return null;
@@ -130,11 +130,11 @@ function detectIssue(error: any): string | null {
  * Server state enum (reuse from npx-mcp-server)
  */
 export enum ServerState {
-  STOPPED = 'stopped',
-  STARTING = 'starting',
-  RUNNING = 'running',
-  STOPPING = 'stopping',
-  CRASHED = 'crashed',
+  STOPPED = "stopped",
+  STARTING = "starting",
+  RUNNING = "running",
+  STOPPING = "stopping",
+  CRASHED = "crashed",
 }
 
 /**
@@ -144,7 +144,7 @@ export interface RemoteConnection {
   client: Client;
   facade?: Client;
   transport: StreamableHTTPClientTransport | SSEClientTransport;
-  transportType?: 'streamable-http' | 'sse';
+  transportType?: "streamable-http" | "sse";
   protocol?: NegotiatedProtocol;
   capabilities?: {
     tools?: boolean;
@@ -174,10 +174,10 @@ export class RemoteMcpServer extends EventEmitter {
   private reconnectDepth = 0;
   private reconnectSteps = 0;
   private readonly MAX_RECONNECT_DEPTH = Number(
-    process.env.HATAGO_MAX_RECONNECT_DEPTH || 32,
+    process.env.HATAGO_MAX_RECONNECT_DEPTH || 32
   );
   private readonly MAX_RECONNECT_STEPS = Number(
-    process.env.HATAGO_MAX_RECONNECT_STEPS || 10000,
+    process.env.HATAGO_MAX_RECONNECT_STEPS || 10000
   );
 
   // Default configuration
@@ -213,30 +213,30 @@ export class RemoteMcpServer extends EventEmitter {
 
       // Enforce HTTPS in production
       if (
-        process.env.NODE_ENV === 'production' &&
-        parsed.protocol !== 'https:'
+        process.env.NODE_ENV === "production" &&
+        parsed.protocol !== "https:"
       ) {
         throw new HatagoError(
           ErrorCode.E_SECURITY_POLICY_DENIED,
-          'HTTPS is required in production environment',
+          "HTTPS is required in production environment",
           {
             severity: ErrorSeverity.CRITICAL,
             context: { url },
             recoverable: false,
-          },
+          }
         );
       }
 
       // Only allow HTTP/HTTPS protocols
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
+      if (!["http:", "https:"].includes(parsed.protocol)) {
         throw ErrorHelpers.mcpProtocolError(
-          'remote',
-          `Unsupported protocol: ${parsed.protocol}`,
+          "remote",
+          `Unsupported protocol: ${parsed.protocol}`
         );
       }
     } catch (error) {
       if (error instanceof TypeError) {
-        throw ErrorHelpers.configInvalid('remote-server-url', [
+        throw ErrorHelpers.configInvalid("remote-server-url", [
           `Invalid URL format: ${url}`,
         ]);
       }
@@ -293,8 +293,8 @@ export class RemoteMcpServer extends EventEmitter {
     ) {
       throw ErrorHelpers.stateInvalidTransition(
         this.state,
-        'running',
-        this.config.id,
+        "running",
+        this.config.id
       );
     }
 
@@ -314,12 +314,12 @@ export class RemoteMcpServer extends EventEmitter {
     this.shutdownRequested = false;
     this.state = ServerState.STARTING;
     this.lastConnectTime = new Date();
-    this.emit('starting', { serverId: this.config.id });
+    this.emit("starting", { serverId: this.config.id });
 
     try {
       await this.connect();
       this.state = ServerState.RUNNING;
-      this.emit('started', { serverId: this.config.id });
+      this.emit("started", { serverId: this.config.id });
 
       // Start health check if configured
       if (this.defaults.healthCheckIntervalMs > 0) {
@@ -327,7 +327,7 @@ export class RemoteMcpServer extends EventEmitter {
       }
     } catch (error) {
       this.state = ServerState.CRASHED;
-      this.emit('error', {
+      this.emit("error", {
         serverId: this.config.id,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -348,14 +348,14 @@ export class RemoteMcpServer extends EventEmitter {
    */
   private async connect(): Promise<void> {
     logger.info(
-      `Connecting to remote server ${this.config.id} at ${this.config.url}`,
+      `Connecting to remote server ${this.config.id} at ${this.config.url}`
     );
 
     // Prepare headers
     const headers: Record<string, string> = {};
-    if (this.config.auth?.type === 'bearer' && this.config.auth.token) {
+    if (this.config.auth?.type === "bearer" && this.config.auth.token) {
       headers.Authorization = `Bearer ${this.config.auth.token}`;
-    } else if (this.config.auth?.type === 'basic' && this.config.auth.token) {
+    } else if (this.config.auth?.type === "basic" && this.config.auth.token) {
       headers.Authorization = `Basic ${this.config.auth.token}`;
     }
 
@@ -384,7 +384,7 @@ export class RemoteMcpServer extends EventEmitter {
    */
   private async connectWithTransport(
     baseUrl: URL,
-    headers: Record<string, string>,
+    headers: Record<string, string>
   ): Promise<RemoteConnection> {
     // Check connection cache
     const cached = getCachedConnection(baseUrl);
@@ -397,19 +397,19 @@ export class RemoteMcpServer extends EventEmitter {
         cached?.supportsSessionId ?? true, // Default to sessionId
         (cached?.transport ||
           this.config.transport ||
-          this.detectTransport(baseUrl)) as 'sse' | 'http' | 'streamable-http',
+          this.detectTransport(baseUrl)) as "sse" | "http" | "streamable-http"
       );
 
       // Cache successful connection
       setCachedConnection(
         baseUrl,
-        connection.transportType === 'sse'
-          ? 'sse'
-          : connection.transportType === 'streamable-http'
-            ? 'streamable-http'
-            : 'http',
+        connection.transportType === "sse"
+          ? "sse"
+          : connection.transportType === "streamable-http"
+            ? "streamable-http"
+            : "http",
         true, // sessionId worked
-        connection.protocol?.protocol,
+        connection.protocol?.protocol
       );
 
       return connection;
@@ -419,8 +419,8 @@ export class RemoteMcpServer extends EventEmitter {
       // Second pass: Try alternative based on error
       const issue = detectIssue(firstError);
 
-      if (issue === 'no-session') {
-        logger.info('Retrying without sessionId...');
+      if (issue === "no-session") {
+        logger.info("Retrying without sessionId...");
         try {
           const connection = await this.attemptConnection(
             baseUrl,
@@ -429,56 +429,56 @@ export class RemoteMcpServer extends EventEmitter {
             (cached?.transport ||
               this.config.transport ||
               this.detectTransport(baseUrl)) as
-              | 'sse'
-              | 'http'
-              | 'streamable-http',
+              | "sse"
+              | "http"
+              | "streamable-http"
           );
 
           // Cache successful connection
           setCachedConnection(
             baseUrl,
-            connection.transportType === 'sse'
-              ? 'sse'
-              : connection.transportType === 'streamable-http'
-                ? 'streamable-http'
-                : 'http',
+            connection.transportType === "sse"
+              ? "sse"
+              : connection.transportType === "streamable-http"
+                ? "streamable-http"
+                : "http",
             false, // sessionId not supported
-            connection.protocol?.protocol,
+            connection.protocol?.protocol
           );
 
           return connection;
         } catch (secondError) {
           // Log second error but throw first for better diagnostics
           logger.debug(
-            `Second attempt also failed: ${(secondError as Error).message}`,
+            `Second attempt also failed: ${(secondError as Error).message}`
           );
           throw firstError;
         }
       }
 
       // Try switching transport if it was a transport error
-      if (issue === 'transport-error' && this.config.transport !== 'sse') {
-        logger.info('Retrying with SSE transport...');
+      if (issue === "transport-error" && this.config.transport !== "sse") {
+        logger.info("Retrying with SSE transport...");
         try {
           const connection = await this.attemptConnection(
             baseUrl,
             headers,
             cached?.supportsSessionId ?? true,
-            'sse',
+            "sse"
           );
 
           // Cache successful connection
           setCachedConnection(
             baseUrl,
-            'sse',
+            "sse",
             cached?.supportsSessionId ?? true,
-            connection.protocol?.protocol,
+            connection.protocol?.protocol
           );
 
           return connection;
         } catch (secondError) {
           logger.debug(
-            `SSE attempt also failed: ${(secondError as Error).message}`,
+            `SSE attempt also failed: ${(secondError as Error).message}`
           );
           throw firstError;
         }
@@ -489,38 +489,38 @@ export class RemoteMcpServer extends EventEmitter {
     }
   }
 
-  private detectTransport(url: URL): 'sse' | 'http' | 'streamable-http' {
+  private detectTransport(url: URL): "sse" | "http" | "streamable-http" {
     // Check config first
-    if (this.config.transport === 'streamable-http') {
-      return 'streamable-http';
+    if (this.config.transport === "streamable-http") {
+      return "streamable-http";
     }
-    if (this.config.transport === 'sse') {
-      return 'sse';
+    if (this.config.transport === "sse") {
+      return "sse";
     }
-    if (this.config.transport === 'http') {
-      return 'http';
+    if (this.config.transport === "http") {
+      return "http";
     }
 
     // Auto-detect from path
     const path = url.pathname.toLowerCase();
     if (
-      path.endsWith('/sse') ||
-      path.includes('/events') ||
-      path.includes('/stream')
+      path.endsWith("/sse") ||
+      path.includes("/events") ||
+      path.includes("/stream")
     ) {
-      return 'sse';
+      return "sse";
     }
-    if (path.endsWith('/mcp')) {
-      return 'streamable-http';
+    if (path.endsWith("/mcp")) {
+      return "streamable-http";
     }
-    return 'http';
+    return "http";
   }
 
   private async attemptConnection(
     baseUrl: URL,
     headers: Record<string, string>,
     useSessionId: boolean,
-    transportType: 'sse' | 'http' | 'streamable-http',
+    transportType: "sse" | "http" | "streamable-http"
   ): Promise<RemoteConnection> {
     // Create client
     const client = new Client(
@@ -530,22 +530,22 @@ export class RemoteMcpServer extends EventEmitter {
       },
       {
         capabilities: {},
-      },
+      }
     );
 
-    if (transportType === 'sse') {
+    if (transportType === "sse") {
       logger.info(`Using SSE transport for ${this.config.id}`);
       const sseTransport = new SSEClientTransport(new URL(baseUrl), {
         headers: {
           ...headers,
-          Accept: 'application/json, text/event-stream',
+          Accept: "application/json, text/event-stream",
         },
       } as any);
 
       await this.withTimeout(
         client.connect(sseTransport),
         this.defaults.connectTimeoutMs,
-        'sse connection',
+        "sse connection"
       );
 
       logger.info(`🏮 Connected to ${this.config.id} using SSE transport`);
@@ -554,9 +554,9 @@ export class RemoteMcpServer extends EventEmitter {
         client,
         facade: null as any,
         transport: sseTransport,
-        transportType: 'sse',
+        transportType: "sse",
         protocol: {
-          protocol: '0.1.0',
+          protocol: "0.1.0",
           capabilities: {},
           serverInfo: undefined,
           features: {
@@ -573,8 +573,8 @@ export class RemoteMcpServer extends EventEmitter {
         },
       };
     } else if (
-      transportType === 'http' ||
-      transportType === 'streamable-http'
+      transportType === "http" ||
+      transportType === "streamable-http"
     ) {
       // Try Streamable HTTP
       logger.info(`Trying Streamable HTTP transport for ${this.config.id}`);
@@ -582,16 +582,16 @@ export class RemoteMcpServer extends EventEmitter {
       const transport = new StreamableHTTPClientTransport(baseUrl, {
         headers: {
           ...headers,
-          Accept: 'application/json',
+          Accept: "application/json",
           // Don't send sessionId if not supported
-          ...(useSessionId ? {} : { 'X-No-Session': 'true' }),
+          ...(useSessionId ? {} : { "X-No-Session": "true" }),
         },
       } as any);
 
       await this.withTimeout(
         client.connect(transport),
         this.defaults.connectTimeoutMs,
-        'http connection',
+        "http connection"
       );
 
       logger.info(`🏮 Connected to ${this.config.id} using HTTP transport`);
@@ -600,9 +600,9 @@ export class RemoteMcpServer extends EventEmitter {
         client,
         facade: null as any,
         transport,
-        transportType: 'streamable-http',
+        transportType: "streamable-http",
         protocol: {
-          protocol: '0.1.0',
+          protocol: "0.1.0",
           capabilities: {},
           serverInfo: undefined,
           features: {
@@ -627,7 +627,7 @@ export class RemoteMcpServer extends EventEmitter {
   private async withTimeout<T>(
     promise: Promise<T>,
     timeoutMs: number,
-    operation: string,
+    operation: string
   ): Promise<T> {
     let timeoutId: NodeJS.Timeout | null = null;
 
@@ -651,14 +651,14 @@ export class RemoteMcpServer extends EventEmitter {
    */
   private async handleConnectionError(error: Error): Promise<void> {
     // Skip if shutdown was requested or if it's an abort error
-    if (this.shutdownRequested || error.message.includes('AbortError')) {
+    if (this.shutdownRequested || error.message.includes("AbortError")) {
       return;
     }
 
     // Skip progress token errors - these are not connection errors
-    if (error.message.includes('progress notification for an unknown token')) {
+    if (error.message.includes("progress notification for an unknown token")) {
       console.debug(
-        `Ignoring progress token error for ${this.config.id} - not a connection issue`,
+        `Ignoring progress token error for ${this.config.id} - not a connection issue`
       );
       return;
     }
@@ -666,7 +666,7 @@ export class RemoteMcpServer extends EventEmitter {
     // Check recursion depth limits
     if (this.reconnectDepth >= this.MAX_RECONNECT_DEPTH) {
       logger.error(
-        `Max reconnect depth (${this.MAX_RECONNECT_DEPTH}) reached for ${this.config.id}`,
+        `Max reconnect depth (${this.MAX_RECONNECT_DEPTH}) reached for ${this.config.id}`
       );
       this.state = ServerState.CRASHED;
       return;
@@ -674,7 +674,7 @@ export class RemoteMcpServer extends EventEmitter {
 
     if (this.reconnectSteps >= this.MAX_RECONNECT_STEPS) {
       logger.error(
-        `Max reconnect steps (${this.MAX_RECONNECT_STEPS}) reached for ${this.config.id}`,
+        `Max reconnect steps (${this.MAX_RECONNECT_STEPS}) reached for ${this.config.id}`
       );
       this.state = ServerState.CRASHED;
       return;
@@ -687,10 +687,10 @@ export class RemoteMcpServer extends EventEmitter {
     const safeError = String(error); // await sanitizeLog(error.message);
     logger.error(
       `Remote server ${this.config.id} connection error:`,
-      safeError,
+      safeError
     );
     this.state = ServerState.CRASHED;
-    this.emit('error', {
+    this.emit("error", {
       serverId: this.config.id,
       error: error.message,
     });
@@ -703,8 +703,8 @@ export class RemoteMcpServer extends EventEmitter {
           Promise.resolve(String(err)).then((safeErr) =>
             logger.error(
               `Failed to schedule reconnect for ${this.config.id}:`,
-              safeErr,
-            ),
+              safeErr
+            )
           );
         });
       });
@@ -740,7 +740,7 @@ export class RemoteMcpServer extends EventEmitter {
           // Create a timeout promise
           const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => {
-              reject(new Error('Health check timeout'));
+              reject(new Error("Health check timeout"));
             }, this.defaults.healthCheckTimeoutMs);
           });
 
@@ -750,19 +750,19 @@ export class RemoteMcpServer extends EventEmitter {
             this.connection.client
               .request(
                 {
-                  method: 'ping',
+                  method: "ping",
                   params: {},
                 },
-                {} as any,
+                {} as any
               )
               .catch((error: any) => {
                 // If ping is not supported, consider it healthy (non-fatal)
                 if (
                   error?.code === -32601 ||
-                  error?.message?.includes('Method not found')
+                  error?.message?.includes("Method not found")
                 ) {
                   console.debug(
-                    `Server ${this.config.id} doesn't support ping, considering healthy`,
+                    `Server ${this.config.id} doesn't support ping, considering healthy`
                   );
                   return; // Return normally, don't throw
                 }
@@ -772,7 +772,7 @@ export class RemoteMcpServer extends EventEmitter {
           ]);
         } catch (error) {
           const _errorMessage =
-            error instanceof Error && error.message === 'Health check timeout'
+            error instanceof Error && error.message === "Health check timeout"
               ? `Health check timeout (${this.defaults.healthCheckTimeoutMs}ms)`
               : String(error);
           const safeError = String(error); // await sanitizeLog(errorMessage);
@@ -781,7 +781,7 @@ export class RemoteMcpServer extends EventEmitter {
           // Only handle connection error if not a timeout
           if (
             !(
-              error instanceof Error && error.message === 'Health check timeout'
+              error instanceof Error && error.message === "Health check timeout"
             )
           ) {
             await this.handleConnectionError(error as Error);
@@ -803,15 +803,15 @@ export class RemoteMcpServer extends EventEmitter {
     }
 
     // Don't retry on 4xx errors (authentication/authorization failures)
-    if (error?.message.includes('401')) {
+    if (error?.message.includes("401")) {
       logger.error(`Authentication failed for ${this.config.id}, not retrying`);
       return false;
     }
-    if (error?.message.includes('403')) {
+    if (error?.message.includes("403")) {
       logger.error(`Authorization failed for ${this.config.id}, not retrying`);
       return false;
     }
-    if (error?.message.includes('404')) {
+    if (error?.message.includes("404")) {
       logger.error(`Endpoint not found for ${this.config.id}, not retrying`);
       return false;
     }
@@ -827,7 +827,7 @@ export class RemoteMcpServer extends EventEmitter {
       const elapsedMs = Date.now() - this.firstReconnectAttempt.getTime();
       if (elapsedMs > this.defaults.maxReconnectDurationMs) {
         logger.warn(
-          `Server ${this.config.id} exceeded max reconnect duration (${this.defaults.maxReconnectDurationMs}ms)`,
+          `Server ${this.config.id} exceeded max reconnect duration (${this.defaults.maxReconnectDurationMs}ms)`
         );
         return false;
       }
@@ -847,12 +847,12 @@ export class RemoteMcpServer extends EventEmitter {
 
     const delay = Math.min(
       this.defaults.reconnectDelayMs * 2 ** this.reconnectCount,
-      30000, // Max 30 seconds
+      30000 // Max 30 seconds
     );
 
     this.reconnectCount++;
     logger.info(
-      `Scheduling reconnect ${this.reconnectCount} for server ${this.config.id} in ${delay}ms`,
+      `Scheduling reconnect ${this.reconnectCount} for server ${this.config.id} in ${delay}ms`
     );
 
     setTimeout(async () => {
@@ -866,7 +866,7 @@ export class RemoteMcpServer extends EventEmitter {
           const safeError = String(error); // await sanitizeLog(String(error));
           logger.error(
             `Failed to reconnect server ${this.config.id}:`,
-            safeError,
+            safeError
           );
         }
       }
@@ -903,13 +903,13 @@ export class RemoteMcpServer extends EventEmitter {
     if (this.state === ServerState.STOPPING) {
       // Already stopping, wait for completion
       return new Promise((resolve) => {
-        this.once('stopped', resolve);
+        this.once("stopped", resolve);
       });
     }
 
     this.shutdownRequested = true;
     this.state = ServerState.STOPPING;
-    this.emit('stopping', { serverId: this.config.id });
+    this.emit("stopping", { serverId: this.config.id });
 
     // Clear health check interval
     if (this.healthCheckInterval !== null) {
@@ -920,7 +920,7 @@ export class RemoteMcpServer extends EventEmitter {
     if (this.connection) {
       try {
         // Handle different transport types
-        if (this.connection.transportType === 'sse') {
+        if (this.connection.transportType === "sse") {
           // SSEClientTransport might not have a close method
           // Just clean up the connection
           this.connection = null;
@@ -934,7 +934,7 @@ export class RemoteMcpServer extends EventEmitter {
         const safeError = String(error); // await sanitizeLog(String(error));
         logger.warn(
           `Error closing transport for ${this.config.id}:`,
-          safeError,
+          safeError
         );
       }
       this.connection = null;
@@ -944,7 +944,7 @@ export class RemoteMcpServer extends EventEmitter {
     this.cleanup();
 
     this.state = ServerState.STOPPED;
-    this.emit('stopped', { serverId: this.config.id });
+    this.emit("stopped", { serverId: this.config.id });
   }
 
   /**
@@ -983,7 +983,7 @@ export class RemoteMcpServer extends EventEmitter {
   async callTool(
     name: string,
     args: Record<string, unknown>,
-    progressToken?: string | number,
+    progressToken?: string | number
   ): Promise<CallToolResult> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
@@ -1014,15 +1014,15 @@ export class RemoteMcpServer extends EventEmitter {
           arguments: args,
         },
         undefined, // Use default resultSchema
-        requestOptions,
+        requestOptions
       );
 
       // Check if response is in correct format
-      if (!result || typeof result !== 'object') {
+      if (!result || typeof result !== "object") {
         return {
           content: [
             {
-              type: 'text',
+              type: "text",
               text: JSON.stringify(result),
             },
           ],
@@ -1031,7 +1031,7 @@ export class RemoteMcpServer extends EventEmitter {
       }
 
       // Return in CallToolResult format
-      if ('content' in result) {
+      if ("content" in result) {
         return result as CallToolResult;
       }
 
@@ -1039,7 +1039,7 @@ export class RemoteMcpServer extends EventEmitter {
       return {
         content: [
           {
-            type: 'text',
+            type: "text",
             text: JSON.stringify(result),
           },
         ],
@@ -1049,9 +1049,9 @@ export class RemoteMcpServer extends EventEmitter {
       // Handle connection errors during tool calls
       if (
         error instanceof Error &&
-        (error.message.includes('disconnected') ||
-          error.message.includes('closed') ||
-          error.message.includes('ENOTFOUND'))
+        (error.message.includes("disconnected") ||
+          error.message.includes("closed") ||
+          error.message.includes("ENOTFOUND"))
       ) {
         await this.handleConnectionError(error);
       }
@@ -1076,9 +1076,9 @@ export class RemoteMcpServer extends EventEmitter {
       // Handle connection errors during tool listing
       if (
         error instanceof Error &&
-        (error.message.includes('disconnected') ||
-          error.message.includes('closed') ||
-          error.message.includes('ENOTFOUND'))
+        (error.message.includes("disconnected") ||
+          error.message.includes("closed") ||
+          error.message.includes("ENOTFOUND"))
       ) {
         await this.handleConnectionError(error);
       }
@@ -1101,9 +1101,9 @@ export class RemoteMcpServer extends EventEmitter {
       // Handle connection errors during prompt listing
       if (
         error instanceof Error &&
-        (error.message.includes('disconnected') ||
-          error.message.includes('closed') ||
-          error.message.includes('ENOTFOUND'))
+        (error.message.includes("disconnected") ||
+          error.message.includes("closed") ||
+          error.message.includes("ENOTFOUND"))
       ) {
         await this.handleConnectionError(error);
       }
@@ -1126,12 +1126,12 @@ export class RemoteMcpServer extends EventEmitter {
       // Handle connection errors during resource listing
       if (
         error instanceof Error &&
-        (error.message.includes('disconnected') ||
-          error.message.includes('Connection closed'))
+        (error.message.includes("disconnected") ||
+          error.message.includes("Connection closed"))
       ) {
         logger.error(
           `Connection lost while listing resources for ${this.config.id}:`,
-          error.message,
+          error.message
         );
         await this.handleConnectionError(error as Error);
       }
@@ -1154,7 +1154,7 @@ export class RemoteMcpServer extends EventEmitter {
       // Resource templates are optional
       logger.debug(
         `Server ${this.config.id} doesn't support resource templates:`,
-        error instanceof Error ? error.message : String(error),
+        error instanceof Error ? error.message : String(error)
       );
       return [];
     }
@@ -1174,12 +1174,12 @@ export class RemoteMcpServer extends EventEmitter {
       // Handle connection errors during resource reading
       if (
         error instanceof Error &&
-        (error.message.includes('disconnected') ||
-          error.message.includes('Connection closed'))
+        (error.message.includes("disconnected") ||
+          error.message.includes("Connection closed"))
       ) {
         logger.error(
           `Connection lost while reading resource for ${this.config.id}:`,
-          error.message,
+          error.message
         );
         await this.handleConnectionError(error as Error);
       }
@@ -1192,7 +1192,7 @@ export class RemoteMcpServer extends EventEmitter {
    */
   async getPrompt(
     name: string,
-    args?: Record<string, string>,
+    args?: Record<string, string>
   ): Promise<unknown> {
     if (!this.connection || this.state !== ServerState.RUNNING) {
       throw ErrorHelpers.serverNotConnected(this.config.id);
@@ -1207,12 +1207,12 @@ export class RemoteMcpServer extends EventEmitter {
       // Handle connection errors during prompt retrieval
       if (
         error instanceof Error &&
-        (error.message.includes('disconnected') ||
-          error.message.includes('Connection closed'))
+        (error.message.includes("disconnected") ||
+          error.message.includes("Connection closed"))
       ) {
         logger.error(
           `Connection lost while getting prompt for ${this.config.id}:`,
-          error.message,
+          error.message
         );
         await this.handleConnectionError(error as Error);
       }
@@ -1227,7 +1227,7 @@ export class RemoteMcpServer extends EventEmitter {
     // Check if server supports resources based on capabilities
     if (!this.connection?.capabilities?.resources) {
       console.debug(
-        `Server ${this.config.id} doesn't support resources (capability not declared)`,
+        `Server ${this.config.id} doesn't support resources (capability not declared)`
       );
       return [];
     }
@@ -1238,8 +1238,8 @@ export class RemoteMcpServer extends EventEmitter {
       // Extract resources from MCP listResources response
       if (
         resourcesResponse &&
-        typeof resourcesResponse === 'object' &&
-        'resources' in resourcesResponse
+        typeof resourcesResponse === "object" &&
+        "resources" in resourcesResponse
       ) {
         const resources = (resourcesResponse as { resources: unknown[] })
           .resources;
@@ -1251,10 +1251,10 @@ export class RemoteMcpServer extends EventEmitter {
       // Handle Method not found gracefully (non-fatal)
       if (
         error?.code === -32601 ||
-        error?.message?.includes('Method not found')
+        error?.message?.includes("Method not found")
       ) {
         logger.warn(
-          `Server ${this.config.id} doesn't support resources/list method`,
+          `Server ${this.config.id} doesn't support resources/list method`
         );
         return [];
       }
@@ -1274,7 +1274,7 @@ export class RemoteMcpServer extends EventEmitter {
     // listTools already returns the tools array
     if (Array.isArray(toolsResponse)) {
       return toolsResponse.filter(
-        (tool) => tool && typeof tool === 'object' && 'name' in tool,
+        (tool) => tool && typeof tool === "object" && "name" in tool
       );
     }
 

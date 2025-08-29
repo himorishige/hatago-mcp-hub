@@ -1,12 +1,12 @@
 /**
  * @hatago/hub - User-friendly facade for Hatago MCP Hub
- * 
+ *
  * This package provides a simplified API for working with MCP servers,
  * tools, and resources.
  */
 
-import { HatagoHub } from './hub.js';
-import type { HubOptions, ServerSpec } from './types.js';
+import { HatagoHub } from "./hub.js";
+import type { HubOptions, ServerSpec } from "./types.js";
 
 /**
  * Create a new Hatago Hub instance
@@ -41,11 +41,14 @@ export function httpServer(
     timeout?: number;
   }
 ): [string, ServerSpec] {
-  return [id, {
-    url,
-    type: 'http',
-    ...options
-  }];
+  return [
+    id,
+    {
+      url,
+      type: "http",
+      ...options,
+    },
+  ];
 }
 
 /**
@@ -59,33 +62,43 @@ export function sseServer(
     timeout?: number;
   }
 ): [string, ServerSpec] {
-  return [id, {
-    url,
-    type: 'sse',
-    ...options
-  }];
+  return [
+    id,
+    {
+      url,
+      type: "sse",
+      ...options,
+    },
+  ];
 }
 
 // Export main class and types
-export { HatagoHub } from './hub.js';
+export { HatagoHub } from "./hub.js";
 export type {
-  ServerSpec,
-  HubOptions,
   CallOptions,
-  ReadOptions,
-  ListOptions,
+  ConnectedServer,
   HubEvent,
   HubEventHandler,
-  ConnectedServer
-} from './types.js';
+  HubOptions,
+  ListOptions,
+  ReadOptions,
+  ServerSpec,
+} from "./types.js";
 
 // Export error classes
 export {
-  HatagoError,
   ConfigError,
-  TransportError,
-  ToolInvocationError,
-  TimeoutError,
+  HatagoError,
   SessionError,
-  toHatagoError
-} from './errors.js';
+  TimeoutError,
+  toHatagoError,
+  ToolInvocationError,
+  TransportError,
+} from "./errors.js";
+
+// Export streamable HTTP helpers
+export {
+  createEventsEndpoint,
+  handleMCPEndpoint,
+  handleSSEEndpoint,
+} from "./hub-streamable.js";

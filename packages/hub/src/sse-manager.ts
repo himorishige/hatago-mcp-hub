@@ -2,12 +2,14 @@
  * SSE Manager - Manages Server-Sent Events connections and progress notifications
  */
 
-import { Logger } from './logger.js';
+import { Logger } from "./logger.js";
 
 export interface SSEClient {
   id: string;
   writer: WritableStreamDefaultWriter;
   closed: boolean;
+  keepAliveInterval?: ReturnType<typeof setInterval>;
+  stream?: any; // For framework-specific streams
 }
 
 export interface ProgressNotification {
@@ -33,17 +35,31 @@ export class SSEManager {
   /**
    * Add a new SSE client
    */
-  addClient(clientId: string, writer: WritableStreamDefaultWriter): void {
+  addClient(
+    clientId: string,
+    writer: WritableStreamDefaultWriter,
+    stream?: any
+  ): void {
+    // Set up keepalive interval
+    const keepAliveInterval = setInterval(() => {
+      this.sendKeepAliveToClient(clientId);
+    }, 30000); // Every 30 seconds
+
     this.clients.set(clientId, {
       id: clientId,
       writer,
-      closed: false
+      closed: false,
+      keepAliveInterval,
+      stream,
     });
-    
-    this.logger.debug('[SSE] Client connected', { clientId });
-    
+
+    this.logger.debug("[SSE] Client connected", { clientId });
+
     // Send initial connection event
-    this.sendToClient(clientId, 'connected', { clientId, timestamp: Date.now() });
+    this.sendToClient(clientId, "connected", {
+      clientId,
+      timestamp: Date.now(),
+    });
   }
 
   /**
@@ -53,16 +69,22 @@ export class SSEManager {
     const client = this.clients.get(clientId);
     if (client) {
       client.closed = true;
+
+      // Clear keepalive interval
+      if (client.keepAliveInterval) {
+        clearInterval(client.keepAliveInterval);
+      }
+
       this.clients.delete(clientId);
-      
+
       // Clean up progress routes for this client
       for (const [token, cid] of this.progressRoutes.entries()) {
         if (cid === clientId) {
           this.progressRoutes.delete(token);
         }
       }
-      
-      this.logger.debug('[SSE] Client disconnected', { clientId });
+
+      this.logger.debug("[SSE] Client disconnected", { clientId });
     }
   }
 
@@ -71,7 +93,10 @@ export class SSEManager {
    */
   registerProgressToken(progressToken: string, clientId: string): void {
     this.progressRoutes.set(progressToken, clientId);
-    this.logger.debug('[SSE] Progress token registered', { progressToken, clientId });
+    this.logger.debug("[SSE] Progress token registered", {
+      progressToken,
+      clientId,
+    });
   }
 
   /**
@@ -79,7 +104,7 @@ export class SSEManager {
    */
   unregisterProgressToken(progressToken: string): void {
     this.progressRoutes.delete(progressToken);
-    this.logger.debug('[SSE] Progress token unregistered', { progressToken });
+    this.logger.debug("[SSE] Progress token unregistered", { progressToken });
   }
 
   /**
@@ -88,16 +113,22 @@ export class SSEManager {
   sendProgress(progressToken: string, progress: ProgressNotification): void {
     const clientId = this.progressRoutes.get(progressToken);
     if (clientId) {
-      this.sendToClient(clientId, 'progress', progress);
+      this.sendToClient(clientId, "progress", progress);
     } else {
-      this.logger.warn('[SSE] No client found for progress token', { progressToken });
+      this.logger.warn("[SSE] No client found for progress token", {
+        progressToken,
+      });
     }
   }
 
   /**
    * Send event to a specific client
    */
-  private async sendToClient(clientId: string, event: string, data: any): Promise<void> {
+  private async sendToClient(
+    clientId: string,
+    event: string,
+    data: any
+  ): Promise<void> {
     const client = this.clients.get(clientId);
     if (!client || client.closed) {
       return;
@@ -107,15 +138,15 @@ export class SSEManager {
       const encoder = new TextEncoder();
       const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
       await client.writer.write(encoder.encode(message));
-      
-      this.logger.debug('[SSE] Event sent', { clientId, event });
+
+      this.logger.debug("[SSE] Event sent", { clientId, event });
     } catch (error) {
-      this.logger.error('[SSE] Failed to send event', { 
-        clientId, 
+      this.logger.error("[SSE] Failed to send event", {
+        clientId,
         event,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       // Mark client as closed on error
       client.closed = true;
       this.removeClient(clientId);
@@ -127,31 +158,55 @@ export class SSEManager {
    */
   async broadcast(event: string, data: any): Promise<void> {
     const promises: Promise<void>[] = [];
-    
+
     for (const clientId of this.clients.keys()) {
       promises.push(this.sendToClient(clientId, event, data));
     }
-    
+
     await Promise.all(promises);
+  }
+
+  /**
+   * Send keep-alive ping to a specific client
+   */
+  async sendKeepAliveToClient(clientId: string): Promise<void> {
+    const client = this.clients.get(clientId);
+    if (!client || client.closed) {
+      return;
+    }
+
+    try {
+      if (client.stream?.writeSSE) {
+        // Framework-specific stream (e.g., Hono)
+        client.stream.writeSSE({ comment: "keepalive" });
+      } else {
+        // Standard SSE stream
+        const encoder = new TextEncoder();
+        const keepAlive = encoder.encode(":keepalive\n\n");
+        await client.writer.write(keepAlive);
+      }
+
+      this.logger.debug("[SSE] Keep-alive sent", { clientId });
+    } catch (error) {
+      this.logger.warn("[SSE] Keep-alive failed", {
+        clientId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      this.removeClient(clientId);
+    }
   }
 
   /**
    * Send keep-alive ping to all clients
    */
   async sendKeepAlive(): Promise<void> {
-    const encoder = new TextEncoder();
-    const keepAlive = encoder.encode(':keepalive\n\n');
-    
-    for (const [clientId, client] of this.clients.entries()) {
-      if (!client.closed) {
-        try {
-          await client.writer.write(keepAlive);
-        } catch (error) {
-          this.logger.debug('[SSE] Keep-alive failed', { clientId });
-          this.removeClient(clientId);
-        }
-      }
+    const promises: Promise<void>[] = [];
+
+    for (const clientId of this.clients.keys()) {
+      promises.push(this.sendKeepAliveToClient(clientId));
     }
+
+    await Promise.all(promises);
   }
 
   /**
