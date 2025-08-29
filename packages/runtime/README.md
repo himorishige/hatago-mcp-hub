@@ -15,21 +15,25 @@ npm install @hatago/runtime
 ## Features
 
 ### Session Management
+
 - Create and manage user sessions
 - TTL-based expiration
 - Thread-safe operations with mutex
 
 ### Registry System (Coming Soon)
+
 - Tool registry with collision avoidance
 - Resource registry
 - Prompt registry
 
 ### Message Router (Coming Soon)
+
 - Route MCP protocol messages
 - Handle tool calls
 - Resource resolution
 
 ### Error Recovery (Coming Soon)
+
 - Retry with exponential backoff
 - Circuit breaker pattern
 - Error categorization
@@ -37,10 +41,10 @@ npm install @hatago/runtime
 ## Usage
 
 ```typescript
-import { SessionManager } from '@hatago/runtime';
+import { SessionManager } from "@hatago/runtime";
 
 const sessionManager = new SessionManager(3600); // 1 hour TTL
-const session = await sessionManager.createSession('session-id');
+const session = await sessionManager.createSession("session-id");
 ```
 
 ## Dependencies

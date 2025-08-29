@@ -1,296 +1,312 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hatago Hub - Progress Notification Test</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      background: #f5f5f5;
-    }
-    .container {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    h1 {
-      color: #333;
-      margin-top: 0;
-    }
-    .status {
-      padding: 10px;
-      border-radius: 4px;
-      margin: 10px 0;
-      font-family: monospace;
-    }
-    .connected {
-      background: #d4edda;
-      color: #155724;
-    }
-    .disconnected {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    .progress-container {
-      margin: 20px 0;
-    }
-    .progress-bar {
-      width: 100%;
-      height: 30px;
-      background: #e9ecef;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    .progress-fill {
-      height: 100%;
-      background: #007bff;
-      transition: width 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-    }
-    .log {
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
-      padding: 10px;
-      margin: 10px 0;
-      max-height: 300px;
-      overflow-y: auto;
-      font-family: monospace;
-      font-size: 14px;
-    }
-    .log-entry {
-      margin: 2px 0;
-      padding: 2px 0;
-      border-bottom: 1px solid #e9ecef;
-    }
-    .log-entry:last-child {
-      border-bottom: none;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 16px;
-      margin: 5px;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    button:disabled {
-      background: #6c757d;
-      cursor: not-allowed;
-    }
-    input {
-      padding: 8px;
-      border: 1px solid #ced4da;
-      border-radius: 4px;
-      margin: 0 5px;
-      width: 200px;
-    }
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 20px 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>🚀 Hatago Hub - Progress Notification Test</h1>
-    
-    <div class="status disconnected" id="status">
-      Disconnected
-    </div>
-    
-    <div class="controls">
-      <input type="text" id="serverUrl" placeholder="Server URL" value="http://localhost:3000">
-      <button id="connectBtn" onclick="connect()">Connect SSE</button>
-      <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
-    </div>
-    
-    <div class="controls">
-      <button id="testProgressBtn" onclick="testProgress()" disabled>Test Progress (5s)</button>
-      <button id="testLongProgressBtn" onclick="testLongProgress()" disabled>Test Progress (10s)</button>
-      <button id="clearLogBtn" onclick="clearLog()">Clear Log</button>
-    </div>
-    
-    <div class="progress-container">
-      <h3>Progress:</h3>
-      <div class="progress-bar">
-        <div class="progress-fill" id="progressBar" style="width: 0%">0%</div>
-      </div>
-      <p id="progressMessage">Ready</p>
-    </div>
-    
-    <h3>Event Log:</h3>
-    <div class="log" id="log"></div>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hatago Hub - Progress Notification Test</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        margin-top: 0;
+      }
+      .status {
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        font-family: monospace;
+      }
+      .connected {
+        background: #d4edda;
+        color: #155724;
+      }
+      .disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .progress-container {
+        margin: 20px 0;
+      }
+      .progress-bar {
+        width: 100%;
+        height: 30px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: #007bff;
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+      }
+      .log {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        margin: 10px 0;
+        max-height: 300px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 14px;
+      }
+      .log-entry {
+        margin: 2px 0;
+        padding: 2px 0;
+        border-bottom: 1px solid #e9ecef;
+      }
+      .log-entry:last-child {
+        border-bottom: none;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 5px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+      input {
+        padding: 8px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        margin: 0 5px;
+        width: 200px;
+      }
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚀 Hatago Hub - Progress Notification Test</h1>
 
-  <script>
-    let eventSource = null;
-    let clientId = `client-${Date.now()}`;
-    
-    function addLog(message, type = 'info') {
-      const log = document.getElementById('log');
-      const entry = document.createElement('div');
-      entry.className = 'log-entry';
-      const timestamp = new Date().toLocaleTimeString();
-      entry.innerHTML = `<span style="color: #6c757d">[${timestamp}]</span> ${message}`;
-      log.insertBefore(entry, log.firstChild);
-    }
-    
-    function updateProgress(progress, total, message) {
-      const percentage = Math.round((progress / total) * 100);
-      const progressBar = document.getElementById('progressBar');
-      progressBar.style.width = `${percentage}%`;
-      progressBar.textContent = `${percentage}%`;
-      document.getElementById('progressMessage').textContent = message || `Progress: ${progress}/${total}`;
-    }
-    
-    function connect() {
-      const serverUrl = document.getElementById('serverUrl').value;
-      const sseUrl = `${serverUrl}/sse?clientId=${clientId}`;
-      
-      addLog(`Connecting to ${sseUrl}...`);
-      
-      eventSource = new EventSource(sseUrl);
-      
-      eventSource.onopen = () => {
-        addLog('✅ SSE connection established', 'success');
-        document.getElementById('status').className = 'status connected';
-        document.getElementById('status').textContent = `Connected (${clientId})`;
-        document.getElementById('connectBtn').disabled = true;
-        document.getElementById('disconnectBtn').disabled = false;
-        document.getElementById('testProgressBtn').disabled = false;
-        document.getElementById('testLongProgressBtn').disabled = false;
-      };
-      
-      eventSource.onerror = (error) => {
-        addLog('❌ SSE connection error', 'error');
-        console.error('SSE Error:', error);
-        disconnect();
-      };
-      
-      eventSource.onmessage = (event) => {
-        addLog(`📩 Message: ${event.data}`);
-        try {
-          const data = JSON.parse(event.data);
-          handleMessage(data);
-        } catch (e) {
-          console.error('Failed to parse message:', e);
-        }
-      };
-      
-      // Listen for specific event types
-      eventSource.addEventListener('connected', (event) => {
-        addLog(`🔗 Connected event: ${event.data}`);
-      });
-      
-      eventSource.addEventListener('progress', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          addLog(`📊 Progress: ${data.progress}/${data.total} - ${data.message}`);
-          updateProgress(data.progress, data.total, data.message);
-        } catch (e) {
-          console.error('Failed to parse progress:', e);
-        }
-      });
-    }
-    
-    function disconnect() {
-      if (eventSource) {
-        eventSource.close();
-        eventSource = null;
+      <div class="status disconnected" id="status">Disconnected</div>
+
+      <div class="controls">
+        <input
+          type="text"
+          id="serverUrl"
+          placeholder="Server URL"
+          value="http://localhost:3000"
+        />
+        <button id="connectBtn" onclick="connect()">Connect SSE</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>
+          Disconnect
+        </button>
+      </div>
+
+      <div class="controls">
+        <button id="testProgressBtn" onclick="testProgress()" disabled>
+          Test Progress (5s)
+        </button>
+        <button id="testLongProgressBtn" onclick="testLongProgress()" disabled>
+          Test Progress (10s)
+        </button>
+        <button id="clearLogBtn" onclick="clearLog()">Clear Log</button>
+      </div>
+
+      <div class="progress-container">
+        <h3>Progress:</h3>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressBar" style="width: 0%">0%</div>
+        </div>
+        <p id="progressMessage">Ready</p>
+      </div>
+
+      <h3>Event Log:</h3>
+      <div class="log" id="log"></div>
+    </div>
+
+    <script>
+      let eventSource = null;
+      let clientId = `client-${Date.now()}`;
+
+      function addLog(message, type = "info") {
+        const log = document.getElementById("log");
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        const timestamp = new Date().toLocaleTimeString();
+        entry.innerHTML = `<span style="color: #6c757d">[${timestamp}]</span> ${message}`;
+        log.insertBefore(entry, log.firstChild);
       }
-      
-      addLog('🔌 Disconnected');
-      document.getElementById('status').className = 'status disconnected';
-      document.getElementById('status').textContent = 'Disconnected';
-      document.getElementById('connectBtn').disabled = false;
-      document.getElementById('disconnectBtn').disabled = true;
-      document.getElementById('testProgressBtn').disabled = true;
-      document.getElementById('testLongProgressBtn').disabled = true;
-      
-      // Reset progress
-      updateProgress(0, 100, 'Disconnected');
-    }
-    
-    async function testProgress() {
-      const serverUrl = document.getElementById('serverUrl').value;
-      addLog('🧪 Starting progress test (5 seconds)...');
-      
-      try {
-        const response = await fetch(`${serverUrl}/demo/progress`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            clientId: clientId,
-            duration: 5000
-          })
+
+      function updateProgress(progress, total, message) {
+        const percentage = Math.round((progress / total) * 100);
+        const progressBar = document.getElementById("progressBar");
+        progressBar.style.width = `${percentage}%`;
+        progressBar.textContent = `${percentage}%`;
+        document.getElementById("progressMessage").textContent =
+          message || `Progress: ${progress}/${total}`;
+      }
+
+      function connect() {
+        const serverUrl = document.getElementById("serverUrl").value;
+        const sseUrl = `${serverUrl}/sse?clientId=${clientId}`;
+
+        addLog(`Connecting to ${sseUrl}...`);
+
+        eventSource = new EventSource(sseUrl);
+
+        eventSource.onopen = () => {
+          addLog("✅ SSE connection established", "success");
+          document.getElementById("status").className = "status connected";
+          document.getElementById("status").textContent =
+            `Connected (${clientId})`;
+          document.getElementById("connectBtn").disabled = true;
+          document.getElementById("disconnectBtn").disabled = false;
+          document.getElementById("testProgressBtn").disabled = false;
+          document.getElementById("testLongProgressBtn").disabled = false;
+        };
+
+        eventSource.onerror = (error) => {
+          addLog("❌ SSE connection error", "error");
+          console.error("SSE Error:", error);
+          disconnect();
+        };
+
+        eventSource.onmessage = (event) => {
+          addLog(`📩 Message: ${event.data}`);
+          try {
+            const data = JSON.parse(event.data);
+            handleMessage(data);
+          } catch (e) {
+            console.error("Failed to parse message:", e);
+          }
+        };
+
+        // Listen for specific event types
+        eventSource.addEventListener("connected", (event) => {
+          addLog(`🔗 Connected event: ${event.data}`);
         });
-        
-        const result = await response.json();
-        addLog(`✅ Progress test completed: ${JSON.stringify(result)}`);
-      } catch (error) {
-        addLog(`❌ Progress test failed: ${error.message}`, 'error');
-      }
-    }
-    
-    async function testLongProgress() {
-      const serverUrl = document.getElementById('serverUrl').value;
-      addLog('🧪 Starting long progress test (10 seconds)...');
-      
-      try {
-        const response = await fetch(`${serverUrl}/demo/progress`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            clientId: clientId,
-            duration: 10000
-          })
+
+        eventSource.addEventListener("progress", (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            addLog(
+              `📊 Progress: ${data.progress}/${data.total} - ${data.message}`,
+            );
+            updateProgress(data.progress, data.total, data.message);
+          } catch (e) {
+            console.error("Failed to parse progress:", e);
+          }
         });
-        
-        const result = await response.json();
-        addLog(`✅ Long progress test completed: ${JSON.stringify(result)}`);
-      } catch (error) {
-        addLog(`❌ Long progress test failed: ${error.message}`, 'error');
       }
-    }
-    
-    function clearLog() {
-      document.getElementById('log').innerHTML = '';
-      addLog('Log cleared');
-    }
-    
-    function handleMessage(data) {
-      // Handle different message types
-      if (data.method === 'notifications/progress') {
-        const params = data.params;
-        updateProgress(params.progress, params.total, params.message);
+
+      function disconnect() {
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+
+        addLog("🔌 Disconnected");
+        document.getElementById("status").className = "status disconnected";
+        document.getElementById("status").textContent = "Disconnected";
+        document.getElementById("connectBtn").disabled = false;
+        document.getElementById("disconnectBtn").disabled = true;
+        document.getElementById("testProgressBtn").disabled = true;
+        document.getElementById("testLongProgressBtn").disabled = true;
+
+        // Reset progress
+        updateProgress(0, 100, "Disconnected");
       }
-    }
-    
-    // Auto-connect on load
-    window.addEventListener('load', () => {
-      addLog('🎉 Progress notification test client ready');
-    });
-  </script>
-</body>
+
+      async function testProgress() {
+        const serverUrl = document.getElementById("serverUrl").value;
+        addLog("🧪 Starting progress test (5 seconds)...");
+
+        try {
+          const response = await fetch(`${serverUrl}/demo/progress`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              clientId: clientId,
+              duration: 5000,
+            }),
+          });
+
+          const result = await response.json();
+          addLog(`✅ Progress test completed: ${JSON.stringify(result)}`);
+        } catch (error) {
+          addLog(`❌ Progress test failed: ${error.message}`, "error");
+        }
+      }
+
+      async function testLongProgress() {
+        const serverUrl = document.getElementById("serverUrl").value;
+        addLog("🧪 Starting long progress test (10 seconds)...");
+
+        try {
+          const response = await fetch(`${serverUrl}/demo/progress`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              clientId: clientId,
+              duration: 10000,
+            }),
+          });
+
+          const result = await response.json();
+          addLog(`✅ Long progress test completed: ${JSON.stringify(result)}`);
+        } catch (error) {
+          addLog(`❌ Long progress test failed: ${error.message}`, "error");
+        }
+      }
+
+      function clearLog() {
+        document.getElementById("log").innerHTML = "";
+        addLog("Log cleared");
+      }
+
+      function handleMessage(data) {
+        // Handle different message types
+        if (data.method === "notifications/progress") {
+          const params = data.params;
+          updateProgress(params.progress, params.total, params.message);
+        }
+      }
+
+      // Auto-connect on load
+      window.addEventListener("load", () => {
+        addLog("🎉 Progress notification test client ready");
+      });
+    </script>
+  </body>
 </html>

@@ -143,6 +143,7 @@ session:{id}        # Session snapshots (cache)
 ### Streaming Without Limits
 
 Workers has **no wall-clock time limit** for streaming responses:
+
 - CPU time: Max 5 minutes per request
 - Streaming: Unlimited duration
 - Use `ReadableStream` for efficient memory usage
@@ -150,6 +151,7 @@ Workers has **no wall-clock time limit** for streaming responses:
 ### Connection Management
 
 To avoid the 6 concurrent connection limit:
+
 1. Use Service Bindings to isolate connections
 2. Implement connection pooling
 3. Queue requests when approaching limits

@@ -15,6 +15,7 @@ npm install @hatago/core
 ## Dependency Direction
 
 The dependency flow must be strictly maintained:
+
 ```
 core → runtime → transport → cli
 ```
@@ -29,14 +30,10 @@ core → runtime → transport → cli
 ## Usage
 
 ```typescript
-import { 
-  ErrorCode, 
-  ConnectionType, 
-  EventName 
-} from '@hatago/core';
+import { ErrorCode, ConnectionType, EventName } from "@hatago/core";
 
 // Use types in your implementation
-const connectionType: ConnectionType = 'local';
+const connectionType: ConnectionType = "local";
 ```
 
 ## License

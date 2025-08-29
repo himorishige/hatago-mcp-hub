@@ -30,16 +30,16 @@ Progress notifications allow MCP servers to report incremental progress during t
 #### Node.js Example
 
 ```typescript
-import { createHub, handleMCPEndpoint } from '@hatago/hub/node';
-import { Hono } from 'hono';
-import { streamSSE } from 'hono/streaming';
+import { createHub, handleMCPEndpoint } from "@hatago/hub/node";
+import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 
 const app = new Hono();
 const hub = createHub();
 
 // SSE endpoint for progress notifications
-app.get('/sse', async (c) => {
-  const clientId = c.req.query('clientId') || `client-${Date.now()}`;
+app.get("/sse", async (c) => {
+  const clientId = c.req.query("clientId") || `client-${Date.now()}`;
   const sseManager = hub.getSSEManager();
 
   return streamSSE(c, async (stream) => {
@@ -60,11 +60,11 @@ app.get('/sse', async (c) => {
 #### Cloudflare Workers Example
 
 ```typescript
-import { createHub } from '@hatago/hub/workers';
-import { streamSSE } from 'hono/streaming';
+import { createHub } from "@hatago/hub/workers";
+import { streamSSE } from "hono/streaming";
 
 // Similar setup, but with Workers environment
-app.get('/sse', async (c) => {
+app.get("/sse", async (c) => {
   const hub = createHub(c.env);
   // ... same SSE logic
 });
@@ -75,9 +75,9 @@ app.get('/sse', async (c) => {
 ```typescript
 // Call a tool with progress token
 const result = await hub.callTool({
-  name: 'long_running_tool',
-  arguments: { data: 'input' },
-  progressToken: 'unique-token-123'
+  name: "long_running_tool",
+  arguments: { data: "input" },
+  progressToken: "unique-token-123",
 });
 ```
 
@@ -86,9 +86,9 @@ const result = await hub.callTool({
 #### JavaScript/EventSource
 
 ```javascript
-const eventSource = new EventSource('/sse?clientId=my-client');
+const eventSource = new EventSource("/sse?clientId=my-client");
 
-eventSource.addEventListener('progress', (event) => {
+eventSource.addEventListener("progress", (event) => {
   const data = JSON.parse(event.data);
   console.log(`Progress: ${data.progress}/${data.total} - ${data.message}`);
 });
@@ -101,11 +101,13 @@ See `examples/test-progress-client.html` for a complete web-based client impleme
 ### 4. Testing
 
 #### Browser Test
+
 1. Open `examples/test-progress-client.html` in a browser
 2. Click "Connect SSE" to establish connection
 3. Click "Test Progress" to see demo notifications
 
 #### CLI Test
+
 ```bash
 # Run the test script
 ./examples/test-progress.sh http://localhost:3000
@@ -147,16 +149,20 @@ data: {"progressToken":"token","progress":5,"total":10,"message":"Processing..."
 ```typescript
 class SSEManager {
   // Add a new SSE client
-  addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: any): void
+  addClient(
+    clientId: string,
+    writer: WritableStreamDefaultWriter,
+    stream?: any,
+  ): void;
 
   // Remove a client
-  removeClient(clientId: string): void
+  removeClient(clientId: string): void;
 
   // Register progress token for routing
-  registerProgressToken(progressToken: string, clientId: string): void
+  registerProgressToken(progressToken: string, clientId: string): void;
 
   // Send progress notification
-  sendProgressNotification(notification: ProgressNotification): Promise<void>
+  sendProgressNotification(notification: ProgressNotification): Promise<void>;
 }
 ```
 
@@ -180,26 +186,29 @@ const transport = hub.getStreamableTransport();
 
 ## Platform Support
 
-| Platform | SSE Support | Progress Notifications |
-|----------|------------|----------------------|
-| Node.js | ✅ Full | ✅ Full |
-| Cloudflare Workers | ✅ Full | ✅ Full |
-| Deno | ✅ Full | ✅ Full |
-| Bun | ✅ Full | ✅ Full |
+| Platform           | SSE Support | Progress Notifications |
+| ------------------ | ----------- | ---------------------- |
+| Node.js            | ✅ Full     | ✅ Full                |
+| Cloudflare Workers | ✅ Full     | ✅ Full                |
+| Deno               | ✅ Full     | ✅ Full                |
+| Bun                | ✅ Full     | ✅ Full                |
 
 ## Troubleshooting
 
 ### Connection Drops
+
 - Check firewall/proxy settings
 - Ensure keep-alive is enabled
 - Verify client reconnection logic
 
 ### Missing Notifications
+
 - Verify progress token registration
 - Check SSE connection status
 - Ensure client is listening for correct event type
 
 ### Performance Issues
+
 - Limit notification frequency
 - Use buffering for rapid updates
 - Consider WebSocket for high-frequency updates

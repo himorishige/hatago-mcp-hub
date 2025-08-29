@@ -20,12 +20,12 @@ npm install @hatago/transport
 ### STDIO Transport
 
 ```typescript
-import { createStdioTransport } from '@hatago/transport';
+import { createStdioTransport } from "@hatago/transport";
 
 const transport = await createStdioTransport({
-  command: 'node',
-  args: ['./mcp-server.js'],
-  env: process.env
+  command: "node",
+  args: ["./mcp-server.js"],
+  env: process.env,
 });
 
 await transport.connect();
@@ -34,11 +34,11 @@ await transport.connect();
 ### HTTP/SSE Transport
 
 ```typescript
-import { createHttpTransport } from '@hatago/transport';
+import { createHttpTransport } from "@hatago/transport";
 
 const transport = createHttpTransport({
-  url: 'http://localhost:3000',
-  sessionId: 'my-session'
+  url: "http://localhost:3000",
+  sessionId: "my-session",
 });
 
 await transport.connect();
@@ -47,12 +47,12 @@ await transport.connect();
 ### WebSocket Transport
 
 ```typescript
-import { createWebSocketTransport } from '@hatago/transport';
+import { createWebSocketTransport } from "@hatago/transport";
 
 const transport = createWebSocketTransport({
-  url: 'ws://localhost:3000',
+  url: "ws://localhost:3000",
   reconnect: true,
-  reconnectInterval: 5000
+  reconnectInterval: 5000,
 });
 
 await transport.connect();

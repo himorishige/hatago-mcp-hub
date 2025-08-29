@@ -34,7 +34,7 @@ pnpm install
       "command": "node",
       "args": ["./test-mcp-server.js"],
       "hatagoOptions": {
-        "start": "eager"  // eager: 起動時に接続, lazy: 初回使用時に接続
+        "start": "eager" // eager: 起動時に接続, lazy: 初回使用時に接続
       }
     }
   }
@@ -59,6 +59,7 @@ pnpm start
 ### MCP Streamable HTTP (メインエンドポイント)
 
 #### POST /mcp
+
 JSON-RPC 2.0リクエストを処理します。
 
 ```bash
@@ -79,7 +80,8 @@ curl -X POST http://localhost:8787/mcp \
 # レスポンスのmcp-session-idヘッダーを保存してください
 ```
 
-#### GET /mcp  
+#### GET /mcp
+
 SSEストリーム接続を確立します。
 
 ```bash
@@ -89,6 +91,7 @@ curl -N -H "Accept: text/event-stream" \
 ```
 
 #### DELETE /mcp
+
 セッションを終了します。
 
 ```bash
@@ -99,6 +102,7 @@ curl -X DELETE http://localhost:8787/mcp \
 ### 補助エンドポイント
 
 #### GET /health
+
 サーバーの状態を確認します。
 
 ```bash
@@ -106,6 +110,7 @@ curl http://localhost:8787/health
 ```
 
 #### GET /sessions
+
 アクティブなセッション一覧を取得します。
 
 ```bash
@@ -113,6 +118,7 @@ curl http://localhost:8787/sessions
 ```
 
 #### GET /tools
+
 利用可能なツール一覧を取得します。
 
 ```bash
@@ -120,6 +126,7 @@ curl "http://localhost:8787/tools?sessionId=default"
 ```
 
 #### GET /resources
+
 利用可能なリソース一覧を取得します。
 
 ```bash
@@ -127,6 +134,7 @@ curl "http://localhost:8787/resources?sessionId=default"
 ```
 
 #### GET /metrics
+
 サーバーメトリクスを取得します（開発環境のみ）。
 
 ```bash
@@ -261,6 +269,7 @@ NODE_ENV=development pnpm dev
 ### ログレベルを変更
 
 `hatago-test.config.json`で`logLevel`を調整：
+
 - `debug`: 詳細なログ
 - `info`: 通常のログ
 - `warn`: 警告のみ

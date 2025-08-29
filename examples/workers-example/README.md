@@ -27,17 +27,101 @@ pnpm deploy
 
 ## Configuration
 
+### Method 1: Using KV Storage (Recommended)
+
 Store MCP server configuration in KV:
 
 ```bash
 # Using wrangler CLI
-wrangler kv:key put --namespace-id=<your-kv-id> "mcp-servers" '[
-  {
-    "id": "remote-server",
+wrangler kv:key put --namespace-id=<your-kv-id> "mcp-servers" '{
+  "remote-server": {
+    "url": "https://example.com/mcp",
+    "type": "sse"
+  },
+  "another-server": {
+    "url": "https://api.example.com/mcp",
+    "type": "http",
+    "headers": {
+      "Authorization": "Bearer token"
+    }
+  }
+}'
+```
+
+### Method 2: Using Environment Variables
+
+You can also configure MCP servers through environment variables in `wrangler.toml`:
+
+```toml
+# wrangler.toml
+[vars]
+MCP_SERVERS = '''
+{
+  "remote-server": {
     "url": "https://example.com/mcp",
     "type": "sse"
   }
-]'
+}
+'''
+```
+
+Or use secrets for sensitive data:
+
+```bash
+# Set secrets (for API keys, tokens, etc.)
+wrangler secret put MCP_SERVER_TOKEN
+```
+
+Then access in your code:
+
+```typescript
+// In src/index.ts
+app.all("/mcp", async (c) => {
+  const hub = createHub(c.env);
+
+  // Load from KV first
+  const kvConfig = await c.env.CONFIG_KV.get("mcp-servers", "json");
+
+  // Or load from environment variables
+  const envConfig = c.env.MCP_SERVERS ? JSON.parse(c.env.MCP_SERVERS) : null;
+
+  // Or construct config with secrets
+  const config = envConfig ||
+    kvConfig || {
+      "secure-server": {
+        url: "https://api.example.com/mcp",
+        type: "http",
+        headers: {
+          Authorization: `Bearer ${c.env.MCP_SERVER_TOKEN}`,
+        },
+      },
+    };
+
+  // Add servers to hub
+  if (config && typeof config === "object") {
+    for (const [id, serverSpec] of Object.entries(config)) {
+      await hub.addServer(id, serverSpec as any);
+    }
+  }
+
+  return handleMCPEndpoint(hub, c);
+});
+```
+
+### Configuration Format
+
+Each MCP server configuration should include:
+
+```typescript
+interface MCPServerConfig {
+  url: string; // Server URL (required)
+  type: "http" | "sse"; // Transport type (required)
+  headers?: {
+    // Optional HTTP headers
+    [key: string]: string;
+  };
+  timeout?: number; // Optional timeout in ms
+}
 ```
 
 ## API Endpoints
@@ -49,6 +133,7 @@ wrangler kv:key put --namespace-id=<your-kv-id> "mcp-servers" '[
 ## Platform Limitations
 
 In Cloudflare Workers:
+
 - ❌ No local MCP servers (no process spawning)
 - ❌ No file system access
 - ✅ Remote HTTP/SSE servers only

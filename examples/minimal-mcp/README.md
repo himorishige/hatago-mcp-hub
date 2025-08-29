@@ -30,6 +30,7 @@ Add this server to your Hatago configuration:
 ```
 
 Then start Hatago:
+
 ```bash
 npx hatago serve
 ```

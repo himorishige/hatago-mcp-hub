@@ -33,11 +33,13 @@ Add to your `.mcp.json`:
 ## Modes
 
 ### STDIO Mode (Default)
+
 - Designed for Claude Code and MCP-compatible clients
 - Uses LSP-style framing over STDIO
 - Protocol on stdout, logs on stderr
 
 ### HTTP Mode
+
 - For development and debugging
 - Provides `/mcp`, `/sse`, and `/health` endpoints
 - Enable with `--http` flag
@@ -82,9 +84,9 @@ Supports JSON with comments (JSONC):
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
-    }
-  }
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    },
+  },
 }
 ```
 

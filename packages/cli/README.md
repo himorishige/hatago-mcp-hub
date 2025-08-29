@@ -74,6 +74,7 @@ hatago config reset
 Start the MCP Hub server.
 
 **Options:**
+
 - `-m, --mode <mode>`: Server mode (`stdio` or `http`)
 - `-c, --config <path>`: Path to configuration file
 - `-p, --port <port>`: Port to listen on (HTTP mode)
@@ -88,6 +89,7 @@ Start the MCP Hub server.
 Manage MCP servers.
 
 **Subcommands:**
+
 - `list`: List configured servers
 - `add <name> [command...]`: Add a new server
 - `remove <name>`: Remove a server
@@ -97,6 +99,7 @@ Manage MCP servers.
 Manage Hatago configuration.
 
 **Subcommands:**
+
 - `show`: Show current configuration
 - `set <key> <value>`: Set a configuration value
 - `get <key>`: Get a configuration value
@@ -105,6 +108,7 @@ Manage Hatago configuration.
 ## Configuration Files
 
 Configuration files are stored in `~/.hatago/`:
+
 - `config.json`: Main configuration
 - `servers.json`: MCP server configurations
 

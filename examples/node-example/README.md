@@ -44,6 +44,7 @@ Edit `hatago.config.json` to configure MCP servers:
 ```
 
 Or use environment variable:
+
 ```bash
 HATAGO_CONFIG=./my-config.json pnpm start
 ```
@@ -69,6 +70,7 @@ curl -X POST http://localhost:3000/mcp \
 ## Platform Capabilities
 
 In Node.js, all capabilities are available:
+
 - ✅ Local process spawning
 - ✅ File system access
 - ✅ Network requests
