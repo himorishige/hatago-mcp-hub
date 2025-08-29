@@ -2,6 +2,8 @@
 
 Minimal example demonstrating Hatago MCP Hub in a Node.js environment.
 
+Uses `tsx` for fast TypeScript execution without compilation step.
+
 ## Features
 
 - ✅ Local MCP server support (via process spawning)
@@ -30,9 +32,9 @@ Edit `hatago.config.json` to configure MCP servers:
 ```json
 {
   "mcpServers": {
-    "filesystem": {
+    "everything": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
       "hatagoOptions": {
         "start": "eager"
       }

@@ -4,8 +4,8 @@
   "description": "Minimal Node.js example for Hatago MCP Hub",
   "type": "module",
   "scripts": {
-    "start": "node --loader ts-node/esm src/index.ts",
-    "dev": "node --watch --loader ts-node/esm src/index.ts"
+    "start": "tsx src/index.ts",
+    "dev": "tsx --watch src/index.ts"
   },
   "dependencies": {
     "@hatago/hub": "workspace:*",
@@ -15,6 +15,7 @@
   "devDependencies": {
     "@types/node": "^20.17.10",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
 }
