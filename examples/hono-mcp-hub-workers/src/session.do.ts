@@ -1,6 +1,6 @@
 /**
  * Session Durable Object
- * 
+ *
  * Manages session state with strong consistency guarantees.
  * Uses WebSocket hibernation for cost-effective long connections.
  * Implements alarm API for session expiration management.
@@ -50,7 +50,7 @@ export class SessionDurableObject {
     this.state = state;
     this.eventSubscribers = new Map();
     this.websockets = new Set();
-    
+
     // Initialize session data
     this.sessionData = {
       id: state.id.toString(),
@@ -67,7 +67,7 @@ export class SessionDurableObject {
    */
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    
+
     // Handle WebSocket upgrade
     if (request.headers.get('Upgrade') === 'websocket') {
       return this.handleWebSocketUpgrade(request);
@@ -122,33 +122,37 @@ export class SessionDurableObject {
   private async handleWebSocketMessage(ws: WebSocket, data: string) {
     try {
       const message = JSON.parse(data);
-      
+
       switch (message.type) {
         case 'ping':
           ws.send(JSON.stringify({ type: 'pong' }));
           break;
-        
+
         case 'subscribe':
           // Subscribe to events
           this.subscribeWebSocket(ws, message.events || ['progress']);
           break;
-        
+
         case 'progress':
           // Forward progress update
           await this.updateProgress(message.token, message.data);
           break;
-        
+
         default:
-          ws.send(JSON.stringify({
-            type: 'error',
-            message: `Unknown message type: ${message.type}`,
-          }));
+          ws.send(
+            JSON.stringify({
+              type: 'error',
+              message: `Unknown message type: ${message.type}`,
+            }),
+          );
       }
     } catch (error) {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Invalid message format',
-      }));
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          message: 'Invalid message format',
+        }),
+      );
     }
   }
 
@@ -166,16 +170,19 @@ export class SessionDurableObject {
   private async handleSessionRequest(request: Request): Promise<Response> {
     if (request.method === 'GET') {
       // Return session information
-      return new Response(JSON.stringify({
-        id: this.sessionData.id,
-        createdAt: this.sessionData.createdAt,
-        lastAccessedAt: this.sessionData.lastAccessedAt,
-        clientCount: this.sessionData.clients.size,
-        serverCount: this.sessionData.mcpServers.size,
-        progressCount: this.sessionData.progressTokens.size,
-      }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({
+          id: this.sessionData.id,
+          createdAt: this.sessionData.createdAt,
+          lastAccessedAt: this.sessionData.lastAccessedAt,
+          clientCount: this.sessionData.clients.size,
+          serverCount: this.sessionData.mcpServers.size,
+          progressCount: this.sessionData.progressTokens.size,
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     if (request.method === 'POST') {
@@ -213,7 +220,7 @@ export class SessionDurableObject {
     if (request.method === 'POST') {
       const body = await request.json();
       const { token, progress, total, message } = body;
-      
+
       await this.updateProgress(token, { progress, total, message });
       return new Response('OK');
     }
@@ -254,11 +261,14 @@ export class SessionDurableObject {
     // Persist changes
     await this.state.storage.put('sessionData', this.sessionData);
 
-    return new Response(JSON.stringify({
-      cleaned: expiredTokens.length,
-    }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        cleaned: expiredTokens.length,
+      }),
+      {
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 
   /**
@@ -266,7 +276,7 @@ export class SessionDurableObject {
    */
   private async updateSessionData(data: any) {
     this.sessionData.lastAccessedAt = Date.now();
-    
+
     if (data.client) {
       this.sessionData.clients.set(data.client.id, {
         id: data.client.id,
@@ -386,14 +396,14 @@ export class SessionDurableObject {
  */
 class EventSubscriber {
   private clientId: string;
-  private listeners: Map<string, Function[]>;
+  private listeners: Map<string, ((...args: any[]) => any)[]>;
 
   constructor(clientId: string) {
     this.clientId = clientId;
     this.listeners = new Map();
   }
 
-  on(event: string, callback: Function) {
+  on(event: string, callback: (...args: any[]) => any) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }

@@ -1,15 +1,21 @@
 /**
  * Node.js platform implementation
- * 
+ *
  * Provides Node.js-specific implementations of platform features,
  * including file system access and process spawning.
  */
 
+import { type ChildProcess, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { spawn, type ChildProcess } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { Platform, PlatformOptions, ConfigStore, SessionStore, SpawnOptions } from './types.js';
+import type {
+  ConfigStore,
+  Platform,
+  PlatformOptions,
+  SessionStore,
+  SpawnOptions,
+} from './types.js';
 
 /**
  * File-based configuration storage for Node.js
@@ -45,8 +51,8 @@ class FileConfigStore implements ConfigStore {
     try {
       const files = await fs.readdir(this.basePath);
       return files
-        .filter(f => f.endsWith('.json'))
-        .map(f => f.replace('.json', ''));
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => f.replace('.json', ''));
     } catch {
       return [];
     }
@@ -61,7 +67,8 @@ class MemorySessionStore implements SessionStore {
   private sessions = new Map<string, { data: any; expires: number }>();
   private ttl: number;
 
-  constructor(ttl: number = 3600000) { // 1 hour default
+  constructor(ttl: number = 3600000) {
+    // 1 hour default
     this.ttl = ttl;
     // Clean up expired sessions periodically
     setInterval(() => this.cleanup(), 60000); // Every minute
@@ -70,7 +77,7 @@ class MemorySessionStore implements SessionStore {
   async create(id: string, data: any): Promise<void> {
     this.sessions.set(id, {
       data,
-      expires: Date.now() + this.ttl
+      expires: Date.now() + this.ttl,
     });
   }
 
@@ -138,7 +145,7 @@ export function createNodePlatform(options: PlatformOptions = {}): Platform {
       return spawn(opts.command, opts.args || [], {
         env: { ...process.env, ...opts.env },
         cwd: opts.cwd,
-        stdio: 'pipe'
+        stdio: 'pipe',
       });
     },
 
@@ -154,7 +161,7 @@ export function createNodePlatform(options: PlatformOptions = {}): Platform {
     // Storage implementations
     storage: {
       config: new FileConfigStore(configPath),
-      session: new MemorySessionStore(sessionTTL)
+      session: new MemorySessionStore(sessionTTL),
     },
 
     // Platform identification
@@ -166,8 +173,8 @@ export function createNodePlatform(options: PlatformOptions = {}): Platform {
       hasProcessSpawn: true,
       hasWebCrypto: true,
       hasDurableObjects: false,
-      hasKVStorage: false
-    }
+      hasKVStorage: false,
+    },
   };
 }
 

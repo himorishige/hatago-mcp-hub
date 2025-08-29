@@ -4,18 +4,18 @@
  * Handles HTTP POST requests and SSE streaming for notifications
  */
 
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type {
   JSONRPCMessage,
   JSONRPCNotification,
   RequestId,
-} from "@modelcontextprotocol/sdk/types.js";
+} from '@modelcontextprotocol/sdk/types.js';
 import {
   isInitializeRequest,
   isJSONRPCError,
   isJSONRPCRequest,
   isJSONRPCResponse,
-} from "@modelcontextprotocol/sdk/types.js";
+} from '@modelcontextprotocol/sdk/types.js';
 
 export interface StreamableHTTPTransportOptions {
   sessionIdGenerator?: () => string;
@@ -72,7 +72,7 @@ export class StreamableHTTPTransport implements Transport {
 
   async start(): Promise<void> {
     if (this.started) {
-      throw new Error("Transport already started");
+      throw new Error('Transport already started');
     }
     this.started = true;
     this.startCleanupInterval();
@@ -114,7 +114,7 @@ export class StreamableHTTPTransport implements Transport {
 
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this.started) {
-      throw new Error("Transport not started");
+      throw new Error('Transport not started');
     }
 
     // Handle response messages
@@ -141,25 +141,25 @@ export class StreamableHTTPTransport implements Transport {
       }
     }
     // Handle notification messages
-    else if (!("id" in message)) {
+    else if (!('id' in message)) {
       // Route progress notifications to specific streams
       const notification = message as any;
       if (
-        notification.method === "notifications/progress" &&
+        notification.method === 'notifications/progress' &&
         notification.params?.progressToken
       ) {
         const streamId = this.progressTokenToStream.get(
-          notification.params.progressToken
+          notification.params.progressToken,
         );
         if (streamId) {
           const streamData = this.streamMapping.get(streamId);
           if (streamData?.stream && !streamData.stream.closed) {
             try {
               await streamData.stream.write(
-                `data: ${JSON.stringify(message)}\n\n`
+                `data: ${JSON.stringify(message)}\n\n`,
               );
             } catch (error) {
-              console.error("Failed to send progress notification:", error);
+              console.error('Failed to send progress notification:', error);
             }
           }
         }
@@ -170,10 +170,10 @@ export class StreamableHTTPTransport implements Transport {
           if (streamData.stream && !streamData.stream.closed) {
             try {
               await streamData.stream.write(
-                `data: ${JSON.stringify(message)}\n\n`
+                `data: ${JSON.stringify(message)}\n\n`,
               );
             } catch (error) {
-              console.error("Failed to send notification:", error);
+              console.error('Failed to send notification:', error);
             }
           }
         }
@@ -188,11 +188,11 @@ export class StreamableHTTPTransport implements Transport {
     progressToken: string | number,
     progress: number,
     total?: number,
-    message?: string
+    message?: string,
   ): Promise<void> {
     const notification: JSONRPCNotification = {
-      jsonrpc: "2.0",
-      method: "notifications/progress",
+      jsonrpc: '2.0',
+      method: 'notifications/progress',
       params: {
         progressToken,
         progress,
@@ -211,7 +211,7 @@ export class StreamableHTTPTransport implements Transport {
     method: string,
     headers: Record<string, string | undefined>,
     body?: any,
-    sseStream?: SSEStream
+    sseStream?: SSEStream,
   ): Promise<
     | {
         status: number;
@@ -221,21 +221,21 @@ export class StreamableHTTPTransport implements Transport {
     | undefined
   > {
     switch (method) {
-      case "GET":
+      case 'GET':
         return this.handleGetRequest(headers, sseStream);
-      case "POST":
+      case 'POST':
         return this.handlePostRequest(headers, body, sseStream);
-      case "DELETE":
+      case 'DELETE':
         return this.handleDeleteRequest(headers);
       default:
         return {
           status: 405,
-          headers: { Allow: "GET, POST, DELETE" },
+          headers: { Allow: 'GET, POST, DELETE' },
           body: {
-            jsonrpc: "2.0",
+            jsonrpc: '2.0',
             error: {
               code: -32000,
-              message: "Method not allowed",
+              message: 'Method not allowed',
             },
             id: null,
           },
@@ -245,15 +245,15 @@ export class StreamableHTTPTransport implements Transport {
 
   private async handleGetRequest(
     headers: Record<string, string | undefined>,
-    sseStream?: SSEStream
+    sseStream?: SSEStream,
   ): Promise<undefined> {
     if (!sseStream) {
-      throw new Error("SSE stream required for GET request");
+      throw new Error('SSE stream required for GET request');
     }
 
     // Generate or get session ID
     const sessionId =
-      headers["mcp-session-id"] ||
+      headers['mcp-session-id'] ||
       this.sessionIdGenerator?.() ||
       crypto.randomUUID();
 
@@ -267,7 +267,7 @@ export class StreamableHTTPTransport implements Transport {
     // Set up keepalive
     const keepaliveInterval = setInterval(async () => {
       try {
-        await sseStream.write(":heartbeat\n\n");
+        await sseStream.write(':heartbeat\n\n');
       } catch {
         clearInterval(keepaliveInterval);
       }
@@ -304,9 +304,9 @@ export class StreamableHTTPTransport implements Transport {
           tokensToDelete.push(token);
         }
       }
-      tokensToDelete.forEach((token) =>
-        this.progressTokenToStream.delete(token)
-      );
+      tokensToDelete.forEach((token) => {
+        this.progressTokenToStream.delete(token);
+      });
     });
 
     // Return undefined to indicate SSE response is handled
@@ -316,23 +316,23 @@ export class StreamableHTTPTransport implements Transport {
   private async handlePostRequest(
     headers: Record<string, string | undefined>,
     body: any,
-    sseStream?: SSEStream
+    sseStream?: SSEStream,
   ): Promise<{ status: number; headers?: Record<string, string>; body?: any }> {
     // Validate Accept header - at least one of the required types
-    const acceptHeader = headers["accept"];
+    const acceptHeader = headers.accept;
     if (
       acceptHeader &&
-      !acceptHeader.includes("application/json") &&
-      !acceptHeader.includes("text/event-stream")
+      !acceptHeader.includes('application/json') &&
+      !acceptHeader.includes('text/event-stream')
     ) {
       return {
         status: 406,
         body: {
-          jsonrpc: "2.0",
+          jsonrpc: '2.0',
           error: {
             code: -32000,
             message:
-              "Not Acceptable: Client must accept application/json or text/event-stream",
+              'Not Acceptable: Client must accept application/json or text/event-stream',
           },
           id: null,
         },
@@ -346,7 +346,7 @@ export class StreamableHTTPTransport implements Transport {
     const isInitialization = messages.some(isInitializeRequest);
     if (isInitialization) {
       const sessionId =
-        headers["mcp-session-id"] ||
+        headers['mcp-session-id'] ||
         this.sessionIdGenerator?.() ||
         crypto.randomUUID();
 
@@ -358,7 +358,7 @@ export class StreamableHTTPTransport implements Transport {
       }
     } else {
       // Handle non-initialization requests
-      const sessionId = headers["mcp-session-id"];
+      const sessionId = headers['mcp-session-id'];
       if (sessionId) {
         // Use provided session ID
         this.sessionId = sessionId;
@@ -393,14 +393,14 @@ export class StreamableHTTPTransport implements Transport {
 
     // Check if SSE response is needed
     const hasProgressToken = messages.some(
-      (msg: any) => isJSONRPCRequest(msg) && msg.params?._meta?.progressToken
+      (msg: any) => isJSONRPCRequest(msg) && msg.params?._meta?.progressToken,
     );
     const isToolCall = messages.some(
-      (msg: any) => isJSONRPCRequest(msg) && msg.method === "tools/call"
+      (msg: any) => isJSONRPCRequest(msg) && msg.method === 'tools/call',
     );
 
     // Check if there's an existing SSE stream for this session (from GET request)
-    const sessionId = headers["mcp-session-id"];
+    const sessionId = headers['mcp-session-id'];
     const existingStreamId = sessionId
       ? this.sessionIdToStream.get(sessionId)
       : undefined;
@@ -409,7 +409,7 @@ export class StreamableHTTPTransport implements Transport {
     if (
       (hasProgressToken || isToolCall) &&
       sseStream &&
-      headers["accept"]?.includes("text/event-stream")
+      headers.accept?.includes('text/event-stream')
     ) {
       const streamId = crypto.randomUUID();
 
@@ -433,7 +433,7 @@ export class StreamableHTTPTransport implements Transport {
             const streamIdToUse = existingStreamId || streamId;
             this.progressTokenToStream.set(
               message.params._meta.progressToken,
-              streamIdToUse
+              streamIdToUse,
             );
           }
         }
@@ -446,7 +446,7 @@ export class StreamableHTTPTransport implements Transport {
 
       // Wait for response with timeout
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 120000)
+        setTimeout(() => reject(new Error('Timeout')), 120000),
       );
 
       try {
@@ -455,10 +455,10 @@ export class StreamableHTTPTransport implements Transport {
         // Send timeout error
         await sseStream.write(
           `data: ${JSON.stringify({
-            jsonrpc: "2.0",
-            error: { code: -32001, message: "Request timed out" },
+            jsonrpc: '2.0',
+            error: { code: -32001, message: 'Request timed out' },
             id: messages.find(isJSONRPCRequest)?.id || null,
-          })}\n\n`
+          })}\n\n`,
         );
       } finally {
         // Clean up
@@ -470,7 +470,7 @@ export class StreamableHTTPTransport implements Transport {
             // Clean up progressToken mapping
             if (message.params?._meta?.progressToken) {
               this.progressTokenToStream.delete(
-                message.params._meta.progressToken
+                message.params._meta.progressToken,
               );
             }
           }
@@ -492,7 +492,7 @@ export class StreamableHTTPTransport implements Transport {
       ) {
         this.progressTokenToStream.set(
           message.params._meta.progressToken,
-          existingStreamId
+          existingStreamId,
         );
       }
 
@@ -516,7 +516,7 @@ export class StreamableHTTPTransport implements Transport {
     // Return response
     const responseHeaders: Record<string, string> = {};
     if (this.sessionId) {
-      responseHeaders["mcp-session-id"] = this.sessionId;
+      responseHeaders['mcp-session-id'] = this.sessionId;
     }
 
     return {
@@ -527,10 +527,10 @@ export class StreamableHTTPTransport implements Transport {
   }
 
   private async handleDeleteRequest(
-    headers: Record<string, string | undefined>
+    headers: Record<string, string | undefined>,
   ): Promise<{ status: number }> {
     // Optional session validation - be permissive
-    const sessionId = headers["mcp-session-id"];
+    const sessionId = headers['mcp-session-id'];
     if (sessionId && this.initializedSessions.has(sessionId)) {
       // Clean up specific session
       this.initializedSessions.delete(sessionId);
@@ -544,13 +544,13 @@ export class StreamableHTTPTransport implements Transport {
   }
 
   private validateSession(
-    headers: Record<string, string | undefined>
+    headers: Record<string, string | undefined>,
   ): boolean {
     if (!this.sessionIdGenerator) {
       return true;
     }
 
-    const sessionId = headers["mcp-session-id"];
+    const sessionId = headers['mcp-session-id'];
     if (!sessionId) {
       return false;
     }

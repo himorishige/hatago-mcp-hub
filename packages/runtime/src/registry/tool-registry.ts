@@ -1,5 +1,5 @@
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolMetadata } from '@hatago/core';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import {
   clearRegistry,
   clearServerTools,
@@ -46,21 +46,21 @@ export class ToolRegistry {
   }
 
   /**
-   * サーバーのツールを登録
+   * Register server tools
    */
   registerServerTools(serverId: string, tools: Tool[]): void {
     this.state = registerServerTools(this.state, serverId, tools);
   }
 
   /**
-   * サーバーのツールをクリア
+   * Clear server tools
    */
   clearServerTools(serverId: string): void {
     this.state = clearServerTools(this.state, serverId);
   }
 
   /**
-   * すべてのツールを取得
+   * Get all tools
    */
   getAllTools(): Tool[] {
     // Get all tool metadata and return with public names
@@ -75,14 +75,14 @@ export class ToolRegistry {
   }
 
   /**
-   * ツールを名前で取得
+   * Get tool by name
    */
   getTool(publicName: string): ToolMetadata | undefined {
     return getToolByName(this.state, publicName);
   }
 
   /**
-   * サーバーのツールを取得
+   * Get server tools
    */
   getServerTools(serverId: string): Tool[] {
     return getServerTools(this.state, serverId).map(({ tool, publicName }) => ({
@@ -92,7 +92,7 @@ export class ToolRegistry {
   }
 
   /**
-   * ツール名から元のサーバーIDとツール名を解決
+   * Resolve tool name to original server ID and tool name
    */
   resolveTool(
     publicName: string,
@@ -109,7 +109,7 @@ export class ToolRegistry {
   }
 
   /**
-   * 衝突しているツールを検出
+   * Detect tool name collisions
    */
   detectCollisions(): ToolCollision[] {
     const collisions = detectCollisions(this.state);
@@ -126,21 +126,21 @@ export class ToolRegistry {
   }
 
   /**
-   * ツール数を取得
+   * Get tool count
    */
   getToolCount(): number {
     return this.state.tools.size;
   }
 
   /**
-   * サーバー数を取得
+   * Get server count
    */
   getServerCount(): number {
     return this.state.serverTools.size;
   }
 
   /**
-   * デバッグ情報を取得
+   * Get debug information
    */
   getDebugInfo(): {
     totalTools: number;
@@ -170,7 +170,7 @@ export class ToolRegistry {
   }
 
   /**
-   * すべてのツールとサーバー情報をクリア
+   * Clear all tools and server information
    */
   clear(): void {
     this.state = clearRegistry(this.state);

@@ -1,6 +1,6 @@
 /**
  * Platform abstraction layer
- * 
+ *
  * Provides a unified interface for platform-specific features.
  * Uses dependency injection pattern to avoid runtime detection issues.
  */
@@ -28,7 +28,7 @@ export function setPlatform(platform: Platform): void {
 export function getPlatform(): Platform {
   if (!_platform) {
     throw new Error(
-      'Platform not initialized. Call setPlatform() with appropriate platform implementation.'
+      'Platform not initialized. Call setPlatform() with appropriate platform implementation.',
     );
   }
   return _platform;
@@ -49,11 +49,11 @@ export function resetPlatform(): void {
 }
 
 // Re-export types
-export type { 
+export type {
+  ConfigStore,
   Platform,
   PlatformOptions,
-  ConfigStore,
   SessionStore,
-  SpawnOptions
+  SpawnOptions,
 } from './types.js';
 export { UnsupportedFeatureError } from './types.js';

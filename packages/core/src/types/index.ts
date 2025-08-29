@@ -3,6 +3,12 @@
  * Re-export all type definitions
  */
 
+// Re-export MCP SDK types for convenience
+export type {
+  Prompt,
+  Resource,
+  Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 export type { ConnectionType, McpConnection } from './connection.js';
 export type {
   McpServer,
@@ -11,11 +17,8 @@ export type {
 } from './protocol.js';
 export { SUPPORTED_PROTOCOL_VERSION } from './protocol.js';
 export type {
-  ToolMetadata,
-  ResourceMetadata,
   PromptMetadata,
+  ResourceMetadata,
+  ToolMetadata,
 } from './registry.js';
-
-// Re-export MCP SDK types for convenience
-export type { Tool, Resource, Prompt } from '@modelcontextprotocol/sdk/types.js';
 export type { Session } from './session.js';

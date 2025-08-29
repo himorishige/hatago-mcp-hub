@@ -1,11 +1,11 @@
 /**
  * STDIO-Safe Logger Implementation
- * 
+ *
  * Ensures all log output goes to stderr to keep stdout clean
  * for MCP protocol communication.
  */
 
-import type { Logger, LogLevel, LogData } from '@hatago/core';
+import type { LogData, Logger, LogLevel } from '@hatago/core';
 import { LOG_LEVELS, shouldLog } from '@hatago/core';
 
 export interface StdioSafeLoggerOptions {
@@ -32,7 +32,7 @@ export class StdioSafeLogger implements Logger {
     }
 
     const timestamp = new Date().toISOString();
-    
+
     // Build log record
     const record: any = {
       level,
@@ -95,6 +95,8 @@ export class StdioSafeLogger implements Logger {
 /**
  * Create a STDIO-safe logger with default settings
  */
-export function createStdioSafeLogger(options?: StdioSafeLoggerOptions): Logger {
+export function createStdioSafeLogger(
+  options?: StdioSafeLoggerOptions,
+): Logger {
   return new StdioSafeLogger(options);
 }

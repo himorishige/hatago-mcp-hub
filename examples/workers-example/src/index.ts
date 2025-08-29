@@ -8,46 +8,46 @@
  * - Remote MCP server support only (no local processes in Workers)
  */
 
-import { createEventsEndpoint } from "@hatago/hub";
-import { createHub, handleMCPEndpoint } from "@hatago/hub/workers";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
+import { createEventsEndpoint } from '@hatago/hub';
+import { createHub, handleMCPEndpoint } from '@hatago/hub/workers';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 
 // Create Hono app with environment bindings
 const app = new Hono<{ Bindings: Env }>();
 
 // Enable CORS
 app.use(
-  "*",
+  '*',
   cors({
-    origin: ["http://localhost:*", "http://127.0.0.1:*"],
+    origin: ['http://localhost:*', 'http://127.0.0.1:*'],
     credentials: true,
-    allowHeaders: ["Content-Type", "Accept", "mcp-session-id"],
-  })
+    allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id'],
+  }),
 );
 
 // Health check endpoint
-app.get("/health", (c) => {
+app.get('/health', (c) => {
   return c.json({
-    status: "healthy",
-    runtime: "cloudflare-workers",
+    status: 'healthy',
+    runtime: 'cloudflare-workers',
   });
 });
 
 // MCP protocol endpoint
-app.all("/mcp", async (c) => {
+app.all('/mcp', async (c) => {
   const hub = createHub(c.env);
 
   // Load and connect servers from KV config
-  const config = await c.env.CONFIG_KV.get("mcp-servers", "json");
-  if (config && typeof config === "object") {
+  const config = await c.env.CONFIG_KV.get('mcp-servers', 'json');
+  if (config && typeof config === 'object') {
     try {
       // Add each server to the hub
       for (const [id, serverSpec] of Object.entries(config)) {
         await hub.addServer(id, serverSpec as any);
       }
     } catch (error) {
-      console.error("Failed to connect servers:", error);
+      console.error('Failed to connect servers:', error);
     }
   }
 
@@ -55,7 +55,7 @@ app.all("/mcp", async (c) => {
 });
 
 // SSE endpoint for progress notifications
-app.get("/sse", async (c) => {
+app.get('/sse', async (c) => {
   const hub = createHub(c.env);
 
   return createEventsEndpoint(hub)(c);
@@ -66,7 +66,7 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<Response> {
     return app.fetch(request, env, ctx);
   },
@@ -74,39 +74,34 @@ export default {
 
 // Durable Object for session management
 export class SessionDurableObject {
-  private state: DurableObjectState;
   private sessions: Map<string, any> = new Map();
-
-  constructor(state: DurableObjectState) {
-    this.state = state;
-  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const sessionId = url.searchParams.get("id");
+    const sessionId = url.searchParams.get('id');
 
-    if (request.method === "GET" && sessionId) {
+    if (request.method === 'GET' && sessionId) {
       const session = this.sessions.get(sessionId);
       return new Response(JSON.stringify(session || null), {
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    if (request.method === "POST" && sessionId) {
+    if (request.method === 'POST' && sessionId) {
       const data = await request.json();
       this.sessions.set(sessionId, data);
       return new Response(JSON.stringify({ success: true }), {
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    if (request.method === "DELETE" && sessionId) {
+    if (request.method === 'DELETE' && sessionId) {
       this.sessions.delete(sessionId);
       return new Response(JSON.stringify({ success: true }), {
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    return new Response("Method not allowed", { status: 405 });
+    return new Response('Method not allowed', { status: 405 });
   }
 }

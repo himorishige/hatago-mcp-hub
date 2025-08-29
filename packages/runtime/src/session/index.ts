@@ -4,14 +4,14 @@
 
 export { SessionManager } from './manager.js';
 export {
-  type SessionState,
-  createSessionState,
-  createSession,
-  getSession,
-  touchSession,
-  deleteSession,
   clearSessions,
-  removeExpired,
+  createSession,
+  createSessionState,
+  deleteSession,
   getActiveSessionCount,
+  getSession,
   isExpired,
+  removeExpired,
+  type SessionState,
+  touchSession,
 } from './operations.js';

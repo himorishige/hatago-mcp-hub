@@ -1,6 +1,6 @@
 /**
  * Configuration Management for Workers
- * 
+ *
  * Uses KV Storage for read-heavy config access with eventual consistency.
  * Implements write aggregation through Durable Objects to handle the
  * KV write limitations (low RPS per key).
@@ -57,11 +57,11 @@ export async function loadConfig(kv: KVNamespace): Promise<HubConfig> {
       type: 'json',
       cacheTtl: 60, // Cache for 1 minute
     });
-    
+
     if (storedConfig) {
       return { ...DEFAULT_CONFIG, ...storedConfig };
     }
-    
+
     // If no config exists, return default
     return DEFAULT_CONFIG;
   } catch (error) {
@@ -76,7 +76,7 @@ export async function loadConfig(kv: KVNamespace): Promise<HubConfig> {
  */
 export async function saveConfig(
   kv: KVNamespace,
-  config: HubConfig
+  config: HubConfig,
 ): Promise<void> {
   try {
     await kv.put('hub-config', JSON.stringify(config), {
@@ -96,7 +96,7 @@ export async function saveConfig(
  */
 export async function getServerConfig(
   kv: KVNamespace,
-  serverId: string
+  serverId: string,
 ): Promise<MCPServerConfig | null> {
   try {
     // Try individual server config first (for better caching)
@@ -104,11 +104,11 @@ export async function getServerConfig(
       type: 'json',
       cacheTtl: 300, // Cache for 5 minutes
     });
-    
+
     if (serverConfig) {
       return serverConfig;
     }
-    
+
     // Fallback to main config
     const config = await loadConfig(kv);
     return config.mcpServers[serverId] || null;
@@ -125,7 +125,7 @@ export async function getServerConfig(
 export async function updateServerConfig(
   kv: KVNamespace,
   serverId: string,
-  serverConfig: MCPServerConfig
+  serverConfig: MCPServerConfig,
 ): Promise<void> {
   try {
     // Store individual server config for better cache granularity
@@ -134,7 +134,7 @@ export async function updateServerConfig(
         updatedAt: new Date().toISOString(),
       },
     });
-    
+
     // Also update main config
     const config = await loadConfig(kv);
     config.mcpServers[serverId] = serverConfig;
@@ -150,12 +150,12 @@ export async function updateServerConfig(
  */
 export async function deleteServerConfig(
   kv: KVNamespace,
-  serverId: string
+  serverId: string,
 ): Promise<void> {
   try {
     // Delete individual server config
     await kv.delete(`server:${serverId}`);
-    
+
     // Update main config
     const config = await loadConfig(kv);
     delete config.mcpServers[serverId];
@@ -199,12 +199,12 @@ export class ConfigWriteAggregator {
    */
   queueWrite(key: string, value: any) {
     this.pendingWrites.set(key, value);
-    
+
     // Debounce writes (aggregate over 100ms)
     if (this.writeTimer) {
       clearTimeout(this.writeTimer);
     }
-    
+
     this.writeTimer = setTimeout(() => {
       this.flushWrites();
     }, 100) as any;
@@ -215,17 +215,17 @@ export class ConfigWriteAggregator {
    */
   private async flushWrites() {
     if (this.pendingWrites.size === 0) return;
-    
+
     const writes = Array.from(this.pendingWrites.entries());
     this.pendingWrites.clear();
-    
+
     // Batch write to KV (if supported in future)
     // For now, write sequentially with small delays
     for (const [key, value] of writes) {
       try {
         await this.kv.put(key, JSON.stringify(value));
         // Small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       } catch (error) {
         console.error(`Failed to write ${key}:`, error);
       }

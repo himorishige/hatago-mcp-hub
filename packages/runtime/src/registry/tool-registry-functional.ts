@@ -3,8 +3,8 @@
  * Pure functions for tool registry operations
  */
 
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolMetadata } from '@hatago/core';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolNamingConfig } from './types.js';
 
 /**
@@ -43,18 +43,18 @@ export function generatePublicName(
 ): string {
   const strategy = config.strategy || 'namespace';
 
-  // エイリアスが定義されているか確認
+  // Check if alias is defined
   const aliasKey = `${serverId}_${toolName}`;
   if (config.aliases?.[aliasKey]) {
     return config.aliases[aliasKey];
   }
 
-  // エラー戦略
+  // Error strategy
   if (strategy === 'error') {
     return toolName;
   }
 
-  // 名前空間戦略
+  // Namespace strategy
   if (strategy === 'namespace') {
     const separator = config.separator || '_';
     const format = config.format || '{serverId}_{toolName}';
@@ -64,19 +64,19 @@ export function generatePublicName(
       .replace('{separator}', separator)
       .replace('{toolName}', toolName);
 
-    // ドットをアンダースコアに置換（Claude Code互換性）
+    // Replace dots with underscores (Claude Code compatibility)
     publicName = publicName.replace(/\./g, '_');
 
     return publicName;
   }
 
-  // エイリアス戦略の場合
+  // Alias strategy
   if (strategy === 'alias') {
-    // まずツール名そのものを試す（衝突チェックは呼び出し側で行う）
+    // First try the tool name itself (collision check is done by caller)
     return toolName;
   }
 
-  // デフォルトはnamespace戦略
+  // Default is namespace strategy
   const separator = config.separator || '_';
   const publicName = `${serverId}${separator}${toolName}`;
   // ドットをアンダースコアに置換（Claude Code互換性）

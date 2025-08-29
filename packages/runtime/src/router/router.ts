@@ -2,24 +2,24 @@
  * MCP Router - Central routing logic for tools, resources, and prompts
  */
 
-import type { Tool, Resource, Prompt } from '@hatago/core';
-import type {
-  RouterConfig,
-  RouteTarget,
-  ResourceRouteTarget,
-  RouteDecision,
-  RouterContext,
-  ToolRegistryInterface,
-  ResourceRegistryInterface,
-  PromptRegistryInterface
-} from './router-types.js';
+import type { Prompt, Resource, Tool } from '@hatago/core';
 import {
+  filterByServer,
   generatePublicName,
+  groupByServer,
   parsePublicName,
   resolveRoute,
-  filterByServer,
-  groupByServer
 } from './router-functional.js';
+import type {
+  PromptRegistryInterface,
+  ResourceRegistryInterface,
+  ResourceRouteTarget,
+  RouteDecision,
+  RouterConfig,
+  RouterContext,
+  RouteTarget,
+  ToolRegistryInterface,
+} from './router-types.js';
 
 /**
  * Router for MCP Hub operations
@@ -34,7 +34,7 @@ export class McpRouter {
     toolRegistry: ToolRegistryInterface,
     resourceRegistry: ResourceRegistryInterface,
     promptRegistry: PromptRegistryInterface,
-    config: RouterConfig = {}
+    config: RouterConfig = {},
   ) {
     this.toolRegistry = toolRegistry;
     this.resourceRegistry = resourceRegistry;
@@ -42,7 +42,7 @@ export class McpRouter {
     this.config = {
       namingStrategy: config.namingStrategy || 'namespace',
       separator: config.separator || '_',
-      debug: config.debug || false
+      debug: config.debug || false,
     };
   }
 
@@ -58,25 +58,28 @@ export class McpRouter {
       publicName,
       (name) => this.toolRegistry.resolveTool(name),
       this.config,
-      'toolRegistry'
+      'toolRegistry',
     );
   }
 
   /**
    * Route resource request to appropriate server
    */
-  routeResource(publicUri: string, context?: RouterContext): RouteDecision<ResourceRouteTarget> {
+  routeResource(
+    publicUri: string,
+    context?: RouterContext,
+  ): RouteDecision<ResourceRouteTarget> {
     if (this.config.debug || context?.debug) {
       console.debug(`[McpRouter] Routing resource: ${publicUri}`);
     }
 
     const target = this.resourceRegistry.resolveResource(publicUri);
-    
+
     if (!target) {
       return {
         found: false,
         target: null,
-        error: `Resource not found: ${publicUri}`
+        error: `Resource not found: ${publicUri}`,
       };
     }
 
@@ -85,8 +88,8 @@ export class McpRouter {
       target,
       metadata: {
         publicName: publicUri,
-        resolvedBy: 'resourceRegistry'
-      }
+        resolvedBy: 'resourceRegistry',
+      },
     };
   }
 
@@ -102,7 +105,7 @@ export class McpRouter {
       publicName,
       (name) => this.promptRegistry.resolvePrompt(name),
       this.config,
-      'promptRegistry'
+      'promptRegistry',
     );
   }
 
@@ -158,7 +161,10 @@ export class McpRouter {
   /**
    * Parse public name to get server ID and original name
    */
-  parsePublicName(publicName: string): { serverId?: string; originalName: string } {
+  parsePublicName(publicName: string): {
+    serverId?: string;
+    originalName: string;
+  } {
     return parsePublicName(publicName, this.config);
   }
 
@@ -167,11 +173,11 @@ export class McpRouter {
    */
   groupToolsByServer(): Map<string, Tool[]> {
     const tools = this.getAllTools();
-    const toolsWithServer = tools.map(tool => {
+    const toolsWithServer = tools.map((tool) => {
       const parsed = this.parsePublicName(tool.name);
       return {
         ...tool,
-        serverId: parsed.serverId || 'unknown'
+        serverId: parsed.serverId || 'unknown',
       };
     });
     return groupByServer(toolsWithServer);
@@ -182,11 +188,11 @@ export class McpRouter {
    */
   groupResourcesByServer(): Map<string, Resource[]> {
     const resources = this.getAllResources();
-    const resourcesWithServer = resources.map(resource => {
+    const resourcesWithServer = resources.map((resource) => {
       const parsed = this.parsePublicName(resource.uri);
       return {
         ...resource,
-        serverId: parsed.serverId || 'unknown'
+        serverId: parsed.serverId || 'unknown',
       };
     });
     return groupByServer(resourcesWithServer);
@@ -197,11 +203,11 @@ export class McpRouter {
    */
   groupPromptsByServer(): Map<string, Prompt[]> {
     const prompts = this.getAllPrompts();
-    const promptsWithServer = prompts.map(prompt => {
+    const promptsWithServer = prompts.map((prompt) => {
       const parsed = this.parsePublicName(prompt.name);
       return {
         ...prompt,
-        serverId: parsed.serverId || 'unknown'
+        serverId: parsed.serverId || 'unknown',
       };
     });
     return groupByServer(promptsWithServer);
@@ -217,24 +223,30 @@ export class McpRouter {
     servers: Set<string>;
   } {
     const servers = new Set<string>();
-    
+
     // Collect server IDs from tools
     const toolGroups = this.groupToolsByServer();
-    toolGroups.forEach((_, serverId) => servers.add(serverId));
-    
+    toolGroups.forEach((_, serverId) => {
+      servers.add(serverId);
+    });
+
     // Collect server IDs from resources
     const resourceGroups = this.groupResourcesByServer();
-    resourceGroups.forEach((_, serverId) => servers.add(serverId));
-    
+    resourceGroups.forEach((_, serverId) => {
+      servers.add(serverId);
+    });
+
     // Collect server IDs from prompts
     const promptGroups = this.groupPromptsByServer();
-    promptGroups.forEach((_, serverId) => servers.add(serverId));
+    promptGroups.forEach((_, serverId) => {
+      servers.add(serverId);
+    });
 
     return {
       tools: this.getAllTools().length,
       resources: this.getAllResources().length,
       prompts: this.getAllPrompts().length,
-      servers
+      servers,
     };
   }
 
@@ -266,7 +278,7 @@ export class McpRouter {
     const stats = this.getStatistics();
     return {
       ...stats,
-      metrics: this.getMetrics()
+      metrics: this.getMetrics(),
     };
   }
 
@@ -278,7 +290,7 @@ export class McpRouter {
     return {
       requestCount: 0,
       averageResponseTime: 0,
-      errorRate: 0
+      errorRate: 0,
     };
   }
 
@@ -292,7 +304,10 @@ export class McpRouter {
   /**
    * Route using pure functional approach (for compatibility)
    */
-  routeWithFunctionalApproach(publicName: string, type: 'tool' | 'resource' | 'prompt'): RouteDecision {
+  routeWithFunctionalApproach(
+    publicName: string,
+    type: 'tool' | 'resource' | 'prompt',
+  ): RouteDecision {
     switch (type) {
       case 'tool':
         return this.routeTool(publicName);
@@ -304,7 +319,7 @@ export class McpRouter {
         return {
           found: false,
           target: null,
-          error: `Unknown type: ${type}`
+          error: `Unknown type: ${type}`,
         };
     }
   }
@@ -317,7 +332,7 @@ export function createRouter(
   toolRegistry: ToolRegistryInterface,
   resourceRegistry: ResourceRegistryInterface,
   promptRegistry: PromptRegistryInterface,
-  config?: RouterConfig
+  config?: RouterConfig,
 ): McpRouter {
   return new McpRouter(toolRegistry, resourceRegistry, promptRegistry, config);
 }

@@ -1,9 +1,9 @@
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolNamingConfig } from './types.js';
 import {
   createNamingFunction,
   createParsingFunction,
 } from '../utils/naming-strategy.js';
+import type { ToolNamingConfig } from './types.js';
 
 export interface ResourceMetadata extends Resource {
   serverId: string;
@@ -86,11 +86,13 @@ export function createResourceRegistry(
     const resourceUris = new Set<string>();
     for (const resource of newResources) {
       // Keep original URI, only namespace the name
-      const namespacedName = resource.name ? generatePublicUri(serverId, resource.name) : resource.name;
+      const namespacedName = resource.name
+        ? generatePublicUri(serverId, resource.name)
+        : resource.name;
       const metadata: ResourceMetadata = {
         ...resource,
         name: namespacedName,
-        uri: resource.uri,  // Keep original URI
+        uri: resource.uri, // Keep original URI
         serverId,
         originalUri: resource.uri,
       };

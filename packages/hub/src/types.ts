@@ -2,7 +2,7 @@
  * Hub types and interfaces
  */
 
-import type { Tool, Resource, Prompt } from '@hatago/core';
+import type { Prompt, Resource, Tool } from '@hatago/core';
 
 /**
  * Server specification
@@ -13,12 +13,12 @@ export interface ServerSpec {
   args?: string[];
   env?: Record<string, string>;
   cwd?: string;
-  
+
   // Remote server
   url?: string;
   type?: 'http' | 'sse' | 'ws' | 'streamable-http';
   headers?: Record<string, string>;
-  
+
   // Common options
   timeout?: number;
   reconnect?: boolean;
@@ -64,7 +64,7 @@ export interface ListOptions {
 /**
  * Hub event types
  */
-export type HubEvent = 
+export type HubEvent =
   | 'server:connected'
   | 'server:disconnected'
   | 'server:error'

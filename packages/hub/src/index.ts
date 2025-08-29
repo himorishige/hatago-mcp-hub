@@ -5,8 +5,8 @@
  * tools, and resources.
  */
 
-import { HatagoHub } from "./hub.js";
-import type { HubOptions, ServerSpec } from "./types.js";
+import { HatagoHub } from './hub.js';
+import type { HubOptions, ServerSpec } from './types.js';
 
 /**
  * Create a new Hatago Hub instance
@@ -25,7 +25,7 @@ export function cliServer(
     args?: string[];
     env?: Record<string, string>;
     cwd?: string;
-  }
+  },
 ): [string, ServerSpec] {
   return [id, spec];
 }
@@ -39,13 +39,13 @@ export function httpServer(
   options?: {
     headers?: Record<string, string>;
     timeout?: number;
-  }
+  },
 ): [string, ServerSpec] {
   return [
     id,
     {
       url,
-      type: "http",
+      type: 'http',
       ...options,
     },
   ];
@@ -60,20 +60,36 @@ export function sseServer(
   options?: {
     headers?: Record<string, string>;
     timeout?: number;
-  }
+  },
 ): [string, ServerSpec] {
   return [
     id,
     {
       url,
-      type: "sse",
+      type: 'sse',
       ...options,
     },
   ];
 }
 
+// Export error classes
+export {
+  ConfigError,
+  HatagoError,
+  SessionError,
+  TimeoutError,
+  ToolInvocationError,
+  TransportError,
+  toHatagoError,
+} from './errors.js';
 // Export main class and types
-export { HatagoHub } from "./hub.js";
+export { HatagoHub } from './hub.js';
+// Export streamable HTTP helpers
+export {
+  createEventsEndpoint,
+  handleMCPEndpoint,
+  handleSSEEndpoint,
+} from './hub-streamable.js';
 export type {
   CallOptions,
   ConnectedServer,
@@ -83,22 +99,4 @@ export type {
   ListOptions,
   ReadOptions,
   ServerSpec,
-} from "./types.js";
-
-// Export error classes
-export {
-  ConfigError,
-  HatagoError,
-  SessionError,
-  TimeoutError,
-  toHatagoError,
-  ToolInvocationError,
-  TransportError,
-} from "./errors.js";
-
-// Export streamable HTTP helpers
-export {
-  createEventsEndpoint,
-  handleMCPEndpoint,
-  handleSSEEndpoint,
-} from "./hub-streamable.js";
+} from './types.js';

@@ -3,7 +3,7 @@
  */
 
 import type { Command } from 'commander';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 
@@ -17,9 +17,7 @@ interface McpServer {
 }
 
 export function setupMcpCommand(program: Command): void {
-  const mcp = program
-    .command('mcp')
-    .description('Manage MCP servers');
+  const mcp = program.command('mcp').description('Manage MCP servers');
 
   // List servers
   mcp
@@ -33,10 +31,12 @@ export function setupMcpCommand(program: Command): void {
       }
 
       console.log('Configured MCP servers:');
-      servers.forEach(server => {
+      servers.forEach((server) => {
         console.log(`  ${server.id} (${server.type})`);
         if (server.command) {
-          console.log(`    Command: ${server.command} ${server.args?.join(' ') || ''}`);
+          console.log(
+            `    Command: ${server.command} ${server.args?.join(' ') || ''}`,
+          );
         }
         if (server.url) {
           console.log(`    URL: ${server.url}`);
@@ -48,14 +48,18 @@ export function setupMcpCommand(program: Command): void {
   mcp
     .command('add <name>')
     .description('Add a new MCP server')
-    .option('-t, --transport <transport>', 'transport type (stdio, http, sse)', 'stdio')
+    .option(
+      '-t, --transport <transport>',
+      'transport type (stdio, http, sse)',
+      'stdio',
+    )
     .option('-u, --url <url>', 'server URL (for remote servers)')
     .argument('[command...]', 'command to run (for local servers)')
     .action((name: string, command: string[], options: any) => {
       const servers = loadServers();
-      
+
       // Check if server already exists
-      if (servers.find(s => s.id === name)) {
+      if (servers.find((s) => s.id === name)) {
         console.error(`Server "${name}" already exists`);
         process.exit(1);
       }
@@ -63,7 +67,7 @@ export function setupMcpCommand(program: Command): void {
       const server: McpServer = {
         id: name,
         type: 'local',
-        transport: options.transport
+        transport: options.transport,
       };
 
       if (options.url) {
@@ -95,8 +99,8 @@ export function setupMcpCommand(program: Command): void {
     .description('Remove an MCP server')
     .action((name: string) => {
       const servers = loadServers();
-      const index = servers.findIndex(s => s.id === name);
-      
+      const index = servers.findIndex((s) => s.id === name);
+
       if (index === -1) {
         console.error(`Server "${name}" not found`);
         process.exit(1);

@@ -8,7 +8,7 @@
 export enum CircuitState {
   CLOSED = 'closed',
   OPEN = 'open',
-  HALF_OPEN = 'half-open'
+  HALF_OPEN = 'half-open',
 }
 
 /**
@@ -17,16 +17,16 @@ export enum CircuitState {
 export interface CircuitBreakerConfig {
   /** Failure threshold to open circuit */
   failureThreshold: number;
-  
+
   /** Success threshold to close circuit from half-open */
   successThreshold: number;
-  
+
   /** Time window for counting failures (ms) */
   timeWindow: number;
-  
+
   /** Cool-down period before trying half-open (ms) */
   cooldownPeriod: number;
-  
+
   /** Optional callback when state changes */
   onStateChange?: (oldState: CircuitState, newState: CircuitState) => void;
 }
@@ -47,7 +47,7 @@ export class CircuitBreaker {
       successThreshold: config.successThreshold || 3,
       timeWindow: config.timeWindow || 60000, // 1 minute
       cooldownPeriod: config.cooldownPeriod || 30000, // 30 seconds
-      onStateChange: config.onStateChange
+      onStateChange: config.onStateChange,
     };
   }
 
@@ -56,14 +56,14 @@ export class CircuitBreaker {
    */
   shouldAllow(): boolean {
     this.updateState();
-    
+
     switch (this.state) {
       case CircuitState.CLOSED:
         return true;
-      
+
       case CircuitState.OPEN:
         return false;
-      
+
       case CircuitState.HALF_OPEN:
         return true; // Allow limited requests to test
     }
@@ -75,12 +75,12 @@ export class CircuitBreaker {
   recordSuccess(): void {
     const now = Date.now();
     this.successes.push(now);
-    
+
     // Clean old successes
     this.successes = this.successes.filter(
-      time => now - time <= this.config.timeWindow
+      (time) => now - time <= this.config.timeWindow,
     );
-    
+
     // Check if should close from half-open
     if (this.state === CircuitState.HALF_OPEN) {
       if (this.successes.length >= this.config.successThreshold) {
@@ -97,14 +97,17 @@ export class CircuitBreaker {
     const now = Date.now();
     this.failures.push(now);
     this.lastFailureTime = now;
-    
+
     // Clean old failures
     this.failures = this.failures.filter(
-      time => now - time <= this.config.timeWindow
+      (time) => now - time <= this.config.timeWindow,
     );
-    
+
     // Check if should open circuit
-    if (this.state === CircuitState.CLOSED || this.state === CircuitState.HALF_OPEN) {
+    if (
+      this.state === CircuitState.CLOSED ||
+      this.state === CircuitState.HALF_OPEN
+    ) {
       if (this.failures.length >= this.config.failureThreshold) {
         this.changeState(CircuitState.OPEN);
         this.successes = [];
@@ -133,7 +136,7 @@ export class CircuitBreaker {
       state: this.state,
       failures: this.failures.length,
       successes: this.successes.length,
-      lastFailureTime: this.lastFailureTime
+      lastFailureTime: this.lastFailureTime,
     };
   }
 
@@ -153,7 +156,7 @@ export class CircuitBreaker {
   private updateState(): void {
     if (this.state === CircuitState.OPEN && this.lastFailureTime) {
       const timeSinceLastFailure = Date.now() - this.lastFailureTime;
-      
+
       // Check if cooldown period has passed
       if (timeSinceLastFailure >= this.config.cooldownPeriod) {
         this.changeState(CircuitState.HALF_OPEN);
@@ -167,7 +170,7 @@ export class CircuitBreaker {
   private changeState(newState: CircuitState): void {
     const oldState = this.state;
     this.state = newState;
-    
+
     if (this.config.onStateChange && oldState !== newState) {
       this.config.onStateChange(oldState, newState);
     }
@@ -178,7 +181,7 @@ export class CircuitBreaker {
  * Create a circuit breaker with default config
  */
 export function createCircuitBreaker(
-  config?: Partial<CircuitBreakerConfig>
+  config?: Partial<CircuitBreakerConfig>,
 ): CircuitBreaker {
   return new CircuitBreaker(config);
 }
@@ -188,7 +191,7 @@ export function createCircuitBreaker(
  */
 export async function withCircuitBreaker<T>(
   breaker: CircuitBreaker,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> {
   if (!breaker.shouldAllow()) {
     throw new Error(`Circuit breaker is ${breaker.getState()}`);

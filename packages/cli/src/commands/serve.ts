@@ -2,16 +2,18 @@
  * Serve command - Start the Hatago MCP Hub server
  */
 
+import { startServer } from '@hatago/server';
 import type { Command } from 'commander';
-import { StdioTransport } from '@hatago/transport';
 
 interface ServeOptions {
   mode?: 'stdio' | 'http';
   config?: string;
-  port?: number;
+  port?: string;
   host?: string;
   verbose?: boolean;
   quiet?: boolean;
+  stdio?: boolean;
+  http?: boolean;
 }
 
 export function setupServeCommand(program: Command): void {
@@ -20,56 +22,42 @@ export function setupServeCommand(program: Command): void {
     .description('Start the MCP Hub server')
     .option('-m, --mode <mode>', 'server mode (stdio or http)', 'stdio')
     .option('-c, --config <path>', 'path to configuration file')
-    .option('-p, --port <port>', 'port to listen on (http mode)', '3000')
+    .option('-p, --port <port>', 'port to listen on (http mode)', '3929')
     .option('-h, --host <host>', 'host to bind to (http mode)', '127.0.0.1')
     .option('--stdio', 'use STDIO transport (default)')
     .option('--http', 'use HTTP transport')
     .option('--verbose', 'verbose output')
     .option('--quiet', 'quiet output')
     .action(async (options: ServeOptions) => {
-      // Determine mode from flags
-      if (options.http) {
-        options.mode = 'http';
-      } else if (options.stdio) {
-        options.mode = 'stdio';
-      }
+      try {
+        // Determine mode from flags
+        let mode: 'stdio' | 'http' = 'stdio';
+        if (options.http) {
+          mode = 'http';
+        } else if (options.mode) {
+          mode = options.mode as 'stdio' | 'http';
+        }
 
-      console.log(`Starting Hatago MCP Hub in ${options.mode} mode...`);
+        // Determine log level
+        const logLevel = options.quiet
+          ? 'error'
+          : options.verbose
+            ? 'debug'
+            : 'info';
 
-      if (options.mode === 'stdio') {
-        await startStdioServer(options);
-      } else {
-        await startHttpServer(options);
+        // Start server using @hatago/server
+        await startServer({
+          mode,
+          config: options.config,
+          port: options.port ? parseInt(options.port, 10) : 3929,
+          host: options.host || '127.0.0.1',
+          logLevel,
+          verbose: options.verbose,
+          quiet: options.quiet,
+        });
+      } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
       }
     });
-}
-
-async function startStdioServer(options: ServeOptions): Promise<void> {
-  console.log('Starting STDIO server...');
-  
-  // Create and start STDIO transport
-  const transport = new StdioTransport({
-    command: process.argv[0],
-    args: process.argv.slice(1)
-  });
-
-  await transport.connect();
-  console.log('STDIO server started');
-}
-
-async function startHttpServer(options: ServeOptions): Promise<void> {
-  const port = parseInt(options.port || '3000', 10);
-  const host = options.host || '127.0.0.1';
-  
-  console.log(`Starting HTTP server on ${host}:${port}...`);
-  
-  // HTTP server implementation will be imported from main server package
-  const { startHttpServer } = await import('../../../../server/src/cli/commands/serve.js');
-  await startHttpServer({
-    port,
-    host,
-    config: options.config,
-    verbose: options.verbose,
-    quiet: options.quiet
-  });
 }

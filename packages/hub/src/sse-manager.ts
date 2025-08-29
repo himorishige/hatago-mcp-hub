@@ -2,7 +2,7 @@
  * SSE Manager - Manages Server-Sent Events connections and progress notifications
  */
 
-import { Logger } from "./logger.js";
+import type { Logger } from './logger.js';
 
 export interface SSEClient {
   id: string;
@@ -38,7 +38,7 @@ export class SSEManager {
   addClient(
     clientId: string,
     writer: WritableStreamDefaultWriter,
-    stream?: any
+    stream?: any,
   ): void {
     // Set up keepalive interval
     const keepAliveInterval = setInterval(() => {
@@ -53,10 +53,10 @@ export class SSEManager {
       stream,
     });
 
-    this.logger.debug("[SSE] Client connected", { clientId });
+    this.logger.debug('[SSE] Client connected', { clientId });
 
     // Send initial connection event
-    this.sendToClient(clientId, "connected", {
+    this.sendToClient(clientId, 'connected', {
       clientId,
       timestamp: Date.now(),
     });
@@ -84,7 +84,7 @@ export class SSEManager {
         }
       }
 
-      this.logger.debug("[SSE] Client disconnected", { clientId });
+      this.logger.debug('[SSE] Client disconnected', { clientId });
     }
   }
 
@@ -93,7 +93,7 @@ export class SSEManager {
    */
   registerProgressToken(progressToken: string, clientId: string): void {
     this.progressRoutes.set(progressToken, clientId);
-    this.logger.debug("[SSE] Progress token registered", {
+    this.logger.debug('[SSE] Progress token registered', {
       progressToken,
       clientId,
     });
@@ -104,7 +104,7 @@ export class SSEManager {
    */
   unregisterProgressToken(progressToken: string): void {
     this.progressRoutes.delete(progressToken);
-    this.logger.debug("[SSE] Progress token unregistered", { progressToken });
+    this.logger.debug('[SSE] Progress token unregistered', { progressToken });
   }
 
   /**
@@ -113,9 +113,9 @@ export class SSEManager {
   sendProgress(progressToken: string, progress: ProgressNotification): void {
     const clientId = this.progressRoutes.get(progressToken);
     if (clientId) {
-      this.sendToClient(clientId, "progress", progress);
+      this.sendToClient(clientId, 'progress', progress);
     } else {
-      this.logger.warn("[SSE] No client found for progress token", {
+      this.logger.warn('[SSE] No client found for progress token', {
         progressToken,
       });
     }
@@ -127,7 +127,7 @@ export class SSEManager {
   private async sendToClient(
     clientId: string,
     event: string,
-    data: any
+    data: any,
   ): Promise<void> {
     const client = this.clients.get(clientId);
     if (!client || client.closed) {
@@ -139,9 +139,9 @@ export class SSEManager {
       const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
       await client.writer.write(encoder.encode(message));
 
-      this.logger.debug("[SSE] Event sent", { clientId, event });
+      this.logger.debug('[SSE] Event sent', { clientId, event });
     } catch (error) {
-      this.logger.error("[SSE] Failed to send event", {
+      this.logger.error('[SSE] Failed to send event', {
         clientId,
         event,
         error: error instanceof Error ? error.message : String(error),
@@ -178,17 +178,17 @@ export class SSEManager {
     try {
       if (client.stream?.writeSSE) {
         // Framework-specific stream (e.g., Hono)
-        client.stream.writeSSE({ comment: "keepalive" });
+        client.stream.writeSSE({ comment: 'keepalive' });
       } else {
         // Standard SSE stream
         const encoder = new TextEncoder();
-        const keepAlive = encoder.encode(":keepalive\n\n");
+        const keepAlive = encoder.encode(':keepalive\n\n');
         await client.writer.write(keepAlive);
       }
 
-      this.logger.debug("[SSE] Keep-alive sent", { clientId });
+      this.logger.debug('[SSE] Keep-alive sent', { clientId });
     } catch (error) {
-      this.logger.warn("[SSE] Keep-alive failed", {
+      this.logger.warn('[SSE] Keep-alive failed', {
         clientId,
         error: error instanceof Error ? error.message : String(error),
       });

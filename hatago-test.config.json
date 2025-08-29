@@ -1,0 +1,11 @@
+{
+  "$schema": "./schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "debug",
+  "mcpServers": {
+    "test-echo": {
+      "command": "echo",
+      "args": ["test MCP server"]
+    }
+  }
+}

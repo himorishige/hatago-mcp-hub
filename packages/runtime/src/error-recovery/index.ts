@@ -2,40 +2,37 @@
  * Error recovery module exports
  */
 
-// Error classification
-export {
-  ErrorType,
-  ErrorSeverity,
-  classifyError,
-  type ClassifiedError
-} from './error-classifier.js';
-
-// Retry strategies
-export {
-  RetryStrategies,
-  calculateDelay,
-  shouldRetry,
-  createRetryStrategy,
-  selectStrategy,
-  type RetryStrategy
-} from './strategies.js';
-
 // Circuit breaker
 export {
-  CircuitState,
   CircuitBreaker,
+  type CircuitBreakerConfig,
+  CircuitState,
   createCircuitBreaker,
   withCircuitBreaker,
-  type CircuitBreakerConfig
 } from './circuit-breaker.js';
-
+// Error classification
+export {
+  type ClassifiedError,
+  classifyError,
+  ErrorSeverity,
+  ErrorType,
+} from './error-classifier.js';
 // Retry mechanisms
 export {
-  withRetry,
-  retry,
-  retryWithTimeout,
   batchRetry,
   makeRetryable,
   type RetryOptions,
-  type RetryResult
+  type RetryResult,
+  retry,
+  retryWithTimeout,
+  withRetry,
 } from './retry.js';
+// Retry strategies
+export {
+  calculateDelay,
+  createRetryStrategy,
+  RetryStrategies,
+  type RetryStrategy,
+  selectStrategy,
+  shouldRetry,
+} from './strategies.js';

@@ -2,9 +2,9 @@
  * Node.js tests for HatagoHub
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
 import { setPlatform } from '@hatago/runtime';
 import { createNodePlatform } from '@hatago/runtime/platform/node';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { HatagoHub } from './hub.js';
 
 describe('HatagoHub (Node.js)', () => {

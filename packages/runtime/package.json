@@ -34,6 +34,8 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "biome:check": "npx biome check ./src",
@@ -47,8 +49,10 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/node": "^20.0.0",
     "tsdown": "^0.14.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20"

@@ -1,6 +1,6 @@
 /**
  * Hatago MCP Hub for Cloudflare Workers
- * 
+ *
  * This implementation leverages Workers' streaming capabilities
  * to handle long-running MCP operations without the 30-second
  * CPU time limitation (wall-clock time is unlimited for streaming).
@@ -9,9 +9,9 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
-import type { Env } from './types.js';
 import { loadConfig } from './config.js';
 import { createHubAdapter } from './hub-adapter.js';
+import type { Env } from './types.js';
 
 // Export Durable Object class
 export { SessionDurableObject } from './session.do.js';
@@ -21,7 +21,7 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<Response> {
     const app = new Hono<{ Bindings: Env }>();
 
@@ -32,7 +32,7 @@ export default {
         origin: ['http://localhost:*', 'http://127.0.0.1:*', 'https://*'],
         credentials: true,
         allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id'],
-      })
+      }),
     );
 
     // Health check endpoint
@@ -49,7 +49,7 @@ export default {
       try {
         const config = await loadConfig(c.env.CONFIG_KV);
         return c.json(config);
-      } catch (error) {
+      } catch {
         return c.json({ error: 'Failed to load configuration' }, 500);
       }
     });
@@ -72,7 +72,7 @@ export default {
           try {
             // Process the request
             const result = await hub.handleJsonRpcRequest(body, sessionId);
-            
+
             // Write response
             const encoder = new TextEncoder();
             controller.enqueue(encoder.encode(JSON.stringify(result)));
@@ -94,7 +94,8 @@ export default {
     // SSE endpoint for progress notifications (unlimited wall-clock time)
     app.get('/events', async (c) => {
       const clientId = c.req.query('clientId') || `client-${Date.now()}`;
-      const sessionId = c.req.header('mcp-session-id') || c.req.query('sessionId');
+      const sessionId =
+        c.req.header('mcp-session-id') || c.req.query('sessionId');
 
       if (!sessionId) {
         return c.text('Session ID required', 400);

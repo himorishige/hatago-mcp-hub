@@ -3,26 +3,26 @@
  */
 
 // Main router class
-export { McpRouter, createRouter } from './router.js';
+export { createRouter, McpRouter } from './router.js';
 
 // Functional utilities
 export {
-  generatePublicName,
-  parsePublicName,
-  resolveRoute,
   batchResolveRoutes,
   filterByServer,
-  groupByServer
+  generatePublicName,
+  groupByServer,
+  parsePublicName,
+  resolveRoute,
 } from './router-functional.js';
 
 // Types
 export type {
-  RouteTarget,
+  PromptRegistryInterface,
+  ResourceRegistryInterface,
   ResourceRouteTarget,
   RouteDecision,
-  RouterContext,
   RouterConfig,
+  RouterContext,
+  RouteTarget,
   ToolRegistryInterface,
-  ResourceRegistryInterface,
-  PromptRegistryInterface
 } from './router-types.js';

@@ -2,7 +2,7 @@
  * Router type definitions for MCP Hub
  */
 
-import type { Tool, Resource, Prompt } from '@hatago/core';
+import type { Prompt, Resource, Tool } from '@hatago/core';
 
 /**
  * Target for routing decisions
@@ -47,10 +47,10 @@ export interface RouterContext {
 export interface RouterConfig {
   /** Naming strategy for tools/resources/prompts */
   namingStrategy?: 'prefix' | 'suffix' | 'namespace' | 'none';
-  
+
   /** Separator for namespacing */
   separator?: string;
-  
+
   /** Enable debug logging */
   debug?: boolean;
 }

@@ -22,21 +22,21 @@
  *   --version            Show version
  */
 
-import { existsSync, writeFileSync } from "fs";
-import { loadConfig } from "./config.js";
-import { startHttp } from "./http.js";
-import { Logger } from "./logger.js";
-import { startStdio } from "./stdio.js";
-import { generateDefaultConfig, parseArgs, type ParsedArgs } from "./utils.js";
+import { existsSync, writeFileSync } from 'fs';
+import { loadConfig } from './config.js';
+import { startHttp } from './http.js';
+import { Logger } from './logger.js';
+import { startStdio } from './stdio.js';
+import { generateDefaultConfig, type ParsedArgs, parseArgs } from './utils.js';
 
 async function handleInitCommand(args: ParsedArgs) {
-  const configPath = (args.flags.config as string) || "./hatago.config.json";
+  const configPath = (args.flags.config as string) || './hatago.config.json';
   const force = args.flags.force as boolean;
 
   // Check if config file already exists
   if (existsSync(configPath) && !force) {
     console.error(`❌ Configuration file already exists: ${configPath}`);
-    console.error("   Use --force to overwrite");
+    console.error('   Use --force to overwrite');
     process.exit(1);
   }
 
@@ -44,32 +44,32 @@ async function handleInitCommand(args: ParsedArgs) {
     const defaultConfig = generateDefaultConfig();
     writeFileSync(configPath, defaultConfig);
     console.log(`✅ Created configuration file: ${configPath}`);
-    console.log("");
-    console.log("Next steps:");
+    console.log('');
+    console.log('Next steps:');
     console.log(`1. Edit ${configPath} to configure your MCP servers`);
-    console.log("2. Run the server:");
+    console.log('2. Run the server:');
     console.log(`   npx @hatago/server --config ${configPath}`);
-    console.log("");
-    console.log("For Claude Code integration, add to your .mcp.json:");
+    console.log('');
+    console.log('For Claude Code integration, add to your .mcp.json:');
     console.log(
       JSON.stringify(
         {
           mcpServers: {
             hatago: {
-              command: "npx",
-              args: ["@hatago/server", "--stdio", "--config", configPath],
+              command: 'npx',
+              args: ['@hatago/server', '--stdio', '--config', configPath],
             },
           },
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   } catch (error) {
     console.error(
       `❌ Failed to create configuration file: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
     );
     process.exit(1);
   }
@@ -130,7 +130,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
 
   // Handle commands
-  if (args.command === "init") {
+  if (args.command === 'init' || args.flags.init) {
     await handleInitCommand(args);
     return;
   }
@@ -144,15 +144,15 @@ async function main() {
   // Version
   if (args.flags.version) {
     // Version will be injected during build or read from package.json
-    console.error("0.1.0"); // TODO: Replace with actual version during build
+    console.error('0.1.0'); // TODO: Replace with actual version during build
     process.exit(0);
   }
 
   // Setup logger
   const logLevel =
-    (args.flags["log-level"] as string) ??
+    (args.flags['log-level'] as string) ??
     process.env.HATAGO_LOG_LEVEL ??
-    "info";
+    'info';
   const logger = new Logger(logLevel);
 
   try {
@@ -160,22 +160,22 @@ async function main() {
     const configPath =
       (args.flags.config as string) ??
       process.env.HATAGO_CONFIG ??
-      "./hatago.config.json";
+      './hatago.config.json';
     const config = await loadConfig(configPath, logger);
 
     // Determine mode (default: stdio for Claude Code compatibility)
     const mode = args.flags.stdio
-      ? "stdio"
+      ? 'stdio'
       : args.flags.http
-        ? "http"
-        : "stdio";
+        ? 'http'
+        : 'stdio';
 
-    if (mode === "stdio") {
-      logger.debug("Starting in STDIO mode");
+    if (mode === 'stdio') {
+      logger.debug('Starting in STDIO mode');
       await startStdio(config, logger);
     } else {
       const host =
-        (args.flags.host as string) ?? process.env.HATAGO_HOST ?? "127.0.0.1";
+        (args.flags.host as string) ?? process.env.HATAGO_HOST ?? '127.0.0.1';
       const port = Number(args.flags.port ?? process.env.HATAGO_PORT ?? 3929);
 
       logger.debug(`Starting in HTTP mode on ${host}:${port}`);
@@ -187,13 +187,25 @@ async function main() {
       });
     }
   } catch (error) {
-    logger.error("Failed to start server", error);
+    // Handle specific errors with cleaner messages
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    if (
+      errorMessage.includes('ENOENT') &&
+      errorMessage.includes('hatago.config.json')
+    ) {
+      logger.error(
+        "Configuration file not found. Run 'hatago init' to create one or specify a config file with --config",
+      );
+    } else {
+      logger.error('Failed to start server:', errorMessage);
+    }
     process.exit(1);
   }
 }
 
 // Run
 main().catch((error) => {
-  console.error("Fatal error:", error);
+  console.error('Fatal error:', error);
   process.exit(1);
 });

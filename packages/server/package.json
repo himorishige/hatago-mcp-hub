@@ -4,9 +4,10 @@
   "description": "NPX-ready MCP Hub server for Claude Code and other AI assistants",
   "type": "module",
   "bin": {
-    "hatago": "./dist/cli.js",
     "hatago-server": "./dist/cli.js"
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -19,11 +20,10 @@
   ],
   "scripts": {
     "build": "pnpm build:schema && tsdown",
-    "build:schema": "cd ../../server && npx tsx scripts/generate-schema.ts",
-    "dev": "tsx watch src/cli.ts",
+    "build:schema": "tsx scripts/generate-schema.ts",
+    "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "prepublishOnly": "pnpm build",
     "biome:check": "npx biome check ./src",
     "biome:check:fix": "npx biome check --write ./src",
     "biome:lint": "npx biome lint ./src",

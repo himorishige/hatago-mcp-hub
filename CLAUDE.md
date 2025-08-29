@@ -21,71 +21,101 @@ Hatago MCP Hub is a multi-runtime MCP (Model Context Protocol) Hub server built 
 
 ```
 /
-├── server/              # MCP Hub Server
-│   ├── src/
-│   │   ├── index.ts    # Server entry point
-│   │   ├── cli/        # CLI commands implementation
-│   │   │   ├── index.ts # CLI entry point (hatago command)
-│   │   │   └── commands/ # Individual CLI commands
-│   │   ├── core/       # Core functionality (modularized)
-│   │   │   ├── mcp-hub.ts            # Main hub (~500 lines)
-│   │   │   ├── mcp-hub-resources.ts  # Resource management
-│   │   │   ├── mcp-hub-tools.ts      # Tool management
-│   │   │   ├── mcp-hub-prompts.ts    # Prompt management
-│   │   │   ├── session-manager.ts    # Session management
-│   │   │   ├── tool-registry.ts      # Tool registry
-│   │   │   ├── resource-registry.ts  # Resource registry
-│   │   │   ├── prompt-registry.ts    # Prompt registry
-│   │   │   ├── config-manager.ts     # Simple config management
-│   │   │   └── types.ts              # Core types
-│   │   ├── platform/   # Platform abstraction layer (NEW)
-│   │   │   ├── types.ts             # Platform interfaces
-│   │   │   ├── detector.ts          # Runtime detection
-│   │   │   ├── node/               # Node.js implementation
-│   │   │   └── workers/            # Cloudflare Workers implementation
-│   │   ├── servers/    # MCP server implementations
-│   │   │   ├── server-registry.ts    # Server management
-│   │   │   ├── npx-mcp-server.ts     # NPX server support
-│   │   │   ├── remote-mcp-server.ts  # Remote server
-│   │   │   ├── remote-mcp-connection.ts # Connection management
-│   │   │   └── custom-stdio-transport.ts # STDIO transport
-│   │   ├── config/     # Configuration management
-│   │   ├── storage/    # Data storage (2 types only)
-│   │   │   ├── unified-file-storage.ts  # File storage
-│   │   │   └── memory-registry-storage.ts # Memory storage
-│   │   ├── transport/  # Communication layer
-│   │   └── utils/      # Utilities
-│   │       ├── node-utils.ts    # Node.js utilities
-│   │       ├── logger.ts        # Logging
-│   │       ├── errors.ts        # Error handling
-│   │       ├── error-codes.ts   # Error code definitions
-│   │       ├── mutex.ts         # Mutex implementation
-│   │       └── zod-like.ts      # Schema conversion
-│   ├── dist/           # Build output
-│   ├── package.json
-│   └── tsconfig.json
+├── packages/
+│   ├── cli/            # CLI Tool (@hatago/cli)
+│   │   ├── src/
+│   │   │   ├── index.ts        # CLI entry point
+│   │   │   └── commands/       # CLI commands
+│   │   │       ├── serve.ts    # Start server command
+│   │   │       ├── mcp.ts      # MCP management
+│   │   │       └── config.ts   # Config management
+│   │   └── package.json
+│   │
+│   ├── server/         # MCP Hub Server (@hatago/server)
+│   │   ├── src/
+│   │   │   ├── index.ts        # API exports (startServer, etc.)
+│   │   │   ├── cli.ts          # Server CLI entry point
+│   │   │   ├── cli/            # CLI implementation
+│   │   │   ├── core/           # Core functionality
+│   │   │   │   ├── mcp-hub.ts            # Main hub (~500 lines)
+│   │   │   │   ├── mcp-hub-resources.ts  # Resource management
+│   │   │   │   ├── mcp-hub-tools.ts      # Tool management
+│   │   │   │   ├── mcp-hub-prompts.ts    # Prompt management
+│   │   │   │   ├── session-manager.ts    # Session management
+│   │   │   │   ├── tool-registry.ts      # Tool registry
+│   │   │   │   ├── resource-registry.ts  # Resource registry
+│   │   │   │   ├── prompt-registry.ts    # Prompt registry
+│   │   │   │   ├── config-manager.ts     # Simple config management
+│   │   │   │   └── types.ts              # Core types
+│   │   │   ├── servers/        # MCP server implementations
+│   │   │   │   ├── server-registry.ts    # Server management
+│   │   │   │   ├── npx-mcp-server.ts     # NPX server support
+│   │   │   │   ├── remote-mcp-server.ts  # Remote server
+│   │   │   │   ├── remote-mcp-connection.ts # Connection management
+│   │   │   │   └── custom-stdio-transport.ts # STDIO transport
+│   │   │   ├── storage/        # Data storage
+│   │   │   │   ├── unified-file-storage.ts  # File storage
+│   │   │   │   └── memory-registry-storage.ts # Memory storage
+│   │   │   ├── transport/      # Communication layer
+│   │   │   └── utils/          # Utilities
+│   │   │       ├── node-utils.ts    # Node.js utilities
+│   │   │       ├── logger.ts        # Logging
+│   │   │       ├── errors.ts        # Error handling
+│   │   │       ├── error-codes.ts   # Error code definitions
+│   │   │       ├── mutex.ts         # Mutex implementation
+│   │   │       └── zod-like.ts      # Schema conversion
+│   │   └── package.json
+│   │
+│   ├── core/           # Core types (@hatago/core)
+│   │   ├── src/
+│   │   └── package.json
+│   │
+│   ├── runtime/        # Runtime abstraction (@hatago/runtime)
+│   │   ├── src/
+│   │   │   ├── platform/       # Platform abstraction layer
+│   │   │   │   ├── index.ts    # Platform interfaces
+│   │   │   │   ├── node.ts     # Node.js implementation
+│   │   │   │   └── workers.ts  # Cloudflare Workers implementation
+│   │   │   └── utils/          # Runtime utilities
+│   │   └── package.json
+│   │
+│   └── transport/      # Transport implementations (@hatago/transport)
+│       ├── src/
+│       └── package.json
+│
+├── schemas/            # JSON Schema definitions
+│   ├── config.schema.json    # Configuration schema
+│   └── example.config.json   # Example configuration
+│
 └── docs/               # Documentation
 ```
 
 ## Essential Development Commands
 
-All commands should be run in the `server/` directory:
-
 ```bash
-# Development
-pnpm dev          # Start dev server with watch mode
-pnpm build        # Build to dist/
-pnpm start        # Start production server
-pnpm cli          # Run CLI in development mode
+# From root directory:
+
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm -r build
+
+# Run tests
+pnpm test
 
 # Code Quality - Run these after making changes
 pnpm format       # Format code
 pnpm lint         # Lint with auto-fix
 pnpm check        # Format + Lint + Type check
 
-# Testing
-pnpm test         # Run tests
-pnpm coverage     # Run tests with coverage
+# Development (in packages/server directory)
+cd packages/server
+pnpm dev          # Start dev server with watch mode
+
+# CLI usage (after building)
+npx @hatago/cli serve           # Start MCP server in STDIO mode
+npx @hatago/cli serve --http    # Start MCP server in HTTP mode
 ```
 
 ## CLI Commands (hatago)
@@ -302,15 +332,29 @@ The project has been significantly simplified from its original implementation t
 - **Basic Logging**: Simple debug logging
 - **Tool Collision Avoidance**: Namespace prefixing for tools
 
+## Package Architecture
+
+### Package Roles
+
+- **@hatago/cli**: Entry point for users, provides CLI commands
+- **@hatago/server**: Core MCP hub server implementation with API
+- **@hatago/core**: Shared types and interfaces
+- **@hatago/runtime**: Platform abstraction layer
+- **@hatago/transport**: Transport protocol implementations
+
+### Integration with Claude Code
+
+Claude Code uses `npx @hatago/cli serve` as the entry point to start the MCP server in STDIO mode. The CLI package delegates to the server package's API for actual implementation.
+
 ## Working with this Codebase
 
 ### Development Workflow
 
 1. Always run code quality checks after changes: `pnpm format && pnpm lint && pnpm check`
-2. Verify build succeeds: `pnpm build`
+2. Verify build succeeds: `pnpm -r build`
 3. Run tests to ensure no regressions: `pnpm test`
-4. Use development server for rapid iteration: `hatago dev`
-5. Generate types when adding new MCP servers: `hatago generate types`
+4. Use development server for rapid iteration: `cd packages/server && pnpm dev`
+5. Test CLI commands: `npx @hatago/cli [command]`
 
 ### Architecture Guidelines
 

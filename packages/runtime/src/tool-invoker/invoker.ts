@@ -3,11 +3,11 @@
  */
 
 import type { ToolRegistry } from '../registry/tool-registry.js';
-import type { 
-  ToolHandler, 
-  ToolCallResult, 
+import type {
+  ToolCallResult,
+  ToolHandler,
   ToolInvokerOptions,
-  ToolWithHandler 
+  ToolWithHandler,
 } from './types.js';
 
 // SSE Manager interface for progress notifications
@@ -24,7 +24,11 @@ export class ToolInvoker {
   private options: ToolInvokerOptions;
   private sseManager?: SSEManager;
 
-  constructor(toolRegistry: ToolRegistry, options: ToolInvokerOptions = {}, sseManager?: SSEManager) {
+  constructor(
+    toolRegistry: ToolRegistry,
+    options: ToolInvokerOptions = {},
+    sseManager?: SSEManager,
+  ) {
     this.toolRegistry = toolRegistry;
     this.sseManager = sseManager;
     this.options = {
@@ -55,83 +59,95 @@ export class ToolInvoker {
     sessionId: string,
     toolName: string,
     args: any,
-    options?: Partial<ToolInvokerOptions>
+    options?: Partial<ToolInvokerOptions>,
   ): Promise<ToolCallResult> {
     const opts = { ...this.options, ...options };
-    
+
     // Get handler for the tool
     const handler = this.handlers.get(toolName);
-    
+
     if (!handler) {
       // Check if tool exists in registry
       const tool = this.toolRegistry.getTool(toolName);
-      
+
       if (!tool) {
         return {
-          content: [{
-            type: 'text',
-            text: `Tool not found: ${toolName}`
-          }],
-          isError: true
+          content: [
+            {
+              type: 'text',
+              text: `Tool not found: ${toolName}`,
+            },
+          ],
+          isError: true,
         };
       }
-      
+
       return {
-        content: [{
-          type: 'text',
-          text: `No handler registered for tool: ${toolName}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `No handler registered for tool: ${toolName}`,
+          },
+        ],
+        isError: true,
       };
     }
 
     try {
       // Create progress handler if progress token provided
-      const progressHandler = options?.progressToken && this.sseManager ? 
-        (progress: number, total?: number, message?: string) => {
-          this.sseManager!.sendProgress(options.progressToken!, {
-            progressToken: options.progressToken,
-            progress,
-            total,
-            message
-          });
-        } : undefined;
-      
+      const progressHandler =
+        options?.progressToken && this.sseManager
+          ? (progress: number, total?: number, message?: string) => {
+              this.sseManager!.sendProgress(options.progressToken!, {
+                progressToken: options.progressToken,
+                progress,
+                total,
+                message,
+              });
+            }
+          : undefined;
+
       // Execute with timeout and progress support
       const result = await this.executeWithTimeout(
         () => handler(args, progressHandler),
-        opts.timeout!
+        opts.timeout!,
       );
-      
+
       // Format result
       if (typeof result === 'string') {
         return {
-          content: [{
-            type: 'text',
-            text: result
-          }]
+          content: [
+            {
+              type: 'text',
+              text: result,
+            },
+          ],
         };
       }
-      
+
       // If result is already in the correct format
       if (result && typeof result === 'object' && 'content' in result) {
-        return result;
+        return result as ToolCallResult;
       }
-      
+
       // Convert other objects to JSON
       return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify(result, null, 2)
-        }]
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
       };
     } catch (error) {
       return {
-        content: [{
-          type: 'text',
-          text: `Error calling tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Error calling tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+        isError: true,
       };
     }
   }
@@ -141,7 +157,7 @@ export class ToolInvoker {
    */
   private async executeWithTimeout<T>(
     handler: () => Promise<any>,
-    timeout: number
+    timeout: number,
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -163,17 +179,16 @@ export class ToolInvoker {
   /**
    * Register a tool with its handler
    */
-  registerToolWithHandler(
-    serverId: string,
-    tool: ToolWithHandler
-  ): void {
+  registerToolWithHandler(serverId: string, tool: ToolWithHandler): void {
     // Register in registry
     this.toolRegistry.registerServerTools(serverId, [tool]);
-    
+
     // Get the public name that the registry assigned
     const registeredTools = this.toolRegistry.getServerTools(serverId);
-    const registeredTool = registeredTools.find(t => t.name.endsWith(tool.name));
-    
+    const registeredTool = registeredTools.find((t) =>
+      t.name.endsWith(tool.name),
+    );
+
     if (registeredTool) {
       this.registerHandler(registeredTool.name, tool.handler);
     }

@@ -2,7 +2,11 @@
  * Pure functional router utilities
  */
 
-import type { RouterConfig, RouteTarget, RouteDecision } from './router-types.js';
+import type {
+  RouteDecision,
+  RouterConfig,
+  RouteTarget,
+} from './router-types.js';
 
 /**
  * Generate public name with namespace
@@ -10,7 +14,7 @@ import type { RouterConfig, RouteTarget, RouteDecision } from './router-types.js
 export function generatePublicName(
   serverId: string,
   originalName: string,
-  config: RouterConfig = {}
+  config: RouterConfig = {},
 ): string {
   const strategy = config.namingStrategy || 'namespace';
   const separator = config.separator || '_';
@@ -36,7 +40,7 @@ export function generatePublicName(
  */
 export function parsePublicName(
   publicName: string,
-  config: RouterConfig = {}
+  config: RouterConfig = {},
 ): { serverId?: string; originalName: string } {
   const strategy = config.namingStrategy || 'namespace';
   const separator = config.separator || '_';
@@ -46,18 +50,18 @@ export function parsePublicName(
   }
 
   const parts = publicName.split(separator);
-  
+
   if (strategy === 'prefix' && parts.length > 1) {
     return {
       serverId: parts[0],
-      originalName: parts.slice(1).join(separator)
+      originalName: parts.slice(1).join(separator),
     };
   }
 
   if (strategy === 'suffix' && parts.length > 1) {
     return {
       serverId: parts[parts.length - 1],
-      originalName: parts.slice(0, -1).join(separator)
+      originalName: parts.slice(0, -1).join(separator),
     };
   }
 
@@ -65,7 +69,7 @@ export function parsePublicName(
   if (parts.length > 1) {
     return {
       serverId: parts[parts.length - 1],
-      originalName: parts.slice(0, -1).join(separator)
+      originalName: parts.slice(0, -1).join(separator),
     };
   }
 
@@ -79,18 +83,19 @@ export function resolveRoute(
   publicName: string,
   resolver: (name: string) => RouteTarget | null,
   config: RouterConfig = {},
-  resolvedBy: string = 'registry'
+  resolvedBy: string = 'registry',
 ): RouteDecision {
   try {
     const target = resolver(publicName);
-    
+
     if (!target) {
       const entityType = resolvedBy.replace('Registry', '');
-      const capitalizedType = entityType.charAt(0).toUpperCase() + entityType.slice(1);
+      const capitalizedType =
+        entityType.charAt(0).toUpperCase() + entityType.slice(1);
       return {
         found: false,
         target: null,
-        error: `${capitalizedType} not found: ${publicName}`
+        error: `${capitalizedType} not found: ${publicName}`,
       };
     }
 
@@ -99,14 +104,14 @@ export function resolveRoute(
       target,
       metadata: {
         publicName,
-        resolvedBy
-      }
+        resolvedBy,
+      },
     };
   } catch (error) {
     return {
       found: false,
       target: null,
-      error: error instanceof Error ? error.message : 'Unknown routing error'
+      error: error instanceof Error ? error.message : 'Unknown routing error',
     };
   }
 }
@@ -116,15 +121,15 @@ export function resolveRoute(
  */
 export function batchResolveRoutes<T extends string>(
   names: T[],
-  resolver: (name: T) => RouteTarget | null,
-  config: RouterConfig = {}
+  resolver: (name: string) => RouteTarget | null,
+  config: RouterConfig = {},
 ): Map<T, RouteDecision> {
   const results = new Map<T, RouteDecision>();
-  
+
   for (const name of names) {
     results.set(name, resolveRoute(name, resolver, config));
   }
-  
+
   return results;
 }
 
@@ -133,24 +138,24 @@ export function batchResolveRoutes<T extends string>(
  */
 export function filterByServer<T extends { serverId: string }>(
   items: T[],
-  serverId: string
+  serverId: string,
 ): T[] {
-  return items.filter(item => item.serverId === serverId);
+  return items.filter((item) => item.serverId === serverId);
 }
 
 /**
  * Group routes by server ID
  */
 export function groupByServer<T extends { serverId: string }>(
-  items: T[]
+  items: T[],
 ): Map<string, T[]> {
   const groups = new Map<string, T[]>();
-  
+
   for (const item of items) {
     const group = groups.get(item.serverId) || [];
     group.push(item);
     groups.set(item.serverId, group);
   }
-  
+
   return groups;
 }

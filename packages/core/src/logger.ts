@@ -1,6 +1,6 @@
 /**
  * Logger Interface for Hatago
- * 
+ *
  * Provides a common logger interface for all Hatago packages.
  * Implementations must ensure stdout is never polluted in STDIO mode.
  */
@@ -30,13 +30,16 @@ export const LOG_LEVELS: Record<LogLevel, number> = {
   warn: 2,
   info: 3,
   debug: 4,
-  trace: 5
+  trace: 5,
 };
 
 /**
  * Check if a log level should be output
  */
-export function shouldLog(currentLevel: LogLevel, messageLevel: LogLevel): boolean {
+export function shouldLog(
+  currentLevel: LogLevel,
+  messageLevel: LogLevel,
+): boolean {
   return LOG_LEVELS[messageLevel] <= LOG_LEVELS[currentLevel];
 }
 
@@ -50,5 +53,7 @@ export class SilentLogger implements Logger {
   info(): void {}
   debug(): void {}
   trace(): void {}
-  child(): Logger { return this; }
+  child(): Logger {
+    return this;
+  }
 }

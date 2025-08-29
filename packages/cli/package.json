@@ -26,6 +26,7 @@
     "@hatago/core": "workspace:*",
     "@hatago/runtime": "workspace:*",
     "@hatago/transport": "workspace:*",
+    "@hatago/server": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "commander": "^14.0.0",
     "chalk": "^5.3.0"

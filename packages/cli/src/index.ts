@@ -5,18 +5,18 @@
 
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { setupServeCommand } from './commands/serve.js';
-import { setupMcpCommand } from './commands/mcp.js';
+import { fileURLToPath } from 'url';
 import { setupConfigCommand } from './commands/config.js';
+import { setupMcpCommand } from './commands/mcp.js';
+import { setupServeCommand } from './commands/serve.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Read package.json for version
 const packageJson = JSON.parse(
-  readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
+  readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'),
 );
 
 // Create main program
@@ -40,7 +40,7 @@ program
   .description('display help for command')
   .action((command) => {
     if (command) {
-      const subCommand = program.commands.find(c => c.name() === command);
+      const subCommand = program.commands.find((c) => c.name() === command);
       if (subCommand) {
         subCommand.help();
       } else {

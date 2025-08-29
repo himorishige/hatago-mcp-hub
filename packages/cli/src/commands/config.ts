@@ -3,7 +3,7 @@
  */
 
 import type { Command } from 'commander';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 
@@ -38,11 +38,11 @@ export function setupConfigCommand(program: Command): void {
     .description('Set a configuration value')
     .action((key: string, value: string) => {
       const config = loadConfig();
-      
+
       // Parse nested keys
       const keys = key.split('.');
       let target: any = config;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
         const k = keys[i];
         if (!(k in target)) {
@@ -50,9 +50,9 @@ export function setupConfigCommand(program: Command): void {
         }
         target = target[k];
       }
-      
+
       const lastKey = keys[keys.length - 1];
-      
+
       // Try to parse value as JSON
       try {
         target[lastKey] = JSON.parse(value);
@@ -60,7 +60,7 @@ export function setupConfigCommand(program: Command): void {
         // If not valid JSON, treat as string
         target[lastKey] = value;
       }
-      
+
       saveConfig(config);
       console.log(`Set ${key} = ${value}`);
     });
@@ -71,11 +71,11 @@ export function setupConfigCommand(program: Command): void {
     .description('Get a configuration value')
     .action((key: string) => {
       const config = loadConfig();
-      
+
       // Parse nested keys
       const keys = key.split('.');
       let value: any = config;
-      
+
       for (const k of keys) {
         if (value && typeof value === 'object' && k in value) {
           value = value[k];
@@ -84,7 +84,7 @@ export function setupConfigCommand(program: Command): void {
           return;
         }
       }
-      
+
       console.log(JSON.stringify(value, null, 2));
     });
 
@@ -99,10 +99,10 @@ export function setupConfigCommand(program: Command): void {
         servers: [],
         session: {
           timeout: 3600000,
-          maxSessions: 100
-        }
+          maxSessions: 100,
+        },
       };
-      
+
       saveConfig(defaultConfig);
       console.log('Configuration reset to defaults');
     });
@@ -121,8 +121,8 @@ function loadConfig(): HatagoConfig {
       servers: [],
       session: {
         timeout: 3600000,
-        maxSessions: 100
-      }
+        maxSessions: 100,
+      },
     };
   }
 

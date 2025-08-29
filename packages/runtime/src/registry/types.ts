@@ -5,7 +5,13 @@
 /**
  * Tool naming strategies
  */
-export type ToolNamingStrategy = 'prefix' | 'suffix' | 'none';
+export type ToolNamingStrategy =
+  | 'prefix'
+  | 'suffix'
+  | 'none'
+  | 'namespace'
+  | 'error'
+  | 'alias';
 
 /**
  * Tool naming configuration
@@ -14,6 +20,8 @@ export interface ToolNamingConfig {
   strategy: ToolNamingStrategy;
   separator?: string;
   serverIdInName?: boolean;
+  format?: string;
+  aliases?: Record<string, string>;
 }
 
 /**

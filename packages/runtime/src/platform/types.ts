@@ -1,6 +1,6 @@
 /**
  * Platform abstraction types
- * 
+ *
  * Defines the interface for platform-specific implementations.
  * Uses capability-based design to handle optional features.
  */
@@ -47,21 +47,21 @@ export interface Platform {
   // Required features (available in all environments)
   randomUUID(): string;
   getEnv(key: string): string | undefined;
-  
+
   // Optional capabilities (Node.js specific)
   spawn?: (options: SpawnOptions) => ChildProcess;
   readFile?: (path: string) => Promise<string>;
   writeFile?: (path: string, content: string) => Promise<void>;
-  
+
   // Storage abstraction (implementation varies by platform)
   storage: {
     config: ConfigStore;
     session: SessionStore;
   };
-  
+
   // Platform identification
   name: 'node' | 'workers' | 'browser';
-  
+
   // Feature detection helpers
   capabilities: {
     hasFileSystem: boolean;
@@ -89,7 +89,7 @@ export interface PlatformOptions {
 export class UnsupportedFeatureError extends Error {
   constructor(
     public feature: string,
-    public runtime: string
+    public runtime: string,
   ) {
     super(`Feature "${feature}" is not supported on ${runtime} runtime`);
     this.name = 'UnsupportedFeatureError';

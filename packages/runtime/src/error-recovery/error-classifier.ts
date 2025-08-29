@@ -15,7 +15,7 @@ export enum ErrorType {
   TIMEOUT = 'TimeoutError',
   NETWORK = 'NetworkError',
   VALIDATION = 'ValidationError',
-  UNKNOWN = 'UnknownError'
+  UNKNOWN = 'UnknownError',
 }
 
 /**
@@ -25,7 +25,7 @@ export enum ErrorSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 /**
@@ -53,7 +53,7 @@ export function classifyError(error: unknown): ClassifiedError {
     severity,
     retryable,
     message,
-    originalError: error
+    originalError: error,
   };
 }
 
@@ -111,31 +111,34 @@ function determineErrorType(error: unknown, message: string): ErrorType {
 /**
  * Determine error severity
  */
-function determineErrorSeverity(type: ErrorType, message: string): ErrorSeverity {
+function determineErrorSeverity(
+  type: ErrorType,
+  message: string,
+): ErrorSeverity {
   // Critical errors
   if (type === ErrorType.LAUNCH) return ErrorSeverity.CRITICAL;
-  
+
   // High severity
   if (type === ErrorType.PROTOCOL || type === ErrorType.TRANSPORT) {
     return ErrorSeverity.HIGH;
   }
-  
+
   // Medium severity
   if (type === ErrorType.NETWORK || type === ErrorType.TIMEOUT) {
     return ErrorSeverity.MEDIUM;
   }
-  
+
   // Low severity
   if (type === ErrorType.VALIDATION) {
     return ErrorSeverity.LOW;
   }
-  
+
   // Check for specific critical keywords
   const lowerMessage = message.toLowerCase();
   if (lowerMessage.includes('fatal') || lowerMessage.includes('critical')) {
     return ErrorSeverity.CRITICAL;
   }
-  
+
   return ErrorSeverity.MEDIUM;
 }
 
@@ -147,12 +150,12 @@ function isRetryableError(type: ErrorType, message: string): boolean {
   if (type === ErrorType.VALIDATION || type === ErrorType.PROTOCOL) {
     return false;
   }
-  
+
   // Always retryable types
   if (type === ErrorType.NETWORK || type === ErrorType.TIMEOUT) {
     return true;
   }
-  
+
   // Check message for non-retryable keywords
   const lowerMessage = message.toLowerCase();
   if (
@@ -163,7 +166,7 @@ function isRetryableError(type: ErrorType, message: string): boolean {
   ) {
     return false;
   }
-  
+
   // Default: assume retryable for unknown errors
   return true;
 }

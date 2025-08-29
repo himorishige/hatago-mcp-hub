@@ -23,7 +23,7 @@ export function parseArgs(args: string[]): ParsedArgs {
   let i = 0;
 
   // First non-flag argument is the command
-  if (args.length > 0 && !args[0].startsWith("--")) {
+  if (args.length > 0 && !args[0].startsWith('--')) {
     result.command = args[0];
     i = 1;
   }
@@ -32,12 +32,12 @@ export function parseArgs(args: string[]): ParsedArgs {
   for (; i < args.length; i++) {
     const arg = args[i];
 
-    if (arg.startsWith("--")) {
+    if (arg.startsWith('--')) {
       const key = arg.slice(2);
       const nextArg = args[i + 1];
 
       // Check if next argument is a value (not another flag)
-      if (nextArg && !nextArg.startsWith("--")) {
+      if (nextArg && !nextArg.startsWith('--')) {
         result.flags[key] = nextArg;
         i++; // Skip next argument
       } else {
@@ -58,13 +58,12 @@ export function parseArgs(args: string[]): ParsedArgs {
  */
 export function generateDefaultConfig(): string {
   const defaultConfig = {
-    $schema: "../../../schemas/config.schema.json",
+    $schema: '../../../schemas/config.schema.json',
     version: 1,
     mcpServers: {
       deepwiki: {
-        type: "remote" as const,
-        url: "https://mcp.deepwiki.com/mcp",
-        transport: "streamable-http" as const,
+        url: 'https://mcp.deepwiki.com/mcp',
+        transport: 'streamable-http' as const,
       },
     },
   };

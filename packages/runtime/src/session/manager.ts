@@ -1,6 +1,6 @@
-import type { Session } from "@hatago/core";
-import { getPlatform } from "../platform/index.js";
-import { createKeyedMutex } from "../mutex.js";
+import type { Session } from '@hatago/core';
+import { createKeyedMutex } from '../mutex.js';
+import { getPlatform } from '../platform/index.js';
 import {
   clearSessions,
   createSession,
@@ -11,7 +11,7 @@ import {
   removeExpired,
   type SessionState,
   touchSession,
-} from "./operations.js";
+} from './operations.js';
 
 /**
  * Session management
@@ -41,7 +41,7 @@ export class SessionManager {
       if (!session) {
         // Fallback to old behavior if something went wrong
         this.state = oldState;
-        throw new Error("Failed to create session");
+        throw new Error('Failed to create session');
       }
 
       return session;
@@ -49,7 +49,7 @@ export class SessionManager {
   }
 
   /**
-   * セッションを取得
+   * Get session
    */
   async getSession(id: string): Promise<Session | undefined> {
     return this.sessionMutex.runExclusive(id, () => {
@@ -65,7 +65,7 @@ export class SessionManager {
   }
 
   /**
-   * セッションを削除
+   * Delete session
    */
   async deleteSession(id: string): Promise<void> {
     return this.sessionMutex.runExclusive(id, () => {
@@ -74,23 +74,23 @@ export class SessionManager {
   }
 
   /**
-   * 定期クリーンアップを開始
+   * Start periodic cleanup
    */
   private startCleanup(): void {
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
-    }, 60000); // 1分ごと
+    }, 60000); // Every minute
   }
 
   /**
-   * 期限切れセッションをクリーンアップ
+   * Cleanup expired sessions
    */
   private cleanup(): void {
     this.state = removeExpired(this.state);
   }
 
   /**
-   * アクティブなセッション数を取得
+   * Get active session count
    */
   getActiveSessionCount(): number {
     return getActiveSessionCount(this.state);
@@ -121,7 +121,7 @@ export class SessionManager {
   }
 
   /**
-   * クリーンアップを停止
+   * Stop cleanup
    */
   stop(): void {
     if (this.cleanupInterval) {
@@ -131,7 +131,7 @@ export class SessionManager {
   }
 
   /**
-   * すべてのセッションをクリア
+   * Clear all sessions
    */
   clear(): void {
     this.state = clearSessions(this.state);

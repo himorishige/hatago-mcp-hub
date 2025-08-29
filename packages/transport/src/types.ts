@@ -10,27 +10,27 @@ export interface ITransport {
    * Send a message through the transport
    */
   send(message: any): Promise<void>;
-  
+
   /**
    * Register a message handler
    */
   onMessage(handler: (message: any) => void): void;
-  
+
   /**
    * Register an error handler
    */
   onError(handler: (error: Error) => void): void;
-  
+
   /**
    * Start the transport
    */
   start(): Promise<void>;
-  
+
   /**
    * Close the transport
    */
   close(): Promise<void>;
-  
+
   /**
    * Check if transport is ready
    */

@@ -3,10 +3,10 @@
  * Provides SSE-based progress notifications
  */
 
-import type { SSEStream } from "@hatago/transport";
-import type { Context } from "hono";
-import { streamSSE } from "hono/streaming";
-import type { HatagoHub } from "./hub.js";
+import type { SSEStream } from '@hatago/transport';
+import type { Context } from 'hono';
+import { streamSSE } from 'hono/streaming';
+import type { HatagoHub } from './hub.js';
 
 /**
  * Create SSE adapter for StreamableHTTP
@@ -35,7 +35,7 @@ function createSSEAdapter(stream: any): SSEStream {
 export async function handleSSEEndpoint(hub: HatagoHub, c: Context) {
   const transport = (hub as any).streamableTransport;
   if (!transport) {
-    return c.text("StreamableHTTP not initialized", 500);
+    return c.text('StreamableHTTP not initialized', 500);
   }
 
   return streamSSE(c, async (stream) => {
@@ -49,7 +49,7 @@ export async function handleSSEEndpoint(hub: HatagoHub, c: Context) {
     });
 
     // Handle through StreamableHTTP
-    await transport.handleHttpRequest("GET", headers, undefined, sseStream);
+    await transport.handleHttpRequest('GET', headers, undefined, sseStream);
 
     // Keep connection alive
     await new Promise(() => {}); // Never resolves
@@ -62,7 +62,7 @@ export async function handleSSEEndpoint(hub: HatagoHub, c: Context) {
  */
 export function createEventsEndpoint(hub: HatagoHub) {
   return async (c: Context) => {
-    const clientId = c.req.query("clientId") || `client-${Date.now()}`;
+    const clientId = c.req.query('clientId') || `client-${Date.now()}`;
     const sseManager = hub.getSSEManager();
 
     // SSE client connected: ${clientId}
@@ -94,44 +94,44 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
   }
 
   const method = c.req.method;
-  const acceptHeader = c.req.header("Accept");
-  const sessionId = c.req.header("mcp-session-id");
+  const acceptHeader = c.req.header('Accept');
+  const sessionId = c.req.header('mcp-session-id');
 
   // Debug logging disabled to prevent stdout pollution in STDIO mode
   // To enable debug logging, use proper logger instance with stderr output
 
   // Handle SSE request
   if (
-    method === "GET" &&
-    c.req.header("Accept")?.includes("text/event-stream")
+    method === 'GET' &&
+    c.req.header('Accept')?.includes('text/event-stream')
   ) {
     return handleSSEEndpoint(hub, c);
   }
 
   // Handle POST request with potential SSE response
-  if (method === "POST") {
+  if (method === 'POST') {
     // Parse body
-    let body;
+    let body: any;
     try {
       body = await c.req.json();
     } catch {
       return c.json(
         {
-          jsonrpc: "2.0",
+          jsonrpc: '2.0',
           error: {
             code: -32700,
-            message: "Parse error",
+            message: 'Parse error',
           },
           id: null,
         },
-        400
+        400,
       );
     }
 
     // Check if SSE response is needed
     const hasProgressToken = body.params?._meta?.progressToken;
-    const isToolCall = body.method === "tools/call";
-    const acceptsSSE = c.req.header("Accept")?.includes("text/event-stream");
+    const isToolCall = body.method === 'tools/call';
+    const acceptsSSE = c.req.header('Accept')?.includes('text/event-stream');
 
     // Always use SSE if client accepts it and it's a tool call with progress token
     if (acceptsSSE && isToolCall && hasProgressToken) {
@@ -147,10 +147,10 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
 
         // Handle through StreamableHTTP
         const result = await transport.handleHttpRequest(
-          "POST",
+          'POST',
           headers,
           body,
-          sseStream
+          sseStream,
         );
 
         if (result?.body) {
@@ -168,13 +168,13 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
       headers[key] = value;
     });
 
-    const result = await transport.handleHttpRequest("POST", headers, body);
+    const result = await transport.handleHttpRequest('POST', headers, body);
 
     if (result) {
       // Set response headers
       if (result.headers) {
         Object.entries(result.headers).forEach(([key, value]) => {
-          if (typeof value === "string") {
+          if (typeof value === 'string') {
             c.header(key, value);
           }
         });

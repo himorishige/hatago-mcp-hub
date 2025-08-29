@@ -7,12 +7,19 @@ import type { Tool } from '@hatago/core';
 /**
  * Progress callback for long-running operations
  */
-export type ProgressCallback = (progress: number, total?: number, message?: string) => void;
+export type ProgressCallback = (
+  progress: number,
+  total?: number,
+  message?: string,
+) => void;
 
 /**
  * Tool handler function
  */
-export type ToolHandler = (args: any, progressCallback?: ProgressCallback) => Promise<any>;
+export type ToolHandler = (
+  args: any,
+  progressCallback?: ProgressCallback,
+) => Promise<any>;
 
 /**
  * Tool call result

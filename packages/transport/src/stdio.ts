@@ -1,6 +1,6 @@
 /**
  * STDIO Transport (Node.js only)
- * 
+ *
  * This module is only available in Node.js environments
  */
 

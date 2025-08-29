@@ -16,7 +16,7 @@ export class HatagoError extends Error {
     options?: {
       cause?: unknown;
       data?: unknown;
-    }
+    },
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -36,7 +36,7 @@ export class HatagoError extends Error {
  */
 export class ConfigError extends HatagoError {
   constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, "CONFIG_ERROR", options);
+    super(message, 'CONFIG_ERROR', options);
   }
 }
 
@@ -45,7 +45,7 @@ export class ConfigError extends HatagoError {
  */
 export class TransportError extends HatagoError {
   constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, "TRANSPORT_ERROR", options);
+    super(message, 'TRANSPORT_ERROR', options);
   }
 }
 
@@ -54,7 +54,7 @@ export class TransportError extends HatagoError {
  */
 export class ToolInvocationError extends HatagoError {
   constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, "TOOL_INVOCATION_ERROR", options);
+    super(message, 'TOOL_INVOCATION_ERROR', options);
   }
 }
 
@@ -63,7 +63,7 @@ export class ToolInvocationError extends HatagoError {
  */
 export class TimeoutError extends HatagoError {
   constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, "TIMEOUT_ERROR", options);
+    super(message, 'TIMEOUT_ERROR', options);
   }
 }
 
@@ -72,7 +72,7 @@ export class TimeoutError extends HatagoError {
  */
 export class SessionError extends HatagoError {
   constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, "SESSION_ERROR", options);
+    super(message, 'SESSION_ERROR', options);
   }
 }
 
@@ -81,7 +81,7 @@ export class SessionError extends HatagoError {
  */
 export class UnsupportedFeatureError extends HatagoError {
   constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, "UNSUPPORTED_FEATURE", options);
+    super(message, 'UNSUPPORTED_FEATURE', options);
   }
 }
 
@@ -95,23 +95,23 @@ export function toHatagoError(error: unknown): HatagoError {
 
   if (error instanceof Error) {
     // Check for specific error patterns
-    if (error.message.includes("timeout")) {
+    if (error.message.includes('timeout')) {
       return new TimeoutError(error.message, { cause: error });
     }
     if (
-      error.message.includes("transport") ||
-      error.message.includes("connect")
+      error.message.includes('transport') ||
+      error.message.includes('connect')
     ) {
       return new TransportError(error.message, { cause: error });
     }
-    if (error.message.includes("config")) {
+    if (error.message.includes('config')) {
       return new ConfigError(error.message, { cause: error });
     }
 
     // Generic error
-    return new HatagoError(error.message, "INTERNAL_ERROR", { cause: error });
+    return new HatagoError(error.message, 'INTERNAL_ERROR', { cause: error });
   }
 
   // Unknown error type
-  return new HatagoError(String(error), "UNKNOWN_ERROR", { cause: error });
+  return new HatagoError(String(error), 'UNKNOWN_ERROR', { cause: error });
 }

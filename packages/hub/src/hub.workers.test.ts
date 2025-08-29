@@ -2,10 +2,10 @@
  * Cloudflare Workers tests for HatagoHub
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
 import { setPlatform } from '@hatago/runtime';
-import { createWorkersPlatform } from '@hatago/runtime/platform/workers';
 import type { WorkersEnv } from '@hatago/runtime/platform/workers';
+import { createWorkersPlatform } from '@hatago/runtime/platform/workers';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { HatagoHub } from './workers-entry.js';
 
 // Mock Workers environment
@@ -51,7 +51,7 @@ describe('HatagoHub (Workers)', () => {
 
   it('should reject local server connections', async () => {
     const hub = new HatagoHub(mockEnv);
-    
+
     // Attempt to connect a local server (should fail in Workers)
     await expect(
       hub.connectServers([
@@ -60,13 +60,15 @@ describe('HatagoHub (Workers)', () => {
           command: 'node',
           args: ['server.js'],
         },
-      ])
-    ).rejects.toThrow('Local MCP servers are not supported in this environment');
+      ]),
+    ).rejects.toThrow(
+      'Local MCP servers are not supported in this environment',
+    );
   });
 
   it('should accept remote server connections', async () => {
     const hub = new HatagoHub(mockEnv);
-    
+
     // Remote servers should be allowed
     const servers = [
       {
@@ -75,7 +77,7 @@ describe('HatagoHub (Workers)', () => {
         type: 'sse' as const,
       },
     ];
-    
+
     // This won't actually connect (no real server), but should not throw capability error
     // The actual connection will fail with a network error, which is expected
     await expect(hub.connectServers(servers)).rejects.toThrow();

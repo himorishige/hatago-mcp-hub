@@ -39,8 +39,9 @@ npm install @hatago/cli
 # またはnpxで直接実行
 npx @hatago/cli serve
 
-# 開発者向けパッケージ
-npm install @hatago/core    # 型定義
+# プログラム的に使用する場合
+npm install @hatago/server   # サーバーAPI
+npm install @hatago/core     # 型定義
 npm install @hatago/runtime  # ランタイムコンポーネント
 npm install @hatago/transport # トランスポート実装
 ```
@@ -170,14 +171,23 @@ cd hatago-hub
 pnpm install
 
 # ビルド
-pnpm build
+pnpm -r build
 
 # テスト実行
 pnpm test
 
-# 開発サーバー起動
+# 開発サーバー起動（packages/serverディレクトリで実行）
+cd packages/server
 pnpm dev
 ```
+
+### パッケージ構成
+
+- `@hatago/cli` - CLIツール（エントリーポイント）
+- `@hatago/server` - MCPハブサーバー実装
+- `@hatago/core` - 共通型定義とインターフェース
+- `@hatago/runtime` - ランタイムコンポーネント
+- `@hatago/transport` - トランスポート層実装
 
 ## 📝 ライセンス
 

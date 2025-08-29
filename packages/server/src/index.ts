@@ -1,11 +1,85 @@
 /**
- * @hatago/server - NPX-ready MCP Hub Server
- * 
- * This module exports the server implementation for programmatic use.
+ * @hatago/server - MCP Hub Server Implementation
+ *
+ * This package provides the core server functionality for Hatago MCP Hub.
+ * It can be used as a library or run directly via CLI.
  */
 
-export { startStdio } from './stdio.js';
-export { startHttp } from './http.js';
+import { loadConfig } from './config.js';
+import { startHttp } from './http.js';
+import type { Logger } from './logger.js';
+import { startStdio } from './stdio.js';
+
 export { loadConfig } from './config.js';
+export { startHttp } from './http.js';
 export { Logger } from './logger.js';
-export { parseArgs } from './utils.js';
+export { startStdio } from './stdio.js';
+
+/**
+ * Server options for starting the MCP Hub
+ */
+export interface ServerOptions {
+  mode?: 'stdio' | 'http';
+  config?: string;
+  host?: string;
+  port?: number;
+  logLevel?: string;
+  verbose?: boolean;
+  quiet?: boolean;
+}
+
+/**
+ * Start the MCP Hub server with the given options
+ */
+export async function startServer(options: ServerOptions = {}): Promise<void> {
+  const {
+    mode = 'stdio',
+    config: configPath = './hatago.config.json',
+    host = '127.0.0.1',
+    port = 3929,
+    logLevel = 'info',
+    verbose = false,
+    quiet = false,
+  } = options;
+
+  // Create logger
+  const { Logger } = await import('./logger.js');
+  const finalLogLevel = quiet ? 'error' : verbose ? 'debug' : logLevel;
+  const logger = new Logger(finalLogLevel);
+
+  try {
+    // Load configuration
+    const config = await loadConfig(configPath, logger);
+
+    // Start server based on mode
+    if (mode === 'stdio') {
+      logger.debug('Starting in STDIO mode');
+      await startStdio(config, logger);
+    } else if (mode === 'http') {
+      logger.debug(`Starting in HTTP mode on ${host}:${port}`);
+      await startHttp({
+        config,
+        host,
+        port,
+        logger,
+      });
+    } else {
+      throw new Error(`Invalid mode: ${mode}`);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    if (
+      errorMessage.includes('ENOENT') &&
+      errorMessage.includes('hatago.config.json')
+    ) {
+      logger.error(
+        'Configuration file not found. Create a hatago.config.json or specify a config file with --config',
+      );
+    } else {
+      logger.error('Failed to start server:', errorMessage);
+    }
+
+    throw error;
+  }
+}

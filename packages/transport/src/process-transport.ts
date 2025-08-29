@@ -2,7 +2,7 @@
  * Process-based transport for Node.js (stdio)
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import type { ITransport, ProcessTransportOptions } from './types.js';
 
 /**
@@ -27,7 +27,7 @@ export class ProcessTransport implements ITransport {
 
     const json = JSON.stringify(message);
     const frame = `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`;
-    
+
     return new Promise((resolve, reject) => {
       this.process!.stdin!.write(frame, (error) => {
         if (error) {
@@ -55,7 +55,7 @@ export class ProcessTransport implements ITransport {
     this.process = spawn(this.options.command, this.options.args || [], {
       env: { ...process.env, ...this.options.env },
       cwd: this.options.cwd,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     this.isStarted = true;
@@ -80,7 +80,9 @@ export class ProcessTransport implements ITransport {
     this.process.on('exit', (code, signal) => {
       this.isStarted = false;
       if (code !== 0) {
-        this.errorHandler?.(new Error(`Process exited with code ${code}, signal ${signal}`));
+        this.errorHandler?.(
+          new Error(`Process exited with code ${code}, signal ${signal}`),
+        );
       }
     });
   }
@@ -120,7 +122,7 @@ export class ProcessTransport implements ITransport {
 
     const header = buffer.substring(0, headerEndIndex);
     const contentLengthMatch = header.match(/Content-Length:\s*(\d+)/i);
-    
+
     if (!contentLengthMatch) {
       // Invalid header, skip it
       const remaining = buffer.substring(headerEndIndex + 4);
