@@ -29,6 +29,7 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 ### 🔧 新機能 (v0.2.0)
 
+- **環境変数展開** - Claude Code互換の`${VAR}`と`${VAR:-default}`構文をサポート
 - **設定検証** - Zodスキーマによる実行時の型安全性
 - **通知システム** - サーバー状態変化の追跡とレート制限付き通知
 - **ホットリロード** - `--watch`フラグで設定ファイルの自動再読み込み
@@ -114,10 +115,30 @@ hatago mcp remove filesystem
         "requestMs": 30000,
         "keepAliveMs": 60000
       }
+    },
+    "github": {
+      "type": "local",
+      "command": "${MCP_PATH}/github-server",
+      "args": ["--token", "${GITHUB_TOKEN}"],
+      "env": {
+        "LOG_LEVEL": "${LOG_LEVEL:-info}"
+      }
+    },
+    "api-server": {
+      "type": "remote",
+      "url": "${API_BASE_URL:-https://api.example.com}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${API_KEY}"
+      }
     }
   }
 }
 ```
+
+環境変数の展開がサポートされており、以下の構文が使えます：
+
+- `${VAR}` - 環境変数VARの値に展開（未定義の場合はエラー）
+- `${VAR:-default}` - VARが未定義の場合はdefaultを使用
 
 ### 開発モード起動
 

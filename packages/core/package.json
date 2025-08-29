@@ -1,6 +1,6 @@
 {
   "name": "@hatago/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Core types and protocol definitions for Hatago MCP Hub",
   "type": "module",
   "sideEffects": false,
@@ -24,6 +24,8 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "biome:check": "npx biome check ./src",
@@ -37,7 +39,8 @@
   },
   "devDependencies": {
     "tsdown": "^0.14.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=20"

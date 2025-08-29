@@ -8,6 +8,7 @@ Minimal example demonstrating Hatago MCP Hub in a Cloudflare Workers environment
 - ✅ KV-based configuration storage
 - ✅ Durable Objects for session management
 - ✅ SSE streaming support
+- ✅ Environment variable expansion in configurations
 
 ## Setup
 
@@ -27,26 +28,35 @@ pnpm deploy
 
 ## Configuration
 
-### Method 1: Using KV Storage (Recommended)
+### Method 1: Using KV Storage with Environment Variables (Recommended)
 
-Store MCP server configuration in KV:
+Store MCP server configuration in KV with environment variable placeholders:
 
 ```bash
-# Using wrangler CLI
+# Set environment variables first
+wrangler secret put GITHUB_TOKEN
+wrangler secret put API_BASE_URL
+
+# Store config with environment variable placeholders
 wrangler kv:key put --namespace-id=<your-kv-id> "mcp-servers" '{
-  "remote-server": {
-    "url": "https://example.com/mcp",
-    "type": "sse"
-  },
-  "another-server": {
-    "url": "https://api.example.com/mcp",
+  "github-server": {
+    "url": "${API_BASE_URL:-https://api.github.com}/mcp",
     "type": "http",
     "headers": {
-      "Authorization": "Bearer token"
+      "Authorization": "Bearer ${GITHUB_TOKEN}"
     }
+  },
+  "another-server": {
+    "url": "${CUSTOM_SERVER_URL}",
+    "type": "sse"
   }
 }'
 ```
+
+The configuration will automatically expand environment variables:
+
+- `${VAR}` - Expands to the value of VAR (throws error if not found)
+- `${VAR:-default}` - Expands to VAR if set, otherwise uses default value
 
 ### Method 2: Using Environment Variables
 

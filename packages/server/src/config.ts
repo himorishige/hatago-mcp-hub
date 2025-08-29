@@ -10,10 +10,12 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import {
+  expandConfig,
   formatConfigError,
   type HatagoConfig,
   safeParseConfig,
-} from '@hatago/core/schemas';
+  validateEnvironmentVariables,
+} from '@hatago/core';
 import type { Logger } from './logger.js';
 
 /**
@@ -59,8 +61,20 @@ export async function loadConfig(
     const jsonContent = stripJsonComments(content);
     const rawData = JSON.parse(jsonContent);
 
-    // Validate with Zod
-    const parseResult = safeParseConfig(rawData);
+    // First validate that all required environment variables are present
+    try {
+      validateEnvironmentVariables(rawData);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Environment variable validation failed: ${message}`);
+      throw error;
+    }
+
+    // Expand environment variables
+    const expandedData = expandConfig(rawData);
+
+    // Validate expanded configuration with Zod
+    const parseResult = safeParseConfig(expandedData);
 
     if (!parseResult.success) {
       // Format error for human readability
@@ -69,7 +83,7 @@ export async function loadConfig(
       throw new Error(errorMessage);
     }
 
-    logger.debug(`Loaded and validated config from ${absolutePath}`);
+    logger.debug(`Loaded, expanded, and validated config from ${absolutePath}`);
 
     return {
       path: absolutePath,

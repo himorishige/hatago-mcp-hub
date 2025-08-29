@@ -8,6 +8,8 @@
  * - Remote MCP server support only (no local processes in Workers)
  */
 
+import type { GetEnv } from '@hatago/core';
+import { expandConfig, validateEnvironmentVariables } from '@hatago/core';
 import { createEventsEndpoint } from '@hatago/hub';
 import { createHub, handleMCPEndpoint } from '@hatago/hub/workers';
 import { Hono } from 'hono';
@@ -34,17 +36,40 @@ app.get('/health', (c) => {
   });
 });
 
+// Helper function to create Workers-compatible GetEnv
+function createWorkersGetEnv(env: Env): GetEnv {
+  return (key: string) => {
+    // Check direct env bindings
+    if (
+      key in env &&
+      typeof (env as Record<string, unknown>)[key] === 'string'
+    ) {
+      return (env as Record<string, unknown>)[key] as string;
+    }
+    return undefined;
+  };
+}
+
 // MCP protocol endpoint
 app.all('/mcp', async (c) => {
   const hub = createHub(c.env);
 
   // Load and connect servers from KV config
-  const config = await c.env.CONFIG_KV.get('mcp-servers', 'json');
-  if (config && typeof config === 'object') {
+  const rawConfig = await c.env.CONFIG_KV.get('mcp-servers', 'json');
+  if (rawConfig && typeof rawConfig === 'object') {
     try {
+      // Create Workers-compatible GetEnv function
+      const getEnv = createWorkersGetEnv(c.env);
+
+      // Validate required environment variables
+      validateEnvironmentVariables(rawConfig, getEnv);
+
+      // Expand environment variables in config
+      const config = expandConfig(rawConfig, getEnv);
+
       // Add each server to the hub
       for (const [id, serverSpec] of Object.entries(config)) {
-        await hub.addServer(id, serverSpec as any);
+        await hub.addServer(id, serverSpec as Record<string, unknown>);
       }
     } catch (error) {
       console.error('Failed to connect servers:', error);
@@ -74,7 +99,7 @@ export default {
 
 // Durable Object for session management
 export class SessionDurableObject {
-  private sessions: Map<string, any> = new Map();
+  private sessions: Map<string, unknown> = new Map();
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);

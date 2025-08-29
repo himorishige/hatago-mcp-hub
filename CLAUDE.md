@@ -306,6 +306,25 @@ server.registerTool(
 }
 ```
 
+## Version History
+
+### v0.2.1 - 2025-01-29
+
+- **Added Claude Code Compatible Environment Variable Expansion**
+  - Support for `${VAR}` syntax (required variables)
+  - Support for `${VAR:-default}` syntax (with defaults)
+  - Automatic validation at startup
+  - Expansion in: command, args, env, url, headers fields
+  - Full compatibility with Claude Code .mcp.json format
+
+### v0.2.0 - 2025-01-28
+
+- **Added Configuration Validation with Zod Schemas**
+- **Added Notification System with Rate Limiting**
+- **Added Config File Watching (--watch flag)**
+- **Added Server Disabled Flag Support**
+- **Added Fine-grained Timeout Configuration**
+
 ## Simplified to Lite Version (v0.0.1) - 2024-12-26
 
 ### Major Simplification

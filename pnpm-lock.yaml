@@ -179,6 +179,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.2
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@24.3.0)
 
   packages/hub:
     dependencies:
