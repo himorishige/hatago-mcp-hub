@@ -9,18 +9,11 @@
  */
 
 import { createEventsEndpoint } from "@hatago/hub";
-import type { WorkersEnv } from "@hatago/hub/workers";
 import { createHub, handleMCPEndpoint } from "@hatago/hub/workers";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
-// Environment bindings
-interface Env extends WorkersEnv {
-  CONFIG_KV: KVNamespace;
-  SESSION_DO: DurableObjectNamespace;
-}
-
-// Create Hono app
+// Create Hono app with environment bindings
 const app = new Hono<{ Bindings: Env }>();
 
 // Enable CORS
@@ -68,7 +61,7 @@ app.get("/sse", async (c) => {
   return createEventsEndpoint(hub)(c);
 });
 
-// Export for Cloudflare Workers
+// Export Workers handler with proper types
 export default {
   async fetch(
     request: Request,
@@ -77,7 +70,7 @@ export default {
   ): Promise<Response> {
     return app.fetch(request, env, ctx);
   },
-};
+} satisfies ExportedHandler<Env>;
 
 // Durable Object for session management
 export class SessionDurableObject {
