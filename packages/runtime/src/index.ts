@@ -45,3 +45,6 @@ export * from './router/index.js';
 
 // Error recovery system
 export * from './error-recovery/index.js';
+
+// Logger implementations
+export * from './logger/index.js';

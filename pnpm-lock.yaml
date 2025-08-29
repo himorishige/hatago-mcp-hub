@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@biomejs/biome':
+        specifier: 2.2.0
+        version: 2.2.0
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
@@ -229,6 +232,31 @@ importers:
         version: 0.14.2(typescript@5.9.2)
       typescript:
         specifier: ^5.8.3
+        version: 5.9.2
+
+  packages/server:
+    dependencies:
+      '@hatago/hub':
+        specifier: workspace:*
+        version: link:../hub
+      '@hono/node-server':
+        specifier: ^1.14.0
+        version: 1.19.0(hono@4.9.4)
+      hono:
+        specifier: ^4.9.4
+        version: 4.9.4
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.10
+        version: 20.19.11
+      tsdown:
+        specifier: ^0.14.2
+        version: 0.14.2(typescript@5.9.2)
+      tsx:
+        specifier: ^4.20.5
+        version: 4.20.5
+      typescript:
+        specifier: ^5.7.2
         version: 5.9.2
 
   packages/transport:

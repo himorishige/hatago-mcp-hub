@@ -36,8 +36,25 @@ export async function startStdio(config: any, logger: Logger): Promise<void> {
   // Handle STDIO input with proper buffering
   let buffer = Buffer.alloc(0);
   let contentLength = -1;
+  let lastMessageTime = Date.now();
+  const MESSAGE_TIMEOUT = 60000; // 60 seconds timeout for incomplete messages
+  
+  // Periodic cleanup for incomplete messages
+  const timeoutCheck = setInterval(() => {
+    if (buffer.length > 0 && Date.now() - lastMessageTime > MESSAGE_TIMEOUT) {
+      logger.warn('Clearing incomplete message buffer after timeout');
+      buffer = Buffer.alloc(0);
+      contentLength = -1;
+    }
+  }, 10000); // Check every 10 seconds
+  
+  // Cleanup interval on shutdown
+  process.on('exit', () => {
+    clearInterval(timeoutCheck);
+  });
   
   process.stdin.on('data', async (chunk: Buffer) => {
+    lastMessageTime = Date.now();
     // Append new data to buffer
     buffer = Buffer.concat([buffer, chunk]);
     
@@ -72,7 +89,55 @@ export async function startStdio(config: any, logger: Logger): Promise<void> {
       contentLength = -1;
       
       try {
-        const message = JSON.parse(messageData.toString());
+        const messageStr = messageData.toString();
+        
+        // Validate JSON structure first
+        let message: any;
+        try {
+          message = JSON.parse(messageStr);
+        } catch (parseError) {
+          logger.error('Failed to parse JSON:', parseError);
+          // Send parse error response
+          await sendMessage({
+            jsonrpc: '2.0',
+            error: {
+              code: -32700,
+              message: 'Parse error',
+              data: 'Invalid JSON'
+            },
+            id: null
+          }, logger);
+          continue;
+        }
+        
+        // Validate JSON-RPC structure
+        if (!message || typeof message !== 'object') {
+          await sendMessage({
+            jsonrpc: '2.0',
+            error: {
+              code: -32600,
+              message: 'Invalid Request',
+              data: 'Request must be an object'
+            },
+            id: message?.id || null
+          }, logger);
+          continue;
+        }
+        
+        // Check for required fields
+        if (!message.method && !message.result && !message.error) {
+          await sendMessage({
+            jsonrpc: '2.0',
+            error: {
+              code: -32600,
+              message: 'Invalid Request',
+              data: 'Missing required fields'
+            },
+            id: message.id || null
+          }, logger);
+          continue;
+        }
+        
         logger.debug('Received:', message);
         
         // Process message through hub
@@ -89,8 +154,11 @@ export async function startStdio(config: any, logger: Logger): Promise<void> {
         try {
           const originalMessage = JSON.parse(messageData.toString());
           messageId = originalMessage.id;
-        } catch {}
+        } catch {
+          // If we can't parse, ID remains null
+        }
         
+        // Send internal error response
         await sendMessage({
           jsonrpc: '2.0',
           error: {

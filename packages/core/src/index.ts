@@ -15,3 +15,6 @@ export * from './errors/index.js';
 
 // Event contracts
 export * from './events/index.js';
+
+// Logger interface
+export * from './logger.js';

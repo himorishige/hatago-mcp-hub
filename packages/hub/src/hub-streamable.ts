@@ -65,7 +65,7 @@ export function createEventsEndpoint(hub: HatagoHub) {
     const clientId = c.req.query("clientId") || `client-${Date.now()}`;
     const sseManager = hub.getSSEManager();
 
-    console.log(`📡 SSE client connected: ${clientId}`);
+    // SSE client connected: ${clientId}
 
     return streamSSE(c, async (stream) => {
       // Register client with SSE manager (enhanced with stream support)
@@ -73,7 +73,7 @@ export function createEventsEndpoint(hub: HatagoHub) {
 
       // Clean up on disconnect
       stream.onAbort(() => {
-        console.log(`📡 SSE client disconnected: ${clientId}`);
+        // SSE client disconnected: ${clientId}
         sseManager.removeClient(clientId);
       });
 
@@ -97,14 +97,8 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
   const acceptHeader = c.req.header("Accept");
   const sessionId = c.req.header("mcp-session-id");
 
-  // Debug logging for MCP Inspector
-  console.log("[Hub] Incoming request:", {
-    method,
-    path: c.req.path,
-    acceptHeader,
-    sessionId,
-    headers: Object.fromEntries(c.req.raw.headers.entries()),
-  });
+  // Debug logging disabled to prevent stdout pollution in STDIO mode
+  // To enable debug logging, use proper logger instance with stderr output
 
   // Handle SSE request
   if (

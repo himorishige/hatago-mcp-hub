@@ -1,0 +1,64 @@
+{
+  "name": "hatago-hub-example",
+  "description": "Example Hatago MCP Hub configuration",
+  "version": "1.0.0",
+  "hub": {
+    "sessionExpiry": 3600000,
+    "maxSessions": 100,
+    "toolPrefix": true,
+    "resourcePrefix": true,
+    "promptPrefix": true
+  },
+  "servers": [
+    {
+      "id": "example-filesystem",
+      "name": "File System Server",
+      "description": "Access to local file system",
+      "type": "npx",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/tmp"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "example-remote",
+      "name": "Remote MCP Server",
+      "description": "Example remote MCP server via HTTP",
+      "type": "remote",
+      "transport": "http",
+      "url": "http://localhost:3000/mcp",
+      "enabled": false
+    },
+    {
+      "id": "example-local",
+      "name": "Local Script Server",
+      "description": "Example local MCP server script",
+      "type": "local",
+      "command": "node",
+      "args": ["./my-mcp-server.js"],
+      "workingDirectory": "./servers",
+      "enabled": false
+    }
+  ],
+  "transport": {
+    "http": {
+      "port": 3000,
+      "host": "localhost",
+      "cors": {
+        "enabled": true,
+        "origins": ["*"]
+      }
+    },
+    "sse": {
+      "enabled": true,
+      "heartbeatInterval": 30000
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json"
+  }
+}

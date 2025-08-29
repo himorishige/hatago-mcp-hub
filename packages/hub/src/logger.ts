@@ -39,10 +39,10 @@ export class Logger {
         console.warn(this.formatLog(logEntry));
         break;
       case 'info':
-        console.log(this.formatLog(logEntry));
+        console.error(this.formatLog(logEntry));
         break;
       case 'debug':
-        console.log(this.formatLog(logEntry));
+        console.error(this.formatLog(logEntry));
         break;
     }
   }
