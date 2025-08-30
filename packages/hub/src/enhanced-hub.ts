@@ -286,6 +286,11 @@ export class EnhancedHatagoHub extends HatagoHub {
 
     // Convert to ServerSpec based on transport type
     const transportType = getServerTransportType(config as CoreServerConfig);
+
+    // Debug logging
+    this.logger.debug(`[Enhanced] Server ${serverId} config:`, config);
+    this.logger.debug(`[Enhanced] Detected transport type: ${transportType}`);
+
     const spec: ServerSpec = {
       command: 'command' in config ? (config as any).command : undefined,
       args: 'args' in config ? (config as any).args : undefined,
@@ -295,6 +300,8 @@ export class EnhancedHatagoHub extends HatagoHub {
       type: transportType === 'stdio' ? undefined : transportType,
       headers: 'headers' in config ? (config as any).headers : undefined,
     };
+
+    this.logger.debug(`[Enhanced] Created spec for ${serverId}:`, spec);
 
     // Add server to hub
     await this.addServer(serverId, spec);

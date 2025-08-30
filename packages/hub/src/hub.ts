@@ -818,7 +818,8 @@ export class HatagoHub {
     if (config.url) {
       spec.url = config.url;
       // Support both 'type' and 'transport' fields for remote servers
-      spec.type = config.transport || config.type || 'sse';
+      // Default to 'streamable-http' for HTTP endpoints, 'sse' requires explicit type
+      spec.type = config.transport || config.type || 'streamable-http';
       spec.headers = config.headers;
     }
 
