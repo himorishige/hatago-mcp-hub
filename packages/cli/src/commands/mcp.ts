@@ -72,7 +72,7 @@ export function setupMcpCommand(program: Command): void {
         const server: McpServer = {
           id: name,
           type: 'local',
-          transport: options.transport,
+          transport: options.transport as 'stdio' | 'http' | 'sse' | undefined,
         };
 
         if (options.url) {

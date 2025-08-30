@@ -180,17 +180,20 @@ export class ToolInvoker {
    * Register a tool with its handler
    */
   registerToolWithHandler(serverId: string, tool: ToolWithHandler): void {
+    // Extract the Tool part without the handler
+    const { handler, ...toolWithoutHandler } = tool;
+    
     // Register in registry
-    this.toolRegistry.registerServerTools(serverId, [tool]);
+    this.toolRegistry.registerServerTools(serverId, [toolWithoutHandler]);
 
     // Get the public name that the registry assigned
     const registeredTools = this.toolRegistry.getServerTools(serverId);
     const registeredTool = registeredTools.find((t) =>
-      t.name.endsWith(tool.name),
+      t.name.endsWith(toolWithoutHandler.name),
     );
 
     if (registeredTool) {
-      this.registerHandler(registeredTool.name, tool.handler);
+      this.registerHandler(registeredTool.name, handler);
     }
   }
 

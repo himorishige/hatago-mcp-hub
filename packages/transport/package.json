@@ -18,6 +18,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "vitest",
     "biome:check": "npx biome check ./src",

@@ -9,7 +9,11 @@ export default defineConfig({
   },
   format: ['esm'],
   clean: true,
-  platform: 'neutral', // Platform-neutral build
-  target: 'es2022',
-  external: ['node:*'], // Externalize Node.js built-ins
+  platform: 'node', // Use node platform to properly handle Node.js built-ins
+  target: 'node20',
+  external: [
+    '@hatago/core',
+    '@modelcontextprotocol/sdk',
+    // Node.js built-ins are automatically externalized with platform: 'node'
+  ],
 });

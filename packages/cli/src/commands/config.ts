@@ -49,7 +49,7 @@ export function setupConfigCommand(program: Command): void {
         if (!(k in target)) {
           target[k] = {};
         }
-        target = target[k];
+        target = target[k] as Record<string, unknown>;
       }
 
       const lastKey = keys[keys.length - 1];
@@ -83,7 +83,7 @@ export function setupConfigCommand(program: Command): void {
 
       for (const k of keys) {
         if (value && typeof value === 'object' && k in value) {
-          value = value[k];
+          value = (value as Record<string, unknown>)[k];
         } else {
           console.log(`Key "${key}" not found`);
           return;

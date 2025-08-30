@@ -28,6 +28,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "vitest",
     "test:node": "vitest --config vitest.config.ts",
