@@ -135,8 +135,8 @@ export class PromptRegistry {
    * Generate namespaced name
    */
   private getNamespacedName(serverId: string, promptName: string): string {
-    // Use underscore separator for Claude Code compatibility
-    return `${promptName}_${serverId}`;
+    // Use underscore separator for Claude Code compatibility (prefix strategy)
+    return `${serverId}_${promptName}`;
   }
 
   /**

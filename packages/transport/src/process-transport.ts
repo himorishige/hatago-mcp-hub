@@ -25,7 +25,7 @@ export class ProcessTransport implements ITransport {
       throw new Error('Transport not started or stdin not available');
     }
 
-    const json = JSON.stringify(message) + '\n';
+    const json = `${JSON.stringify(message)}\n`;
 
     return new Promise((resolve, reject) => {
       this.process?.stdin?.write(json, (error) => {

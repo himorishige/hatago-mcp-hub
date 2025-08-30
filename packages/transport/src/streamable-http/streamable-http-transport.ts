@@ -96,6 +96,7 @@ export class StreamableHTTPTransport implements Transport {
     this.requestToStreamMapping.clear();
     this.requestResponseMap.clear();
     this.progressTokenToStream.clear();
+    this.sessionIdToStream.clear();
     this.initializedSessions.clear();
 
     // Stop cleanup interval

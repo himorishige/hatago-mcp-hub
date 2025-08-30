@@ -9,7 +9,8 @@
     "biome:format": "biome format --write .",
     "check": "pnpm biome:check && pnpm -r run typecheck",
     "lint": "pnpm biome:lint",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",

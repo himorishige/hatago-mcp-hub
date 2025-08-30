@@ -9,6 +9,7 @@ This repository contains the source code for **Hatago MCP Hub**, a lightweight, 
 The project is a TypeScript monorepo managed with `pnpm`. It is designed to be modular and extensible, with a core hub and separate packages for the CLI, server, runtime components, and transport protocols. The server is built using the [Hono](https://hono.dev/) web framework, and it uses [Zod](https://zod.dev/) for robust configuration and data validation.
 
 Key features include:
+
 - **Multi-transport support:** STDIO, HTTP, SSE, and WebSockets.
 - **Dynamic server management:** Add, remove, and manage MCP servers on the fly.
 - **Hot-reloading:** Automatically reloads the configuration when the `hatago.config.json` file changes.
@@ -18,12 +19,14 @@ Key features include:
 ## Building and Running
 
 ### Prerequisites
+
 - Node.js (version 20 or higher)
 - pnpm
 
 ### Installation
 
 1.  Clone the repository:
+
     ```bash
     git clone https://github.com/himorishige/hatago-hub.git
     cd hatago-hub
@@ -77,9 +80,9 @@ pnpm test
 
 This project uses [Biome](https://biomejs.dev/) for linting and formatting. The following commands are available in the root `package.json`:
 
--   `pnpm format`: Formats all files in the project.
--   `pnpm lint`: Lints all files in the project.
--   `pnpm check`: Runs both linting and type-checking.
+- `pnpm format`: Formats all files in the project.
+- `pnpm lint`: Lints all files in the project.
+- `pnpm check`: Runs both linting and type-checking.
 
 ### Testing
 
@@ -89,12 +92,12 @@ The project uses [Vitest](https://vitest.dev/) for unit and integration tests. T
 
 The project is organized as a pnpm monorepo with the following structure:
 
--   `packages/`: Contains the individual packages of the project.
-    -   `@hatago/cli`: The command-line interface.
-    -   `@hatago/core`: Core types and schemas.
-    -   `@hatago/hub`: The main hub implementation.
-    -   `@hatago/runtime`: Runtime components like the session manager and tool registry.
-    -   `@hatago/server`: The server implementation, built with Hono.
-    -   `@hatago/transport`: Transport protocol implementations (STDIO, HTTP, etc.).
--   `examples/`: Contains example projects that use Hatago.
--   `docs/`: Contains documentation, including the project's architecture.
+- `packages/`: Contains the individual packages of the project.
+  - `@hatago/cli`: The command-line interface.
+  - `@hatago/core`: Core types and schemas.
+  - `@hatago/hub`: The main hub implementation.
+  - `@hatago/runtime`: Runtime components like the session manager and tool registry.
+  - `@hatago/server`: The server implementation, built with Hono.
+  - `@hatago/transport`: Transport protocol implementations (STDIO, HTTP, etc.).
+- `examples/`: Contains example projects that use Hatago.
+- `docs/`: Contains documentation, including the project's architecture.

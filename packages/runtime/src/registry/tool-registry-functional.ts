@@ -49,6 +49,11 @@ export function generatePublicName(
     return config.aliases[aliasKey];
   }
 
+  // None/simple strategy - just use the tool name without server prefix
+  if (strategy === 'none' || (strategy as any) === 'simple') {
+    return toolName;
+  }
+
   // Error strategy
   if (strategy === 'error') {
     return toolName;
@@ -70,16 +75,29 @@ export function generatePublicName(
     return publicName;
   }
 
+  // Prefix strategy (serverId before tool)
+  if (strategy === 'prefix') {
+    const separator = config.separator || '_';
+    const publicName = `${serverId}${separator}${toolName}`;
+    return publicName.replace(/\./g, '_');
+  }
+
+  // Suffix strategy (serverId after tool)
+  if (strategy === 'suffix') {
+    const separator = config.separator || '_';
+    const publicName = `${toolName}${separator}${serverId}`;
+    return publicName.replace(/\./g, '_');
+  }
+
   // Alias strategy
   if (strategy === 'alias') {
     // First try the tool name itself (collision check is done by caller)
     return toolName;
   }
 
-  // Default is namespace strategy
+  // Default fallback: prefix
   const separator = config.separator || '_';
   const publicName = `${serverId}${separator}${toolName}`;
-  // ドットをアンダースコアに置換（Claude Code互換性）
   return publicName.replace(/\./g, '_');
 }
 

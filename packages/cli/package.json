@@ -11,6 +11,7 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "biome:check": "npx biome check ./src",
@@ -34,7 +35,8 @@
   "devDependencies": {
     "@types/node": "^20.11.5",
     "tsdown": "^0.14.2",
-    "typescript": "~5.7.2"
+    "typescript": "~5.7.2",
+    "vitest": "^2.1.9"
   },
   "engines": {
     "node": ">=20.0.0"

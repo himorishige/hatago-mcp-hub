@@ -64,7 +64,7 @@ HATAGO_CONFIG=./my-config.json pnpm start
 # Or use curl directly
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}},"id":1}'
 ```
 
 ## Platform Capabilities

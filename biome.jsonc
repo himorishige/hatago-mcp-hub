@@ -3,7 +3,7 @@
   "vcs": {
     "enabled": true,
     "clientKind": "git",
-    "useIgnoreFile": true,
+    "useIgnoreFile": true
   },
   "files": {
     "ignoreUnknown": false,
@@ -11,41 +11,41 @@
       "packages/*/src/**/*.ts",
       "packages/*/src/**/*.js",
       "examples/*/src/**/*.ts",
-      "examples/*/src/**/*.js",
-    ],
+      "examples/*/src/**/*.js"
+    ]
   },
   "formatter": {
     "enabled": true,
-    "indentStyle": "space",
+    "indentStyle": "space"
   },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "error",
+        "noExplicitAny": "error"
       },
       "style": {
-        "noNonNullAssertion": "error",
+        "noNonNullAssertion": "error"
       },
       "nursery": { "recommended": true },
       "complexity": {
         "noUselessTypeConstraint": "error",
-        "noBannedTypes": "error",
-      },
-    },
+        "noBannedTypes": "error"
+      }
+    }
   },
   "javascript": {
     "formatter": {
-      "quoteStyle": "single",
-    },
+      "quoteStyle": "single"
+    }
   },
   "assist": {
     "enabled": true,
     "actions": {
       "source": {
-        "organizeImports": "on",
-      },
-    },
-  },
+        "organizeImports": "on"
+      }
+    }
+  }
 }

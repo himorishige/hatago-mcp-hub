@@ -43,8 +43,8 @@ echo ""
 
 # Test 4: STDIO mode with simple MCP request
 echo "✅ Test 4: STDIO mode (initialize request)"
-MSG='{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}'
-(echo -ne "Content-Length: ${#MSG}\r\n\r\n${MSG}") | node dist/cli.js --stdio --config test.config.json 2>/dev/null | head -20 | grep -q "2024-11-05" && echo "   Initialize successful" || echo "   ❌ Initialize failed"
+MSG='{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}},"id":1}'
+(echo -ne "Content-Length: ${#MSG}\r\n\r\n${MSG}") | node dist/cli.js --stdio --config test.config.json 2>/dev/null | head -20 | grep -q "2025-06-18" && echo "   Initialize successful" || echo "   ❌ Initialize failed"
 echo ""
 
 # Test 5: Config file loading

@@ -88,11 +88,13 @@ npx hatago-server --version
 ### パッケージが見つからない場合
 
 1. パッケージをビルド:
+
 ```bash
 pnpm -r build
 ```
 
 2. npm linkを再実行:
+
 ```bash
 cd packages/cli && npm link --force
 cd ../server && npm link --force

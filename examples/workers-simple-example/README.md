@@ -5,12 +5,14 @@
 ## 🎯 特徴
 
 ### ✅ 含まれる機能
+
 - **シンプルな設定**: TypeScriptファイル（`hatago.config.ts`）で型安全な設定
 - **基本的なMCP機能**: tools、resources、promptsの標準MCP操作
 - **リモートMCPサーバー**: HTTP/SSEベースのリモートMCPサーバーとの接続
 - **ステートレス設計**: リクエストごとに独立した処理
 
 ### ❌ 含まれない機能
+
 - **Progress通知**: 長時間実行タスクの進捗通知なし
 - **セッション永続化**: KV/Durable Objectsを使用しない
 - **ローカルプロセス**: Workers環境では実行不可
@@ -55,21 +57,21 @@ export const hatagoConfig = {
   mcpServers: {
     // 新しいサーバーを追加
     myserver: {
-      type: 'remote' as const,
-      url: 'https://example.com/mcp',
-      transport: 'streamable-http' as const,
-    }
-  }
+      type: "remote" as const,
+      url: "https://example.com/mcp",
+      transport: "streamable-http" as const,
+    },
+  },
 };
 ```
 
 ## 🔌 エンドポイント
 
-| エンドポイント | メソッド | 説明 |
-|--------------|---------|------|
-| `/` | GET | API情報とサーバー一覧 |
-| `/health` | GET | ヘルスチェック |
-| `/mcp` | POST | MCPプロトコルエンドポイント |
+| エンドポイント | メソッド | 説明                        |
+| -------------- | -------- | --------------------------- |
+| `/`            | GET      | API情報とサーバー一覧       |
+| `/health`      | GET      | ヘルスチェック              |
+| `/mcp`         | POST     | MCPプロトコルエンドポイント |
 
 ## 📝 使用例
 
@@ -130,15 +132,18 @@ Request → Cloudflare Worker
 ## 🐛 トラブルシューティング
 
 ### "Failed to add server"エラー
+
 - リモートMCPサーバーのURLが正しいか確認
 - サーバーがCORSを許可しているか確認
 
 ### TypeScriptエラー
+
 ```bash
 npm run type-check
 ```
 
 ### Wranglerのログ確認
+
 ```bash
 wrangler tail
 ```

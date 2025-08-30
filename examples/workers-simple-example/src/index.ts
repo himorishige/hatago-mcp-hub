@@ -11,9 +11,9 @@
  */
 
 import { createHub, handleMCPEndpoint } from '@hatago/hub/workers';
-import { hatagoConfig } from './hatago.config.js';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { hatagoConfig } from './hatago.config.js';
 
 // Create Hono app
 const app = new Hono();
@@ -29,7 +29,7 @@ app.use(
     ],
     credentials: true,
     allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id'],
-  })
+  }),
 );
 
 // Health check endpoint
@@ -94,7 +94,7 @@ app.all('/mcp', async (c) => {
           data: error instanceof Error ? error.message : String(error),
         },
       },
-      500
+      500,
     );
   }
 });
@@ -104,7 +104,7 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<Response> {
     return app.fetch(request, env, ctx);
   },

@@ -19,13 +19,13 @@ Hatago Hubは、以下の主要コンポーネントで構成されています�
 ```typescript
 // packages/hub/src/hub.ts
 export class HatagoHub {
-  private sessions: SessionManager;        // セッション管理
-  private toolRegistry: ToolRegistry;      // ツール名管理
-  private toolInvoker: ToolInvoker;       // ツール実行
-  private resourceRegistry: ResourceRegistry;  // リソース管理
-  private promptRegistry: PromptRegistry;      // プロンプト管理
-  private servers: Map<string, ServerInfo>;    // 接続サーバー情報
-  private clients: Map<string, Client>;        // MCPクライアント接続
+  private sessions: SessionManager; // セッション管理
+  private toolRegistry: ToolRegistry; // ツール名管理
+  private toolInvoker: ToolInvoker; // ツール実行
+  private resourceRegistry: ResourceRegistry; // リソース管理
+  private promptRegistry: PromptRegistry; // プロンプト管理
+  private servers: Map<string, ServerInfo>; // 接続サーバー情報
+  private clients: Map<string, Client>; // MCPクライアント接続
 }
 ```
 
@@ -58,31 +58,31 @@ export function generatePublicName(
   serverId: string,
   toolName: string,
 ): string {
-  const strategy = config.strategy || 'namespace';
-  
+  const strategy = config.strategy || "namespace";
+
   // namespace戦略: サーバーIDをプレフィックスとして付与
-  if (strategy === 'namespace') {
-    const separator = config.separator || '_';
-    const format = config.format || '{serverId}_{toolName}';
-    
+  if (strategy === "namespace") {
+    const separator = config.separator || "_";
+    const format = config.format || "{serverId}_{toolName}";
+
     let publicName = format
-      .replace('{serverId}', serverId)
-      .replace('{separator}', separator)
-      .replace('{toolName}', toolName);
-    
+      .replace("{serverId}", serverId)
+      .replace("{separator}", separator)
+      .replace("{toolName}", toolName);
+
     // Claude Code互換性のため、ドットをアンダースコアに置換
-    publicName = publicName.replace(/\./g, '_');
-    
+    publicName = publicName.replace(/\./g, "_");
+
     return publicName;
   }
-  
+
   // alias戦略: 可能な限り元の名前を保持
-  if (strategy === 'alias') {
+  if (strategy === "alias") {
     return toolName;
   }
-  
+
   // error戦略: 衝突時にエラーを発生
-  if (strategy === 'error') {
+  if (strategy === "error") {
     return toolName;
   }
 }
@@ -101,19 +101,19 @@ export function addTool(
   tool: Tool,
 ): ToolRegistryState {
   let publicName = generatePublicName(state.namingConfig, serverId, tool.name);
-  
+
   // alias戦略の場合、衝突チェックとフォールバック
-  if (state.namingConfig.strategy === 'alias') {
+  if (state.namingConfig.strategy === "alias") {
     const existing = state.tools.get(publicName);
     if (existing && existing.serverId !== serverId) {
       // 衝突検出、namespace戦略にフォールバック
-      const separator = state.namingConfig.separator || '_';
-      publicName = `${serverId}${separator}${tool.name}`.replace(/\./g, '_');
+      const separator = state.namingConfig.separator || "_";
+      publicName = `${serverId}${separator}${tool.name}`.replace(/\./g, "_");
     }
   }
-  
+
   // error戦略の場合、衝突時にエラー
-  if (state.namingConfig.strategy === 'error') {
+  if (state.namingConfig.strategy === "error") {
     const existing = state.tools.get(publicName);
     if (existing && existing.serverId !== serverId) {
       throw new Error(
@@ -121,7 +121,7 @@ export function addTool(
       );
     }
   }
-  
+
   // 新しいメタデータを作成
   const metadata: ToolMetadata = {
     serverId,
@@ -129,18 +129,18 @@ export function addTool(
     publicName,
     tool,
   };
-  
+
   // イミュータブルな新しいMapを作成
   const newTools = new Map(state.tools);
   newTools.set(publicName, metadata);
-  
+
   const serverToolSet = state.serverTools.get(serverId) || new Set<string>();
   const newServerToolSet = new Set(serverToolSet);
   newServerToolSet.add(publicName);
-  
+
   const newServerTools = new Map(state.serverTools);
   newServerTools.set(serverId, newServerToolSet);
-  
+
   return {
     ...state,
     tools: newTools,
@@ -170,7 +170,7 @@ export function addTool(
 export class ToolInvoker {
   private handlers: Map<string, ToolHandler> = new Map();
   private toolRegistry: ToolRegistry;
-  
+
   async callTool(
     _sessionId: string,
     toolName: string,
@@ -178,27 +178,29 @@ export class ToolInvoker {
     options?: Partial<ToolInvokerOptions>,
   ): Promise<ToolCallResult> {
     const opts = { ...this.options, ...options };
-    
+
     // ツール名に対応するハンドラーを取得
     const handler = this.handlers.get(toolName);
-    
+
     if (!handler) {
       // レジストリでツールの存在を確認
       const tool = this.toolRegistry.getTool(toolName);
-      
+
       if (!tool) {
         return {
-          content: [{ type: 'text', text: `Tool not found: ${toolName}` }],
+          content: [{ type: "text", text: `Tool not found: ${toolName}` }],
           isError: true,
         };
       }
-      
+
       return {
-        content: [{ type: 'text', text: `No handler registered for tool: ${toolName}` }],
+        content: [
+          { type: "text", text: `No handler registered for tool: ${toolName}` },
+        ],
         isError: true,
       };
     }
-    
+
     try {
       // プログレストークンが提供されている場合、進捗ハンドラーを作成
       const progressHandler =
@@ -212,35 +214,37 @@ export class ToolInvoker {
               });
             }
           : undefined;
-      
+
       // タイムアウト付きで実行
       const result = await this.executeWithTimeout(
         () => handler(args, progressHandler),
         opts.timeout!,
       );
-      
+
       // 結果のフォーマット
-      if (typeof result === 'string') {
+      if (typeof result === "string") {
         return {
-          content: [{ type: 'text', text: result }],
+          content: [{ type: "text", text: result }],
         };
       }
-      
+
       // 既に正しいフォーマットの場合
-      if (result && typeof result === 'object' && 'content' in result) {
+      if (result && typeof result === "object" && "content" in result) {
         return result as ToolCallResult;
       }
-      
+
       // その他のオブジェクトはJSONに変換
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
     } catch (error) {
       return {
-        content: [{
-          type: 'text',
-          text: `Error calling tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Error calling tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
         isError: true,
       };
     }
@@ -257,13 +261,16 @@ export class ToolInvoker {
 
 // サーバー接続時にツールハンドラーを登録
 for (const tool of tools) {
-  const publicName = this.toolRegistry.resolveTool(tool.name, serverId)?.publicName;
-  
+  const publicName = this.toolRegistry.resolveTool(
+    tool.name,
+    serverId,
+  )?.publicName;
+
   this.toolInvoker.registerHandler(publicName, async (args) => {
     // MCPクライアントを通じて実際のサーバーにツール呼び出しを転送
     const client = this.clients.get(serverId);
     const result = await client.callTool({
-      name: tool.name,  // 元のツール名を使用
+      name: tool.name, // 元のツール名を使用
       arguments: args,
     });
     return result;
@@ -281,7 +288,7 @@ for (const tool of tools) {
 // セッション管理の基本構造
 class SessionManager {
   private sessions: Map<string, SessionData> = new Map();
-  
+
   getOrCreateSession(sessionId: string): SessionData {
     if (!this.sessions.has(sessionId)) {
       this.sessions.set(sessionId, {
@@ -291,7 +298,7 @@ class SessionManager {
         context: {},
       });
     }
-    
+
     const session = this.sessions.get(sessionId)!;
     session.lastAccessedAt = Date.now();
     return session;
@@ -311,7 +318,7 @@ public async handleJsonRpcRequest(
   sessionId?: string,
 ): Promise<any> {
   const { method, params, id } = body;
-  
+
   try {
     switch (method) {
       case 'initialize':
@@ -320,12 +327,12 @@ public async handleJsonRpcRequest(
           sessionId || 'default',
           params.capabilities,
         );
-        
+
         return {
           jsonrpc: '2.0',
           id,
           result: {
-            protocolVersion: '2024-11-05',
+            protocolVersion: '2025-06-18',
             capabilities: {
               tools: {},
               resources: {},
@@ -337,7 +344,7 @@ public async handleJsonRpcRequest(
             },
           },
         };
-      
+
       case 'tools/list':
         // ツールリストの取得
         return {
@@ -351,17 +358,17 @@ public async handleJsonRpcRequest(
             },
           },
         };
-      
+
       case 'tools/call': {
         const { name, arguments: args } = params;
-        
+
         // セッションIDを使用してツールを実行
         const result = await this.toolInvoker.callTool(
           sessionId || 'default',
           name,
           args,
         );
-        
+
         return {
           jsonrpc: '2.0',
           id,
@@ -394,11 +401,11 @@ MCPサーバーの追加・削除時に、クライアントに変更を通知�
 private async sendToolListChangedNotification(): Promise<void> {
   // ツールセットのハッシュを計算
   const newHash = await this.calculateToolsetHash();
-  
+
   if (this.toolsetHash !== newHash) {
     this.toolsetHash = newHash;
     this.toolsetRevision++;
-    
+
     // 全クライアントに通知を送信
     const notification = {
       jsonrpc: '2.0',
@@ -410,12 +417,12 @@ private async sendToolListChangedNotification(): Promise<void> {
         },
       },
     };
-    
+
     // StreamableHTTP経由で通知
     if (this.streamableTransport) {
       this.streamableTransport.notify(notification);
     }
-    
+
     // SSE経由で通知
     if (this.sseManager) {
       this.sseManager.broadcast(notification);
@@ -426,7 +433,7 @@ private async sendToolListChangedNotification(): Promise<void> {
 private async calculateToolsetHash(): Promise<string> {
   const tools = this.toolRegistry.getAllTools();
   const toolNames = tools.map(t => t.name).sort();
-  
+
   // 簡易的なハッシュ計算
   const data = JSON.stringify(toolNames);
   const hash = crypto.createHash('sha256').update(data).digest('hex');
@@ -449,15 +456,15 @@ private async connectWithRetry(
   maxRetries: number = 3,
 ): Promise<void> {
   let lastError: Error | undefined;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await this.connectServer(id, spec);
-      
+
       // 成功したらツールを再登録
       const server = this.servers.get(id)!;
       this.toolRegistry.registerServerTools(id, server.tools);
-      
+
       // ハンドラーを再登録
       for (const tool of server.tools) {
         const metadata = this.toolRegistry.resolveTool(tool.name, id);
@@ -465,7 +472,7 @@ private async connectWithRetry(
           this.registerToolHandler(metadata.publicName, id, tool.name);
         }
       }
-      
+
       this.logger.info(`Server ${id} reconnected successfully`);
       return;
     } catch (error) {
@@ -474,7 +481,7 @@ private async connectWithRetry(
         `Connection attempt ${attempt}/${maxRetries} failed for server ${id}`,
         { error: lastError.message },
       );
-      
+
       if (attempt < maxRetries) {
         // 指数バックオフで待機
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
@@ -482,12 +489,12 @@ private async connectWithRetry(
       }
     }
   }
-  
+
   // 全ての再試行が失敗
   const server = this.servers.get(id)!;
   server.status = 'error';
   server.error = lastError;
-  
+
   throw lastError;
 }
 ```
@@ -507,17 +514,18 @@ export function registerServerTools(
 ): ToolRegistryState {
   // 既存のツールをクリア（新しい状態を作成）
   let newState = clearServerTools(state, serverId);
-  
+
   // 各ツールを追加（イミュータブルな更新）
   for (const tool of tools) {
     newState = addTool(newState, serverId, tool);
   }
-  
+
   return newState;
 }
 ```
 
 **利点：**
+
 - **予測可能性**: 純粋関数により、同じ入力は常に同じ出力を生成
 - **テスタビリティ**: 副作用がないため、単体テストが容易
 - **並行性**: イミュータブルなデータ構造により、競合状態を防ぐ
@@ -528,10 +536,10 @@ TypeScriptの型システムを活用して、コンパイル時の安全性を�
 
 ```typescript
 export interface ToolMetadata {
-  serverId: string;           // ツールを提供するサーバーID
-  originalName: string;       // 元のツール名
-  publicName: string;         // 公開名（衝突回避後）
-  tool: Tool;                // MCPツール定義
+  serverId: string; // ツールを提供するサーバーID
+  originalName: string; // 元のツール名
+  publicName: string; // 公開名（衝突回避後）
+  tool: Tool; // MCPツール定義
 }
 
 export interface ToolRegistryState {

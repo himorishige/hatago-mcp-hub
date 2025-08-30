@@ -182,7 +182,7 @@ export class ToolInvoker {
   registerToolWithHandler(serverId: string, tool: ToolWithHandler): void {
     // Extract the Tool part without the handler
     const { handler, ...toolWithoutHandler } = tool;
-    
+
     // Register in registry
     this.toolRegistry.registerServerTools(serverId, [toolWithoutHandler]);
 

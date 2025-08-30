@@ -13,7 +13,7 @@ export type McpServer = Server;
 /**
  * Supported protocol version
  */
-export const SUPPORTED_PROTOCOL_VERSION = '2024-11-05' as const;
+export const SUPPORTED_PROTOCOL_VERSION = '2025-06-18' as const;
 
 /**
  * Protocol features (simplified)
@@ -29,7 +29,7 @@ export interface ProtocolFeatures {
  * Simplified protocol negotiation result
  */
 export interface NegotiatedProtocol {
-  // Protocol version (always '2024-11-05' for now)
+  // Protocol version (always '2025-06-18' for now)
   protocol: string;
 
   // Server information

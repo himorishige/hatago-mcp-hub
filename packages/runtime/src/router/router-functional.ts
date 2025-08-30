@@ -31,8 +31,8 @@ export function generatePublicName(
     return `${originalName}${separator}${serverId}`;
   }
 
-  // Default: namespace strategy
-  return `${originalName}${separator}${serverId}`;
+  // Default: namespace strategy (prefix-based)
+  return `${serverId}${separator}${originalName}`;
 }
 
 /**
@@ -65,11 +65,11 @@ export function parsePublicName(
     };
   }
 
-  // namespace strategy
+  // namespace strategy (prefix-based)
   if (parts.length > 1) {
     return {
-      serverId: parts[parts.length - 1],
-      originalName: parts.slice(0, -1).join(separator),
+      serverId: parts[0],
+      originalName: parts.slice(1).join(separator),
     };
   }
 

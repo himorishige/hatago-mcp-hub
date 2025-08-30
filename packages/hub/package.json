@@ -26,13 +26,15 @@
     }
   },
   "scripts": {
+    "pretest": "pnpm -w -F @hatago/core -F @hatago/runtime -F @hatago/transport build",
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "test": "vitest",
-    "test:node": "vitest --config vitest.config.ts",
-    "test:workers": "vitest --config vitest.config.workers.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:node": "vitest run --config vitest.config.ts",
+    "test:workers": "vitest run --config vitest.config.workers.ts",
     "test:all": "npm run test:node && npm run test:workers",
     "biome:check": "npx biome check ./src",
     "biome:check:fix": "npx biome check --write ./src",
