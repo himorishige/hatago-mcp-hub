@@ -32,18 +32,19 @@ function isDebugEnabled(): boolean {
 
 /**
  * Default console logger
+ * All output goes to stderr to keep stdout clean for STDIO protocol
  */
 export const logger: Logger = {
   debug: (message: string, ...args: any[]) => {
     if (isDebugEnabled()) {
-      console.debug(`[DEBUG] ${message}`, ...args);
+      console.error(`[DEBUG] ${message}`, ...args);
     }
   },
   info: (message: string, ...args: any[]) => {
-    console.info(`[INFO] ${message}`, ...args);
+    console.error(`[INFO] ${message}`, ...args);
   },
   warn: (message: string, ...args: any[]) => {
-    console.warn(`[WARN] ${message}`, ...args);
+    console.error(`[WARN] ${message}`, ...args);
   },
   error: (message: string, ...args: any[]) => {
     console.error(`[ERROR] ${message}`, ...args);

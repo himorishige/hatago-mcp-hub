@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "scripts": {
     "format": "pnpm prettier:fix && pnpm biome:format",
     "prettier:fix": "prettier --write \"**/*.{md,mdx,html,css,scss,less,yaml,yml,graphql}\"",

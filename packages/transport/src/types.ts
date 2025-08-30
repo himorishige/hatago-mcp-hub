@@ -9,12 +9,12 @@ export interface ITransport {
   /**
    * Send a message through the transport
    */
-  send(message: any): Promise<void>;
+  send(message: unknown): Promise<void>;
 
   /**
    * Register a message handler
    */
-  onMessage(handler: (message: any) => void): void;
+  onMessage(handler: (message: unknown) => void): void;
 
   /**
    * Register an error handler
@@ -79,5 +79,5 @@ export interface WebSocketTransportOptions extends TransportOptions {
  * Transport factory for creating transports based on configuration
  */
 export interface ITransportFactory {
-  createTransport(type: string, options: any): ITransport;
+  createTransport(type: string, options: unknown): ITransport;
 }

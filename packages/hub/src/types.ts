@@ -44,6 +44,9 @@ export interface HubOptions {
  */
 export interface CallOptions {
   timeout?: number;
+  /** Session ID for multi-client support */
+  sessionId?: string;
+  /** @deprecated Use appropriate server routing instead */
   serverId?: string;
   signal?: AbortSignal;
 }
@@ -53,6 +56,9 @@ export interface CallOptions {
  */
 export interface ReadOptions {
   timeout?: number;
+  /** Session ID for multi-client support */
+  sessionId?: string;
+  /** @deprecated Use appropriate server routing instead */
   serverId?: string;
   signal?: AbortSignal;
 }
@@ -71,6 +77,7 @@ export type HubEvent =
   | 'server:connected'
   | 'server:disconnected'
   | 'server:error'
+  | 'server:notification'
   | 'tool:registered'
   | 'tool:called'
   | 'resource:registered'

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Hatago MCP Hub Server - CLI Entry Point
  *

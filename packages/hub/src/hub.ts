@@ -87,22 +87,22 @@ class CapabilityRegistry {
  */
 export class HatagoHub {
   // Core components
-  private sessions: SessionManager;
-  private toolRegistry: ToolRegistry;
-  private toolInvoker: ToolInvoker;
-  private resourceRegistry: ResourceRegistry;
-  private promptRegistry: PromptRegistry;
-  private capabilityRegistry: CapabilityRegistry;
+  protected sessions: SessionManager;
+  protected toolRegistry: ToolRegistry;
+  protected toolInvoker: ToolInvoker;
+  protected resourceRegistry: ResourceRegistry;
+  protected promptRegistry: PromptRegistry;
+  protected capabilityRegistry: CapabilityRegistry;
 
   // Server management
-  private servers = new Map<string, ConnectedServer>();
-  private clients = new Map<string, Client>();
+  protected servers = new Map<string, ConnectedServer>();
+  protected clients = new Map<string, Client>();
 
   // Event handlers
-  private eventHandlers = new Map<HubEvent, Set<HubEventHandler>>();
+  protected eventHandlers = new Map<HubEvent, Set<HubEventHandler>>();
 
   // Logger
-  private logger: Logger;
+  protected logger: Logger;
 
   // SSE Manager
   private sseManager: SSEManager;
@@ -118,6 +118,13 @@ export class HatagoHub {
 
   // Options
   protected options: Required<HubOptions>;
+
+  // Notification callback for forwarding to parent
+  public onNotification?: (notification: any) => Promise<void>;
+
+  // Toolset versioning
+  private toolsetRevision = 0;
+  private toolsetHash = '';
 
   constructor(options: HubOptions = {}) {
     this.options = {
@@ -476,9 +483,24 @@ export class HatagoHub {
     // Store client
     this.clients.set(id, client);
 
-    // Set up notification handler to forward notifications through StreamableHTTP
-    // Note: We don't set fallbackNotificationHandler for progress notifications
-    // because they are handled directly in tools/call with onprogress callback
+    // Set up notification handler to forward notifications
+    // This will catch all notifications from the child server
+    (client as any).fallbackNotificationHandler = async (notification: any) => {
+      this.logger.debug(`[Hub] Notification from server ${id}`, notification);
+
+      // Forward notification to parent (Claude Code) via callback
+      if (this.onNotification) {
+        await this.onNotification(notification);
+      }
+
+      // Forward notification to parent via StreamableHTTP transport
+      if (this.streamableTransport) {
+        await this.streamableTransport.send(notification);
+      }
+
+      // Emit event for other listeners
+      this.emit('server:notification', { serverId: id, notification });
+    };
 
     // Update server status
     const server = this.servers.get(id)!;
@@ -499,10 +521,7 @@ export class HatagoHub {
       // Prepare all tools with handlers
       const toolsWithHandlers = toolArray.map((tool: any) => ({
         ...tool,
-        handler: async (args: any, _progressCallback?: any) => {
-          // Store current streamableTransport for progress notifications
-          const _transport = this.streamableTransport;
-
+        handler: async (args: any, progressCallback?: any) => {
           // Use high-level callTool API with progress support
           const result = await client.callTool(
             {
@@ -510,9 +529,38 @@ export class HatagoHub {
               arguments: args,
             },
             undefined, // Use default schema
-            // Disable onprogress in tool handler to prevent duplicates
-            // Progress notifications are handled directly in tools/call
-            undefined,
+            {
+              onprogress: async (progress: any) => {
+                this.logger.debug(
+                  `[Hub] Tool progress from ${id}/${tool.name}`,
+                  progress,
+                );
+
+                // Forward progress notification to parent
+                const notification = {
+                  jsonrpc: '2.0' as const,
+                  method: 'notifications/progress',
+                  params: {
+                    progressToken:
+                      progress.progressToken ||
+                      `${id}-${tool.name}-${Date.now()}`,
+                    progress: progress.progress || 0,
+                    total: progress.total,
+                    message: progress.message,
+                  },
+                };
+
+                // Call the progress callback if provided
+                if (progressCallback) {
+                  await progressCallback(progress);
+                }
+
+                // Forward to parent via onNotification
+                if (this.onNotification) {
+                  await this.onNotification(notification);
+                }
+              },
+            },
           );
           return result;
         },
@@ -622,6 +670,9 @@ export class HatagoHub {
    * Start the hub
    */
   async start(): Promise<this> {
+    // Register internal management tools
+    await this.registerInternalTools();
+
     // Start StreamableHTTP Transport
     await this.streamableTransport?.start();
 
@@ -735,6 +786,9 @@ export class HatagoHub {
       }
 
       // Set up config file watching if enabled
+      this.logger.info('[Hub] Config watch mode', {
+        watchConfig: this.options.watchConfig,
+      });
       if (this.options.watchConfig) {
         await this.setupConfigWatcher();
       }
@@ -783,6 +837,106 @@ export class HatagoHub {
   }
 
   /**
+   * Register internal management tools
+   */
+  private async registerInternalTools(): Promise<void> {
+    const { getInternalTools } = await import('./internal-tools.js');
+    const { zodToJsonSchema } = await import('./zod-to-json-schema.js');
+    const internalTools = getInternalTools();
+
+    this.logger.info('[Hub] Registering internal management tools', {
+      count: internalTools.length,
+    });
+
+    // Register tools with special internal server ID
+    const toolsWithHandlers = internalTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: zodToJsonSchema(tool.inputSchema),
+      handler: async (args: any) => tool.handler(args, this),
+    }));
+
+    // Register as internal server
+    this.toolRegistry.registerServerTools('_internal', toolsWithHandlers);
+
+    // Get registered tools with their public names (includes prefix)
+    const registeredTools = this.toolRegistry.getServerTools('_internal');
+
+    // Register handlers with actual registered names
+    for (let i = 0; i < registeredTools.length; i++) {
+      const registeredTool = registeredTools[i];
+      const originalTool = toolsWithHandlers[i];
+      if (registeredTool && originalTool) {
+        this.toolInvoker.registerHandler(
+          registeredTool.name,
+          originalTool.handler,
+        );
+        this.logger.debug('[Hub] Registered internal tool handler', {
+          name: registeredTool.name,
+        });
+      }
+    }
+
+    // Update hash and revision
+    this.toolsetRevision++;
+    this.toolsetHash = await this.calculateToolsetHash();
+  }
+
+  /**
+   * Calculate hash of current toolset
+   */
+  private async calculateToolsetHash(): Promise<string> {
+    const tools = this.tools.list();
+    const toolData = tools.map((t: any) => ({
+      name: t.name,
+      description: t.description,
+    }));
+    const { createHash } = await import('node:crypto');
+    return createHash('sha256')
+      .update(JSON.stringify(toolData))
+      .digest('hex')
+      .substring(0, 16);
+  }
+
+  /**
+   * Send tools/list_changed notification
+   */
+  private async sendToolListChangedNotification(): Promise<void> {
+    this.toolsetRevision++;
+    this.toolsetHash = await this.calculateToolsetHash();
+
+    const notification = {
+      jsonrpc: '2.0' as const,
+      method: 'notifications/tools/list_changed',
+      params: {
+        revision: this.toolsetRevision,
+        hash: this.toolsetHash,
+      },
+    };
+
+    this.logger.info('[Hub] Sending tools/list_changed notification', {
+      revision: this.toolsetRevision,
+      hash: this.toolsetHash,
+    });
+
+    // Send to parent if available (STDIO mode)
+    if (this.onNotification) {
+      await this.onNotification(notification);
+    }
+
+    // Send to StreamableHTTP clients
+    if (this.streamableTransport) {
+      try {
+        await this.streamableTransport.send(notification);
+      } catch (error) {
+        this.logger.warn('[Hub] Failed to send notification to client', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  /**
    * Set up config file watcher
    */
   private async setupConfigWatcher(): Promise<void> {
@@ -802,6 +956,9 @@ export class HatagoHub {
       let reloadTimeout: NodeJS.Timeout | undefined;
 
       this.configWatcher = watch(configPath, async (eventType) => {
+        this.logger.debug(`Config file event: ${eventType}`, {
+          path: configPath,
+        });
         if (eventType === 'change') {
           // Clear existing timeout
           if (reloadTimeout) {
@@ -810,8 +967,11 @@ export class HatagoHub {
 
           // Set a new timeout to debounce rapid changes
           reloadTimeout = setTimeout(async () => {
-            this.logger.info('Config file changed, reloading...');
+            this.logger.info(
+              '[ConfigWatcher] Config file changed, starting reload...',
+            );
             await this.reloadConfig();
+            this.logger.info('[ConfigWatcher] Config reload completed');
           }, 1000); // Wait 1 second after last change
         }
       });
@@ -831,6 +991,8 @@ export class HatagoHub {
     if (!this.options.configFile) {
       return;
     }
+
+    this.logger.info('[ConfigReload] Starting configuration reload...');
 
     try {
       const { readFileSync } = await import('node:fs');
@@ -888,7 +1050,9 @@ export class HatagoHub {
       // Remove servers that are no longer in config
       for (const id of existingServerIds) {
         if (!newServerIds.has(id)) {
-          this.logger.info(`Removing server ${id} (no longer in config)`);
+          this.logger.info(
+            `[ConfigReload] Removing server ${id} (no longer in config)`,
+          );
           await this.removeServer(id);
         }
       }
@@ -929,7 +1093,9 @@ export class HatagoHub {
                 }
               } else {
                 // New server
-                this.logger.info(`Adding new server: ${id}`);
+                this.logger.info(`[ConfigReload] Adding new server: ${id}`, {
+                  spec,
+                });
                 this.notificationManager?.notifyServerStatus(id, 'starting');
                 await this.addServer(id, spec);
                 this.notificationManager?.notifyServerStatus(id, 'connected');
@@ -952,6 +1118,9 @@ export class HatagoHub {
 
       this.logger.info('Configuration reloaded successfully');
       this.notificationManager?.notifyConfigReload(true);
+
+      // Send tools/list_changed notification
+      await this.sendToolListChangedNotification();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -1411,11 +1580,21 @@ export class HatagoHub {
         }
 
         case 'tools/list':
+          // Update hash if needed
+          if (!this.toolsetHash) {
+            this.toolsetHash = await this.calculateToolsetHash();
+          }
+
           return {
             jsonrpc: '2.0',
             id,
             result: {
               tools: this.tools.list(),
+              // Add toolset metadata
+              _meta: {
+                toolset_hash: this.toolsetHash,
+                revision: this.toolsetRevision,
+              },
             },
           };
 
@@ -1492,13 +1671,25 @@ export class HatagoHub {
                       },
                     };
 
+                    // Forward to parent via onNotification callback (for STDIO mode)
+                    if (this.onNotification) {
+                      this.logger.info(
+                        '[Hub] Forwarding progress notification to parent',
+                        notification,
+                      );
+                      await this.onNotification(notification);
+                    } else {
+                      this.logger.info('[Hub] No onNotification handler set');
+                    }
+
                     // Send to StreamableHTTP client
                     if (transport) {
                       await transport.send(notification);
                     }
 
-                    // Also send to SSE clients if registered
-                    if (progressToken && this.sseManager) {
+                    // Also send to SSE clients if registered (HTTP mode only)
+                    // In STDIO mode, sessionId is not available so SSE is not used
+                    if (progressToken && this.sseManager && sessionId) {
                       this.sseManager.sendProgress(progressToken.toString(), {
                         progressToken: progressToken.toString(),
                         progress: progress.progress || 0,
@@ -1530,6 +1721,7 @@ export class HatagoHub {
           // Fallback to normal tool call without progress
           const result = await this.tools.call(params.name, params.arguments, {
             progressToken,
+            sessionId,
           });
 
           // Unregister progress token after completion

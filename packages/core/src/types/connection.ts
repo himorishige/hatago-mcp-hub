@@ -15,9 +15,9 @@ export interface McpConnection {
   serverId: string;
   type: ConnectionType;
   connected: boolean;
-  client?: any;
-  process?: any;
-  transport?: any;
-  npxServer?: any; // NPX server instance
-  remoteServer?: any; // Remote server instance
+  client?: unknown;
+  process?: unknown;
+  transport?: unknown;
+  npxServer?: unknown; // NPX server instance
+  remoteServer?: unknown; // Remote server instance
 }

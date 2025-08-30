@@ -1,0 +1,52 @@
+{
+  "$schema": "./config.schema.json",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "activationPolicy": "onDemand",
+      "idlePolicy": {
+        "idleTimeoutMs": 300000,
+        "minLingerMs": 30000,
+        "activityReset": "onCallEnd"
+      }
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "${GIT_REPO:-./}"],
+      "env": {
+        "GIT_REPO": "${HOME}/projects"
+      },
+      "activationPolicy": "manual"
+    },
+    "weather": {
+      "url": "${MCP_WEATHER_URL:-https://api.example.com/mcp}",
+      "type": "sse",
+      "headers": {
+        "Authorization": "Bearer ${MCP_API_KEY}"
+      },
+      "activationPolicy": "always",
+      "security": {
+        "requireAuth": true
+      }
+    }
+  },
+  "defaults": {
+    "activationPolicy": "manual",
+    "idlePolicy": {
+      "idleTimeoutMs": 600000,
+      "minLingerMs": 60000
+    },
+    "timeouts": {
+      "spawnTimeout": 20000,
+      "handshakeTimeout": 10000,
+      "readyTimeout": 20000
+    }
+  },
+  "notifications": {
+    "enabled": true,
+    "rateLimitSec": 60,
+    "severity": ["error", "warning"]
+  },
+  "adminMode": false
+}

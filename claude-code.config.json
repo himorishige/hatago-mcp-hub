@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "mcpServers": {
+    "filesystem": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "disabled": false,
+      "activationPolicy": "onDemand",
+      "idlePolicy": {
+        "maxIdleMinutes": 5,
+        "checkIntervalMinutes": 1
+      }
+    },
+    "everything": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "disabled": false,
+      "activationPolicy": "always"
+    }
+  }
+}

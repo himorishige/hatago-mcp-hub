@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "mcpServers": {
+    "filesystem": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "disabled": false,
+      "activationPolicy": "onDemand"
+    }
+  }
+}

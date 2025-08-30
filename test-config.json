@@ -1,31 +1,22 @@
 {
   "version": 1,
   "logLevel": "debug",
-  "http": {
-    "port": 3001,
-    "host": "localhost"
-  },
   "mcpServers": {
-    "filesystem": {
-      "type": "local",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/tmp"
-      ],
-      "disabled": false,
-      "timeouts": {
-        "connectMs": 3000,
-        "requestMs": 15000,
-        "keepAliveMs": 10000
-      }
-    },
-    "disabled-server": {
+    "test-server": {
       "type": "local",
       "command": "echo",
-      "args": ["This should not run"],
-      "disabled": true
+      "args": ["Test MCP Server"],
+      "activationPolicy": "onDemand",
+      "idlePolicy": {
+        "idleTimeoutMs": 10000,
+        "minLingerMs": 5000
+      }
+    },
+    "always-server": {
+      "type": "local",
+      "command": "echo",
+      "args": ["Always Running Server"],
+      "activationPolicy": "always"
     }
   }
 }

@@ -45,12 +45,15 @@
     "@hatago/runtime": "workspace:*",
     "@hatago/transport": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.4",
-    "hono": "^4.9.4"
+    "diff": "^8.0.2",
+    "hono": "^4.9.4",
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.8.68",
     "@cloudflare/workers-types": "^4.20241127.0",
     "@types/node": "^20.17.10",
-    "@cloudflare/vitest-pool-workers": "^0.8.68",
     "eventsource": "^4.0.0",
     "miniflare": "^3.20241205.0",
     "typescript": "^5.7.2",

@@ -174,12 +174,78 @@ hatago session clear         # Clear all sessions
 
 ## MCP Implementation Notes
 
-- Server runs on port 3000 by default
+### Server Configuration
+
+- Server runs on port 3000 by default (HTTP mode)
 - Session management uses `mcp-session-id` header
 - Tool naming follows MCP specification (snake_case)
 - Error responses follow JSON-RPC 2.0 format
 - **Local servers**: Use Zod schema objects for tool inputs, not JSON Schema
 - **Working directory**: Local servers use config file location as default cwd
+
+### Hot Reload & Dynamic Updates
+
+- **Config File Watching**: Automatic reload on config changes
+  - Enabled by default in development mode
+  - Debounced with 1-second delay to batch rapid changes
+  - Gracefully reconnects servers without losing sessions
+
+- **Tool List Updates**: Dynamic tool registration
+  - `notifications/tools/list_changed` sent when tools change
+  - Toolset revision and hash tracking
+  - Clients can refresh tool list without reconnecting
+
+### Notification Forwarding
+
+- **Progress Notifications**: Child server notifications forwarded to clients
+  - `notifications/progress` for long-running operations
+  - Transparent pass-through maintains original parameters
+  - Works with both local and remote MCP servers
+
+### Internal Management Tools
+
+The hub provides internal management tools (prefixed with `_internal_`):
+
+- **`_internal_hatago_status`**: Returns status of all servers
+
+  ```json
+  {
+    "servers": {
+      "serverId": {
+        "status": "connected",
+        "type": "npx",
+        "toolCount": 5,
+        "resourceCount": 2
+      }
+    },
+    "totalTools": 10,
+    "totalResources": 4
+  }
+  ```
+
+- **`_internal_hatago_reload`**: Manually trigger config reload
+
+  ```json
+  {
+    "success": true,
+    "message": "Configuration reloaded",
+    "serversReloaded": ["server1", "server2"]
+  }
+  ```
+
+- **`_internal_hatago_list_servers`**: List all configured servers
+  ```json
+  {
+    "servers": [
+      {
+        "id": "serverId",
+        "type": "npx",
+        "status": "connected",
+        "config": { ... }
+      }
+    ]
+  }
+  ```
 
 ### MCP SDK Client Usage (重要)
 
@@ -231,6 +297,38 @@ const result = await client.request(
 ```
 
 ### MCP Server実装の注意点
+
+#### STDIO Protocol
+
+```typescript
+// ✅ 正しい：改行区切りJSON (MCP標準)
+writer.write(JSON.stringify(message) + '
+');
+
+// ❌ 間違い：LSPスタイルのContent-Lengthヘッダー
+writer.write(`Content-Length: ${length}
+
+${message}`);
+```
+
+#### Notification Format
+
+```typescript
+// ✅ 正しい：通知にidフィールドなし
+const notification = {
+  jsonrpc: '2.0',
+  method: 'notifications/progress',
+  params: { ... }
+};
+
+// ❌ 間違い：通知にidフィールドを含める
+const notification = {
+  jsonrpc: '2.0',
+  id: 123,  // 通知にはidを含めない
+  method: 'notifications/progress',
+  params: { ... }
+};
+```
 
 #### Tool定義でのZodスキーマ
 
@@ -307,6 +405,38 @@ server.registerTool(
 ```
 
 ## Version History
+
+### v0.3.0 - 2025-01-30
+
+#### New Features
+
+- **Hot Reload Support**: Automatic configuration reload without server restart
+  - File watching with debouncing (1-second delay)
+  - Graceful server reconnection
+  - Maintains existing sessions during reload
+  - `notifications/tools/list_changed` notification support
+
+- **Progress Notification Forwarding**: Child server progress notifications
+  - Forwards `notifications/progress` from child servers to clients
+  - Supports long-running operations with real-time updates
+  - Transparent pass-through of notification parameters
+
+- **Internal Management Tools**: Built-in server management capabilities
+  - `_internal_hatago_status`: Get status of all connected servers
+  - `_internal_hatago_reload`: Manually trigger configuration reload
+  - `_internal_hatago_list_servers`: List all configured servers with details
+
+#### Technical Improvements
+
+- **MCP Protocol Compliance**: Proper newline-delimited JSON for STDIO
+  - Fixed LSP Content-Length header issue
+  - Correct notification format (no `id` field)
+  - Proper JSON-RPC 2.0 compliance
+
+- **Tool Versioning**: Dynamic tool list updates
+  - Toolset revision tracking
+  - Hash-based change detection
+  - `notifications/tools/list_changed` support
 
 ### v0.2.1 - 2025-01-29
 

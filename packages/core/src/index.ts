@@ -17,5 +17,7 @@ export * from './logger.js';
 export * from './schemas.js';
 // Protocol and types
 export * from './types/index.js';
+// Server configuration types
+export * from './types/server-config.js';
 // Utilities
 export * from './utils/env-expander.js';

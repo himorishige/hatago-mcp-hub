@@ -10,7 +10,7 @@ import type { Command } from 'commander';
 interface HatagoConfig {
   port?: number;
   host?: string;
-  servers?: any[];
+  servers?: unknown[];
   session?: {
     timeout?: number;
     maxSessions?: number;
@@ -41,10 +41,11 @@ export function setupConfigCommand(program: Command): void {
 
       // Parse nested keys
       const keys = key.split('.');
-      let target: any = config;
+      let target: Record<string, unknown> = config as Record<string, unknown>;
 
       for (let i = 0; i < keys.length - 1; i++) {
         const k = keys[i];
+        if (!k) continue;
         if (!(k in target)) {
           target[k] = {};
         }
@@ -52,6 +53,10 @@ export function setupConfigCommand(program: Command): void {
       }
 
       const lastKey = keys[keys.length - 1];
+      if (!lastKey) {
+        console.error('Invalid key path');
+        process.exit(1);
+      }
 
       // Try to parse value as JSON
       try {
@@ -74,7 +79,7 @@ export function setupConfigCommand(program: Command): void {
 
       // Parse nested keys
       const keys = key.split('.');
-      let value: any = config;
+      let value: unknown = config;
 
       for (const k of keys) {
         if (value && typeof value === 'object' && k in value) {

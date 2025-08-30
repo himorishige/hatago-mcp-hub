@@ -22,7 +22,28 @@ export async function startStdio(
   process.stdout.setDefaultEncoding('utf8');
 
   // Create hub instance
+  logger.info('[STDIO] Creating hub with config watch', {
+    configFile: config.path,
+    watchConfig,
+  });
   const hub = createHub({ configFile: config.path, watchConfig });
+
+  // Set up notification handler to forward to Claude Code
+  hub.onNotification = async (notification: any) => {
+    logger.info(
+      '[STDIO] Forwarding notification from child server:',
+      notification,
+    );
+    // Ensure it's a proper notification (no id field)
+    if (!notification.method) {
+      logger.warn('Invalid notification without method:', notification);
+      return;
+    }
+    // Remove any id field to ensure it's treated as a notification
+    const { id, ...notificationWithoutId } = notification;
+    await sendMessage(notificationWithoutId, logger);
+  };
+
   await hub.start();
 
   logger.info('Hatago MCP Hub started in STDIO mode');
@@ -38,8 +59,7 @@ export async function startStdio(
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
   // Handle STDIO input with proper buffering
-  let buffer = Buffer.alloc(0);
-  let contentLength = -1;
+  let buffer = '';
   let lastMessageTime = Date.now();
   const MESSAGE_TIMEOUT = 60000; // 60 seconds timeout for incomplete messages
 
@@ -47,8 +67,7 @@ export async function startStdio(
   const timeoutCheck = setInterval(() => {
     if (buffer.length > 0 && Date.now() - lastMessageTime > MESSAGE_TIMEOUT) {
       logger.warn('Clearing incomplete message buffer after timeout');
-      buffer = Buffer.alloc(0);
-      contentLength = -1;
+      buffer = '';
     }
   }, 10000); // Check every 10 seconds
 
@@ -60,62 +79,17 @@ export async function startStdio(
   process.stdin.on('data', async (chunk: Buffer) => {
     lastMessageTime = Date.now();
     // Append new data to buffer
-    buffer = Buffer.concat([buffer, chunk]);
+    buffer += chunk.toString();
 
-    while (true) {
-      if (contentLength === -1) {
-        // Look for Content-Length header
-        const headerEnd = buffer.indexOf('\r\n\r\n');
-        if (headerEnd === -1) break;
+    // Process all complete messages (newline-delimited)
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-        const header = buffer.slice(0, headerEnd).toString();
-        const match = header.match(/Content-Length:\s*(\d+)/i);
-
-        if (!match) {
-          logger.error('Invalid header: missing Content-Length');
-          // Reset buffer on error
-          buffer = Buffer.alloc(0);
-          break;
-        }
-
-        contentLength = parseInt(match[1], 10);
-        // Remove header from buffer
-        buffer = buffer.slice(headerEnd + 4);
-      }
-
-      // Check if we have the full message
-      if (buffer.length < contentLength) break;
-
-      // Extract message
-      const messageData = buffer.slice(0, contentLength);
-      buffer = buffer.slice(contentLength);
-
-      contentLength = -1;
+    for (const line of lines) {
+      if (!line.trim()) continue; // Skip empty lines
 
       try {
-        const messageStr = messageData.toString();
-
-        // Validate JSON structure first
-        let message: any;
-        try {
-          message = JSON.parse(messageStr);
-        } catch (parseError) {
-          logger.error('Failed to parse JSON:', parseError);
-          // Send parse error response
-          await sendMessage(
-            {
-              jsonrpc: '2.0',
-              error: {
-                code: -32700,
-                message: 'Parse error',
-                data: 'Invalid JSON',
-              },
-              id: null,
-            },
-            logger,
-          );
-          continue;
-        }
+        const message = JSON.parse(line);
 
         // Validate JSON-RPC structure
         if (!message || typeof message !== 'object') {
@@ -154,33 +128,24 @@ export async function startStdio(
         logger.debug('Received:', message);
 
         // Process message through hub
-        const response = await processMessage(hub, message);
+        const response = await processMessage(hub, message, logger);
 
         if (response) {
           await sendMessage(response, logger);
         }
       } catch (error) {
-        logger.error('Failed to process message:', error);
+        logger.error('Failed to parse message:', error, 'Line:', line);
 
-        // Try to extract ID from original message for error response
-        let messageId = null;
-        try {
-          const originalMessage = JSON.parse(messageData.toString());
-          messageId = originalMessage.id;
-        } catch {
-          // If we can't parse, ID remains null
-        }
-
-        // Send internal error response
+        // Send parse error response
         await sendMessage(
           {
             jsonrpc: '2.0',
             error: {
-              code: -32603,
-              message: 'Internal error',
-              data: error instanceof Error ? error.message : String(error),
+              code: -32700,
+              message: 'Parse error',
+              data: error instanceof Error ? error.message : 'Invalid JSON',
             },
-            id: messageId,
+            id: null,
           },
           logger,
         );
@@ -211,19 +176,13 @@ export async function startStdio(
  * Send a message over STDIO with LSP framing
  */
 async function sendMessage(message: any, logger: Logger): Promise<void> {
-  const body = JSON.stringify(message);
-  const contentLength = Buffer.byteLength(body, 'utf8');
-  const header = `Content-Length: ${contentLength}\r\n\r\n`;
+  const body = `${JSON.stringify(message)}\n`;
 
-  logger.debug('Sending:', message);
+  // Log what we're sending at debug level
+  logger.debug('Sending message:', JSON.stringify(message));
 
   try {
-    // Write header with backpressure handling
-    if (!process.stdout.write(header)) {
-      await once(process.stdout, 'drain');
-    }
-
-    // Write body with backpressure handling
+    // Write JSON message with newline
     if (!process.stdout.write(body)) {
       await once(process.stdout, 'drain');
     }
@@ -240,7 +199,11 @@ async function sendMessage(message: any, logger: Logger): Promise<void> {
 /**
  * Process incoming MCP message
  */
-async function processMessage(hub: HatagoHub, message: any): Promise<any> {
+async function processMessage(
+  hub: HatagoHub,
+  message: any,
+  logger: Logger,
+): Promise<any> {
   const { method, params, id } = message;
 
   try {
@@ -265,7 +228,9 @@ async function processMessage(hub: HatagoHub, message: any): Promise<any> {
         };
 
       case 'notifications/initialized':
-        // This is a notification, no response needed
+      case 'notifications/cancelled':
+      case 'notifications/progress':
+        // These are notifications, no response needed
         return null;
 
       case 'tools/list':
@@ -278,6 +243,12 @@ async function processMessage(hub: HatagoHub, message: any): Promise<any> {
         return hub.handleJsonRpcRequest(message);
 
       default:
+        // If it's a notification (no id), don't return an error
+        if (id === undefined) {
+          logger.debug(`Unknown notification: ${method}`);
+          return null;
+        }
+        // For requests, return method not found error
         return {
           jsonrpc: '2.0',
           id,

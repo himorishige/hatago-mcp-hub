@@ -7,6 +7,12 @@
  * - ${VAR:-default} - expands to VAR if set, otherwise uses default
  */
 
+declare const process:
+  | {
+      env: Record<string, string | undefined>;
+    }
+  | undefined;
+
 /**
  * Type for environment variable getter function
  */
@@ -17,8 +23,8 @@ export type GetEnv = (key: string) => string | undefined;
  * Uses dynamic check to prevent bundler static replacement
  */
 const defaultGetEnv: GetEnv = (key) => {
-  if (typeof process !== 'undefined' && (process as any)?.env) {
-    return (process as any).env[key];
+  if (typeof process !== 'undefined' && process?.env) {
+    return process.env[key];
   }
   return undefined;
 };
@@ -109,7 +115,7 @@ function expandServerConfig(server: any, getEnv: GetEnv): any {
 
   // Expand args array
   if (Array.isArray(expanded.args)) {
-    expanded.args = expanded.args.map((arg) =>
+    expanded.args = expanded.args.map((arg: unknown) =>
       typeof arg === 'string' ? expandEnvironmentVariables(arg, getEnv) : arg,
     );
   }

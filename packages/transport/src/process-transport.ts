@@ -25,11 +25,10 @@ export class ProcessTransport implements ITransport {
       throw new Error('Transport not started or stdin not available');
     }
 
-    const json = JSON.stringify(message);
-    const frame = `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`;
+    const json = JSON.stringify(message) + '\n';
 
     return new Promise((resolve, reject) => {
-      this.process?.stdin?.write(frame, (error) => {
+      this.process?.stdin?.write(json, (error) => {
         if (error) {
           reject(error);
         } else {
@@ -100,48 +99,24 @@ export class ProcessTransport implements ITransport {
   }
 
   private processReadBuffer(): void {
-    const messages: string[] = [];
-    const remaining = this.extractMessages(this.readBuffer, messages);
-    this.readBuffer = remaining;
+    // Process all complete messages (newline-delimited)
+    const lines = this.readBuffer.split('\n');
+    this.readBuffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-    for (const message of messages) {
+    for (const line of lines) {
+      if (!line.trim()) continue; // Skip empty lines
+
       try {
-        const parsed = JSON.parse(message);
+        const parsed = JSON.parse(line);
         this.messageHandler?.(parsed);
       } catch (error) {
-        console.error('[ProcessTransport] Failed to parse message:', error);
+        console.error(
+          '[ProcessTransport] Failed to parse message:',
+          error,
+          'Line:',
+          line,
+        );
       }
     }
-  }
-
-  private extractMessages(buffer: string, messages: string[]): string {
-    const headerEndIndex = buffer.indexOf('\r\n\r\n');
-    if (headerEndIndex === -1) {
-      return buffer;
-    }
-
-    const header = buffer.substring(0, headerEndIndex);
-    const contentLengthMatch = header.match(/Content-Length:\s*(\d+)/i);
-
-    if (!contentLengthMatch) {
-      // Invalid header, skip it
-      const remaining = buffer.substring(headerEndIndex + 4);
-      if (remaining.length > 0) {
-        return this.extractMessages(remaining, messages);
-      }
-      return '';
-    }
-
-    const contentLength = parseInt(contentLengthMatch[1]!, 10);
-    const messageStart = headerEndIndex + 4;
-    const messageEnd = messageStart + contentLength;
-
-    if (buffer.length < messageEnd) {
-      // Not enough data yet
-      return buffer;
-    }
-
-    messages.push(buffer.substring(messageStart, messageEnd));
-    return this.extractMessages(buffer.substring(messageEnd), messages);
   }
 }
