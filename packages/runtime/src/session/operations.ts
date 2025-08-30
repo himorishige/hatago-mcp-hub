@@ -3,7 +3,7 @@
  * Pure functions for session management
  */
 
-import type { Session } from '@hatago/core';
+import type { Session } from '@himorishige/hatago-core';
 
 /**
  * Immutable session store type

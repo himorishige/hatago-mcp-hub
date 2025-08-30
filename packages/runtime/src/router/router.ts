@@ -2,7 +2,7 @@
  * MCP Router - Central routing logic for tools, resources, and prompts
  */
 
-import type { Prompt, Resource, Tool } from '@hatago/core';
+import type { Prompt, Resource, Tool } from '@himorishige/hatago-core';
 import {
   generatePublicName,
   groupByServer,

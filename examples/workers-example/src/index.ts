@@ -8,10 +8,13 @@
  * - Remote MCP server support only (no local processes in Workers)
  */
 
-import type { GetEnv } from '@hatago/core';
-import { expandConfig, validateEnvironmentVariables } from '@hatago/core';
-import { createEventsEndpoint } from '@hatago/hub';
-import { createHub, handleMCPEndpoint } from '@hatago/hub/workers';
+import type { GetEnv } from '@himorishige/hatago-core';
+import {
+  expandConfig,
+  validateEnvironmentVariables,
+} from '@himorishige/hatago-core';
+import { createEventsEndpoint } from '@himorishige/hatago-hub';
+import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/workers';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 

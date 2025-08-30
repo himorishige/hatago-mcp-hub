@@ -2,7 +2,7 @@
  * Tool Invoker types
  */
 
-import type { Tool } from '@hatago/core';
+import type { Tool } from '@himorishige/hatago-core';
 
 /**
  * Progress callback for long-running operations

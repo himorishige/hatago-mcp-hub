@@ -12,8 +12,8 @@ import type { Logger } from './logger.js';
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
 
-// Mock @hatago/core
-vi.mock('@hatago/core', () => ({
+// Mock @himorishige/hatago-core
+vi.mock('@himorishige/hatago-core', () => ({
   expandConfig: vi.fn((data) => data),
   formatConfigError: vi.fn((_error) => 'Formatted error'),
   safeParseConfig: vi.fn((data) => ({ success: true, data })),
@@ -161,7 +161,9 @@ describe('loadConfig', () => {
 
   describe('Validation', () => {
     it('should validate environment variables', async () => {
-      const { validateEnvironmentVariables } = await import('@hatago/core');
+      const { validateEnvironmentVariables } = await import(
+        '@himorishige/hatago-core'
+      );
       const configContent = '{"version": 1}';
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -180,7 +182,7 @@ describe('loadConfig', () => {
 
     it('should expand environment variables', async () => {
       const { expandConfig, validateEnvironmentVariables } = await import(
-        '@hatago/core'
+        '@himorishige/hatago-core'
       );
       const configContent = '{"version": 1, "test": "${TEST_VAR}"}';
       const expandedData = { version: 1, test: 'expanded-value' };
@@ -203,7 +205,7 @@ describe('loadConfig', () => {
         safeParseConfig,
         formatConfigError,
         validateEnvironmentVariables,
-      } = await import('@hatago/core');
+      } = await import('@himorishige/hatago-core');
       const configContent = '{"version": 1}';
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -248,7 +250,7 @@ describe('loadConfig', () => {
 
       // Force an unexpected error
       const { expandConfig, validateEnvironmentVariables } = await import(
-        '@hatago/core'
+        '@himorishige/hatago-core'
       );
       vi.mocked(validateEnvironmentVariables).mockImplementation(() => {}); // Pass validation
       vi.mocked(expandConfig).mockImplementation(() => {

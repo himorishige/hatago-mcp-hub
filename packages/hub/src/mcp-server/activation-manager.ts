@@ -3,8 +3,8 @@
  * Handles on-demand activation and concurrent call management
  */
 
-import type { ActivationPolicy } from '@hatago/core';
-import { ServerState } from '@hatago/core';
+import type { ActivationPolicy } from '@himorishige/hatago-core';
+import { ServerState } from '@himorishige/hatago-core';
 
 // Extended server config type
 interface ServerConfig {

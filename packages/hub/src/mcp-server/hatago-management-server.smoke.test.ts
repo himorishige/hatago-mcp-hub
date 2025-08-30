@@ -3,7 +3,7 @@
  * 重要機能の回帰確認に絞る
  */
 
-import { ServerState } from '@hatago/core';
+import { ServerState } from '@himorishige/hatago-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // FS をモックして初期コンフィグ読込を制御

@@ -2,7 +2,7 @@
  * Smoke tests for HatagoManagementServer resources and prompts
  */
 
-import { ServerState } from '@hatago/core';
+import { ServerState } from '@himorishige/hatago-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // FS mock to control config loading

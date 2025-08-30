@@ -1,6 +1,6 @@
 {
   "name": "hatago-node-example",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Minimal Node.js example for Hatago MCP Hub",
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
     "dev": "tsx --watch src/index.ts"
   },
   "dependencies": {
-    "@hatago/hub": "workspace:*",
+    "@himorishige/hatago-hub": "workspace:*",
     "@hono/node-server": "^1.14.0",
     "hono": "^4.9.4"
   },

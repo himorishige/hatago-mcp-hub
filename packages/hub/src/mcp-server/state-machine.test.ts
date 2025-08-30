@@ -2,7 +2,7 @@
  * Tests for ServerStateMachine (lightweight)
  */
 
-import { ServerState } from '@hatago/core';
+import { ServerState } from '@himorishige/hatago-core';
 import { describe, expect, it } from 'vitest';
 import { ServerStateMachine } from './state-machine.js';
 

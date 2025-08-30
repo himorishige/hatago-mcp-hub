@@ -6,8 +6,8 @@
  */
 
 import { once } from 'node:events';
-import type { HatagoHub } from '@hatago/hub';
-import { createHub } from '@hatago/hub/node';
+import type { HatagoHub } from '@himorishige/hatago-hub';
+import { createHub } from '@himorishige/hatago-hub/node';
 import type { Logger } from './logger.js';
 
 /**

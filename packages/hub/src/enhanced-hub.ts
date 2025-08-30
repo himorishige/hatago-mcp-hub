@@ -4,10 +4,10 @@
  */
 
 import { existsSync, readFileSync, unwatchFile, watchFile } from 'node:fs';
-import type { ActivationPolicy, IdlePolicy } from '@hatago/core';
-import { expandConfig, type ServerState } from '@hatago/core';
-import { getPlatform, setPlatform } from '@hatago/runtime';
-import { createNodePlatform } from '@hatago/runtime/platform/node';
+import type { ActivationPolicy, IdlePolicy } from '@himorishige/hatago-core';
+import { expandConfig, type ServerState } from '@himorishige/hatago-core';
+import { getPlatform, setPlatform } from '@himorishige/hatago-runtime';
+import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 import { HatagoHub } from './hub.js';
 import { ActivationManager } from './mcp-server/activation-manager.js';
 import { HatagoManagementServer } from './mcp-server/hatago-management-server.js';
@@ -90,6 +90,8 @@ export class EnhancedHatagoHub extends HatagoHub {
   private idleManager?: IdleManager;
   private metadataStore?: MetadataStore;
   private auditLogger?: AuditLogger;
+  private fileGuard?: FileAccessGuard;
+  private managementServer?: HatagoManagementServer;
 
   // Configuration
   private config: HatagoConfig = {

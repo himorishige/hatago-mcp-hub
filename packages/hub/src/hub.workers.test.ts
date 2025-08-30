@@ -2,7 +2,7 @@
  * Cloudflare Workers tests for HatagoHub
  */
 
-import type { WorkersEnv } from '@hatago/runtime/platform/workers';
+import type { WorkersEnv } from '@himorishige/hatago-runtime/platform/workers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { HatagoHub } from './workers-entry.js';
 

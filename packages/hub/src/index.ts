@@ -1,5 +1,5 @@
 /**
- * @hatago/hub - User-friendly facade for Hatago MCP Hub
+ * @himorishige/hatago-hub - User-friendly facade for Hatago MCP Hub
  *
  * This package provides a simplified API for working with MCP servers,
  * tools, and resources.

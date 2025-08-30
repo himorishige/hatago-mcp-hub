@@ -12,7 +12,7 @@ export default defineConfig({
   env: {
     HATAGO_BUILD_TARGET: 'node'
   },
-  // Bundle @hatago/* packages, exclude external libraries
+  // Bundle @himorishige/hatago-* packages, exclude external libraries
   external: [
     'node:*',
     'hono',

@@ -5,8 +5,8 @@
  * for MCP protocol communication.
  */
 
-import type { Logger, LogLevel } from '@hatago/core';
-import { shouldLog } from '@hatago/core';
+import type { Logger, LogLevel } from '@himorishige/hatago-core';
+import { shouldLog } from '@himorishige/hatago-core';
 
 export interface StdioSafeLoggerOptions {
   level?: LogLevel;

@@ -3,7 +3,7 @@
  */
 
 import { EventEmitter } from 'node:events';
-import { ServerState } from '@hatago/core';
+import { ServerState } from '@himorishige/hatago-core';
 
 /**
  * State transition event

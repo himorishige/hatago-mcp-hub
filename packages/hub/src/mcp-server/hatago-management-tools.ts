@@ -3,7 +3,7 @@
  * Uses plain JSON Schema instead of Zod for compatibility
  */
 
-import type { Tool } from '@hatago/core';
+import type { Tool } from '@himorishige/hatago-core';
 
 /**
  * Get simplified management tools

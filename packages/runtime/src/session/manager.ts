@@ -1,4 +1,4 @@
-import type { Session } from '@hatago/core';
+import type { Session } from '@himorishige/hatago-core';
 import { createKeyedMutex } from '../mutex.js';
 import { getPlatform } from '../platform/index.js';
 import {

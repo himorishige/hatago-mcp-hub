@@ -12,7 +12,7 @@ export default defineConfig({
   platform: 'node', // Use node platform to properly handle Node.js built-ins
   target: 'node20',
   external: [
-    '@hatago/core',
+    '@himorishige/hatago-core',
     '@modelcontextprotocol/sdk',
     // Node.js built-ins are automatically externalized with platform: 'node'
   ],

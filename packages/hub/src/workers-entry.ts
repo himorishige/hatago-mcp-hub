@@ -1,12 +1,12 @@
 /**
- * Cloudflare Workers entry point for @hatago/hub
+ * Cloudflare Workers entry point for @himorishige/hatago-hub
  *
  * This module exports the hub functionality for Workers environment.
  * Platform initialization should be done in the actual worker handler.
  */
 
-import { setPlatform } from '@hatago/runtime';
-import { createWorkersPlatform } from '@hatago/runtime/platform/workers';
+import { setPlatform } from '@himorishige/hatago-runtime';
+import { createWorkersPlatform } from '@himorishige/hatago-runtime/platform/workers';
 import { HatagoHub } from './hub.js';
 import type { HubOptions } from './types.js';
 

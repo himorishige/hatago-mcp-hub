@@ -1,4 +1,4 @@
-import type { ToolMetadata } from '@hatago/core';
+import type { ToolMetadata } from '@himorishige/hatago-core';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import {
   clearRegistry,

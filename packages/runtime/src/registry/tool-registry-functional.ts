@@ -3,7 +3,7 @@
  * Pure functions for tool registry operations
  */
 
-import type { ToolMetadata } from '@hatago/core';
+import type { ToolMetadata } from '@himorishige/hatago-core';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolNamingConfig } from './types.js';
 

@@ -4,8 +4,8 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { IdlePolicy } from '@hatago/core';
-import { ServerState } from '@hatago/core';
+import type { IdlePolicy } from '@himorishige/hatago-core';
+import { ServerState } from '@himorishige/hatago-core';
 import type { ActivationManager } from './activation-manager.js';
 import type { ServerStateMachine } from './state-machine.js';
 

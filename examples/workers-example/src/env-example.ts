@@ -5,8 +5,11 @@
  * we create a GetEnv function from env bindings
  */
 
-import type { GetEnv } from '@hatago/core';
-import { expandConfig, validateEnvironmentVariables } from '@hatago/core';
+import type { GetEnv } from '@himorishige/hatago-core';
+import {
+  expandConfig,
+  validateEnvironmentVariables,
+} from '@himorishige/hatago-core';
 
 /**
  * Create GetEnv function for Workers environment

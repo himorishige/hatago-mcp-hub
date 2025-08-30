@@ -10,7 +10,7 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 ### 🎯 シンプル & 軽量
 
-- **設定不要で即座に起動** - `npx @hatago/cli serve`
+- **設定不要で即座に起動** - `npx @himorishige/hatago-mcp-hub`
 - **既存プロジェクトに非侵襲** - プロジェクトディレクトリを汚染しません
 - **モジュラー設計** - 必要な機能だけを選択して利用可能
 

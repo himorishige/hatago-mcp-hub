@@ -2,7 +2,7 @@
  * Router type definitions for MCP Hub
  */
 
-import type { Prompt, Resource, Tool } from '@hatago/core';
+import type { Prompt, Resource, Tool } from '@himorishige/hatago-core';
 
 /**
  * Target for routing decisions

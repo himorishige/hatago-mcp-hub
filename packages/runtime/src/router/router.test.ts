@@ -2,7 +2,7 @@
  * Tests for McpRouter - Tool, Resource, and Prompt routing
  */
 
-import type { Prompt, Resource, Tool } from '@hatago/core';
+import type { Prompt, Resource, Tool } from '@himorishige/hatago-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { McpRouter } from './router.js';
 import type {

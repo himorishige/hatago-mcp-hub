@@ -1,5 +1,5 @@
 /**
- * @hatago/runtime - Runtime components for Hatago MCP Hub
+ * @himorishige/hatago-runtime - Runtime components for Hatago MCP Hub
  *
  * This package provides core runtime functionality including:
  * - Platform abstraction layer

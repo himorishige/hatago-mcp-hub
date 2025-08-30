@@ -2,7 +2,7 @@
  * Hub types and interfaces
  */
 
-import type { Prompt, Resource, Tool } from '@hatago/core';
+import type { Prompt, Resource, Tool } from '@himorishige/hatago-core';
 
 /**
  * Server specification

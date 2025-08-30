@@ -15,7 +15,7 @@ import {
   type HatagoConfig,
   safeParseConfig,
   validateEnvironmentVariables,
-} from '@hatago/core';
+} from '@himorishige/hatago-core';
 import type { Logger } from './logger.js';
 
 /**

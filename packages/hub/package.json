@@ -1,6 +1,6 @@
 {
-  "name": "@hatago/hub",
-  "version": "0.2.0",
+  "name": "@himorishige/hatago-hub",
+  "version": "0.0.1",
   "description": "User-friendly facade for Hatago MCP Hub",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,7 +26,7 @@
     }
   },
   "scripts": {
-    "pretest": "pnpm -w -F @hatago/core -F @hatago/runtime -F @hatago/transport build",
+    "pretest": "pnpm -w -F @himorishige/hatago-core -F @himorishige/hatago-runtime -F @himorishige/hatago-transport build",
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
@@ -44,9 +44,9 @@
     "format": "biome format --write ./src"
   },
   "dependencies": {
-    "@hatago/core": "workspace:*",
-    "@hatago/runtime": "workspace:*",
-    "@hatago/transport": "workspace:*",
+    "@himorishige/hatago-core": "workspace:*",
+    "@himorishige/hatago-runtime": "workspace:*",
+    "@himorishige/hatago-transport": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "diff": "^8.0.2",
     "hono": "^4.9.4",
@@ -66,5 +66,9 @@
     "dist",
     "README.md"
   ],
+  "private": true,
+  "publishConfig": {
+    "access": "restricted"
+  },
   "license": "MIT"
 }

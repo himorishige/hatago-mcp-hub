@@ -1,6 +1,6 @@
 {
   "name": "hatago-workers-simple-example",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Minimal Cloudflare Workers example for Hatago MCP Hub (without progress notifications)",
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@hatago/hub": "workspace:*",
+    "@himorishige/hatago-hub": "workspace:*",
     "hono": "^4.9.4"
   },
   "devDependencies": {

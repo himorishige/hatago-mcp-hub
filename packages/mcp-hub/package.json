@@ -1,0 +1,86 @@
+{
+  "name": "@himorishige/hatago-mcp-hub",
+  "version": "0.0.1",
+  "description": "Unified MCP Hub for managing multiple Model Context Protocol servers",
+  "type": "module",
+  "main": "./dist/node/index.js",
+  "types": "./dist/node/index.d.ts",
+  "bin": {
+    "hatago": "./dist/node/cli.js",
+    "hatago-mcp-hub": "./dist/node/cli.js"
+  },
+  "exports": {
+    ".": {
+      "node": "./dist/node/cli.js",
+      "workerd": "./dist/workers/index.js",
+      "default": "./dist/node/cli.js",
+      "types": "./dist/node/cli.d.ts"
+    },
+    "./node": {
+      "import": "./dist/node/index.js",
+      "types": "./dist/node/index.d.ts"
+    },
+    "./workers": {
+      "import": "./dist/workers/index.js",
+      "types": "./dist/workers/index.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "prepublishOnly": "pnpm build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.4",
+    "hono": "^4.9.4",
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsdown": "^0.14.2",
+    "typescript": "~5.7.2",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "claude",
+    "hatago",
+    "hub",
+    "server",
+    "npx"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/himorishige/hatago-mcp-hub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/himorishige/hatago-mcp-hub/issues"
+  },
+  "homepage": "https://github.com/himorishige/hatago-mcp-hub#readme"
+}

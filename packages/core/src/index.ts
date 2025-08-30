@@ -1,5 +1,5 @@
 /**
- * @hatago/core - Core types and protocol definitions for Hatago MCP Hub
+ * @himorishige/hatago-core - Core types and protocol definitions for Hatago MCP Hub
  *
  * This package provides pure type definitions with no side effects.
  * All implementations should depend on these core types.

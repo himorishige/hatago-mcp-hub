@@ -10,9 +10,9 @@ export default defineConfig({
   clean: true,
   outDir: 'dist',
   external: [
-    '@hatago/core',
-    '@hatago/runtime',
-    '@hatago/transport',
+    '@himorishige/hatago-core',
+    '@himorishige/hatago-runtime',
+    '@himorishige/hatago-transport',
     '@modelcontextprotocol/sdk',
     'commander',
     'chalk'

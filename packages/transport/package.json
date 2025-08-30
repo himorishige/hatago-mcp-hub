@@ -1,6 +1,6 @@
 {
-  "name": "@hatago/transport",
-  "version": "0.1.0",
+  "name": "@himorishige/hatago-transport",
+  "version": "0.0.1",
   "description": "Transport abstractions and implementations for Hatago MCP Hub",
   "type": "module",
   "main": "./dist/index.js",
@@ -30,7 +30,7 @@
     "format": "biome format --write ./src"
   },
   "dependencies": {
-    "@hatago/core": "workspace:*",
+    "@himorishige/hatago-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.4"
   },
   "devDependencies": {
@@ -42,5 +42,9 @@
     "dist",
     "README.md"
   ],
+  "private": true,
+  "publishConfig": {
+    "access": "restricted"
+  },
   "license": "MIT"
 }

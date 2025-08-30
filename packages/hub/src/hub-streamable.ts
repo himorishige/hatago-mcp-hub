@@ -3,7 +3,7 @@
  * Provides SSE-based progress notifications
  */
 
-import type { SSEStream } from '@hatago/transport';
+import type { SSEStream } from '@himorishige/hatago-transport';
 import type { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import type { HatagoHub } from './hub.js';

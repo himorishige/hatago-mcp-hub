@@ -1,6 +1,6 @@
 {
   "name": "hatago-workers-example",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Minimal Cloudflare Workers example for Hatago MCP Hub",
   "type": "module",
   "scripts": {
@@ -12,8 +12,8 @@
     "test": "echo 'No tests for example project'"
   },
   "dependencies": {
-    "@hatago/core": "workspace:*",
-    "@hatago/hub": "workspace:*",
+    "@himorishige/hatago-core": "workspace:*",
+    "@himorishige/hatago-hub": "workspace:*",
     "hono": "^4.9.4"
   },
   "devDependencies": {

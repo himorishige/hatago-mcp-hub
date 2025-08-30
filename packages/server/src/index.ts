@@ -1,5 +1,5 @@
 /**
- * @hatago/server - MCP Hub Server Implementation
+ * @himorishige/hatago-server - MCP Hub Server Implementation
  *
  * This package provides the core server functionality for Hatago MCP Hub.
  * It can be used as a library or run directly via CLI.
@@ -35,7 +35,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
     mode = 'stdio',
     config: configPath = './hatago.config.json',
     host = '127.0.0.1',
-    port = 3929,
+    port = 3535,
     logLevel = 'info',
     verbose = false,
     quiet = false,

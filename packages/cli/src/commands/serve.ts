@@ -2,7 +2,7 @@
  * Serve command - Start the Hatago MCP Hub server
  */
 
-import { startServer } from '@hatago/server';
+import { startServer } from '@himorishige/hatago-server';
 import type { Command } from 'commander';
 
 interface ServeOptions {
@@ -45,7 +45,7 @@ export function setupServeCommand(program: Command): void {
             ? 'debug'
             : 'info';
 
-        // Start server using @hatago/server
+        // Start server using @himorishige/hatago-server
         await startServer({
           mode,
           config: options.config,

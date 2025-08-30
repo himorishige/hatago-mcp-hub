@@ -9,8 +9,8 @@ import type {
   Prompt,
   Resource,
   Tool,
-} from '@hatago/core';
-import { ServerState } from '@hatago/core';
+} from '@himorishige/hatago-core';
+import { ServerState } from '@himorishige/hatago-core';
 
 // Extended types for management features
 interface ServerConfig {

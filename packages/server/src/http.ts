@@ -5,8 +5,8 @@
  * Based on the proven hono-mcp-hub implementation.
  */
 
-import { createEventsEndpoint } from '@hatago/hub';
-import { createHub, handleMCPEndpoint } from '@hatago/hub/node';
+import { createEventsEndpoint } from '@himorishige/hatago-hub';
+import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/node';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';

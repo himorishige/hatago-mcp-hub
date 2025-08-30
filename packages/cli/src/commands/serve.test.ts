@@ -6,8 +6,8 @@ import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupServeCommand } from './serve.js';
 
-// Mock @hatago/server
-vi.mock('@hatago/server', () => ({
+// Mock @himorishige/hatago-server
+vi.mock('@himorishige/hatago-server', () => ({
   startServer: vi.fn(),
 }));
 
@@ -61,7 +61,7 @@ describe('setupServeCommand', () => {
 
   describe('Server Execution', () => {
     it('should start server with default options', async () => {
-      const { startServer } = await import('@hatago/server');
+      const { startServer } = await import('@himorishige/hatago-server');
       setupServeCommand(program);
 
       await program.parseAsync(['serve'], { from: 'user' });
@@ -78,7 +78,7 @@ describe('setupServeCommand', () => {
     });
 
     it('should start server in HTTP mode', async () => {
-      const { startServer } = await import('@hatago/server');
+      const { startServer } = await import('@himorishige/hatago-server');
       setupServeCommand(program);
 
       await program.parseAsync(['serve', '--http'], { from: 'user' });
@@ -91,7 +91,7 @@ describe('setupServeCommand', () => {
     });
 
     it('should use custom port and host', async () => {
-      const { startServer } = await import('@hatago/server');
+      const { startServer } = await import('@himorishige/hatago-server');
       setupServeCommand(program);
 
       await program.parseAsync(
@@ -108,7 +108,7 @@ describe('setupServeCommand', () => {
     });
 
     it('should use custom config file', async () => {
-      const { startServer } = await import('@hatago/server');
+      const { startServer } = await import('@himorishige/hatago-server');
       setupServeCommand(program);
 
       await program.parseAsync(['serve', '--config', 'custom.json'], {
@@ -123,7 +123,7 @@ describe('setupServeCommand', () => {
     });
 
     it('should set verbose log level', async () => {
-      const { startServer } = await import('@hatago/server');
+      const { startServer } = await import('@himorishige/hatago-server');
       setupServeCommand(program);
 
       await program.parseAsync(['serve', '--verbose'], { from: 'user' });
@@ -137,7 +137,7 @@ describe('setupServeCommand', () => {
     });
 
     it('should set quiet log level', async () => {
-      const { startServer } = await import('@hatago/server');
+      const { startServer } = await import('@himorishige/hatago-server');
       setupServeCommand(program);
 
       await program.parseAsync(['serve', '--quiet'], { from: 'user' });
@@ -151,7 +151,7 @@ describe('setupServeCommand', () => {
     });
 
     it('should prefer --http flag over --mode', async () => {
-      const { startServer } = await import('@hatago/server');
+      const { startServer } = await import('@himorishige/hatago-server');
       setupServeCommand(program);
 
       await program.parseAsync(['serve', '--mode', 'stdio', '--http'], {
@@ -168,7 +168,7 @@ describe('setupServeCommand', () => {
 
   describe('Error Handling', () => {
     it('should handle server start errors', async () => {
-      const { startServer } = await import('@hatago/server');
+      const { startServer } = await import('@himorishige/hatago-server');
       vi.mocked(startServer).mockRejectedValue(new Error('Server error'));
 
       setupServeCommand(program);

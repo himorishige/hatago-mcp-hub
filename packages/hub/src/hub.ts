@@ -11,8 +11,11 @@ import {
   SessionManager,
   ToolInvoker,
   ToolRegistry,
-} from '@hatago/runtime';
-import { SSEClientTransport, StreamableHTTPTransport } from '@hatago/transport';
+} from '@himorishige/hatago-runtime';
+import {
+  SSEClientTransport,
+  StreamableHTTPTransport,
+} from '@himorishige/hatago-transport';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CreateMessageRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { UnsupportedFeatureError } from './errors.js';
@@ -437,7 +440,7 @@ export class HatagoHub {
 
         // Dynamically import StdioClientTransport only when needed
         const transportModule = (await import(
-          '@hatago/transport/stdio'
+          '@himorishige/hatago-transport/stdio'
         )) as any;
         const { StdioClientTransport } = transportModule;
 
@@ -1004,7 +1007,7 @@ export class HatagoHub {
 
       // Validate config using Zod
       const { safeParseConfig, formatConfigError } = await import(
-        '@hatago/core/schemas'
+        '@himorishige/hatago-core/schemas'
       );
       const parseResult = safeParseConfig(newConfig);
 

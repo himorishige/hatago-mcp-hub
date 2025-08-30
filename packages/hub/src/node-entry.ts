@@ -1,12 +1,12 @@
 /**
- * Node.js entry point for @hatago/hub
+ * Node.js entry point for @himorishige/hatago-hub
  *
  * Initializes the platform with Node.js-specific implementations
  * before exporting the main hub functionality.
  */
 
-import { setPlatform } from '@hatago/runtime';
-import { createNodePlatform } from '@hatago/runtime/platform/node';
+import { setPlatform } from '@himorishige/hatago-runtime';
+import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 
 // Initialize Node.js platform
 setPlatform(createNodePlatform());

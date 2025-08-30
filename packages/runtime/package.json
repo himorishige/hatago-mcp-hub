@@ -1,6 +1,6 @@
 {
-  "name": "@hatago/runtime",
-  "version": "0.1.0",
+  "name": "@himorishige/hatago-runtime",
+  "version": "0.0.1",
   "description": "Runtime components for Hatago MCP Hub - session, registry, router, and retry management",
   "type": "module",
   "sideEffects": false,
@@ -44,7 +44,7 @@
     "biome:format": "npx biome format --write ./src"
   },
   "dependencies": {
-    "@hatago/core": "workspace:*",
+    "@himorishige/hatago-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.3"
   },
   "devDependencies": {
@@ -57,8 +57,8 @@
   "engines": {
     "node": ">=20"
   },
+  "private": true,
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "access": "restricted"
   }
 }

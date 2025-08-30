@@ -2,8 +2,8 @@
  * Hatago MCP Hub Server - CLI Entry Point
  *
  * Usage:
- *   npx @hatago/server [options]
- *   npx @hatago/server init [options]
+ *   npx @himorishige/hatago-server [options]
+ *   npx @himorishige/hatago-server init [options]
  *   hatago [options]
  *   hatago init [options]
  *
@@ -16,7 +16,7 @@
  *   --config <path>      Path to configuration file
  *   --watch              Watch config file for changes and auto-reload
  *   --host <string>      Host to bind (HTTP mode only, default: 127.0.0.1)
- *   --port <number>      Port to bind (HTTP mode only, default: 3929)
+ *   --port <number>      Port to bind (HTTP mode only, default: 3535)
  *   --log-level <level>  Log level (silent|error|warn|info|debug|trace)
  *   --help               Show help
  *   --version            Show version
@@ -48,7 +48,7 @@ async function handleInitCommand(args: ParsedArgs) {
     console.log('Next steps:');
     console.log(`1. Edit ${configPath} to configure your MCP servers`);
     console.log('2. Run the server:');
-    console.log(`   npx @hatago/server --config ${configPath}`);
+    console.log(`   npx @himorishige/hatago-server --config ${configPath}`);
     console.log('');
     console.log('For Claude Code integration, add to your .mcp.json:');
     console.log(
@@ -57,7 +57,12 @@ async function handleInitCommand(args: ParsedArgs) {
           mcpServers: {
             hatago: {
               command: 'npx',
-              args: ['@hatago/server', '--stdio', '--config', configPath],
+              args: [
+                '@himorishige/hatago-server',
+                '--stdio',
+                '--config',
+                configPath,
+              ],
             },
           },
         },
@@ -83,7 +88,7 @@ function showHelp() {
 Hatago MCP Hub Server
 
 Usage:
-  npx @hatago/server [command] [options]
+  npx @himorishige/hatago-server [command] [options]
   hatago [command] [options]
 
 Commands:
@@ -95,7 +100,7 @@ Options:
   --config <path>      Path to configuration file
   --watch              Watch config file for changes and auto-reload
   --host <string>      Host to bind (HTTP mode only, default: 127.0.0.1)
-  --port <number>      Port to bind (HTTP mode only, default: 3929)
+  --port <number>      Port to bind (HTTP mode only, default: 3535)
   --log-level <level>  Log level (silent|error|warn|info|debug|trace)
   --help               Show help
   --version            Show version
@@ -111,19 +116,19 @@ Environment Variables:
 
 Examples:
   # Create default configuration
-  npx @hatago/server init
+  npx @himorishige/hatago-server init
 
   # Create configuration in custom location
-  npx @hatago/server init --config ./my-config.json
+  npx @himorishige/hatago-server init --config ./my-config.json
 
   # STDIO mode for Claude Code
-  npx @hatago/server --stdio
+  npx @himorishige/hatago-server --stdio
 
   # HTTP mode for development
-  npx @hatago/server --http --port 8080
+  npx @himorishige/hatago-server --http --port 8080
 
   # With custom config
-  npx @hatago/server --config ./my-config.json
+  npx @himorishige/hatago-server --config ./my-config.json
 `);
 }
 
@@ -180,7 +185,7 @@ async function main() {
     } else {
       const host =
         (args.flags.host as string) ?? process.env.HATAGO_HOST ?? '127.0.0.1';
-      const port = Number(args.flags.port ?? process.env.HATAGO_PORT ?? 3929);
+      const port = Number(args.flags.port ?? process.env.HATAGO_PORT ?? 3535);
 
       logger.debug(`Starting in HTTP mode on ${host}:${port}`);
       await startHttp({

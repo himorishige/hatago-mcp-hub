@@ -1,6 +1,6 @@
 {
-  "name": "@hatago/server",
-  "version": "0.2.1",
+  "name": "@himorishige/hatago-server",
+  "version": "0.0.1",
   "description": "NPX-ready MCP Hub server for Claude Code and other AI assistants",
   "type": "module",
   "bin": {
@@ -31,8 +31,8 @@
     "biome:format": "npx biome format --write ./src"
   },
   "dependencies": {
-    "@hatago/core": "workspace:*",
-    "@hatago/hub": "workspace:*",
+    "@himorishige/hatago-core": "workspace:*",
+    "@himorishige/hatago-hub": "workspace:*",
     "@hono/node-server": "^1.14.0",
     "hono": "^4.9.4"
   },
@@ -46,9 +46,9 @@
   "engines": {
     "node": ">=20"
   },
+  "private": true,
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "access": "restricted"
   },
   "keywords": [
     "mcp",

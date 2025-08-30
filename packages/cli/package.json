@@ -1,6 +1,6 @@
 {
-  "name": "@hatago/cli",
-  "version": "0.1.0",
+  "name": "@himorishige/hatago-cli",
+  "version": "0.0.1",
   "description": "CLI for Hatago MCP Hub",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,10 +24,10 @@
     "README.md"
   ],
   "dependencies": {
-    "@hatago/core": "workspace:*",
-    "@hatago/runtime": "workspace:*",
-    "@hatago/transport": "workspace:*",
-    "@hatago/server": "workspace:*",
+    "@himorishige/hatago-core": "workspace:*",
+    "@himorishige/hatago-runtime": "workspace:*",
+    "@himorishige/hatago-transport": "workspace:*",
+    "@himorishige/hatago-server": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "commander": "^14.0.0",
     "chalk": "^5.3.0"
@@ -41,9 +41,9 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "private": true,
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "access": "restricted"
   },
   "keywords": [
     "hatago",

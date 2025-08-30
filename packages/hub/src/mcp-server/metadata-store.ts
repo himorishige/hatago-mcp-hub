@@ -5,7 +5,12 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { Prompt, Resource, ServerMetadata, Tool } from '@hatago/core';
+import type {
+  Prompt,
+  Resource,
+  ServerMetadata,
+  Tool,
+} from '@himorishige/hatago-core';
 
 /**
  * Server metadata with MCP capabilities

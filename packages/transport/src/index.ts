@@ -1,5 +1,5 @@
 /**
- * @hatago/transport - Transport abstractions for Hatago MCP Hub
+ * @himorishige/hatago-transport - Transport abstractions for Hatago MCP Hub
  *
  * This package provides transport implementations for different
  * communication protocols:
@@ -19,7 +19,7 @@ export type {
 
 // Node.js specific exports are in './stdio.js'
 // Use dynamic import when needed:
-// const { StdioClientTransport } = await import('@hatago/transport/stdio');
+// const { StdioClientTransport } = await import('@himorishige/hatago-transport/stdio');
 
 export { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 // Export type for StdioClientTransport without importing the implementation
