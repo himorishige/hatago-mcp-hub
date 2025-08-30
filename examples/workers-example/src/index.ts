@@ -42,9 +42,9 @@ function createWorkersGetEnv(env: Env): GetEnv {
     // Check direct env bindings
     if (
       key in env &&
-      typeof (env as Record<string, unknown>)[key] === 'string'
+      typeof (env as unknown as Record<string, unknown>)[key] === 'string'
     ) {
-      return (env as Record<string, unknown>)[key] as string;
+      return (env as unknown as Record<string, unknown>)[key] as string;
     }
     return undefined;
   };
@@ -52,7 +52,7 @@ function createWorkersGetEnv(env: Env): GetEnv {
 
 // MCP protocol endpoint
 app.all('/mcp', async (c) => {
-  const hub = createHub(c.env);
+  const hub = createHub();
 
   // Load and connect servers from KV config
   const rawConfig = await c.env.CONFIG_KV.get('mcp-servers', 'json');
@@ -81,7 +81,7 @@ app.all('/mcp', async (c) => {
 
 // SSE endpoint for progress notifications
 app.get('/sse', async (c) => {
-  const hub = createHub(c.env);
+  const hub = createHub();
 
   return createEventsEndpoint(hub)(c);
 });

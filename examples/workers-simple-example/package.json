@@ -1,25 +1,23 @@
 {
-  "name": "hatago-workers-example",
+  "name": "hatago-workers-simple-example",
   "version": "0.1.0",
-  "description": "Minimal Cloudflare Workers example for Hatago MCP Hub",
+  "description": "Minimal Cloudflare Workers example for Hatago MCP Hub (without progress notifications)",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types",
-    "type-check": "tsc --noEmit",
-    "test": "vitest"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@hatago/core": "workspace:*",
     "@hatago/hub": "workspace:*",
     "hono": "^4.9.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
     "@types/node": "^24.3.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
     "wrangler": "^4.27.0"
   }
 }

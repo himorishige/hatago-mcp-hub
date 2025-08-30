@@ -16,7 +16,7 @@ export function createWorkersGetEnv(env: Env): GetEnv {
   return (key: string) => {
     // 1. Check direct env bindings
     if (key in env) {
-      const value = (env as Record<string, unknown>)[key];
+      const value = (env as unknown as Record<string, unknown>)[key];
       if (typeof value === 'string') {
         return value;
       }
@@ -26,7 +26,7 @@ export function createWorkersGetEnv(env: Env): GetEnv {
     // Example: MY_API_KEY with underscores and uppercase
     const envKey = key.toUpperCase().replace(/-/g, '_');
     if (envKey in env) {
-      const value = (env as Record<string, unknown>)[envKey];
+      const value = (env as unknown as Record<string, unknown>)[envKey];
       if (typeof value === 'string') {
         return value;
       }

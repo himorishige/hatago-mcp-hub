@@ -90,6 +90,8 @@ export class EnhancedHatagoHub extends HatagoHub {
   private idleManager?: IdleManager;
   private metadataStore?: MetadataStore;
   private auditLogger?: AuditLogger;
+  private fileGuard?: FileAccessGuard;
+  private managementServer?: HatagoManagementServer;
 
   // Configuration
   private config: HatagoConfig = {

@@ -48,3 +48,5 @@ lerna-debug.log*
 
 mcp-hub-main/
 cline-main/
+
+.wrangler

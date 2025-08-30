@@ -1,31 +1,20 @@
 {
   "compilerOptions": {
-    "target": "ES2021",
+    "target": "ES2022",
     "module": "ES2022",
-    "lib": ["ES2021"],
+    "lib": ["ES2022"],
     "moduleResolution": "bundler",
-    // "types": [] // Now using generated worker-configuration.d.ts
-
-    // Type checking
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-
-    // Module handling
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "isolatedModules": true,
     "allowJs": true,
-
-    // Output
     "noEmit": true,
-
-    // Source maps for debugging
     "sourceMap": true,
     "inlineSources": true,
-
-    // JSX (if needed for Hono JSX)
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx"
   },

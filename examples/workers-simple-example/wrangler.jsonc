@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developers.cloudflare.com/schemas/wrangler-config.json",
+  "name": "hatago-workers-simple-example",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+}
