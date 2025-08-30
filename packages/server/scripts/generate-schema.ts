@@ -48,37 +48,46 @@ const schema = {
     },
     mcpServers: {
       type: "object",
-      description: "MCP servers configuration",
+      description: "MCP servers configuration (Claude Code compatible)",
       additionalProperties: {
         type: "object",
         properties: {
           type: {
             type: "string",
-            enum: ["local", "remote"],
-            description: "Server type",
+            enum: ["http", "sse"],
+            description: "Server type (optional for HTTP, required for SSE)",
           },
           command: {
             type: "string",
-            description: "Command to execute for local servers",
+            description: "Command to execute for STDIO servers",
           },
           args: {
             type: "array",
             items: { type: "string" },
             description: "Command arguments",
           },
+          cwd: {
+            type: "string",
+            description: "Working directory for STDIO servers",
+          },
           url: {
             type: "string",
-            description: "URL for remote servers",
+            description: "URL for HTTP/SSE servers",
           },
-          transport: {
-            type: "string",
-            enum: ["stdio", "http", "streamable-http", "sse"],
-            description: "Transport type",
+          headers: {
+            type: "object",
+            additionalProperties: { type: "string" },
+            description: "HTTP headers for remote servers",
           },
           env: {
             type: "object",
             additionalProperties: { type: "string" },
             description: "Environment variables",
+          },
+          disabled: {
+            type: "boolean",
+            description: "Whether this server is disabled",
+            default: false,
           },
         },
       },
@@ -97,13 +106,13 @@ writeFileSync(outputPath, JSON.stringify(schema, null, 2), "utf-8");
 
 console.log(`✅ Schema generated: ${outputPath}`);
 
-// Also generate an example configuration
+// Also generate an example configuration (Claude Code compatible)
 const exampleConfig = {
   $schema: "./config.schema.json",
   version: 1,
   logLevel: "info",
   http: {
-    port: 3000,
+    port: 3535,
     host: "localhost",
   },
   mcpServers: {
@@ -111,10 +120,18 @@ const exampleConfig = {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-filesystem", "."],
     },
-    deepwiki: {
-      type: "remote",
-      url: "https://mcp.deepwiki.com/mcp",
-      transport: "streamable-http",
+    "github-sse": {
+      type: "sse",
+      url: "https://api.github.com/mcp/sse",
+      headers: {
+        Authorization: "Bearer ${GITHUB_TOKEN}",
+      },
+    },
+    "openai-api": {
+      url: "https://api.openai.com/mcp",
+      headers: {
+        Authorization: "Bearer ${OPENAI_API_KEY}",
+      },
     },
     "local-script": {
       command: "node",

@@ -8,12 +8,12 @@ import { ServerState } from '@himorishige/hatago-core';
 
 // Extended server config type
 interface ServerConfig {
-  type?: 'local' | 'remote';
-  command?: string;
+  type?: 'http' | 'sse'; // Optional for HTTP, required for SSE
+  command?: string; // For STDIO servers
   args?: string[];
   env?: Record<string, string>;
   cwd?: string;
-  url?: string;
+  url?: string; // For HTTP/SSE servers
   headers?: Record<string, string>;
   disabled?: boolean;
   activationPolicy?: ActivationPolicy;

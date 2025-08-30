@@ -5,7 +5,12 @@
 
 import { existsSync, readFileSync, unwatchFile, watchFile } from 'node:fs';
 import type { ActivationPolicy, IdlePolicy } from '@himorishige/hatago-core';
-import { expandConfig, type ServerState } from '@himorishige/hatago-core';
+import {
+  expandConfig,
+  getServerTransportType,
+  type ServerState,
+  type ServerConfig as CoreServerConfig,
+} from '@himorishige/hatago-core';
 import { getPlatform, setPlatform } from '@himorishige/hatago-runtime';
 import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 import { HatagoHub } from './hub.js';
@@ -24,28 +29,15 @@ import type {
 } from './types.js';
 
 // Extended types for our management features
-interface ExtendedServerConfig {
-  type?: 'local' | 'remote';
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  cwd?: string;
-  url?: string;
-  headers?: Record<string, string>;
-  disabled?: boolean;
+type ExtendedServerConfig = CoreServerConfig & {
   activationPolicy?: ActivationPolicy;
   idlePolicy?: IdlePolicy;
-  timeouts?: {
-    connectMs?: number;
-    requestMs?: number;
-    keepAliveMs?: number;
-  };
   _lastError?: {
     message: string;
     timestamp: string;
     retryAfterMs?: number;
   };
-}
+};
 
 interface ExtendedHatagoConfig {
   version?: number;
@@ -292,15 +284,16 @@ export class EnhancedHatagoHub extends HatagoHub {
       throw new Error(`Server configuration not found: ${serverId}`);
     }
 
-    // Convert to ServerSpec
+    // Convert to ServerSpec based on transport type
+    const transportType = getServerTransportType(config as CoreServerConfig);
     const spec: ServerSpec = {
-      command: config.command,
-      args: config.args,
-      env: config.env,
-      cwd: config.cwd,
-      url: config.url,
-      type: config.type === 'remote' ? 'http' : undefined,
-      headers: config.headers,
+      command: 'command' in config ? (config as any).command : undefined,
+      args: 'args' in config ? (config as any).args : undefined,
+      env: 'env' in config ? (config as any).env : undefined,
+      cwd: 'cwd' in config ? (config as any).cwd : undefined,
+      url: 'url' in config ? (config as any).url : undefined,
+      type: transportType === 'stdio' ? undefined : transportType,
+      headers: 'headers' in config ? (config as any).headers : undefined,
     };
 
     // Add server to hub

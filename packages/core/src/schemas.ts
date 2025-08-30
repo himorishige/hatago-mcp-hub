@@ -51,17 +51,12 @@ const BaseServerConfigSchema = z.object({
   timeouts: TimeoutConfigSchema.optional().describe(
     'Server-specific timeout overrides',
   ),
-  env: z
-    .record(z.string())
-    .optional()
-    .describe('Environment variables for the server'),
 });
 
 /**
- * Local MCP server configuration (stdio transport)
+ * STDIO server configuration (Claude Code compatible - no type field)
  */
-export const LocalServerConfigSchema = BaseServerConfigSchema.extend({
-  type: z.literal('local').default('local'),
+export const StdioServerConfigSchema = BaseServerConfigSchema.extend({
   command: z.string().describe('Command to execute'),
   args: z
     .array(z.string())
@@ -69,30 +64,44 @@ export const LocalServerConfigSchema = BaseServerConfigSchema.extend({
     .default([])
     .describe('Command arguments'),
   cwd: z.string().optional().describe('Working directory'),
-});
+  env: z
+    .record(z.string())
+    .optional()
+    .describe('Environment variables for the server'),
+}).strict();
 
 /**
- * Remote MCP server configuration (HTTP/SSE transport)
+ * HTTP server configuration (type optional, defaults to streamable-http)
  */
-export const RemoteServerConfigSchema = BaseServerConfigSchema.extend({
-  type: z.literal('remote').default('remote'),
+export const HttpServerConfigSchema = BaseServerConfigSchema.extend({
+  type: z.literal('http').optional(),
   url: z.string().url().describe('Server URL'),
-  transport: z
-    .enum(['http', 'streamable-http', 'sse'])
-    .default('http')
-    .describe('Transport protocol'),
   headers: z
     .record(z.string())
     .optional()
     .describe('HTTP headers for the request'),
-});
+}).strict();
 
 /**
- * Union of all server types
+ * SSE server configuration (type required for SSE)
  */
-export const ServerConfigSchema = z.discriminatedUnion('type', [
-  LocalServerConfigSchema,
-  RemoteServerConfigSchema,
+export const SseServerConfigSchema = BaseServerConfigSchema.extend({
+  type: z.literal('sse'),
+  url: z.string().url().describe('Server URL'),
+  headers: z
+    .record(z.string())
+    .optional()
+    .describe('HTTP headers for the request'),
+}).strict();
+
+/**
+ * Union of all server types (Claude Code compatible)
+ * Order matters: SSE first (type required), then HTTP, then STDIO
+ */
+export const ServerConfigSchema = z.union([
+  SseServerConfigSchema,
+  HttpServerConfigSchema,
+  StdioServerConfigSchema,
 ]);
 
 /**
@@ -172,8 +181,9 @@ export const HatagoConfigSchema = z.object({
  * Inferred TypeScript types from schemas
  */
 export type TimeoutConfig = z.infer<typeof TimeoutConfigSchema>;
-export type LocalServerConfig = z.infer<typeof LocalServerConfigSchema>;
-export type RemoteServerConfig = z.infer<typeof RemoteServerConfigSchema>;
+export type StdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
+export type HttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
+export type SseServerConfig = z.infer<typeof SseServerConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 export type ToolNamingConfig = z.infer<typeof ToolNamingConfigSchema>;
 export type NotificationConfig = z.infer<typeof NotificationConfigSchema>;
@@ -210,4 +220,58 @@ export function formatConfigError(error: z.ZodError): string {
     return path ? `${path}: ${message}` : message;
   });
   return `Configuration validation failed:\n${messages.join('\n')}`;
+}
+
+/**
+ * Transport types for MCP servers
+ */
+export type TransportType = 'stdio' | 'http' | 'streamable-http' | 'sse';
+
+/**
+ * Determine the transport type for a server configuration
+ * @param config Server configuration
+ * @returns Transport type
+ */
+export function getServerTransportType(config: ServerConfig): TransportType {
+  // STDIO server (has command field)
+  if ('command' in config) {
+    return 'stdio';
+  }
+
+  // URL-based servers
+  if ('url' in config) {
+    // SSE server (type: 'sse')
+    if ('type' in config && config.type === 'sse') {
+      return 'sse';
+    }
+    // HTTP server (type: 'http' or no type)
+    // Default to streamable-http for better streaming support
+    return 'streamable-http';
+  }
+
+  // Should never reach here due to schema validation
+  throw new Error('Invalid server configuration: missing command or url');
+}
+
+/**
+ * Check if server config is STDIO type
+ */
+export function isStdioServer(
+  config: ServerConfig,
+): config is StdioServerConfig {
+  return 'command' in config;
+}
+
+/**
+ * Check if server config is HTTP type
+ */
+export function isHttpServer(config: ServerConfig): config is HttpServerConfig {
+  return 'url' in config && (!('type' in config) || config.type === 'http');
+}
+
+/**
+ * Check if server config is SSE type
+ */
+export function isSseServer(config: ServerConfig): config is SseServerConfig {
+  return 'url' in config && 'type' in config && config.type === 'sse';
 }

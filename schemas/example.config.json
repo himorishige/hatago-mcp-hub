@@ -3,7 +3,7 @@
   "version": 1,
   "logLevel": "info",
   "http": {
-    "port": 3000,
+    "port": 3535,
     "host": "localhost"
   },
   "mcpServers": {
@@ -15,10 +15,18 @@
         "."
       ]
     },
-    "deepwiki": {
-      "type": "remote",
-      "url": "https://mcp.deepwiki.com/mcp",
-      "transport": "streamable-http"
+    "github-sse": {
+      "type": "sse",
+      "url": "https://api.github.com/mcp/sse",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
+      }
+    },
+    "openai-api": {
+      "url": "https://api.openai.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${OPENAI_API_KEY}"
+      }
     },
     "local-script": {
       "command": "node",

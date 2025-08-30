@@ -39,21 +39,21 @@
     },
     "mcpServers": {
       "type": "object",
-      "description": "MCP servers configuration",
+      "description": "MCP servers configuration (Claude Code compatible)",
       "additionalProperties": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
             "enum": [
-              "local",
-              "remote"
+              "http",
+              "sse"
             ],
-            "description": "Server type"
+            "description": "Server type (optional for HTTP, required for SSE)"
           },
           "command": {
             "type": "string",
-            "description": "Command to execute for local servers"
+            "description": "Command to execute for STDIO servers"
           },
           "args": {
             "type": "array",
@@ -62,19 +62,20 @@
             },
             "description": "Command arguments"
           },
+          "cwd": {
+            "type": "string",
+            "description": "Working directory for STDIO servers"
+          },
           "url": {
             "type": "string",
-            "description": "URL for remote servers"
+            "description": "URL for HTTP/SSE servers"
           },
-          "transport": {
-            "type": "string",
-            "enum": [
-              "stdio",
-              "http",
-              "streamable-http",
-              "sse"
-            ],
-            "description": "Transport type"
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "HTTP headers for remote servers"
           },
           "env": {
             "type": "object",
@@ -82,6 +83,11 @@
               "type": "string"
             },
             "description": "Environment variables"
+          },
+          "disabled": {
+            "type": "boolean",
+            "description": "Whether this server is disabled",
+            "default": false
           }
         }
       }
