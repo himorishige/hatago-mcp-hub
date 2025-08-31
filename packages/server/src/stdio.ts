@@ -13,7 +13,11 @@ import type { Logger } from './logger.js';
 /**
  * Start the MCP server in STDIO mode
  */
-export async function startStdio(config: any, logger: Logger, watchConfig = false): Promise<void> {
+export async function startStdio(
+  config: { path?: string },
+  logger: Logger,
+  watchConfig = false
+): Promise<void> {
   // Ensure stdout is for protocol only
   process.stdout.setDefaultEncoding('utf8');
 
@@ -28,7 +32,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
   const hub = createHub({ configFile: config.path, watchConfig });
 
   // Set up notification handler to forward to Claude Code
-  hub.onNotification = async (notification: any) => {
+  hub.onNotification = async (notification: unknown) => {
     // Don't send notifications during shutdown
     if (isShuttingDown) {
       return;
@@ -36,12 +40,13 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
 
     logger.debug('[STDIO] Forwarding notification from child server:', notification);
     // Ensure it's a proper notification (no id field)
-    if (!notification.method) {
+    const notificationObj = notification as { method?: string; id?: unknown };
+    if (!notificationObj.method) {
       logger.warn('Invalid notification without method:', notification);
       return;
     }
     // Remove any id field to ensure it's treated as a notification
-    const { id, ...notificationWithoutId } = notification;
+    const { id, ...notificationWithoutId } = notificationObj;
     void id; // Explicitly ignore
     await sendMessage(notificationWithoutId, logger, isShuttingDown);
   };

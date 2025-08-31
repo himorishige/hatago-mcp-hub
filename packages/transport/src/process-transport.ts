@@ -10,7 +10,7 @@ import type { ITransport, ProcessTransportOptions } from './types.js';
  */
 export class ProcessTransport implements ITransport {
   private process?: ChildProcess;
-  private messageHandler?: (message: any) => void;
+  private messageHandler?: (message: unknown) => void;
   private errorHandler?: (error: Error) => void;
   private options: ProcessTransportOptions;
   private isStarted = false;
@@ -20,7 +20,7 @@ export class ProcessTransport implements ITransport {
     this.options = options;
   }
 
-  async send(message: any): Promise<void> {
+  async send(message: unknown): Promise<void> {
     if (!this.process || !this.process.stdin) {
       throw new Error('Transport not started or stdin not available');
     }
@@ -38,7 +38,7 @@ export class ProcessTransport implements ITransport {
     });
   }
 
-  onMessage(handler: (message: any) => void): void {
+  onMessage(handler: (message: unknown) => void): void {
     this.messageHandler = handler;
   }
 
@@ -61,13 +61,13 @@ export class ProcessTransport implements ITransport {
 
     // Handle stdout
     this.process.stdout?.on('data', (data) => {
-      this.readBuffer += data.toString();
+      this.readBuffer += (data as Buffer).toString();
       this.processReadBuffer();
     });
 
     // Handle stderr
     this.process.stderr?.on('data', (data) => {
-      console.error(`[ProcessTransport] stderr: ${data.toString()}`);
+      console.error(`[ProcessTransport] stderr: ${(data as Buffer).toString()}`);
     });
 
     // Handle process errors
@@ -105,7 +105,7 @@ export class ProcessTransport implements ITransport {
       if (!line.trim()) continue; // Skip empty lines
 
       try {
-        const parsed = JSON.parse(line);
+        const parsed = JSON.parse(line) as unknown;
         this.messageHandler?.(parsed);
       } catch (error) {
         console.error('[ProcessTransport] Failed to parse message:', error, 'Line:', line);

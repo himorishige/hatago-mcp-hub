@@ -57,7 +57,7 @@ export async function loadConfig(
 
     // Parse JSON/JSONC (strip comments)
     const jsonContent = stripJsonComments(content);
-    const rawData = JSON.parse(jsonContent);
+    const rawData = JSON.parse(jsonContent) as unknown;
 
     // First validate that all required environment variables are present
     try {
@@ -69,7 +69,7 @@ export async function loadConfig(
     }
 
     // Expand environment variables
-    const expandedData = expandConfig(rawData);
+    const expandedData = expandConfig(rawData as Record<string, unknown>);
 
     // Validate expanded configuration with Zod
     const parseResult = safeParseConfig(expandedData);

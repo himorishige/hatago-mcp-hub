@@ -13,7 +13,7 @@ import { cors } from 'hono/cors';
 import type { Logger } from './logger.js';
 
 interface HttpOptions {
-  config: any;
+  config: { path?: string };
   host: string;
   port: number;
   logger: Logger;
