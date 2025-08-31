@@ -21,7 +21,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
   let isShuttingDown = false;
 
   // Create hub instance
-  logger.info('[STDIO] Creating hub with config watch', {
+  logger.debug('[STDIO] Creating hub with config watch', {
     configFile: config.path,
     watchConfig
   });
@@ -34,7 +34,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
       return;
     }
 
-    logger.info('[STDIO] Forwarding notification from child server:', notification);
+    logger.debug('[STDIO] Forwarding notification from child server:', notification);
     // Ensure it's a proper notification (no id field)
     if (!notification.method) {
       logger.warn('Invalid notification without method:', notification);

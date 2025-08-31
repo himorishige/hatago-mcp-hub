@@ -70,16 +70,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
       throw new Error(`Invalid mode: ${mode}`);
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    if (errorMessage.includes('ENOENT') && errorMessage.includes('hatago.config.json')) {
-      logger.error(
-        'Configuration file not found. Create a hatago.config.json or specify a config file with --config'
-      );
-    } else {
-      logger.error('Failed to start server:', errorMessage);
-    }
-
+    // Re-throw to let the CLI handle error formatting
     throw error;
   }
 }

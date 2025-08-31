@@ -152,7 +152,23 @@ program
         watchConfig: options.watch
       });
     } catch (error) {
-      console.error('Failed to start server:', error);
+      // Handle specific errors with cleaner messages
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (errorMessage.includes('ENOENT') && errorMessage.includes('hatago.config.json')) {
+        console.error('\n❌ Configuration file not found');
+        console.error('');
+        console.error('   Create a configuration file with:');
+        console.error('     hatago init');
+        console.error('');
+        console.error('   Or specify a different config file:');
+        console.error('     hatago serve --config path/to/config.json');
+        console.error('');
+      } else if (errorMessage.includes('ENOENT')) {
+        console.error(`\n❌ File not found: ${errorMessage.split("'")[1] || 'unknown'}`);
+      } else {
+        console.error('Failed to start server:', error);
+      }
       process.exit(1);
     }
   });

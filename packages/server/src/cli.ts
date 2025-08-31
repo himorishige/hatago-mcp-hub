@@ -187,9 +187,16 @@ async function main() {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     if (errorMessage.includes('ENOENT') && errorMessage.includes('hatago.config.json')) {
-      logger.error(
-        "Configuration file not found. Run 'hatago init' to create one or specify a config file with --config"
-      );
+      console.error('\n❌ Configuration file not found');
+      console.error('');
+      console.error('   Create a configuration file with:');
+      console.error('     hatago init');
+      console.error('');
+      console.error('   Or specify a different config file:');
+      console.error('     hatago serve --config path/to/config.json');
+      console.error('');
+    } else if (errorMessage.includes('ENOENT')) {
+      console.error(`\n❌ File not found: ${errorMessage.split("'")[1] || 'unknown'}`);
     } else {
       logger.error('Failed to start server:', errorMessage);
     }

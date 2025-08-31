@@ -41,6 +41,8 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "serve:http": "node dist/node/cli.js serve --http --config ./hatago.config.json",
+    "serve:stdio": "node dist/node/cli.js serve --stdio --config ./hatago.config.json",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

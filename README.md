@@ -91,7 +91,7 @@ npx @himorishige/hatago-mcp-hub init --mode http   # StreamableHTTPモード
         "serve",
         "--stdio",
         "--config",
-        "./hatago.config.json"
+        "/path/to/hatago.config.json"
       ]
     }
   }
@@ -105,10 +105,16 @@ npx @himorishige/hatago-mcp-hub init --mode http   # StreamableHTTPモード
 ```toml
 [mcp_servers.hatago]
 command = "npx"
-args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "/path/to/hatago.config.json"]
 ```
 
 ### StreamableHTTPモードでの設定例
+
+#### HTTPモード起動
+
+```bash
+hatago serve --http --config /path/to/hatago.config.json
+```
 
 #### Claude Code、Gemini CLI
 
@@ -118,7 +124,7 @@ args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago
 {
   "mcpServers": {
     "hatago": {
-      "url": "http://localhost:3535"
+      "url": "http://localhost:3535/mcp"
     }
   }
 }
@@ -126,12 +132,14 @@ args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago
 
 #### Codex CLI
 
+2026年8月現在、Codex CLIはSTDIOモードのみサポートのため、[mcp-remote](https://github.com/geelen/mcp-remote)を使用
+
 `~/.codex/config.toml`に以下を追加：
 
 ```toml
 [mcp_servers.hatago]
-type = "http"
-url = "http://localhost:3535"
+command = "npx"
+args = ["-y", "mcp-remote", "http://localhost:3535/mcp"]
 ```
 
 ### サーバー起動

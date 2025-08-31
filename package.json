@@ -7,7 +7,9 @@
     "lint:fix": "eslint . --fix",
     "check": "pnpm format:check && pnpm lint && pnpm -r run typecheck",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test"
+    "test": "pnpm -r run test",
+    "serve:http": "pnpm -C packages/mcp-hub serve:http",
+    "serve:stdio": "pnpm -C packages/mcp-hub serve:stdio"
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",

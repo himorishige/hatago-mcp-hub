@@ -170,7 +170,7 @@ export class EnhancedHatagoHub extends HatagoHub {
    */
   private loadConfiguration(configFile: string): void {
     if (!existsSync(configFile)) {
-      this.logger.warn('Config file not found', { configFile });
+      // Don't log warning - handled by CLI
       return;
     }
 
