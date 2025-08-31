@@ -7,6 +7,9 @@
 // Core functionality from hub
 export {
   createHub,
+  // Streamable HTTP helpers (Node)
+  handleMCPEndpoint,
+  createEventsEndpoint,
   type HatagoHub,
   type HubConfig,
   type ServerSpec

@@ -14,6 +14,8 @@ Uses `tsx` for fast TypeScript execution without compilation step.
 
 ## Setup
 
+### Monorepo (this repo)
+
 ```bash
 # Install dependencies
 pnpm install
@@ -23,6 +25,25 @@ pnpm start
 
 # Development mode with auto-reload
 pnpm dev
+```
+
+### Outside monorepo (general users)
+
+```bash
+# 1) Create a new project
+mkdir hatago-node-example && cd $_ && npm init -y
+
+# 2) Install deps (Node.js >= 20)
+npm i @himorishige/hatago-mcp-hub hono @hono/node-server
+npm i -D typescript tsx @types/node
+
+# 3) Add scripts to package.json
+#   "scripts": { "start": "tsx src/index.ts", "dev": "tsx --watch src/index.ts" }
+
+# 4) Copy this example's src/index.ts and hatago.config.json
+
+# 5) Run
+npm run start
 ```
 
 ## Configuration
