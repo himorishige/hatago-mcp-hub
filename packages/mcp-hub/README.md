@@ -111,10 +111,7 @@ Add to your `.mcp.json`:
     "hatago": {
       "type": "http",
       "url": "http://localhost:3535",
-      "args": [
-        "--config",
-        "./hatago.config.json"
-      ]
+      "args": ["--config", "./hatago.config.json"]
     }
   }
 }
@@ -351,4 +348,3 @@ Contributions are welcome! Please see our [GitHub repository](https://github.com
 - [npm Package](https://www.npmjs.com/package/@himorishige/hatago-mcp-hub)
 - [GitHub Repository](https://github.com/himorishige/hatago-mcp-hub)
 - [MCP Protocol Specification](https://modelcontextprotocol.io/)
-
