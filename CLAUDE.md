@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hatago MCP Hub is a multi-runtime MCP (Model Context Protocol) Hub server built on top of Hono. It provides unified management for multiple MCP servers with tool name collision avoidance and session management. The architecture uses a platform abstraction layer to support multiple JavaScript runtimes.
+Hatago MCP Hub is a lightweight MCP (Model Context Protocol) hub server that manages multiple MCP servers. Built on Hono with a simplified architecture focusing on essential functionality while maintaining extensibility.
 
 ## Tech Stack
 
-- **Runtime**: Node.js 20+ / Cloudflare Workers / Deno / Bun
+- **Runtime**: Node.js 20+ / Cloudflare Workers (Bun/Deno in development)
 - **Language**: TypeScript with ESM modules
 - **Web Framework**: Hono
 - **MCP SDK**: @modelcontextprotocol/sdk (requires Zod schemas for tools)
@@ -22,72 +22,44 @@ Hatago MCP Hub is a multi-runtime MCP (Model Context Protocol) Hub server built 
 ```
 /
 ├── packages/
-│   ├── cli/            # CLI Tool (@hatago/cli)
+│   ├── mcp-hub/        # Main npm package (@himorishige/hatago-mcp-hub)
 │   │   ├── src/
-│   │   │   ├── index.ts        # CLI entry point
-│   │   │   └── commands/       # CLI commands
-│   │   │       ├── serve.ts    # Start server command
-│   │   │       ├── mcp.ts      # MCP management
-│   │   │       └── config.ts   # Config management
+│   │   │   └── node/
+│   │   │       └── cli.ts    # CLI entry point with subcommands
 │   │   └── package.json
 │   │
-│   ├── server/         # MCP Hub Server (@hatago/server)
+│   ├── server/         # Server implementation (@himorishige/hatago-server)
 │   │   ├── src/
-│   │   │   ├── index.ts        # API exports (startServer, etc.)
-│   │   │   ├── cli.ts          # Server CLI entry point
-│   │   │   ├── cli/            # CLI implementation
-│   │   │   ├── core/           # Core functionality
-│   │   │   │   ├── mcp-hub.ts            # Main hub (~500 lines)
-│   │   │   │   ├── mcp-hub-resources.ts  # Resource management
-│   │   │   │   ├── mcp-hub-tools.ts      # Tool management
-│   │   │   │   ├── mcp-hub-prompts.ts    # Prompt management
-│   │   │   │   ├── session-manager.ts    # Session management
-│   │   │   │   ├── tool-registry.ts      # Tool registry
-│   │   │   │   ├── resource-registry.ts  # Resource registry
-│   │   │   │   ├── prompt-registry.ts    # Prompt registry
-│   │   │   │   ├── config-manager.ts     # Simple config management
-│   │   │   │   └── types.ts              # Core types
-│   │   │   ├── servers/        # MCP server implementations
-│   │   │   │   ├── server-registry.ts    # Server management
-│   │   │   │   ├── npx-mcp-server.ts     # NPX server support
-│   │   │   │   ├── remote-mcp-server.ts  # Remote server
-│   │   │   │   ├── remote-mcp-connection.ts # Connection management
-│   │   │   │   └── custom-stdio-transport.ts # STDIO transport
-│   │   │   ├── storage/        # Data storage
-│   │   │   │   ├── unified-file-storage.ts  # File storage
-│   │   │   │   └── memory-registry-storage.ts # Memory storage
-│   │   │   ├── transport/      # Communication layer
-│   │   │   └── utils/          # Utilities
-│   │   │       ├── node-utils.ts    # Node.js utilities
-│   │   │       ├── logger.ts        # Logging
-│   │   │       ├── errors.ts        # Error handling
-│   │   │       ├── error-codes.ts   # Error code definitions
-│   │   │       ├── mutex.ts         # Mutex implementation
-│   │   │       └── zod-like.ts      # Schema conversion
+│   │   │   ├── index.ts      # API exports (startServer, generateDefaultConfig)
+│   │   │   ├── server.ts     # Main server implementation
+│   │   │   ├── config.ts     # Configuration management
+│   │   │   └── utils.ts      # Utilities
 │   │   └── package.json
 │   │
-│   ├── core/           # Core types (@hatago/core)
+│   ├── hub/            # Hub core (@himorishige/hatago-hub)
 │   │   ├── src/
+│   │   │   ├── hub.ts              # Main hub (~500 lines)
+│   │   │   ├── internal-tools.ts   # Internal management tools
+│   │   │   ├── types.ts            # Core types
+│   │   │   └── ...
 │   │   └── package.json
 │   │
-│   ├── runtime/        # Runtime abstraction (@hatago/runtime)
-│   │   ├── src/
-│   │   │   ├── platform/       # Platform abstraction layer
-│   │   │   │   ├── index.ts    # Platform interfaces
-│   │   │   │   ├── node.ts     # Node.js implementation
-│   │   │   │   └── workers.ts  # Cloudflare Workers implementation
-│   │   │   └── utils/          # Runtime utilities
-│   │   └── package.json
-│   │
-│   └── transport/      # Transport implementations (@hatago/transport)
-│       ├── src/
-│       └── package.json
+│   ├── core/           # Shared types (@himorishige/hatago-core)
+│   ├── runtime/        # Runtime components (@himorishige/hatago-runtime)
+│   ├── transport/      # Transport layer (@himorishige/hatago-transport)
+│   └── cli/            # CLI tools (development only)
 │
 ├── schemas/            # JSON Schema definitions
 │   ├── config.schema.json    # Configuration schema
 │   └── example.config.json   # Example configuration
 │
+├── examples/           # Usage examples
+│   ├── node-example/   # Node.js example with TypeScript
+│   └── workers-example/# Cloudflare Workers example
+│
 └── docs/               # Documentation
+    ├── architecture.md # System architecture
+    └── configuration.md# Configuration guide
 ```
 
 ## Essential Development Commands
@@ -109,58 +81,161 @@ pnpm format       # Format code
 pnpm lint         # Lint with auto-fix
 pnpm check        # Format + Lint + Type check
 
-# Development (in packages/server directory)
+# Development
 cd packages/server
 pnpm dev          # Start dev server with watch mode
 
-# CLI usage (after building)
-npx @hatago/cli serve           # Start MCP server in STDIO mode
-npx @hatago/cli serve --http    # Start MCP server in HTTP mode
+# Using the CLI (after building)
+npx @himorishige/hatago-mcp-hub init   # Initialize config
+npx @himorishige/hatago-mcp-hub serve  # Start server
 ```
 
-## CLI Commands (hatago)
+## CLI Commands
+
+The main package provides `hatago` command with subcommands:
 
 ```bash
+# Configuration
+hatago init              # Create configuration file (interactive)
+hatago init --mode stdio # Create config for Claude Code
+hatago init --mode http  # Create config for debugging
+
 # Server Management
-hatago serve              # Start MCP Hub server
-hatago status            # Check server status
-hatago reload            # Reload configuration
+hatago serve             # Start server in STDIO mode
+hatago serve --stdio     # Explicit STDIO mode
+hatago serve --http      # HTTP mode for debugging
+hatago serve --watch     # Enable hot reload
+hatago serve --verbose   # Debug logging
+```
 
-# Development Tools
-hatago dev <server>      # Start development server with hot reload
-hatago inspect <target>  # Inspect MCP server capabilities
-hatago generate types <output> # Generate TypeScript types
-hatago generate mcp --from-openapi <spec> # Generate MCP from OpenAPI
+## Configuration
 
-# System Monitoring
-hatago health            # Health check status
-hatago metrics           # Display metrics
-hatago logs --follow     # Follow logs
-hatago trace <trace-id>  # Show trace details
+### Basic Structure
 
-# NPX MCP Server Management
-hatago npx add <package>     # Add NPX MCP server
-hatago npx list              # List NPX servers
-hatago npx remove <id>       # Remove NPX server
-hatago npx start/stop <id>   # Start/stop server
-hatago npx status <id>       # Server details
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "server-id": {
+      // Local/NPX server
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": { "KEY": "${ENV_VAR}" },
+      "cwd": "./path",
 
-# MCP Configuration (Claude Code Compatible)
-hatago mcp list                              # List MCP servers
-hatago mcp add <name> -- <cmd> [args...]     # Add local/NPX server (Claude Code format)
-hatago mcp add --transport sse <name> <url>  # Add remote SSE server
-hatago mcp add --transport http <name> <url> # Add remote HTTP server
-hatago mcp remove <name>                      # Remove MCP server
+      // Remote server
+      "url": "https://api.example.com/mcp",
+      "type": "http" | "sse",
+      "headers": { "Authorization": "Bearer ${TOKEN}" },
 
-# Examples:
-hatago mcp add myserver -- node ./server.js  # Local Node.js server
-hatago mcp add pyserver -- python ./srv.py   # Local Python server
-hatago mcp add fs -- npx -y @modelcontextprotocol/server-filesystem /tmp
+      // Common
+      "disabled": false
+    }
+  }
+}
+```
 
-# Session Management
-hatago session list          # List active sessions
-hatago session delete <id>   # Delete session
-hatago session clear         # Clear all sessions
+### Environment Variable Expansion
+
+Claude Code compatible syntax:
+
+- `${VAR}` - Required variable
+- `${VAR:-default}` - With default value
+
+## MCP Implementation Notes
+
+### Key Features
+
+- **Hot Reload**: Config watching with 1-second debounce
+- **Progress Notifications**: Transparent forwarding from child servers
+- **Tool Collision Avoidance**: Automatic prefixing with server ID
+- **Session Management**: Independent sessions per client
+- **Internal Tools**: `_internal_hatago_status`, `_internal_hatago_reload`, `_internal_hatago_list_servers`
+
+### Protocol Compliance
+
+#### STDIO Transport
+
+```typescript
+// ✅ Correct: Newline-delimited JSON (MCP standard)
+writer.write(JSON.stringify(message) + '\n');
+
+// ❌ Wrong: LSP-style Content-Length header
+writer.write(`Content-Length: ${length}\r\n\r\n${message}`);
+```
+
+#### Notifications
+
+```typescript
+// ✅ Correct: No id field in notifications
+const notification = {
+  jsonrpc: '2.0',
+  method: 'notifications/progress',
+  params: { ... }
+};
+
+// ❌ Wrong: Including id in notifications
+const notification = {
+  jsonrpc: '2.0',
+  id: 123,  // Notifications don't have id
+  method: 'notifications/progress',
+  params: { ... }
+};
+```
+
+#### Tool Definitions
+
+```typescript
+// ✅ Correct: Using Zod schemas
+server.registerTool(
+  'tool_name',
+  {
+    inputSchema: z.object({
+      param: z.string().describe('Description')
+    })
+  },
+  handler
+);
+
+// ❌ Wrong: Plain objects
+server.registerTool(
+  'tool_name',
+  {
+    inputSchema: { param: z.string() } // Not a Zod object
+  },
+  handler
+);
+```
+
+### MCP SDK Usage
+
+#### High-Level API (Recommended)
+
+```typescript
+// Connect client
+await client.connect(transport);
+
+// Use tools
+const tools = await client.listTools();
+const result = await client.callTool({
+  name: 'tool_name',
+  arguments: args
+});
+
+// Use resources
+const resources = await client.listResources();
+const content = await client.readResource({ uri: 'resource_uri' });
+```
+
+#### Low-Level API (Requires Zod Schema)
+
+```typescript
+import { ListToolsResultSchema } from '@modelcontextprotocol/sdk/types.js';
+
+// Must provide Zod schema as second argument
+const result = await client.request({ method: 'tools/list', params: {} }, ListToolsResultSchema);
 ```
 
 ## Code Style Guidelines
@@ -170,417 +245,106 @@ hatago session clear         # Clear all sessions
 - **File naming**: kebab-case
 - **MCP tool names**: snake_case (per MCP spec)
 - **TypeScript**: Strict mode enabled
-- **Imports**: Automatically organized by Biome
+- **Imports**: Organized by Biome
 
-## MCP Implementation Notes
+## Testing & Quality
 
-### Server Configuration
+```bash
+# Run tests
+pnpm test
 
-- Server runs on port 3000 by default (HTTP mode)
-- Session management uses `mcp-session-id` header
-- Tool naming follows MCP specification (snake_case)
-- Error responses follow JSON-RPC 2.0 format
-- **Local servers**: Use Zod schema objects for tool inputs, not JSON Schema
-- **Working directory**: Local servers use config file location as default cwd
+# Type checking
+pnpm typecheck
 
-### Hot Reload & Dynamic Updates
-
-- **Config File Watching**: Automatic reload on config changes
-  - Enabled by default in development mode
-  - Debounced with 1-second delay to batch rapid changes
-  - Gracefully reconnects servers without losing sessions
-
-- **Tool List Updates**: Dynamic tool registration
-  - `notifications/tools/list_changed` sent when tools change
-  - Toolset revision and hash tracking
-  - Clients can refresh tool list without reconnecting
-
-### Notification Forwarding
-
-- **Progress Notifications**: Child server notifications forwarded to clients
-  - `notifications/progress` for long-running operations
-  - Transparent pass-through maintains original parameters
-  - Works with both local and remote MCP servers
-
-### Internal Management Tools
-
-The hub provides internal management tools (prefixed with `_internal_`):
-
-- **`_internal_hatago_status`**: Returns status of all servers
-
-  ```json
-  {
-    "servers": {
-      "serverId": {
-        "status": "connected",
-        "type": "npx",
-        "toolCount": 5,
-        "resourceCount": 2
-      }
-    },
-    "totalTools": 10,
-    "totalResources": 4
-  }
-  ```
-
-- **`_internal_hatago_reload`**: Manually trigger config reload
-
-  ```json
-  {
-    "success": true,
-    "message": "Configuration reloaded",
-    "serversReloaded": ["server1", "server2"]
-  }
-  ```
-
-- **`_internal_hatago_list_servers`**: List all configured servers
-  ```json
-  {
-    "servers": [
-      {
-        "id": "serverId",
-        "type": "npx",
-        "status": "connected",
-        "config": { ... }
-      }
-    ]
-  }
-  ```
-
-### MCP SDK Client Usage (重要)
-
-#### ✅ 正しい使い方 - 高レベルAPI
-
-```typescript
-// Client接続（自動的にinitializeも実行）
-await client.connect(transport);
-
-// ツール操作
-const tools = await client.listTools();
-const result = await client.callTool({
-  name: 'tool_name',
-  arguments: args
-});
-
-// リソース操作
-const resources = await client.listResources();
-const content = await client.readResource({ uri: 'resource_uri' });
-
-// プロンプト操作
-const prompts = await client.listPrompts();
-const prompt = await client.getPrompt({
-  name: 'prompt_name',
-  arguments: args
-});
-```
-
-#### ❌ 避けるべき使い方 - 低レベルAPI（Zodスキーマなし）
-
-```typescript
-// これはエラーになる
-const result = await (client as any).request({
-  method: 'tools/list',
-  params: {}
-}); // Error: resultSchema.parse is not a function
-```
-
-#### ⚠️ 低レベルAPIを使う場合（上級者向け）
-
-```typescript
-import { ListToolsResultSchema } from '@modelcontextprotocol/sdk/types.js';
-
-// 第2引数にZodスキーマが必須
-const result = await client.request(
-  { method: 'tools/list', params: {} },
-  ListToolsResultSchema // Zodスキーマを渡す
-);
-```
-
-### MCP Server実装の注意点
-
-#### STDIO Protocol
-
-```typescript
-// ✅ 正しい：改行区切りJSON (MCP標準)
-writer.write(JSON.stringify(message) + '
-');
-
-// ❌ 間違い：LSPスタイルのContent-Lengthヘッダー
-writer.write(`Content-Length: ${length}
-
-${message}`);
-```
-
-#### Notification Format
-
-```typescript
-// ✅ 正しい：通知にidフィールドなし
-const notification = {
-  jsonrpc: '2.0',
-  method: 'notifications/progress',
-  params: { ... }
-};
-
-// ❌ 間違い：通知にidフィールドを含める
-const notification = {
-  jsonrpc: '2.0',
-  id: 123,  // 通知にはidを含めない
-  method: 'notifications/progress',
-  params: { ... }
-};
-```
-
-#### Tool定義でのZodスキーマ
-
-```javascript
-// ✅ 正しい：z.object()を使用
-server.registerTool(
-  'tool_name',
-  {
-    inputSchema: z.object({
-      param: z.string().describe('Parameter description')
-    })
-  },
-  handler
-);
-
-// ❌ 間違い：プレーンオブジェクト
-server.registerTool(
-  'tool_name',
-  {
-    inputSchema: {
-      param: z.string() // これはZodオブジェクトではない
-    }
-  },
-  handler
-);
+# Linting & formatting
+pnpm check  # Runs format + lint + typecheck
 ```
 
 ## Version History
 
-### v0.2.0 - 2024-12-29 (New Features from Cline Implementation)
+### v0.0.1 (Current)
 
-#### Added Features
+- Simplified architecture (38+ files removed)
+- Core functionality focus (~500 lines hub)
+- Full MCP compliance
+- Multi-transport support (STDIO, HTTP, SSE)
+- Hot reload capability
+- Progress notification forwarding
+- Internal management tools
+- Environment variable expansion
 
-##### Phase 1: Foundation (Configuration & Validation)
+## Architecture Highlights
 
-- **Zod Schema Validation**: Runtime type-safe configuration using Zod schemas
-- **Disabled Server Flag**: Skip servers with `disabled: true` in config
-- **Fine-grained Timeouts**: Separate `connectMs`, `requestMs`, `keepAliveMs` settings
+### Simplified Design
 
-##### Phase 2: Notification System
+- Removed complex state machines and activation managers
+- Direct server management without abstraction layers
+- Simple configuration with JSON schema validation
+- Minimal external dependencies
 
-- **NotificationManager**: Simple notification system with rate limiting
-- **Server Status Notifications**: Track server lifecycle (starting, connected, error)
-- **Config Reload Notifications**: Alert on configuration changes
-- **Timeout Notifications**: Warn when operations timeout
+### Platform Support
 
-##### Phase 3: Config File Watching
+- **Node.js**: Full support (local, NPX, remote servers)
+- **Cloudflare Workers**: Remote servers only
+- **Bun/Deno**: Work in progress
 
-- **Hot Reload Support**: `--watch` flag enables automatic config reloading
-- **Intelligent Reload**: Detects added/removed/modified servers
-- **Debounced Updates**: 1-second delay to batch rapid changes
+### Key Components
 
-#### Configuration Example
+- **Hub** (`packages/hub/src/hub.ts`): Central coordinator
+- **Server Registry**: Manages different server types
+- **Session Manager**: Client isolation
+- **Tool/Resource/Prompt Registry**: MCP entity management
 
-```json
+## Development Guidelines
+
+### When Making Changes
+
+1. **Follow existing patterns** - Check neighboring code for conventions
+2. **Maintain simplicity** - Avoid unnecessary abstractions
+3. **Test your changes** - Run `pnpm test` and `pnpm check`
+4. **Update documentation** - Keep CLAUDE.md and docs/ current
+5. **Use semantic commits** - feat:, fix:, docs:, etc.
+
+### Adding Features
+
+1. Consider if it aligns with "lightweight hub" philosophy
+2. Implement in appropriate package
+3. Add tests
+4. Update configuration schema if needed
+5. Document in relevant files
+
+### Common Tasks
+
+- **Add new server type**: Implement in `packages/runtime/src/`
+- **Add transport**: Implement in `packages/transport/src/`
+- **Add CLI command**: Update `packages/mcp-hub/src/node/cli.ts`
+- **Update config**: Modify `schemas/config.schema.json`
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Environment variable not found**: Export variable or use default syntax
+2. **Server connection failed**: Check URL, credentials, network
+3. **Tool name collision**: Hub automatically prefixes with server ID
+4. **Hot reload not working**: Ensure `--watch` flag is used
+
+### Debug Mode
+
+```bash
+# Enable debug logging
+hatago serve --verbose
+
+# Or in config
 {
-  "version": 1,
-  "notifications": {
-    "enabled": true,
-    "rateLimitSec": 60,
-    "severity": ["info", "warn", "error"]
-  },
-  "mcpServers": {
-    "example": {
-      "disabled": false,
-      "timeouts": {
-        "connectMs": 5000,
-        "requestMs": 30000,
-        "keepAliveMs": 60000
-      }
-    }
-  }
+  "logLevel": "debug"
 }
 ```
 
-## Version History
+## Important Notes
 
-### v0.3.0 - 2025-01-30
-
-#### New Features
-
-- **Hot Reload Support**: Automatic configuration reload without server restart
-  - File watching with debouncing (1-second delay)
-  - Graceful server reconnection
-  - Maintains existing sessions during reload
-  - `notifications/tools/list_changed` notification support
-
-- **Progress Notification Forwarding**: Child server progress notifications
-  - Forwards `notifications/progress` from child servers to clients
-  - Supports long-running operations with real-time updates
-  - Transparent pass-through of notification parameters
-
-- **Internal Management Tools**: Built-in server management capabilities
-  - `_internal_hatago_status`: Get status of all connected servers
-  - `_internal_hatago_reload`: Manually trigger configuration reload
-  - `_internal_hatago_list_servers`: List all configured servers with details
-
-#### Technical Improvements
-
-- **MCP Protocol Compliance**: Proper newline-delimited JSON for STDIO
-  - Fixed LSP Content-Length header issue
-  - Correct notification format (no `id` field)
-  - Proper JSON-RPC 2.0 compliance
-
-- **Tool Versioning**: Dynamic tool list updates
-  - Toolset revision tracking
-  - Hash-based change detection
-  - `notifications/tools/list_changed` support
-
-### v0.2.1 - 2025-01-29
-
-- **Added Claude Code Compatible Environment Variable Expansion**
-  - Support for `${VAR}` syntax (required variables)
-  - Support for `${VAR:-default}` syntax (with defaults)
-  - Automatic validation at startup
-  - Expansion in: command, args, env, url, headers fields
-  - Full compatibility with Claude Code .mcp.json format
-
-### v0.2.0 - 2025-01-28
-
-- **Added Configuration Validation with Zod Schemas**
-- **Added Notification System with Rate Limiting**
-- **Added Config File Watching (--watch flag)**
-- **Added Server Disabled Flag Support**
-- **Added Fine-grained Timeout Configuration**
-
-## Simplified to Lite Version (v0.0.1) - 2024-12-26
-
-### Major Simplification
-
-The project has been significantly simplified from its original implementation to create a lightweight, maintainable version.
-
-### Removed Features (38+ files deleted)
-
-#### Phase 1: Unnecessary Features
-
-- `workspace-manager.ts` - Workspace management
-- `shared-session-manager.ts` - Shared session functionality
-- `diagnostics.ts` - Diagnostic tools
-- `prompt-registry.ts` - Prompt management (re-added in Phase 6)
-- `npx-cache.ts` - NPX caching
-- `protocol-negotiator.ts` - Protocol negotiation
-- `protocol/` directory - Complex protocol handling
-- `crypto.ts` - Encryption utilities
-- `health.ts` - Health check system
-
-#### Phase 2: Storage Consolidation
-
-- `cli-registry-storage.ts`
-- `registry-storage-factory.ts`
-- `file-registry-storage.ts`
-  → Consolidated into `unified-file-storage.ts`
-
-#### Phase 3: Runtime Abstraction Removal
-
-- `runtime/runtime-factory.ts`
-- `runtime/runtime-factory-functional.ts`
-- `runtime/types.ts`
-- `runtime/cloudflare-workers.ts`
-- `runtime/node.ts`
-- `runtime/index.ts`
-  → Replaced with simple `node-utils.ts`
-
-#### Phase 4: Client Components Removal
-
-- `client/hatago-client.ts`
-- `client/index.ts`
-- `config/loader-with-result.ts`
-- `core/protocol-negotiator-simple.ts`
-- `core/protocol/` directory
-- `transport/factory.ts`
-- `utils/crypto.ts` and related tests
-
-#### Phase 5-6: Core Module Refactoring
-
-- Extracted resource management to `mcp-hub-resources.ts`
-- Extracted tool management to `mcp-hub-tools.ts`
-- Extracted prompts management to `mcp-hub-prompts.ts`
-- Simplified `mcp-hub.ts` to ~500 lines (from ~1000+ lines)
-- Added `remote-mcp-connection.ts` for connection management
-- Re-added `prompt-registry.ts` with simplified implementation
-
-### Current Architecture
-
-- **Platform Abstraction**: Runtime-agnostic design via platform interfaces
-- **Multi-Runtime Support**: Node.js, Cloudflare Workers, Deno, Bun
-- **Simple Storage**: 2 types (File/Memory)
-- **Basic Config**: Direct config loading without generation
-- **Minimal Dependencies**: Reduced external library usage
-
-### Key Features Retained
-
-- **Core MCP Hub**: Tool/Resource/Prompt management
-- **Multi-Server**: NPX, Remote, and Local server support
-- **Multi-Transport**: STDIO, HTTP, SSE support
-- **Session Management**: Independent sessions for multiple AI clients
-- **Error Handling**: Robust error recovery
-- **Basic Logging**: Simple debug logging
-- **Tool Collision Avoidance**: Namespace prefixing for tools
-
-## Package Architecture
-
-### Package Roles
-
-- **@hatago/cli**: Entry point for users, provides CLI commands
-- **@hatago/server**: Core MCP hub server implementation with API
-- **@hatago/core**: Shared types and interfaces
-- **@hatago/runtime**: Platform abstraction layer
-- **@hatago/transport**: Transport protocol implementations
-
-### Integration with Claude Code
-
-Claude Code uses `npx @hatago/cli serve` as the entry point to start the MCP server in STDIO mode. The CLI package delegates to the server package's API for actual implementation.
-
-## Working with this Codebase
-
-### Development Workflow
-
-1. Always run code quality checks after changes: `pnpm format && pnpm lint && pnpm check`
-2. Verify build succeeds: `pnpm -r build`
-3. Run tests to ensure no regressions: `pnpm test`
-4. Use development server for rapid iteration: `cd packages/server && pnpm dev`
-5. Test CLI commands: `npx @hatago/cli [command]`
-
-### Architecture Guidelines
-
-1. **Platform Abstraction Layer**: All runtime-specific code through platform interfaces
-2. **Runtime Detection**: Automatic detection and adaptation to runtime environment
-3. **Minimal Layers**: Core functionality with clean separation of concerns
-4. **Error Handling**: Simple error handling with recovery
-5. **Dependency Injection**: Platform capabilities injected into core components
-
-### Code Standards
-
-1. Follow Hono patterns for HTTP routing
-2. Maintain MCP specification compliance for tool names (snake_case)
-3. Use simple error handling patterns
-4. Direct Node.js API usage
-5. Minimal external dependencies
-
-### Testing Strategy
-
-1. Basic unit tests for core functionality
-2. Test main transport types (stdio, http, sse)
-3. Test server management (NPX, Remote, Local)
-4. Test session management
-5. Test error recovery
-
-### Performance Considerations
-
-1. Keep implementation simple and direct
-2. Avoid unnecessary abstractions
-3. Implement proper resource cleanup
-4. Minimize memory footprint
-5. Fast startup and response times
+- Always use `@himorishige/hatago-mcp-hub` as the npm package name
+- Main entry is through `hatago` CLI with subcommands
+- Configuration uses `mcpServers` (not `servers`)
+- Schema URL: https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json
+- Support for Claude Code, Codex CLI, Cursor, Windsurf, etc.
