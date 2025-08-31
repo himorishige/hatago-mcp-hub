@@ -10,7 +10,7 @@
  * - ❌ No session persistence (stateless)
  */
 
-import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/workers';
+import { createHub, handleMCPEndpoint } from '@himorishige/hatago-mcp-hub/workers';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { hatagoConfig } from './hatago.config.js';

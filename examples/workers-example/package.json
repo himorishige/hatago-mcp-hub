@@ -12,8 +12,7 @@
     "test": "echo 'No tests for example project'"
   },
   "dependencies": {
-    "@himorishige/hatago-core": "workspace:*",
-    "@himorishige/hatago-hub": "workspace:*",
+    "@himorishige/hatago-mcp-hub": "workspace:*",
     "hono": "^4.9.4"
   },
   "devDependencies": {

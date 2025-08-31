@@ -48,6 +48,13 @@ export type {
   ConnectionResult
 } from '@himorishige/hatago-core';
 
+// Re-export env utilities for configuration expansion/validation
+export {
+  expandConfig,
+  validateEnvironmentVariables
+} from '@himorishige/hatago-core';
+export type { GetEnv } from '@himorishige/hatago-core';
+
 // Workers-specific utilities (if available)
 // Note: These may not exist yet
 // export {
