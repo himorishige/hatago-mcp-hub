@@ -66,56 +66,67 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 ## 📦 インストール
 
 ```bash
-# CLIツール（推奨）
-npm install -g @hatago/cli
+# npxで直接実行（推奨）
+npx @himorishige/hatago-mcp-hub init    # 設定ファイル生成
+npx @himorishige/hatago-mcp-hub serve   # サーバー起動
 
-# またはプロジェクトローカル
-npm install @hatago/cli
+# グローバルインストール
+npm install -g @himorishige/hatago-mcp-hub
+hatago init
+hatago serve
 
-# またはnpxで直接実行
-npx @hatago/cli serve
-
-# プログラム的に使用する場合
-npm install @hatago/server   # サーバーAPI
-npm install @hatago/core     # 型定義
-npm install @hatago/runtime  # ランタイムコンポーネント
-npm install @hatago/transport # トランスポート実装
+# プロジェクトローカル
+npm install @himorishige/hatago-mcp-hub
 ```
 
 ## 🚀 クイックスタート
 
-### Claude Code / VS Code統合
+### 初期設定
 
-プロジェクトルートに`.mcp.json`を作成：
+```bash
+# 対話的な設定ファイル生成
+npx @himorishige/hatago-mcp-hub init
+
+# モード指定での生成
+npx @himorishige/hatago-mcp-hub init --mode stdio  # Claude Code用
+npx @himorishige/hatago-mcp-hub init --mode http   # デバッグ用
+```
+
+### Claude Code統合
+
+`.mcp.json`に以下を追加：
 
 ```json
 {
   "mcpServers": {
     "hatago": {
       "command": "npx",
-      "args": ["-y", "@hatago/cli@latest", "serve", "--quiet"]
+      "args": [
+        "@himorishige/hatago-mcp-hub",
+        "serve",
+        "--stdio",
+        "--config",
+        "./hatago.config.json"
+      ]
     }
   }
 }
 ```
 
-### MCPサーバーの追加
+### サーバー起動
 
 ```bash
-# Claude Code互換コマンド（推奨）
-hatago mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem /path/to/dir
+# STDIOモード（Claude Code用）
+hatago serve --stdio
 
-# リモートサーバーの追加（SSE）
-hatago mcp add --transport sse linear https://mcp.linear.app/sse
+# HTTPモード（デバッグ/テスト用）
+hatago serve --http --port 3535
 
-# リモートサーバーの追加（HTTP）
-hatago mcp add --transport http deepwiki https://mcp.deepwiki.com
+# 設定ファイル監視モード
+hatago serve --stdio --watch
 
-# 登録済みサーバーの確認
-hatago mcp list
-
-# サーバーの削除
-hatago mcp remove filesystem
+# カスタム設定ファイル
+hatago serve --config ./my-config.json
 ```
 
 ### 設定ファイル例
@@ -124,36 +135,28 @@ hatago mcp remove filesystem
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
-  "notifications": {
-    "enabled": true,
-    "rateLimitSec": 60,
-    "severity": ["warn", "error"]
-  },
   "mcpServers": {
     "filesystem": {
-      "type": "local",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
-      "disabled": false,
-      "timeouts": {
-        "connectMs": 5000,
-        "requestMs": 30000,
-        "keepAliveMs": 60000
-      }
-    },
-    "github": {
-      "type": "local",
-      "command": "${MCP_PATH}/github-server",
-      "args": ["--token", "${GITHUB_TOKEN}"],
       "env": {
         "LOG_LEVEL": "${LOG_LEVEL:-info}"
       }
     },
+    "deepwiki": {
+      "url": "https://mcp.deepwiki.com/sse",
+      "type": "sse"
+    },
+    "github": {
+      "command": "${MCP_PATH}/github-server",
+      "args": ["--token", "${GITHUB_TOKEN}"]
+    },
     "api-server": {
-      "type": "remote",
       "url": "${API_BASE_URL:-https://api.example.com}/mcp",
+      "type": "http",
       "headers": {
         "Authorization": "Bearer ${API_KEY}"
       }
@@ -167,22 +170,23 @@ hatago mcp remove filesystem
 - `${VAR}` - 環境変数VARの値に展開（未定義の場合はエラー）
 - `${VAR:-default}` - VARが未定義の場合はdefaultを使用
 
-### 開発モード起動
+### MCP Inspectorでのテスト
 
 ```bash
-# 設定ファイル監視モード（ホットリロード）
-hatago serve --http --config hatago.config.json --watch
+# HTTPモードで起動
+hatago serve --http --port 3535
 
-# HTTPモードでデバッグ
-hatago serve --http --port 3929 --log-level debug
+# MCP Inspectorで接続
+# URL: http://localhost:3535/sse
+# または https://inspector.mcphub.com/ を使用
 ```
 
 ## 📚 ドキュメント
 
 ### 🎯 ユーザー向け
 
-- [**詳細README**](server/README.md) - CLIコマンドリファレンス
-- [**設定ガイド**](docs/configuration.md) - 設定ファイルとオプション
+- [**パッケージREADME**](packages/mcp-hub/README.md) - npmパッケージドキュメント
+- [**設定スキーマ**](schemas/config.schema.json) - 設定ファイルのJSON Schema
 
 ### 🔧 開発者向け
 
@@ -195,13 +199,16 @@ hatago serve --http --port 3929 --log-level debug
 ### モノレポ構造
 
 ```
-hatago-hub/
+hatago-mcp-hub/
 ├── packages/
-│   ├── @hatago/core/      # 型定義とインターフェース
-│   ├── @hatago/runtime/   # セッション、レジストリ、ルーター
-│   ├── @hatago/transport/ # トランスポート実装
-│   └── @hatago/cli/       # CLIコマンド
-└── server/                # MCP Hub サーバー本体
+│   ├── mcp-hub/        # メインパッケージ（リリース対象）
+│   ├── server/         # サーバー実装
+│   ├── core/           # 型定義とインターフェース
+│   ├── runtime/        # セッション、レジストリ、ルーター
+│   ├── transport/      # トランスポート実装
+│   ├── hub/            # Hubコア実装
+│   └── cli/            # CLIコマンド（開発中）
+└── schemas/            # JSON Schema定義
 ```
 
 ### システム構成
@@ -220,15 +227,17 @@ hatago-hub/
 ### パッケージ依存関係
 
 ```
-@hatago/core (純粋な型定義)
+@himorishige/hatago-core (純粋な型定義)
      ↑
-@hatago/runtime (セッション・レジストリ管理)
+@himorishige/hatago-runtime (セッション・レジストリ管理)
      ↑
-@hatago/transport (通信レイヤー)
+@himorishige/hatago-transport (通信レイヤー)
      ↑
-@hatago/cli (CLIコマンド)
+@himorishige/hatago-hub (Hubコア実装)
      ↑
-server (Hatagoサーバー本体)
+@himorishige/hatago-server (サーバー本体)
+     ↑
+@himorishige/hatago-mcp-hub (メインパッケージ)
 ```
 
 ### マルチランタイム対応
@@ -271,18 +280,23 @@ pnpm -r build
 # テスト実行
 pnpm test
 
-# 開発サーバー起動（packages/serverディレクトリで実行）
-cd packages/server
+# 開発サーバー起動
+cd packages/mcp-hub
 pnpm dev
+
+# または
+npx . serve --http --watch
 ```
 
 ### パッケージ構成
 
-- `@hatago/cli` - CLIツール（エントリーポイント）
-- `@hatago/server` - MCPハブサーバー実装
-- `@hatago/core` - 共通型定義とインターフェース
-- `@hatago/runtime` - ランタイムコンポーネント
-- `@hatago/transport` - トランスポート層実装
+- `@himorishige/hatago-mcp-hub` - メインパッケージ（npmリリース対象）
+- `@himorishige/hatago-server` - MCPハブサーバー実装
+- `@himorishige/hatago-hub` - Hubコア機能
+- `@himorishige/hatago-core` - 共通型定義とインターフェース
+- `@himorishige/hatago-runtime` - ランタイムコンポーネント
+- `@himorishige/hatago-transport` - トランスポート層実装
+- `@himorishige/hatago-cli` - CLIツール（開発中）
 
 ## 📝 ライセンス
 
