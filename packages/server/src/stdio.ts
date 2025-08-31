@@ -42,6 +42,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
     }
     // Remove any id field to ensure it's treated as a notification
     const { id, ...notificationWithoutId } = notification;
+    void id; // Explicitly ignore
     await sendMessage(notificationWithoutId, logger, isShuttingDown);
   };
 
@@ -180,13 +181,13 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
     } else {
       logger.error('STDIN error:', error);
     }
-    shutdown('STDIN_ERROR');
+    void shutdown('STDIN_ERROR');
   });
 
   process.stdin.on('end', () => {
     isShuttingDown = true; // Set flag immediately
     logger.info('STDIN closed, shutting down...');
-    shutdown('STDIN_CLOSE');
+    void shutdown('STDIN_CLOSE');
   });
 
   // Start reading
@@ -227,6 +228,7 @@ async function sendMessage(message: any, logger: Logger, isShuttingDown = false)
  */
 async function processMessage(hub: HatagoHub, message: any, logger: Logger): Promise<any> {
   const { method, params, id } = message;
+  void params; // Currently unused but kept for future use
 
   try {
     // Handle different MCP methods

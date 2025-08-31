@@ -503,7 +503,7 @@ export class HatagoHub {
             },
             undefined, // Use default schema
             {
-              onprogress: async (progress: any) => {
+              onprogress: (progress: any) => {
                 this.logger.debug(`[Hub] Tool progress from ${id}/${tool.name}`, progress);
 
                 // Forward progress notification to parent
@@ -520,12 +520,12 @@ export class HatagoHub {
 
                 // Call the progress callback if provided
                 if (progressCallback) {
-                  await progressCallback(progress);
+                  void progressCallback(progress);
                 }
 
                 // Forward to parent via onNotification
                 if (this.onNotification) {
-                  await this.onNotification(notification);
+                  void this.onNotification(notification);
                 }
               }
             }
@@ -630,29 +630,31 @@ export class HatagoHub {
 
     // Set up message handler for StreamableHTTP
     if (this.streamableTransport) {
-      this.streamableTransport.onmessage = async (message) => {
-        // Check if this is a sampling response
-        const msg = message as any;
-        if (msg.id && typeof msg.id === 'string' && msg.id.startsWith('sampling-')) {
-          const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
-          const solver = solvers?.get(msg.id);
-          if (solver) {
-            solvers?.delete(msg.id);
-            if (msg.error) {
-              solver.reject(new Error(msg.error.message || 'Sampling failed'));
-            } else {
-              solver.resolve(msg.result);
+      this.streamableTransport.onmessage = (message) => {
+        void (async () => {
+          // Check if this is a sampling response
+          const msg = message as any;
+          if (msg.id && typeof msg.id === 'string' && msg.id.startsWith('sampling-')) {
+            const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
+            const solver = solvers?.get(msg.id);
+            if (solver) {
+              solvers?.delete(msg.id);
+              if (msg.error) {
+                solver.reject(new Error(msg.error.message || 'Sampling failed'));
+              } else {
+                solver.resolve(msg.result);
+              }
+              // No further processing needed for sampling responses
+              return;
             }
-            // No further processing needed for sampling responses
-            return;
           }
-        }
 
-        // Handle message through existing JSON-RPC logic
-        const result = await this.handleJsonRpcRequest(message);
-        if (result && this.streamableTransport) {
-          await this.streamableTransport.send(result);
-        }
+          // Handle message through existing JSON-RPC logic
+          const result = await this.handleJsonRpcRequest(message);
+          if (result && this.streamableTransport) {
+            await this.streamableTransport.send(result);
+          }
+        })();
       };
     }
 
@@ -1445,7 +1447,7 @@ export class HatagoHub {
             // Check if this is a progress for a sampling request
             const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
             if (solvers) {
-              for (const [_samplingId, solver] of solvers.entries()) {
+              for (const [, solver] of solvers.entries()) {
                 if (solver.progressToken === notificationProgressToken) {
                   // Forward progress to the server that requested sampling
                   const client = this.clients.get(solver.serverId);
@@ -1545,7 +1547,7 @@ export class HatagoHub {
                 },
                 undefined,
                 {
-                  onprogress: async (progress: any) => {
+                  onprogress: (progress: any) => {
                     this.logger.info(`[Hub] Direct client onprogress`, {
                       serverId,
                       toolName,
@@ -1586,12 +1588,12 @@ export class HatagoHub {
                     // Forward to parent via onNotification callback (for STDIO mode)
                     if (hasOnNotification && this.onNotification) {
                       this.logger.debug('[Hub] Forwarding notification via onNotification handler');
-                      await this.onNotification(notification);
+                      void this.onNotification(notification);
                     }
 
                     // Send to StreamableHTTP client
                     if (hasStreamable) {
-                      await transport.send(notification);
+                      void transport.send(notification);
                     }
 
                     // Also send to SSE clients if registered (HTTP mode only)
@@ -1821,7 +1823,7 @@ export class HatagoHub {
     if (existingId) return existingId;
 
     const newId = crypto.randomUUID();
-    this.sessions.create(newId);
+    void this.sessions.create(newId);
     return newId;
   }
 }

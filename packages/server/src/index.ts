@@ -49,28 +49,23 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   const finalLogLevel = quiet ? 'error' : verbose ? 'debug' : logLevel;
   const logger = new Logger(finalLogLevel);
 
-  try {
-    // Load configuration
-    const config = await loadConfig(configPath, logger);
+  // Load configuration
+  const config = await loadConfig(configPath, logger);
 
-    // Start server based on mode
-    if (mode === 'stdio') {
-      logger.debug('Starting in STDIO mode');
-      await startStdio(config, logger, watchConfig);
-    } else if (mode === 'http') {
-      logger.debug(`Starting in HTTP mode on ${host}:${port}`);
-      await startHttp({
-        config,
-        host,
-        port,
-        logger,
-        watchConfig
-      });
-    } else {
-      throw new Error(`Invalid mode: ${mode}`);
-    }
-  } catch (error) {
-    // Re-throw to let the CLI handle error formatting
-    throw error;
+  // Start server based on mode
+  if (mode === 'stdio') {
+    logger.debug('Starting in STDIO mode');
+    await startStdio(config, logger, watchConfig);
+  } else if (mode === 'http') {
+    logger.debug(`Starting in HTTP mode on ${host}:${port}`);
+    await startHttp({
+      config,
+      host,
+      port,
+      logger,
+      watchConfig
+    });
+  } else {
+    throw new Error(`Invalid mode: ${mode}`);
   }
 }

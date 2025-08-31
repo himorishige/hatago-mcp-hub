@@ -84,7 +84,7 @@ export class StreamableHTTPTransport implements Transport {
     }
 
     // Close all streams
-    for (const [_streamId, streamData] of this.streamMapping.entries()) {
+    for (const [, streamData] of this.streamMapping.entries()) {
       if (streamData.keepaliveInterval) {
         clearInterval(streamData.keepaliveInterval);
       }

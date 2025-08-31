@@ -38,7 +38,7 @@ export class SSEManager {
   addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: any): void {
     // Set up keepalive interval
     const keepAliveInterval = setInterval(() => {
-      this.sendKeepAliveToClient(clientId);
+      void this.sendKeepAliveToClient(clientId);
     }, 30000); // Every 30 seconds
 
     this.clients.set(clientId, {
@@ -52,7 +52,7 @@ export class SSEManager {
     this.logger.debug('[SSE] Client connected', { clientId });
 
     // Send initial connection event
-    this.sendToClient(clientId, 'connected', {
+    void this.sendToClient(clientId, 'connected', {
       clientId,
       timestamp: Date.now()
     });
@@ -109,7 +109,7 @@ export class SSEManager {
   sendProgress(progressToken: string, progress: ProgressNotification): void {
     const clientId = this.progressRoutes.get(progressToken);
     if (clientId) {
-      this.sendToClient(clientId, 'progress', progress);
+      void this.sendToClient(clientId, 'progress', progress);
     } else {
       this.logger.warn('[SSE] No client found for progress token', {
         progressToken
