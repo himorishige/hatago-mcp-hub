@@ -22,12 +22,12 @@ async function main() {
 
   // Create hub instance with config
   const configPath = process.env.HATAGO_CONFIG || './hatago.config.json';
-  const hub = (createHub as (options: { configFile: string }) => unknown)({
+  const hub = createHub({
     configFile: configPath
   });
 
   // Initialize hub (loads config and connects to servers)
-  await (hub as { start: () => Promise<void> }).start();
+  await hub.start();
 
   // Create Hono app
   const app = new Hono();
@@ -53,12 +53,11 @@ async function main() {
 
   // MCP protocol endpoint
   app.all('/mcp', async (c) => {
-    return (handleMCPEndpoint as (hub: unknown, c: unknown) => Promise<Response>)(hub, c);
+    return handleMCPEndpoint(hub, c);
   });
 
   // SSE endpoint for progress notifications
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  app.get('/sse', createEventsEndpoint(hub) as any);
+  app.get('/sse', createEventsEndpoint(hub));
 
   // Start HTTP server
   const port = Number(process.env.PORT || 3000);
@@ -83,7 +82,7 @@ async function main() {
     console.log(`\n👋 Received ${signal}, shutting down gracefully...`);
 
     try {
-      await (hub as { stop: () => Promise<void> }).stop();
+      await hub.stop();
       server.close();
       console.log('✅ Shutdown complete');
       process.exit(0);

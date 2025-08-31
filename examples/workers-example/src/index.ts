@@ -10,8 +10,12 @@
 
 import type { GetEnv } from '@himorishige/hatago-core';
 import { expandConfig, validateEnvironmentVariables } from '@himorishige/hatago-core';
-import { createEventsEndpoint } from '@himorishige/hatago-hub';
-import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/workers';
+import {
+  createEventsEndpoint,
+  createHub,
+  handleMCPEndpoint,
+  type ServerSpec
+} from '@himorishige/hatago-hub/workers';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
@@ -40,9 +44,8 @@ app.get('/health', (c) => {
 function createWorkersGetEnv(env: Env): GetEnv {
   return (key: string) => {
     // Check direct env bindings
-    if (key in env && typeof (env as unknown as Record<string, unknown>)[key] === 'string') {
-      return (env as unknown as Record<string, unknown>)[key] as string;
-    }
+    const value: unknown = Reflect.get(env as object, key);
+    if (typeof value === 'string') return value;
     return undefined;
   };
 }
@@ -62,11 +65,11 @@ app.all('/mcp', async (c) => {
       validateEnvironmentVariables(rawConfig, getEnv);
 
       // Expand environment variables in config
-      const config = expandConfig(rawConfig, getEnv);
+      const config = expandConfig(rawConfig, getEnv) as Record<string, ServerSpec>;
 
       // Add each server to the hub
       for (const [id, serverSpec] of Object.entries(config)) {
-        await hub.addServer(id, serverSpec as Record<string, unknown>);
+        await hub.addServer(id, serverSpec);
       }
     } catch (error) {
       console.error('Failed to connect servers:', error);
@@ -77,9 +80,8 @@ app.all('/mcp', async (c) => {
 });
 
 // SSE endpoint for progress notifications
-app.get('/sse', async (c) => {
+app.get('/sse', (c) => {
   const hub = createHub();
-
   return createEventsEndpoint(hub)(c);
 });
 
