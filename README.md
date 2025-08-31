@@ -7,7 +7,7 @@
 
 ## 概要
 
-Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統合管理する軽量なハブサーバーです。Claude Code、Cursor、VS Codeなどの開発ツールから、様々なMCPサーバーを一元的に利用できます。
+Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統合管理する軽量なハブサーバーです。Claude Code、Codex CLI、Cursor、Windsurf、VS Codeなどの開発ツールから、さまざまなMCPサーバーを一元的に利用できます。
 
 ## ✨ 特徴
 
@@ -15,7 +15,6 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 - **設定不要で即座に起動** - `npx @himorishige/hatago-mcp-hub`
 - **既存プロジェクトに非侵襲** - プロジェクトディレクトリを汚染しません
-- **モジュラー設計** - 必要な機能だけを選択して利用可能
 
 ### 🔌 豊富な接続性
 
@@ -23,27 +22,18 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 - **リモートMCPプロキシ** - HTTPベースのMCPサーバーへの透過的な接続
 - **NPXサーバー統合** - npmパッケージのMCPサーバーを動的に管理
 
-### 🛡️ エンタープライズ対応
-
-- **セッション管理** - 独立したAIクライアントセッション
-- **エラーリカバリ** - サーキットブレーカー、リトライ機構
-- **進捗通知** - SSEによるリアルタイムプログレス通知
-- **観測性** - 構造化ログ、メトリクス、診断ツール
-
-### 🔧 新機能 (v0.3.0)
+### 🏮 その他の機能
 
 #### ホットリロード & 動的更新
 
 - **設定ファイル監視** - 設定変更時の自動リロード（再起動不要）
-- **グレースフルな再接続** - セッション維持しながらサーバー再接続
 - **ツールリスト動的更新** - `notifications/tools/list_changed`通知サポート
-- **1秒デバウンス** - 高速な連続変更をバッチ処理
 
 #### プログレス通知転送
 
 - **子サーバー通知転送** - `notifications/progress`の透過的な転送
 - **長時間実行操作対応** - リアルタイムな進捗更新
-- **ローカル/リモート両対応** - すべてのMCPサーバータイプで動作
+- **ローカル/リモート両対応** - 多くのMCPサーバータイプで動作
 
 #### 内部管理ツール
 
@@ -51,17 +41,10 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 - **`_internal_hatago_reload`** - 手動での設定リロードトリガー
 - **`_internal_hatago_list_servers`** - 設定済みサーバーの詳細リスト
 
-#### プロトコル準拠の改善
-
-- **適切なSTDIO実装** - 改行区切りJSON（LSPヘッダーではなくMCP標準）
-- **通知フォーマット修正** - 通知メッセージに`id`フィールドを含めない
-- **JSON-RPC 2.0準拠** - 完全な仕様準拠
-
 #### 既存機能の改善
 
 - **環境変数展開** - Claude Code互換の`${VAR}`と`${VAR:-default}`構文
 - **設定検証** - Zodスキーマによる型安全な設定
-- **ツールバージョニング** - ハッシュベースの変更検出
 
 ## 📦 インストール
 
@@ -88,11 +71,13 @@ npm install @himorishige/hatago-mcp-hub
 npx @himorishige/hatago-mcp-hub init
 
 # モード指定での生成
-npx @himorishige/hatago-mcp-hub init --mode stdio  # Claude Code用
-npx @himorishige/hatago-mcp-hub init --mode http   # デバッグ用
+npx @himorishige/hatago-mcp-hub init --mode stdio  # STDIOモード
+npx @himorishige/hatago-mcp-hub init --mode http   # StreamableHTTPモード
 ```
 
-### Claude Code統合
+### STDIOモードでの設定例
+
+#### Claude Code、Gemini CLI
 
 `.mcp.json`に以下を追加：
 
@@ -113,14 +98,58 @@ npx @himorishige/hatago-mcp-hub init --mode http   # デバッグ用
 }
 ```
 
+#### Codex CLI
+
+`~/.codex/config.toml`に以下を追加：
+
+```toml
+[mcp_servers.hatago]
+command = "npx"
+args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+```
+
+### StreamableHTTPモードでの設定例
+
+#### Claude Code、Gemini CLI
+
+`.mcp.json`に以下を追加：
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "command": "npx",
+      "args": [
+        "@himorishige/hatago-mcp-hub",
+        "serve",
+        "--stdio",
+        "--config",
+        "./hatago.config.json"
+      ]
+    }
+  }
+}
+```
+
+#### Codex CLI
+
+`~/.codex/config.toml`に以下を追加：
+
+```toml
+[mcp_servers.hatago]
+type = "http"
+url = "http://localhost:3535"
+args = ["--config", "./hatago.config.json"]
+```
+
 ### サーバー起動
 
 ```bash
-# STDIOモード（Claude Code用）
+# STDIOモード
 hatago serve --stdio
 
-# HTTPモード（デバッグ/テスト用）
-hatago serve --http --port 3535
+# HTTPモード
+hatago serve --http
 
 # 設定ファイル監視モード
 hatago serve --stdio --watch
@@ -156,7 +185,6 @@ hatago serve --config ./my-config.json
     },
     "api-server": {
       "url": "${API_BASE_URL:-https://api.example.com}/mcp",
-      "type": "http",
       "headers": {
         "Authorization": "Bearer ${API_KEY}"
       }
@@ -177,8 +205,7 @@ hatago serve --config ./my-config.json
 hatago serve --http --port 3535
 
 # MCP Inspectorで接続
-# URL: http://localhost:3535/sse
-# または https://inspector.mcphub.com/ を使用
+# URL: http://localhost:3535/mcp
 ```
 
 ## 📚 ドキュメント
@@ -191,8 +218,6 @@ hatago serve --http --port 3535
 ### 🔧 開発者向け
 
 - [**アーキテクチャガイド**](docs/architecture.md) - システム設計とプラットフォーム抽象化
-- [**パッケージ開発**](docs/packages.md) - モジュール開発ガイド
-- [**API リファレンス**](docs/api.md) - パッケージAPI詳細
 
 ## 🏗️ アーキテクチャ
 
@@ -246,23 +271,23 @@ Hatagoは、プラットフォーム抽象化レイヤーにより複数のJavaS
 
 - **Node.js** - フル機能（ローカル/NPX/リモートサーバー）
 - **Cloudflare Workers** - リモートサーバーのみ（KVストレージ）
-- **Deno** - Node.js実装を使用（ネイティブ対応予定）
-- **Bun** - Node.js実装を使用（最適化予定）
+- **Deno** - WIP
+- **Bun** - WIP
 
 ## 🛠️ 技術スタック
 
-- **Runtime**: Node.js 20+ / Bun / Deno / Cloudflare Workers
+- **Runtime**: Node.js 20+ / Cloudflare Workers
 - **Framework**: [Hono](https://hono.dev/) - 軽量Webフレームワーク
 - **Protocol**: [MCP](https://modelcontextprotocol.io/) - Model Context Protocol
 - **Language**: TypeScript (ESM)
 - **Build**: tsdown
 - **Test**: Vitest
-- **Lint/Format**: Biome
+- **Lint/Format**: ESLint / Prettier
 - **Package Manager**: pnpm (モノレポ管理)
 
 ## 🤝 コントリビューション
 
-現在プライベート開発中ですが、将来的にはオープンソース化を予定しています。
+Hatagoは、オープンソースで開発されています。
 
 ### 開発セットアップ
 

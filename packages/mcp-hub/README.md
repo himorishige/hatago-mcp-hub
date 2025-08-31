@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@himorishige/hatago-mcp-hub?logo=npm&color=cb0000)](https://www.npmjs.com/package/@himorishige/hatago-mcp-hub)
 [![GitHub Release](https://img.shields.io/github/v/release/himorishige/hatago-mcp-hub?display_name=tag&sort=semver)](https://github.com/himorishige/hatago-mcp-hub/releases)
 
-Unified MCP (Model Context Protocol) Hub for managing multiple MCP servers.
+Unified MCP (Model Context Protocol) Hub for managing multiple MCP servers. Works with Claude Code, Codex CLI, Cursor, Windsurf, VS Code and other MCP-compatible tools.
 
 ## Quick Start
 
@@ -47,8 +47,8 @@ Create a default configuration file with interactive mode selection:
 
 ```bash
 hatago init                    # Interactive mode selection
-hatago init --mode stdio       # Create config for Claude Code
-hatago init --mode http        # Create config for HTTP/debugging
+hatago init --mode stdio       # Create config for STDIO mode
+hatago init --mode http        # Create config for StreamableHTTP mode
 hatago init --force            # Overwrite existing config
 ```
 
@@ -66,7 +66,9 @@ hatago serve --verbose         # Enable debug logging
 
 ## Usage with MCP Clients
 
-### Claude Code
+### STDIO Mode
+
+#### Claude Code, Gemini CLI
 
 Add to your `.mcp.json`:
 
@@ -87,6 +89,48 @@ Add to your `.mcp.json`:
 }
 ```
 
+#### Codex CLI
+
+Add to your `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.hatago]
+command = "npx"
+args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+```
+
+### StreamableHTTP Mode
+
+#### Claude Code, Gemini CLI
+
+Add to your `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "type": "http",
+      "url": "http://localhost:3535",
+      "args": [
+        "--config",
+        "./hatago.config.json"
+      ]
+    }
+  }
+}
+```
+
+#### Codex CLI
+
+Add to your `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.hatago]
+type = "http"
+url = "http://localhost:3535"
+args = ["--config", "./hatago.config.json"]
+```
+
 ### MCP Inspector
 
 Start in HTTP mode and connect:
@@ -95,8 +139,7 @@ Start in HTTP mode and connect:
 hatago serve --http --port 3535
 
 # Connect MCP Inspector to:
-# - Endpoint: http://localhost:3535/sse
-# - Or use https://inspector.mcphub.com/
+# - Endpoint: http://localhost:3535/mcp
 ```
 
 ## Configuration
@@ -177,11 +220,11 @@ Example:
 - **Session Management**: Independent sessions for multiple AI clients
 - **Multi-Transport**: STDIO, HTTP, SSE, WebSocket support
 
-### 🔄 Dynamic Updates (v0.3.0)
+### 🔄 Dynamic Updates
 
 - **Hot Reload**: Automatic config reload with `--watch` flag
-- **Progress Notifications**: Real-time operation updates from child servers
 - **Tool List Updates**: Dynamic tool registration with `notifications/tools/list_changed`
+- **Progress Notifications**: Real-time operation updates from child servers
 - **Graceful Reconnection**: Maintains sessions during config changes
 
 ### 🛠️ Management Tools
@@ -197,7 +240,7 @@ Built-in internal tools for server management:
 - **Zero Configuration**: Works out of the box with sensible defaults
 - **Interactive Setup**: Guided configuration with `hatago init`
 - **NPX Ready**: No installation required for basic usage
-- **Multi-Runtime**: Supports Node.js, Bun, Deno, and Cloudflare Workers
+- **Multi-Runtime**: Supports Node.js and Cloudflare Workers (Bun/Deno: WIP)
 
 ## Programmatic Usage
 
@@ -293,10 +336,7 @@ hatago serve --verbose
 
 ## Version History
 
-- **v0.3.0** - Hot reload, progress notifications, internal management tools
-- **v0.2.1** - Environment variable expansion (Claude Code compatible)
-- **v0.2.0** - Config validation, notifications, file watching
-- **v0.0.1** - Initial lightweight release
+- **v0.0.1** - Initial lightweight release with full MCP support
 
 ## License
 
@@ -311,3 +351,4 @@ Contributions are welcome! Please see our [GitHub repository](https://github.com
 - [npm Package](https://www.npmjs.com/package/@himorishige/hatago-mcp-hub)
 - [GitHub Repository](https://github.com/himorishige/hatago-mcp-hub)
 - [MCP Protocol Specification](https://modelcontextprotocol.io/)
+
