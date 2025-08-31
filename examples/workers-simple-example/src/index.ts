@@ -22,14 +22,10 @@ const app = new Hono();
 app.use(
   '*',
   cors({
-    origin: [
-      'http://localhost:*',
-      'http://127.0.0.1:*',
-      'https://*.workers.dev',
-    ],
+    origin: ['http://localhost:*', 'http://127.0.0.1:*', 'https://*.workers.dev'],
     credentials: true,
-    allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id'],
-  }),
+    allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id']
+  })
 );
 
 // Health check endpoint
@@ -40,8 +36,8 @@ app.get('/health', (c) => {
     servers: Object.keys(hatagoConfig.mcpServers),
     endpoints: {
       mcp: '/mcp',
-      health: '/health',
-    },
+      health: '/health'
+    }
   });
 });
 
@@ -54,9 +50,9 @@ app.get('/', (c) => {
     endpoints: {
       '/': 'This information',
       '/health': 'Health check',
-      '/mcp': 'MCP protocol endpoint (POST)',
+      '/mcp': 'MCP protocol endpoint (POST)'
     },
-    servers: Object.keys(hatagoConfig.mcpServers),
+    servers: Object.keys(hatagoConfig.mcpServers)
   });
 });
 
@@ -72,7 +68,7 @@ app.all('/mcp', async (c) => {
         // Convert config to hub format
         const spec = {
           url: serverConfig.url,
-          type: serverConfig.transport,
+          type: serverConfig.transport
         };
         await hub.addServer(id, spec);
       } catch (error) {
@@ -91,21 +87,17 @@ app.all('/mcp', async (c) => {
         error: {
           code: -32603,
           message: 'Internal error',
-          data: error instanceof Error ? error.message : String(error),
-        },
+          data: error instanceof Error ? error.message : String(error)
+        }
       },
-      500,
+      500
     );
   }
 });
 
 // Export Workers handler with proper types
 export default {
-  async fetch(
-    request: Request,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     return app.fetch(request, env, ctx);
-  },
+  }
 } satisfies ExportedHandler<Env>;

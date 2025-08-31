@@ -6,10 +6,7 @@
  */
 
 import type { GetEnv } from '@himorishige/hatago-core';
-import {
-  expandConfig,
-  validateEnvironmentVariables,
-} from '@himorishige/hatago-core';
+import { expandConfig, validateEnvironmentVariables } from '@himorishige/hatago-core';
 
 /**
  * Create GetEnv function for Workers environment
@@ -44,7 +41,7 @@ export function createWorkersGetEnv(env: Env): GetEnv {
  */
 export async function loadConfigWithEnvExpansion(
   env: Env,
-  configKey: string = 'mcp-servers',
+  configKey: string = 'mcp-servers'
 ): Promise<unknown> {
   // Get configuration from KV
   const rawConfig = await env.CONFIG_KV.get(configKey, 'json');

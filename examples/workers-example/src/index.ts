@@ -9,10 +9,7 @@
  */
 
 import type { GetEnv } from '@himorishige/hatago-core';
-import {
-  expandConfig,
-  validateEnvironmentVariables,
-} from '@himorishige/hatago-core';
+import { expandConfig, validateEnvironmentVariables } from '@himorishige/hatago-core';
 import { createEventsEndpoint } from '@himorishige/hatago-hub';
 import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/workers';
 import { Hono } from 'hono';
@@ -27,15 +24,15 @@ app.use(
   cors({
     origin: ['http://localhost:*', 'http://127.0.0.1:*'],
     credentials: true,
-    allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id'],
-  }),
+    allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id']
+  })
 );
 
 // Health check endpoint
 app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
-    runtime: 'cloudflare-workers',
+    runtime: 'cloudflare-workers'
   });
 });
 
@@ -43,10 +40,7 @@ app.get('/health', (c) => {
 function createWorkersGetEnv(env: Env): GetEnv {
   return (key: string) => {
     // Check direct env bindings
-    if (
-      key in env &&
-      typeof (env as unknown as Record<string, unknown>)[key] === 'string'
-    ) {
+    if (key in env && typeof (env as unknown as Record<string, unknown>)[key] === 'string') {
       return (env as unknown as Record<string, unknown>)[key] as string;
     }
     return undefined;
@@ -91,13 +85,9 @@ app.get('/sse', async (c) => {
 
 // Export Workers handler with proper types
 export default {
-  async fetch(
-    request: Request,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     return app.fetch(request, env, ctx);
-  },
+  }
 } satisfies ExportedHandler<Env>;
 
 // Durable Object for session management
@@ -111,7 +101,7 @@ export class SessionDurableObject {
     if (request.method === 'GET' && sessionId) {
       const session = this.sessions.get(sessionId);
       return new Response(JSON.stringify(session || null), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -119,14 +109,14 @@ export class SessionDurableObject {
       const data = await request.json();
       this.sessions.set(sessionId, data);
       return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
     if (request.method === 'DELETE' && sessionId) {
       this.sessions.delete(sessionId);
       return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 

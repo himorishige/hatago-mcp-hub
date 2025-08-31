@@ -57,11 +57,11 @@ export const hatagoConfig = {
   mcpServers: {
     // 新しいサーバーを追加
     myserver: {
-      type: "remote" as const,
-      url: "https://example.com/mcp",
-      transport: "streamable-http" as const,
-    },
-  },
+      type: 'remote' as const,
+      url: 'https://example.com/mcp',
+      transport: 'streamable-http' as const
+    }
+  }
 };
 ```
 

@@ -12,8 +12,8 @@ export const hatagoConfig = {
     deepwiki: {
       type: 'remote' as const,
       url: 'https://mcp.deepwiki.com/mcp',
-      transport: 'streamable-http' as const,
-    },
+      transport: 'streamable-http' as const
+    }
 
     // Add more remote MCP servers here
     // Example:
@@ -22,7 +22,7 @@ export const hatagoConfig = {
     //   url: 'https://example.com/mcp',
     //   transport: 'streamable-http' as const,
     // }
-  },
+  }
 } as const;
 
 // Type export for type safety

@@ -33,8 +33,8 @@ async function main() {
     cors({
       origin: ['http://localhost:*', 'http://127.0.0.1:*'],
       credentials: true,
-      allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id'],
-    }),
+      allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id']
+    })
   );
 
   // Health check endpoint
@@ -42,8 +42,8 @@ async function main() {
     c.json({
       status: 'healthy',
       runtime: 'node',
-      uptime: process.uptime(),
-    }),
+      uptime: process.uptime()
+    })
   );
 
   // MCP protocol endpoint
@@ -61,7 +61,7 @@ async function main() {
   const server = serve({
     fetch: app.fetch,
     port,
-    hostname,
+    hostname
   });
 
   console.log('✅ Hatago Hub is running!');

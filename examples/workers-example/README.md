@@ -86,11 +86,11 @@ Then access in your code:
 
 ```typescript
 // In src/index.ts
-app.all("/mcp", async (c) => {
+app.all('/mcp', async (c) => {
   const hub = createHub(c.env);
 
   // Load from KV first
-  const kvConfig = await c.env.CONFIG_KV.get("mcp-servers", "json");
+  const kvConfig = await c.env.CONFIG_KV.get('mcp-servers', 'json');
 
   // Or load from environment variables
   const envConfig = c.env.MCP_SERVERS ? JSON.parse(c.env.MCP_SERVERS) : null;
@@ -98,17 +98,17 @@ app.all("/mcp", async (c) => {
   // Or construct config with secrets
   const config = envConfig ||
     kvConfig || {
-      "secure-server": {
-        url: "https://api.example.com/mcp",
-        type: "http",
+      'secure-server': {
+        url: 'https://api.example.com/mcp',
+        type: 'http',
         headers: {
-          Authorization: `Bearer ${c.env.MCP_SERVER_TOKEN}`,
-        },
-      },
+          Authorization: `Bearer ${c.env.MCP_SERVER_TOKEN}`
+        }
+      }
     };
 
   // Add servers to hub
-  if (config && typeof config === "object") {
+  if (config && typeof config === 'object') {
     for (const [id, serverSpec] of Object.entries(config)) {
       await hub.addServer(id, serverSpec as any);
     }
@@ -125,7 +125,7 @@ Each MCP server configuration should include:
 ```typescript
 interface MCPServerConfig {
   url: string; // Server URL (required)
-  type: "http" | "sse"; // Transport type (required)
+  type: 'http' | 'sse'; // Transport type (required)
   headers?: {
     // Optional HTTP headers
     [key: string]: string;
