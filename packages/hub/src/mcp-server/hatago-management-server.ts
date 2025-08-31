@@ -88,8 +88,10 @@ export class HatagoManagementServer {
     this.activationManager = options.activationManager;
     this.idleManager = options.idleManager;
 
-    // Load initial config
-    this.loadConfig();
+    // Load initial config if path is provided
+    if (this.configFilePath) {
+      this.loadConfig();
+    }
   }
 
   /**
@@ -530,7 +532,7 @@ export class HatagoManagementServer {
     const result = [];
 
     for (const [id, config] of Object.entries(servers)) {
-      const state = this.stateMachine.getState(id);
+      const state = this.stateMachine?.getState(id) || 'unknown';
 
       if (filter && filter !== 'all') {
         if (filter === 'active' && state !== ServerState.ACTIVE) continue;
@@ -686,11 +688,19 @@ export class HatagoManagementServer {
   }
 
   private getServerStates(): any {
+    // Return empty states when stateMachine is not available
+    if (!this.stateMachine) {
+      return {};
+    }
     const states = this.stateMachine.getAllStates();
     return Object.fromEntries(states);
   }
 
   private getServerActivity(serverId?: string): any {
+    if (!this.idleManager) {
+      return {};
+    }
+
     if (serverId) {
       return this.idleManager.getActivityStats(serverId);
     }
@@ -728,7 +738,7 @@ export class HatagoManagementServer {
 
   private async getStatistics(): Promise<any> {
     const auditStats = await this.auditLogger.getStatistics();
-    const activities = this.idleManager.getAllActivities();
+    const activities = this.idleManager?.getAllActivities() || new Map();
 
     return {
       audit: auditStats,

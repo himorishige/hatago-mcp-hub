@@ -44,7 +44,7 @@ export function createResourceRegistry(options: ResourceRegistryOptions = {}): R
 
   // Create naming functions
   const generatePublicUri = createNamingFunction(namingConfig);
-  const _parsePublicUri = createParsingFunction(namingConfig);
+  createParsingFunction(namingConfig); // Currently unused but kept for future use
 
   /**
    * Clear resources for a specific server
@@ -133,7 +133,9 @@ export function createResourceRegistry(options: ResourceRegistryOptions = {}): R
         const serverResource = resourceList.find((r) => r.serverId === serverId);
         if (serverResource) {
           // Return without serverId and originalUri metadata
-          const { serverId: _, originalUri: __, ...resource } = serverResource;
+          const { serverId, originalUri, ...resource } = serverResource;
+          void serverId; // Explicitly ignore
+          void originalUri; // Explicitly ignore
           result.push(resource);
         }
       }
@@ -153,7 +155,9 @@ export function createResourceRegistry(options: ResourceRegistryOptions = {}): R
       if (!seen.has(uri) && resourceList.length > 0) {
         seen.add(uri);
         // Return the first resource for each URI (in case of collisions)
-        const { serverId: _, originalUri: __, ...resource } = resourceList[0];
+        const { serverId, originalUri, ...resource } = resourceList[0];
+        void serverId; // Explicitly ignore
+        void originalUri; // Explicitly ignore
         allResources.push(resource);
       }
     }

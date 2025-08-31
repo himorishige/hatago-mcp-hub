@@ -351,7 +351,7 @@ export class MetadataStore {
       const data = JSON.parse(content);
 
       this.metadata = new Map(Object.entries(data));
-    } catch (_error) {
+    } catch {
       // Start with empty metadata on error
       this.metadata = new Map();
     }

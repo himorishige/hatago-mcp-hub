@@ -416,7 +416,7 @@ export class EnhancedHatagoHub extends HatagoHub {
     // Watch for changes
     watchFile(configFile, { interval: 2000 }, () => {
       this.logger.info('Configuration file changed, reloading...');
-      this.reloadConfiguration();
+      void this.reloadConfiguration();
     });
   }
 

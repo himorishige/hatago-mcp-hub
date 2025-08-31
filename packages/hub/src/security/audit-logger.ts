@@ -344,7 +344,7 @@ export class AuditLogger {
           }
         })
         .filter((e) => e !== null);
-    } catch (_error) {
+    } catch {
       // Ignore errors during cache loading
       this.cache = [];
     }

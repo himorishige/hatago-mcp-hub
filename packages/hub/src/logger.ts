@@ -54,7 +54,7 @@ export class Logger {
       return JSON.stringify(entry, null, 2);
     } else {
       // In normal mode, output simple message
-      const { timestamp, level, message, ...rest } = entry;
+      const { message, ...rest } = entry;
       const extra = Object.keys(rest).length > 0 ? ` ${JSON.stringify(rest)}` : '';
       return `${message}${extra}`;
     }

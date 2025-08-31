@@ -156,7 +156,9 @@ describe('generateDefaultConfig', () => {
     const config = generateDefaultConfig();
     const parsed = JSON.parse(config);
 
-    expect(parsed.$schema).toBe('../../../schemas/config.schema.json');
+    expect(parsed.$schema).toBe(
+      'https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json'
+    );
   });
 
   it('should include version', () => {
@@ -172,8 +174,8 @@ describe('generateDefaultConfig', () => {
 
     expect(parsed.mcpServers).toBeDefined();
     expect(parsed.mcpServers.deepwiki).toBeDefined();
-    expect(parsed.mcpServers.deepwiki.url).toBe('https://mcp.deepwiki.com/mcp');
-    expect(parsed.mcpServers.deepwiki.transport).toBe('streamable-http');
+    expect(parsed.mcpServers.deepwiki.url).toBe('https://mcp.deepwiki.com/sse');
+    expect(parsed.mcpServers.deepwiki.type).toBe('sse');
   });
 
   it('should format with proper indentation', () => {
