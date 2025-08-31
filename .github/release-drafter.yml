@@ -1,0 +1,32 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+categories:
+  - title: "🚀 Features"
+    labels: ["feat", "feature"]
+  - title: "🐞 Fixes"
+    labels: ["fix", "bugfix", "bug"]
+  - title: "🧰 Maintenance"
+    labels: ["chore", "refactor", "deps"]
+  - title: "📝 Docs"
+    labels: ["docs"]
+  - title: "⚡ Performance"
+    labels: ["perf"]
+  - title: "✅ Tests"
+    labels: ["test"]
+change-template: "- $TITLE (#$NUMBER) by @$AUTHOR"
+template: |
+  ## Changes
+
+  $CHANGES
+
+version-resolver:
+  major:
+    labels: ["semver:major"]
+  minor:
+    labels: ["semver:minor", "feat"]
+  patch:
+    labels: ["semver:patch", "fix", "chore", "docs", "perf", "refactor", "test"]
+  default: patch
+replacers:
+  - search: '/\s+\(#(\d+)\)/g'
+    replace: " (#$1)"

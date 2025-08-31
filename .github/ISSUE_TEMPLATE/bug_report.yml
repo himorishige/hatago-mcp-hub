@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible problem
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Minimal steps/code to reproduce the issue
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package and version
+      placeholder: "@hatago/hub@x.y.z"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: "20.x"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      render: shell
