@@ -78,7 +78,7 @@ export function createWorkersApp(_config?: unknown): Hono {
   // Note: createHub, handleMCPEndpoint, and createEventsEndpoint are imported at the top of this file
   // from '@himorishige/hatago-hub/workers' - they should be available here.
   // However, this is a placeholder implementation for Workers environment.
-  
+
   // Health check only for now - full implementation requires proper hub setup
   app.get('/health', (c) => {
     return c.json({ status: 'ok', service: 'hatago-mcp-hub-workers' });
@@ -88,7 +88,7 @@ export function createWorkersApp(_config?: unknown): Hono {
   app.post('/mcp', (c) => {
     return c.json({ error: 'Workers implementation pending' }, 501);
   });
-  
+
   app.get('/events', (c) => {
     return c.json({ error: 'Workers implementation pending' }, 501);
   });

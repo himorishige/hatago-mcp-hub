@@ -4,7 +4,7 @@
  */
 
 import { existsSync, readFileSync, unwatchFile, watchFile } from 'node:fs';
-import type { ActivationPolicy, IdlePolicy, Tool } from '@himorishige/hatago-core';
+import type { ActivationPolicy, IdlePolicy, Tool, LogData } from '@himorishige/hatago-core';
 import {
   expandConfig,
   getServerTransportType,
@@ -117,11 +117,11 @@ export class EnhancedHatagoHub extends HatagoHub {
         args: unknown,
         options?: CallOptions & {
           progressToken?: string;
-          progressCallback?: (progress: unknown) => void;
+          progressCallback?: unknown;
         }
       ) => {
         // Use callToolWithActivation for on-demand activation support
-        return this.callToolWithActivation(name, args, options || {});
+        return this.callToolWithActivation(name, args, options || {}) as any;
       }
     };
   }
@@ -286,7 +286,7 @@ export class EnhancedHatagoHub extends HatagoHub {
           : undefined
     };
 
-    this.logger.debug(`[Enhanced] Created spec for ${serverId}:`, spec);
+    this.logger.debug(`[Enhanced] Created spec for ${serverId}:`, spec as unknown as LogData);
 
     // Add server to hub
     await this.addServer(serverId, spec);

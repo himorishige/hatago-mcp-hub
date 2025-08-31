@@ -399,13 +399,13 @@ export class HatagoManagementServer {
 
       case 'hatago_set_server_policy': {
         const a = args as { serverId: string; policy: string };
-        return this.setServerPolicy(a.serverId, a.policy);
+        return this.setServerPolicy(a.serverId, a.policy as ActivationPolicy);
       }
 
       // Server CRUD
       case 'hatago_add_server': {
         const a = args as { serverId: string; config: unknown };
-        return this.addServer(a.serverId, a.config);
+        return this.addServer(a.serverId, a.config as ServerConfig);
       }
 
       case 'hatago_remove_server': {
@@ -555,7 +555,7 @@ export class HatagoManagementServer {
     await this.fileGuard.safeWrite(this.configFilePath, content);
     await this.auditLogger.logConfigWrite({ type: 'mcp_tool' }, changes);
 
-    this.config = merged as ServerConfig;
+    this.config = merged as any as HatagoConfig;
 
     return {
       success: true,
@@ -718,7 +718,7 @@ export class HatagoManagementServer {
 
     const configUpdates = {
       [configKey]: {
-        ...(this.config[configKey as keyof ServerConfig] as Record<string, unknown>),
+        ...((this.config as any)[configKey] as Record<string, unknown>),
         [serverId]: {
           ...servers[serverId],
           ...(updates as Record<string, unknown>)
@@ -752,7 +752,7 @@ export class HatagoManagementServer {
   }
 
   private async getAuditLog(options: unknown): Promise<unknown> {
-    return this.auditLogger.query(options);
+    return this.auditLogger.query(options as Parameters<typeof this.auditLogger.query>[0]);
   }
 
   private async testServerConnection(serverId: string): Promise<Record<string, unknown>> {
@@ -833,8 +833,8 @@ export class HatagoManagementServer {
 
     return `Server ${serverId} diagnostic:
 State: ${info.state}
-Policy: ${info.config.activationPolicy}
-Last Error: ${(info.config._lastError as { message?: string } | undefined)?.message || 'None'}
+Policy: ${(info.config as any).activationPolicy}
+Last Error: ${((info.config as any)._lastError as { message?: string } | undefined)?.message || 'None'}
 
 Suggested actions:
 1. Check server logs

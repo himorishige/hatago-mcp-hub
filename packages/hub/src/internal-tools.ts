@@ -58,8 +58,8 @@ export function getInternalTools(): Array<InternalTool<unknown>> {
       inputSchema: z.object({
         dry_run: z.boolean().optional().describe('Perform a dry run without applying changes')
       }),
-      handler: async (args: { dry_run?: boolean }, hub) => {
-        const dryRun = args.dry_run || false;
+      handler: async (args: unknown, hub) => {
+        const dryRun = (args as { dry_run?: boolean })?.dry_run || false;
 
         if (dryRun) {
           return {
