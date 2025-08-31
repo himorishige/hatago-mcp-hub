@@ -247,17 +247,10 @@ describe('setupMcpCommand', () => {
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
 
-    it.skip('should create config directory if not exists', async () => {
-      // Skip this test because dynamic require is difficult to mock in vitest
-      // The directory creation is tested indirectly in other tests
-
+    it('should create config directory if not exists', async () => {
       // Both calls return false to trigger mkdir
       vi.mocked(fs.existsSync).mockReturnValue(false);
-      const mkdirSyncSpy = vi.fn();
-      vi.doMock('node:fs', () => ({
-        ...fs,
-        mkdirSync: mkdirSyncSpy,
-      }));
+      vi.mocked(fs.mkdirSync).mockImplementation(() => undefined);
       vi.mocked(fs.writeFileSync).mockImplementation(() => {});
 
       setupMcpCommand(program);
@@ -265,7 +258,10 @@ describe('setupMcpCommand', () => {
         from: 'user',
       });
 
-      // Note: mkdirSync is called via require in the actual code
+      // mkdirSync should be called with recursive option
+      expect(fs.mkdirSync).toHaveBeenCalledWith('/home/user/.hatago', {
+        recursive: true,
+      });
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
   });

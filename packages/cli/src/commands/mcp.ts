@@ -2,7 +2,7 @@
  * MCP command - Manage MCP servers
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Command } from 'commander';
@@ -143,7 +143,6 @@ function saveServers(servers: McpServer[]): void {
 
   // Create directory if it doesn't exist
   if (!existsSync(configDir)) {
-    const { mkdirSync } = require('node:fs');
     mkdirSync(configDir, { recursive: true });
   }
 

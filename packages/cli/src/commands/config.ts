@@ -2,7 +2,7 @@
  * Config command - Manage Hatago configuration
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Command } from 'commander';
@@ -90,7 +90,16 @@ export function setupConfigCommand(program: Command): void {
         }
       }
 
-      console.log(JSON.stringify(value, null, 2));
+      // Output primitive values directly, objects/arrays as JSON
+      if (
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean'
+      ) {
+        console.log(String(value));
+      } else {
+        console.log(JSON.stringify(value, null, 2));
+      }
     });
 
   // Reset config
@@ -146,7 +155,6 @@ function saveConfig(config: HatagoConfig): void {
 
   // Create directory if it doesn't exist
   if (!existsSync(configDir)) {
-    const { mkdirSync } = require('node:fs');
     mkdirSync(configDir, { recursive: true });
   }
 
