@@ -110,6 +110,17 @@ export class HatagoHub {
   // Config file watcher
   private configWatcher?: import('node:fs').FSWatcher;
 
+  // Sampling request handlers
+  private samplingSolvers: Map<
+    string,
+    {
+      resolve: (value: unknown) => void;
+      reject: (reason: unknown) => void;
+      progressToken?: string;
+      serverId: string;
+    }
+  > = new Map();
+
   // Options
   protected options: Required<HubOptions>;
 
@@ -308,70 +319,81 @@ export class HatagoHub {
 
         // Set up sampling request handler to forward to the original client
         try {
-          (client as any).setRequestHandler(CreateMessageRequestSchema, async (request: any) => {
-            this.logger.info(`[Hub] Received sampling/createMessage from server ${id}`, {
-              request
-            });
-
-            // Check if the current client supports sampling
-            // TODO: Get current sessionId from context
-            const currentSessionId = 'default'; // This would need proper session context
-            const clientCaps = this.capabilityRegistry.getClientCapabilities(currentSessionId);
-
-            if (!clientCaps.sampling) {
-              // Client doesn't support sampling - provide clear error message
-              const error = new Error(
-                'Sampling not supported: The connected client (e.g., Claude Code/Desktop) ' +
-                  'does not currently support the sampling capability. ' +
-                  'This feature requires an LLM-capable client. ' +
-                  'Support for this feature may be added in a future update.'
-              ) as Error & { code?: number };
-              error.code = -32603;
-              throw error;
-            }
-
-            // Forward the request to the original client through StreamableHTTP
-            if (this.streamableTransport) {
-              // Create a unique ID for this sampling request
-              const samplingId = `sampling-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-              // Check if the request has a progress token
-              const progressToken = request.params?._meta?.progressToken;
-
-              // Send the sampling request to the client
-              const samplingRequest = {
-                jsonrpc: '2.0' as const,
-                id: samplingId,
-                method: 'sampling/createMessage',
-                params: request.params
-              };
-
-              // Create a promise to wait for the response
-              return new Promise((resolve, reject) => {
-                // Store the resolver for this sampling request with progress callback
-                (this as any).samplingSolvers = (this as any).samplingSolvers || new Map();
-                (this as any).samplingSolvers.set(samplingId, {
-                  resolve,
-                  reject,
-                  progressToken,
-                  serverId: id
-                });
-
-                // Send the request
-                this.streamableTransport?.send(samplingRequest).catch(reject);
-
-                // Set a timeout
-                setTimeout(() => {
-                  (this as any).samplingSolvers?.delete(samplingId);
-                  this.notificationManager?.notifyTimeout(id, 'sampling', 30000);
-                  reject(new Error('Sampling request timeout'));
-                }, 30000);
+          const clientWithHandler = client as Client & {
+            setRequestHandler: (
+              schema: unknown,
+              handler: (request: unknown) => Promise<unknown>
+            ) => void;
+          };
+          clientWithHandler.setRequestHandler(
+            CreateMessageRequestSchema,
+            async (request: unknown) => {
+              this.logger.info(`[Hub] Received sampling/createMessage from server ${id}`, {
+                request
               });
-            }
 
-            // Fallback if no transport available
-            throw new Error('Sampling not available - no client transport');
-          });
+              // Check if the current client supports sampling
+              // TODO: Get current sessionId from context
+              const currentSessionId = 'default'; // This would need proper session context
+              const clientCaps = this.capabilityRegistry.getClientCapabilities(currentSessionId);
+
+              if (!clientCaps.sampling) {
+                // Client doesn't support sampling - provide clear error message
+                const error = new Error(
+                  'Sampling not supported: The connected client (e.g., Claude Code/Desktop) ' +
+                    'does not currently support the sampling capability. ' +
+                    'This feature requires an LLM-capable client. ' +
+                    'Support for this feature may be added in a future update.'
+                ) as Error & { code?: number };
+                error.code = -32603;
+                throw error;
+              }
+
+              // Forward the request to the original client through StreamableHTTP
+              if (this.streamableTransport) {
+                // Create a unique ID for this sampling request
+                const samplingId = `sampling-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                // Check if the request has a progress token
+                const requestWithParams = request as {
+                  params?: { _meta?: { progressToken?: string } };
+                };
+                const progressToken = requestWithParams.params?._meta?.progressToken;
+
+                // Send the sampling request to the client
+                const samplingRequest = {
+                  jsonrpc: '2.0' as const,
+                  id: samplingId,
+                  method: 'sampling/createMessage',
+                  params: requestWithParams.params
+                };
+
+                // Create a promise to wait for the response
+                return new Promise((resolve, reject) => {
+                  // Store the resolver for this sampling request with progress callback
+                  this.samplingSolvers.set(samplingId, {
+                    resolve,
+                    reject,
+                    progressToken,
+                    serverId: id
+                  });
+
+                  // Send the request
+                  this.streamableTransport?.send(samplingRequest).catch(reject);
+
+                  // Set a timeout
+                  setTimeout(() => {
+                    this.samplingSolvers.delete(samplingId);
+                    this.notificationManager?.notifyTimeout(id, 'sampling', 30000);
+                    reject(new Error('Sampling request timeout'));
+                  }, 30000);
+                });
+              }
+
+              // Fallback if no transport available
+              throw new Error('Sampling not available - no client transport');
+            }
+          );
 
           this.logger.debug(`[Hub] Set up sampling handler for server ${id}`);
         } catch (error) {
@@ -637,12 +659,11 @@ export class HatagoHub {
       this.streamableTransport.onmessage = (message) => {
         void (async () => {
           // Check if this is a sampling response
-          const msg = message as any;
+          const msg = message as { id?: unknown; error?: { message?: string }; result?: unknown };
           if (msg.id && typeof msg.id === 'string' && msg.id.startsWith('sampling-')) {
-            const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
-            const solver = solvers?.get(msg.id);
+            const solver = this.samplingSolvers.get(msg.id);
             if (solver) {
-              solvers?.delete(msg.id);
+              this.samplingSolvers.delete(msg.id);
               if (msg.error) {
                 solver.reject(new Error(msg.error.message || 'Sampling failed'));
               } else {
@@ -1514,32 +1535,29 @@ export class HatagoHub {
           const notificationProgressToken = params?.progressToken;
           if (notificationProgressToken) {
             // Check if this is a progress for a sampling request
-            const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
-            if (solvers) {
-              for (const [, solver] of solvers.entries()) {
-                if (solver.progressToken === notificationProgressToken) {
-                  // Forward progress to the server that requested sampling
-                  const client = this.clients.get(solver.serverId);
-                  if (client) {
-                    try {
-                      // Send progress notification to the server
-                      await (client as any).notification({
-                        method: 'notifications/progress',
-                        params: {
-                          progressToken: solver.progressToken,
-                          progress: params.progress,
-                          total: params.total,
-                          message: params.message
-                        }
-                      });
-                    } catch (error) {
-                      this.logger.warn(`Failed to forward progress to server ${solver.serverId}`, {
-                        error: error instanceof Error ? error.message : String(error)
-                      });
-                    }
+            for (const [, solver] of this.samplingSolvers.entries()) {
+              if (solver.progressToken === notificationProgressToken) {
+                // Forward progress to the server that requested sampling
+                const client = this.clients.get(solver.serverId);
+                if (client) {
+                  try {
+                    // Send progress notification to the server
+                    await (client as any).notification({
+                      method: 'notifications/progress',
+                      params: {
+                        progressToken: solver.progressToken,
+                        progress: params.progress,
+                        total: params.total,
+                        message: params.message
+                      }
+                    });
+                  } catch (error) {
+                    this.logger.warn(`Failed to forward progress to server ${solver.serverId}`, {
+                      error: error instanceof Error ? error.message : String(error)
+                    });
                   }
-                  break;
                 }
+                break;
               }
             }
           }
@@ -1847,10 +1865,9 @@ export class HatagoHub {
         default:
           // Check if this is a sampling response
           if (id && typeof id === 'string' && id.startsWith('sampling-')) {
-            const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
-            const solver = solvers?.get(id);
+            const solver = this.samplingSolvers.get(id);
             if (solver) {
-              solvers?.delete(id);
+              this.samplingSolvers.delete(id);
               if (body.error) {
                 solver.reject(new Error(body.error.message || 'Sampling failed'));
               } else {

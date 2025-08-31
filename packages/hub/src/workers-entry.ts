@@ -21,7 +21,7 @@ export function createHub(options?: HubOptions): HatagoHub {
       put: async () => {},
       delete: async () => {},
       list: async () => ({ keys: [] })
-    } as any
+    } as unknown
   };
 
   setPlatform(createWorkersPlatform(minimalEnv));
