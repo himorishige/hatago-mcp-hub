@@ -119,7 +119,7 @@ export class EnhancedHatagoHub extends HatagoHub {
           progressToken?: string;
           progressCallback?: unknown;
         }
-      ) => {
+      ): Promise<any> => {
         // Use callToolWithActivation for on-demand activation support
         return this.callToolWithActivation(name, args, options || {}) as any;
       }

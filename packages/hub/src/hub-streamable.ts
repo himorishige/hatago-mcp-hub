@@ -180,7 +180,7 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
       const resultBody = result.body as unknown;
       const resultStatus = result.status as number | undefined;
       return resultBody
-        ? c.json(resultBody, (resultStatus || 200) as any)
+        ? c.json(resultBody as any, (resultStatus || 200) as any)
         : c.body(null, (resultStatus || 200) as any);
     }
   }

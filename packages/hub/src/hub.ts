@@ -33,9 +33,9 @@ import {
   type NotificationSeverity
 } from './notification-manager.js';
 import { SSEManager } from './sse-manager.js';
-import { ServerStateMachine } from './mcp-server/state-machine.js';
-import { ActivationManager } from './mcp-server/activation-manager.js';
-import { IdleManager } from './mcp-server/idle-manager.js';
+import type { ServerStateMachine } from './mcp-server/state-machine.js';
+import type { ActivationManager } from './mcp-server/activation-manager.js';
+import type { IdleManager } from './mcp-server/idle-manager.js';
 import type {
   CallOptions,
   ConnectedServer,
@@ -507,17 +507,17 @@ export class HatagoHub {
     const clientWithHandler = client as Client & {
       fallbackNotificationHandler?: (notification: JSONRPCMessage) => Promise<void>;
     };
-    clientWithHandler.fallbackNotificationHandler = async (notification: any) => {
-      this.logger.debug(`[Hub] Notification from server ${id}`, notification);
+    clientWithHandler.fallbackNotificationHandler = async (notification: unknown) => {
+      this.logger.debug(`[Hub] Notification from server ${id}`, notification as LogData);
 
       // Forward notification to parent (Claude Code) via callback
       if (this.onNotification) {
-        await this.onNotification(notification);
+        await this.onNotification(notification as JSONRPCMessage);
       }
 
       // Forward notification to parent via StreamableHTTP transport
       if (this.streamableTransport) {
-        await this.streamableTransport.send(notification);
+        await this.streamableTransport.send(notification as JSONRPCMessage);
       }
 
       // Emit event for other listeners
@@ -935,10 +935,11 @@ export class HatagoHub {
    */
   private async calculateToolsetHash(): Promise<string> {
     const tools = this.tools.list();
-    const toolData = tools.map((t: any) => {
+    const toolData = tools.map((t) => {
+      const tool = t as Tool;
       const toolInfo = {
-        name: String(t.name),
-        description: String(t.description || '')
+        name: String(tool.name),
+        description: String(tool.description || '')
       };
       return toolInfo;
     });

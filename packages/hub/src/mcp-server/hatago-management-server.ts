@@ -555,7 +555,7 @@ export class HatagoManagementServer {
     await this.fileGuard.safeWrite(this.configFilePath, content);
     await this.auditLogger.logConfigWrite({ type: 'mcp_tool' }, changes);
 
-    this.config = merged as any as HatagoConfig;
+    this.config = merged as unknown as HatagoConfig;
 
     return {
       success: true,
@@ -718,7 +718,7 @@ export class HatagoManagementServer {
 
     const configUpdates = {
       [configKey]: {
-        ...((this.config as any)[configKey] as Record<string, unknown>),
+        ...((this.config as Record<string, unknown>)[configKey] as Record<string, unknown>),
         [serverId]: {
           ...servers[serverId],
           ...(updates as Record<string, unknown>)
@@ -833,8 +833,8 @@ export class HatagoManagementServer {
 
     return `Server ${serverId} diagnostic:
 State: ${info.state}
-Policy: ${(info.config as any).activationPolicy}
-Last Error: ${((info.config as any)._lastError as { message?: string } | undefined)?.message || 'None'}
+Policy: ${(info.config as Record<string, unknown>).activationPolicy}
+Last Error: ${((info.config as Record<string, unknown>)._lastError as { message?: string } | undefined)?.message || 'None'}
 
 Suggested actions:
 1. Check server logs
