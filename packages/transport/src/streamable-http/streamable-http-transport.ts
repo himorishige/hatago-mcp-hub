@@ -70,6 +70,7 @@ export class StreamableHTTPTransport implements Transport {
     this.onsessionclosed = options?.onsessionclosed;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async start(): Promise<void> {
     if (this.started) {
       throw new Error('Transport already started');
@@ -235,6 +236,7 @@ export class StreamableHTTPTransport implements Transport {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async handleGetRequest(
     headers: Record<string, string | undefined>,
     sseStream?: SSEStream
@@ -501,6 +503,7 @@ export class StreamableHTTPTransport implements Transport {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async handleDeleteRequest(
     headers: Record<string, string | undefined>
   ): Promise<{ status: number }> {

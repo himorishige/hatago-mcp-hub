@@ -46,6 +46,7 @@ export class ProcessTransport implements ITransport {
     this.errorHandler = handler;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async start(): Promise<void> {
     if (this.isStarted) {
       throw new Error('Transport already started');
@@ -84,6 +85,7 @@ export class ProcessTransport implements ITransport {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async close(): Promise<void> {
     if (this.process) {
       this.process.kill();
@@ -92,6 +94,7 @@ export class ProcessTransport implements ITransport {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async ready(): Promise<boolean> {
     return this.isStarted && this.process !== undefined;
   }

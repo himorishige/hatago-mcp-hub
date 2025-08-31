@@ -30,7 +30,7 @@ import { Logger } from './logger.js';
 import { startStdio } from './stdio.js';
 import { generateDefaultConfig, type ParsedArgs, parseArgs } from './utils.js';
 
-async function handleInitCommand(args: ParsedArgs) {
+function handleInitCommand(args: ParsedArgs) {
   const configPath = (args.flags.config as string) || './hatago.config.json';
   const force = args.flags.force as boolean;
 

@@ -72,6 +72,7 @@ class MemorySessionStore implements SessionStore {
     setInterval(() => this.cleanup(), 60000); // Every minute
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async create(id: string, data: unknown): Promise<void> {
     this.sessions.set(id, {
       data,
@@ -79,6 +80,7 @@ class MemorySessionStore implements SessionStore {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async get(id: string): Promise<unknown> {
     const session = this.sessions.get(id);
     if (!session) return null;
@@ -89,6 +91,7 @@ class MemorySessionStore implements SessionStore {
     return session.data;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async update(id: string, data: unknown): Promise<void> {
     const session = this.sessions.get(id);
     if (session) {
@@ -100,10 +103,12 @@ class MemorySessionStore implements SessionStore {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async delete(id: string): Promise<void> {
     this.sessions.delete(id);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async exists(id: string): Promise<boolean> {
     const session = this.sessions.get(id);
     if (!session) return false;
@@ -114,6 +119,7 @@ class MemorySessionStore implements SessionStore {
     return true;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async list(): Promise<string[]> {
     this.cleanup();
     return Array.from(this.sessions.keys());
