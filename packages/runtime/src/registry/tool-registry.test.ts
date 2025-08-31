@@ -358,7 +358,7 @@ describe('ToolRegistry', () => {
     it('should support simple naming strategy', () => {
       const simpleRegistry = new ToolRegistry({
         namingConfig: {
-          strategy: 'simple',
+          strategy: 'none',
           separator: '-'
         }
       });
@@ -373,7 +373,7 @@ describe('ToolRegistry', () => {
       simpleRegistry.registerServerTools('server', tools);
 
       const allTools = simpleRegistry.getAllTools();
-      // Simple strategy just uses the original name
+      // None strategy just uses the original name
       expect(allTools[0].name).toBe('my_tool');
     });
 

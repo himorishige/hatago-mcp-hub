@@ -269,7 +269,7 @@ export class McpRouter {
   /**
    * Get router statistics with metrics
    */
-  getStats(): any {
+  getStats(): Record<string, unknown> {
     const stats = this.getStatistics();
     return {
       ...stats,
@@ -280,7 +280,7 @@ export class McpRouter {
   /**
    * Get performance metrics
    */
-  getMetrics(): any {
+  getMetrics(): Record<string, number> {
     // Simple metrics implementation
     return {
       requestCount: 0,

@@ -23,14 +23,16 @@ export function parseArgs(args: string[]): ParsedArgs {
   let i = 0;
 
   // First non-flag argument is the command
-  if (args.length > 0 && !args[0].startsWith('--')) {
-    result.command = args[0];
+  const firstArg = args[0];
+  if (args.length > 0 && firstArg && !firstArg.startsWith('--')) {
+    result.command = firstArg;
     i = 1;
   }
 
   // Parse remaining arguments
   for (; i < args.length; i++) {
     const arg = args[i];
+    if (arg === undefined) continue;
 
     if (arg.startsWith('--')) {
       const key = arg.slice(2);

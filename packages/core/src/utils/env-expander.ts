@@ -65,7 +65,7 @@ export function expandEnvironmentVariables(value: string, getEnv: GetEnv = defau
  * @param getEnv - Function to get environment variable values
  * @returns Configuration with expanded environment variables
  */
-export function expandConfig(config: any, getEnv: GetEnv = defaultGetEnv): any {
+export function expandConfig(config: unknown, getEnv: GetEnv = defaultGetEnv): unknown {
   if (!config || typeof config !== 'object') {
     return config;
   }

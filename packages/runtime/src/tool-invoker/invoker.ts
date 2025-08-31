@@ -7,7 +7,7 @@ import type { ToolCallResult, ToolHandler, ToolInvokerOptions, ToolWithHandler }
 
 // SSE Manager interface for progress notifications
 interface SSEManager {
-  sendProgress(progressToken: string, progress: any): void;
+  sendProgress(progressToken: string, progress: unknown): void;
 }
 
 /**
@@ -53,7 +53,7 @@ export class ToolInvoker {
   async callTool(
     _sessionId: string,
     toolName: string,
-    args: any,
+    args: unknown,
     options?: Partial<ToolInvokerOptions>
   ): Promise<ToolCallResult> {
     const opts = { ...this.options, ...options };
@@ -150,7 +150,7 @@ export class ToolInvoker {
   /**
    * Execute handler with timeout
    */
-  private async executeWithTimeout<T>(handler: () => Promise<any>, timeout: number): Promise<T> {
+  private async executeWithTimeout<T>(handler: () => Promise<T>, timeout: number): Promise<T> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(`Tool execution timed out after ${timeout}ms`));
@@ -159,7 +159,7 @@ export class ToolInvoker {
       handler()
         .then((result) => {
           clearTimeout(timer);
-          resolve(result);
+          resolve(result as T);
         })
         .catch((error) => {
           clearTimeout(timer);
@@ -190,7 +190,7 @@ export class ToolInvoker {
   /**
    * List available tools
    */
-  listTools(_sessionId?: string): any[] {
+  listTools(_sessionId?: string): unknown[] {
     return this.toolRegistry.getAllTools();
   }
 

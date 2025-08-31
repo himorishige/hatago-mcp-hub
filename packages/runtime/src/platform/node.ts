@@ -92,7 +92,10 @@ class MemorySessionStore implements SessionStore {
   async update(id: string, data: unknown): Promise<void> {
     const session = this.sessions.get(id);
     if (session) {
-      session.data = { ...session.data, ...data };
+      session.data = {
+        ...(session.data as Record<string, unknown>),
+        ...(data as Record<string, unknown>)
+      };
       session.expires = Date.now() + this.ttl;
     }
   }
