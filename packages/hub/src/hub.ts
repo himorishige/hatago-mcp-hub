@@ -782,7 +782,15 @@ export class HatagoHub {
   private async registerInternalTools(): Promise<void> {
     const { getInternalTools } = await import('./internal-tools.js');
     const { zodToJsonSchema } = await import('./zod-to-json-schema.js');
+    const { HatagoManagementServer } = await import('./mcp-server/hatago-management-server.js');
+
     const internalTools = getInternalTools();
+    const managementServer = new HatagoManagementServer({
+      configFilePath: '',
+      stateMachine: null as any,
+      activationManager: null as any,
+      idleManager: null as any
+    });
 
     this.logger.info('[Hub] Registering internal management tools', {
       count: internalTools.length
@@ -798,6 +806,14 @@ export class HatagoHub {
 
     // Register as internal server
     this.toolRegistry.registerServerTools('_internal', toolsWithHandlers);
+
+    // Register management server resources
+    const resources = managementServer.getResources();
+    this.resourceRegistry.registerServerResources('_internal', resources);
+
+    // Register management server prompts
+    const prompts = managementServer.getPrompts();
+    this.promptRegistry.registerServerPrompts('_internal', prompts);
 
     // Get registered tools with their public names (includes prefix)
     const registeredTools = this.toolRegistry.getServerTools('_internal');
@@ -1151,6 +1167,34 @@ export class HatagoHub {
       const resourceInfo = this.resourceRegistry.resolveResource(uri);
 
       if (resourceInfo) {
+        // Special handling for internal server resources
+        if (resourceInfo.serverId === '_internal') {
+          const { HatagoManagementServer } = await import(
+            './mcp-server/hatago-management-server.js'
+          );
+          const managementServer = new HatagoManagementServer({
+            configFilePath: this.options.configFile || '',
+            stateMachine: null as any,
+            activationManager: null as any,
+            idleManager: null as any
+          });
+
+          try {
+            const result = await managementServer.handleResourceRead(uri);
+            this.emit('resource:read', {
+              uri,
+              serverId: '_internal',
+              result
+            });
+            return { contents: [{ uri, text: JSON.stringify(result, null, 2) }] };
+          } catch (error) {
+            this.logger.error(`Failed to read internal resource ${uri}`, {
+              error: error instanceof Error ? error.message : String(error)
+            });
+            throw error;
+          }
+        }
+
         // Resource found in registry
         const client = this.clients.get(resourceInfo.serverId);
         if (client) {
