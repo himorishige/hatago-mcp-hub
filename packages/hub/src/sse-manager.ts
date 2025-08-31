@@ -9,7 +9,7 @@ export interface SSEClient {
   writer: WritableStreamDefaultWriter;
   closed: boolean;
   keepAliveInterval?: ReturnType<typeof setInterval>;
-  stream?: any; // For framework-specific streams
+  stream?: unknown; // For framework-specific streams
 }
 
 export interface ProgressNotification {
@@ -35,7 +35,7 @@ export class SSEManager {
   /**
    * Add a new SSE client
    */
-  addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: any): void {
+  addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: unknown): void {
     // Set up keepalive interval
     const keepAliveInterval = setInterval(() => {
       void this.sendKeepAliveToClient(clientId);

@@ -5,13 +5,13 @@
 
 import type { SSEStream } from '@himorishige/hatago-transport';
 import type { Context } from 'hono';
-import { streamSSE } from 'hono/streaming';
+import { streamSSE, type SSEStreamingApi } from 'hono/streaming';
 import type { HatagoHub } from './hub.js';
 
 /**
  * Create SSE adapter for StreamableHTTP
  */
-function createSSEAdapter(stream: any): SSEStream {
+function createSSEAdapter(stream: SSEStreamingApi): SSEStream {
   return {
     closed: false,
     async write(data: string) {
@@ -33,7 +33,7 @@ function createSSEAdapter(stream: any): SSEStream {
  * Handle SSE endpoint for StreamableHTTP
  */
 export async function handleSSEEndpoint(hub: HatagoHub, c: Context) {
-  const transport = (hub as any).streamableTransport;
+  const transport = hub.getStreamableTransport();
   if (!transport) {
     return c.text('StreamableHTTP not initialized', 500);
   }
@@ -69,7 +69,8 @@ export function createEventsEndpoint(hub: HatagoHub) {
 
     return streamSSE(c, async (stream) => {
       // Register client with SSE manager (enhanced with stream support)
-      (sseManager as any).addClient(clientId, null as any, stream);
+      // Note: SSEManager expects WritableStreamDefaultWriter, but we pass null and use stream instead
+      sseManager.addClient(clientId, null as unknown as WritableStreamDefaultWriter, stream);
 
       // Clean up on disconnect
       stream.onAbort(() => {
@@ -87,7 +88,7 @@ export function createEventsEndpoint(hub: HatagoHub) {
  * Handle MCP endpoint with StreamableHTTP support
  */
 export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
-  const transport = (hub as any).streamableTransport;
+  const transport = hub.getStreamableTransport();
   if (!transport) {
     // Fallback to original implementation
     return hub.handleHttpRequest(c.req.raw);
@@ -108,9 +109,9 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
   // Handle POST request with potential SSE response
   if (method === 'POST') {
     // Parse body
-    let body: any;
+    let body: unknown;
     try {
-      body = await c.req.json();
+      body = (await c.req.json()) as unknown;
     } catch {
       return c.json(
         {
@@ -126,8 +127,11 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
     }
 
     // Check if SSE response is needed
-    const hasProgressToken = body.params?._meta?.progressToken;
-    const isToolCall = body.method === 'tools/call';
+    const bodyAsRecord = body as Record<string, unknown>;
+    const params = bodyAsRecord.params as Record<string, unknown> | undefined;
+    const meta = params?._meta as Record<string, unknown> | undefined;
+    const hasProgressToken = meta?.progressToken;
+    const isToolCall = bodyAsRecord.method === 'tools/call';
     const acceptsSSE = c.req.header('Accept')?.includes('text/event-stream');
 
     // Always use SSE if client accepts it and it's a tool call with progress token
@@ -145,9 +149,10 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
         // Handle through StreamableHTTP
         const result = await transport.handleHttpRequest('POST', headers, body, sseStream);
 
-        if (result?.body) {
+        const resultBody = result?.body as unknown;
+        if (resultBody) {
           // Send final response via SSE
-          await stream.write(`data: ${JSON.stringify(result.body)}\n\n`);
+          await stream.write(`data: ${JSON.stringify(resultBody)}\n\n`);
         }
 
         await stream.close();
@@ -164,16 +169,19 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
 
     if (result) {
       // Set response headers
-      if (result.headers) {
-        Object.entries(result.headers).forEach(([key, value]) => {
+      const resultHeaders = result.headers as Record<string, unknown> | undefined;
+      if (resultHeaders) {
+        Object.entries(resultHeaders).forEach(([key, value]) => {
           if (typeof value === 'string') {
             c.header(key, value);
           }
         });
       }
-      return result.body
-        ? c.json(result.body, result.status || 200)
-        : c.body(null, result.status || 200);
+      const resultBody = result.body as unknown;
+      const resultStatus = result.status as number | undefined;
+      return resultBody
+        ? c.json(resultBody, resultStatus || 200)
+        : c.body(null, resultStatus || 200);
     }
   }
 
