@@ -19,6 +19,7 @@ import {
   type ITransport
 } from '@himorishige/hatago-transport';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { HatagoConfig, ServerConfig } from '@himorishige/hatago-core/schemas';
 import {
   CreateMessageRequestSchema,
   type JSONRPCMessage
@@ -687,7 +688,7 @@ export class HatagoHub {
           }
 
           // Handle message through existing JSON-RPC logic
-          const result = await this.handleJsonRpcRequest(message);
+          const result = await this.handleJsonRpcRequest(message as JSONRPCMessage);
           if (result && this.streamableTransport) {
             await this.streamableTransport.send(result);
           }
@@ -714,6 +715,24 @@ export class HatagoHub {
             string,
             {
               disabled?: boolean;
+              hatagoOptions?: {
+                start?: string;
+                timeout?: number;
+              };
+              command?: string;
+              args?: string[];
+              env?: Record<string, string>;
+              cwd?: string;
+              url?: string;
+              transport?: {
+                type?: string;
+              };
+              headers?: Record<string, string>;
+              timeouts?: {
+                connect?: number;
+                request?: number;
+                response?: number;
+              };
               [key: string]: unknown;
             }
           >;
@@ -738,10 +757,10 @@ export class HatagoHub {
               continue;
             }
 
-            const spec = this.normalizeServerSpec(serverConfig as any);
+            const spec = this.normalizeServerSpec(serverConfig);
 
             // Check if server should be started eagerly
-            const hatagoOptions = (serverConfig as any).hatagoOptions || {};
+            const hatagoOptions = serverConfig.hatagoOptions || {};
             if (hatagoOptions.start !== 'lazy') {
               try {
                 this.notificationManager?.notifyServerStatus(id, 'starting');
@@ -789,11 +808,11 @@ export class HatagoHub {
   /**
    * Normalize server spec from config format
    */
-  private normalizeServerSpec(config: any): ServerSpec {
+  private normalizeServerSpec(config: ServerConfig): ServerSpec {
     const spec: ServerSpec = {};
 
     // Local server via command
-    if (config.command) {
+    if ('command' in config) {
       spec.command = config.command;
       spec.args = config.args;
       spec.env = config.env;
@@ -801,11 +820,11 @@ export class HatagoHub {
     }
 
     // Remote server via URL
-    if (config.url) {
+    if ('url' in config) {
       spec.url = config.url;
       // Support both 'type' and 'transport' fields for remote servers
       // Default to 'streamable-http' for HTTP endpoints, 'sse' requires explicit type
-      spec.type = config.transport || config.type || 'streamable-http';
+      spec.type = config.type || 'streamable-http';
       spec.headers = config.headers;
     }
 
@@ -837,9 +856,9 @@ export class HatagoHub {
     const internalTools = getInternalTools();
     const managementServer = new HatagoManagementServer({
       configFilePath: '',
-      stateMachine: null as any,
-      activationManager: null as any,
-      idleManager: null as any
+      stateMachine: null as unknown,
+      activationManager: null as unknown,
+      idleManager: null as unknown
     });
 
     this.logger.info('[Hub] Registering internal management tools', {
@@ -851,7 +870,7 @@ export class HatagoHub {
       name: tool.name,
       description: tool.description,
       inputSchema: zodToJsonSchema(tool.inputSchema),
-      handler: async (args: any) => tool.handler(args, this)
+      handler: async (args: unknown) => tool.handler(args, this)
     }));
 
     // Register as internal server
@@ -890,7 +909,7 @@ export class HatagoHub {
    */
   private async calculateToolsetHash(): Promise<string> {
     const tools = this.tools.list();
-    const toolData = tools.map((t: any) => ({
+    const toolData = tools.map((t) => ({
       name: t.name,
       description: t.description
     }));
@@ -998,7 +1017,7 @@ export class HatagoHub {
 
       const configPath = resolve(this.options.configFile);
       const configContent = readFileSync(configPath, 'utf-8');
-      const newConfig = JSON.parse(configContent);
+      const newConfig = JSON.parse(configContent) as unknown;
 
       // Validate config using Zod
       const { safeParseConfig, formatConfigError } = await import(
@@ -1020,7 +1039,7 @@ export class HatagoHub {
         const notificationConfig: NotificationConfig = {
           enabled: config.notifications.enabled ?? false,
           rateLimitSec: config.notifications.rateLimitSec ?? 60,
-          severity: (config.notifications.severity as any[]) ?? ['warn', 'error']
+          severity: (config.notifications.severity as string[]) ?? ['warn', 'error']
         };
 
         if (this.notificationManager) {
@@ -1048,7 +1067,7 @@ export class HatagoHub {
       if (config.mcpServers) {
         for (const [id, serverConfig] of Object.entries(config.mcpServers)) {
           // Skip disabled servers
-          if ((serverConfig as any).disabled === true) {
+          if (serverConfig.disabled === true) {
             // If server exists and is now disabled, remove it
             if (existingServerIds.has(id)) {
               this.logger.info(`Removing server ${id} (now disabled)`);
@@ -1059,11 +1078,11 @@ export class HatagoHub {
             continue;
           }
 
-          const spec = this.normalizeServerSpec(serverConfig as any);
+          const spec = this.normalizeServerSpec(serverConfig);
 
           // Check if server should be started eagerly
-          const hatagoOptions = (serverConfig as any).hatagoOptions || {};
-          if (hatagoOptions.start !== 'lazy') {
+          const hatagoOptions = serverConfig.hatagoOptions || {};
+          if (hatagoOptions?.start !== 'lazy') {
             try {
               // If server already exists, check if spec has changed
               if (existingServerIds.has(id)) {
