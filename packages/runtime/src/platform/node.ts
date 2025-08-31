@@ -23,20 +23,20 @@ import type {
 class FileConfigStore implements ConfigStore {
   constructor(private basePath: string) {}
 
-  async get(key: string): Promise<any> {
+  async get(key: string): Promise<unknown> {
     try {
       const filePath = path.join(this.basePath, `${key}.json`);
       const content = await fs.readFile(filePath, 'utf-8');
       return JSON.parse(content);
     } catch (error) {
-      if ((error as any).code === 'ENOENT') {
+      if ((error as { code?: string }).code === 'ENOENT') {
         return null;
       }
       throw error;
     }
   }
 
-  async set(key: string, value: any): Promise<void> {
+  async set(key: string, value: unknown): Promise<void> {
     const filePath = path.join(this.basePath, `${key}.json`);
     await fs.mkdir(this.basePath, { recursive: true });
     await fs.writeFile(filePath, JSON.stringify(value, null, 2));
@@ -62,7 +62,7 @@ class FileConfigStore implements ConfigStore {
  * In production, this could be replaced with Redis or similar
  */
 class MemorySessionStore implements SessionStore {
-  private sessions = new Map<string, { data: any; expires: number }>();
+  private sessions = new Map<string, { data: unknown; expires: number }>();
   private ttl: number;
 
   constructor(ttl: number = 3600000) {
@@ -72,14 +72,14 @@ class MemorySessionStore implements SessionStore {
     setInterval(() => this.cleanup(), 60000); // Every minute
   }
 
-  async create(id: string, data: any): Promise<void> {
+  async create(id: string, data: unknown): Promise<void> {
     this.sessions.set(id, {
       data,
       expires: Date.now() + this.ttl
     });
   }
 
-  async get(id: string): Promise<any> {
+  async get(id: string): Promise<unknown> {
     const session = this.sessions.get(id);
     if (!session) return null;
     if (Date.now() > session.expires) {
@@ -89,7 +89,7 @@ class MemorySessionStore implements SessionStore {
     return session.data;
   }
 
-  async update(id: string, data: any): Promise<void> {
+  async update(id: string, data: unknown): Promise<void> {
     const session = this.sessions.get(id);
     if (session) {
       session.data = { ...session.data, ...data };

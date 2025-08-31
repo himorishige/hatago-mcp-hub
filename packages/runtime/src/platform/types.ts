@@ -11,8 +11,8 @@ import type { ChildProcess } from 'node:child_process';
  * Configuration storage interface
  */
 export interface ConfigStore {
-  get(key: string): Promise<any>;
-  set(key: string, value: any): Promise<void>;
+  get(key: string): Promise<unknown>;
+  set(key: string, value: unknown): Promise<void>;
   delete(key: string): Promise<void>;
   list(): Promise<string[]>;
 }
@@ -21,9 +21,9 @@ export interface ConfigStore {
  * Session storage interface
  */
 export interface SessionStore {
-  create(id: string, data: any): Promise<void>;
-  get(id: string): Promise<any>;
-  update(id: string, data: any): Promise<void>;
+  create(id: string, data: unknown): Promise<void>;
+  get(id: string): Promise<unknown>;
+  update(id: string, data: unknown): Promise<void>;
   delete(id: string): Promise<void>;
   exists(id: string): Promise<boolean>;
   list(): Promise<string[]>;
@@ -76,7 +76,7 @@ export interface Platform {
  * Platform initialization options
  */
 export interface PlatformOptions {
-  env?: Record<string, any>;
+  env?: Record<string, unknown>;
   storage?: {
     configPath?: string;
     sessionTTL?: number;

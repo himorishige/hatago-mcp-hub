@@ -34,7 +34,7 @@ export class StdioSafeLogger implements Logger {
     const timestamp = new Date().toISOString();
 
     // Build log record
-    const record: any = {
+    const record: Record<string, unknown> = {
       level,
       time: timestamp,
       msg: msg || (typeof obj === 'string' ? obj : undefined)
@@ -48,7 +48,7 @@ export class StdioSafeLogger implements Logger {
     }
 
     // Add prefix to message
-    if (record.msg) {
+    if (record.msg && typeof record.msg === 'string') {
       record.msg = `${this.prefix} ${record.msg}`;
     }
 

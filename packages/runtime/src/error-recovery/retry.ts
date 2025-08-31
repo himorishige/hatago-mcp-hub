@@ -185,7 +185,7 @@ export async function batchRetry<T>(
 /**
  * Create a retryable version of a function
  */
-export function makeRetryable<T extends (...args: any[]) => Promise<any>>(
+export function makeRetryable<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
   options: RetryOptions = {}
 ): T {
@@ -196,6 +196,6 @@ export function makeRetryable<T extends (...args: any[]) => Promise<any>>(
       throw result.error?.originalError || new Error('Operation failed');
     }
 
-    return result.value;
+    return result.value as ReturnType<T>;
   }) as T;
 }
