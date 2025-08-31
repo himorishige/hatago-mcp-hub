@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+/* eslint-env node */
+/* global console, process */
 /**
  * Restore original package.json after publishing
  * This ensures the workspace development continues to work

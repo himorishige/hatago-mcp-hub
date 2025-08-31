@@ -5,7 +5,7 @@
  * we create a GetEnv function from env bindings
  */
 
-import type { GetEnv } from '@himorishige/hatago-core';
+import type { GetEnv, HatagoConfig } from '@himorishige/hatago-core';
 import { expandConfig, validateEnvironmentVariables } from '@himorishige/hatago-core';
 
 /**
@@ -50,18 +50,21 @@ export async function loadConfigWithEnvExpansion(
   }
 
   // Create GetEnv function for Workers
-  const getEnv = createWorkersGetEnv(env);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const getEnv = createWorkersGetEnv(env) as GetEnv;
 
   // Validate environment variables
   try {
-    validateEnvironmentVariables(rawConfig, getEnv);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    validateEnvironmentVariables(rawConfig as HatagoConfig, getEnv);
   } catch (error) {
     console.error('Missing required environment variables:', error);
     throw error;
   }
 
   // Expand environment variables
-  const expandedConfig = expandConfig(rawConfig, getEnv);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+  const expandedConfig = expandConfig(rawConfig as HatagoConfig, getEnv) as HatagoConfig;
 
   return expandedConfig;
 }

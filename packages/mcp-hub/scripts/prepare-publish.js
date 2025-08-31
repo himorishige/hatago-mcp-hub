@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+/* eslint-env node */
+/* global console, process */
 /**
  * Prepare package.json for publishing
  * Removes workspace dependencies from dependencies field
