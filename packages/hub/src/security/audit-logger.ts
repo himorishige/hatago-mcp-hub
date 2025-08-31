@@ -50,9 +50,9 @@ export interface AuditLogEntry {
   details: {
     serverId?: string;
     path?: string;
-    changes?: any;
+    changes?: unknown;
     error?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
 
   /** Security impact level */
@@ -139,7 +139,7 @@ export class AuditLogger {
   /**
    * Log configuration write
    */
-  async logConfigWrite(source: AuditLogEntry['source'], changes: any): Promise<void> {
+  async logConfigWrite(source: AuditLogEntry['source'], changes: unknown): Promise<void> {
     await this.log('CONFIG_WRITE', source, {
       path: this.logFilePath.replace('.audit.log', ''),
       changes
@@ -153,7 +153,7 @@ export class AuditLogger {
     serverId: string,
     eventType: 'SERVER_ACTIVATED' | 'SERVER_DEACTIVATED',
     source: AuditLogEntry['source'],
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<void> {
     await this.log(eventType, source, {
       serverId,
