@@ -12,7 +12,11 @@ import {
   ToolInvoker,
   ToolRegistry
 } from '@himorishige/hatago-runtime';
-import { SSEClientTransport, StreamableHTTPTransport } from '@himorishige/hatago-transport';
+import {
+  SSEClientTransport,
+  StreamableHTTPTransport,
+  type ITransport
+} from '@himorishige/hatago-transport';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CreateMessageRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { UnsupportedFeatureError } from './errors.js';
@@ -37,7 +41,7 @@ type CapabilitySupport = 'supported' | 'unsupported' | 'unknown';
 
 class CapabilityRegistry {
   private serverCapabilities = new Map<string, Map<string, CapabilitySupport>>();
-  private clientCapabilities = new Map<string, any>(); // sessionId -> capabilities
+  private clientCapabilities = new Map<string, Record<string, unknown>>(); // sessionId -> capabilities
 
   // Track server capability support status
   markServerCapability(serverId: string, method: string, support: CapabilitySupport) {
@@ -53,11 +57,11 @@ class CapabilityRegistry {
   }
 
   // Store client capabilities
-  setClientCapabilities(sessionId: string, capabilities: any) {
+  setClientCapabilities(sessionId: string, capabilities: Record<string, unknown>) {
     this.clientCapabilities.set(sessionId, capabilities || {});
   }
 
-  getClientCapabilities(sessionId: string): any {
+  getClientCapabilities(sessionId: string): Record<string, unknown> {
     return this.clientCapabilities.get(sessionId) || {};
   }
 
@@ -104,13 +108,13 @@ export class HatagoHub {
   private notificationManager?: NotificationManager;
 
   // Config file watcher
-  private configWatcher?: any;
+  private configWatcher?: import('node:fs').FSWatcher;
 
   // Options
   protected options: Required<HubOptions>;
 
   // Notification callback for forwarding to parent
-  public onNotification?: (notification: any) => Promise<void>;
+  public onNotification?: (notification: unknown) => Promise<void>;
 
   // Toolset versioning
   private toolsetRevision = 0;
@@ -140,7 +144,7 @@ export class HatagoHub {
     this.sessions = new SessionManager(this.options.sessionTTL);
     this.toolRegistry = new ToolRegistry({
       namingConfig: {
-        strategy: this.options.namingStrategy as any,
+        strategy: this.options.namingStrategy as 'none' | 'namespace' | 'prefix',
         separator: this.options.separator
       }
     });
@@ -149,7 +153,7 @@ export class HatagoHub {
       {
         timeout: this.options.defaultTimeout
       },
-      this.sseManager as any
+      this.sseManager
     );
     this.resourceRegistry = createResourceRegistry();
     this.promptRegistry = createPromptRegistry();
@@ -248,13 +252,13 @@ export class HatagoHub {
   /**
    * Wrap transport for logging
    */
-  private wrapTransport(transport: any, serverId: string): any {
+  private wrapTransport(transport: ITransport, serverId: string): ITransport {
     const logger = this.logger.child(serverId);
 
     // Wrap send method for request logging
     const originalSend = transport.send?.bind(transport);
     if (originalSend) {
-      transport.send = async (message: any) => {
+      transport.send = async (message: unknown) => {
         logger.debug('RPC Request', { message });
         try {
           const result = await originalSend(message);
@@ -277,7 +281,7 @@ export class HatagoHub {
    */
   private async connectWithRetry(
     id: string,
-    createTransport: () => any,
+    createTransport: () => ITransport | Promise<ITransport>,
     maxRetries: number = 3
   ): Promise<Client> {
     let lastError: Error | undefined;
@@ -321,8 +325,8 @@ export class HatagoHub {
                   'does not currently support the sampling capability. ' +
                   'This feature requires an LLM-capable client. ' +
                   'Support for this feature may be added in a future update.'
-              );
-              (error as any).code = -32603;
+              ) as Error & { code?: number };
+              error.code = -32603;
               throw error;
             }
 
@@ -1361,6 +1365,27 @@ export class HatagoHub {
    */
   getStreamableTransport(): StreamableHTTPTransport | undefined {
     return this.streamableTransport;
+  }
+
+  /**
+   * Get toolset revision
+   */
+  getToolsetRevision(): number {
+    return this.toolsetRevision;
+  }
+
+  /**
+   * Get toolset hash
+   */
+  getToolsetHash(): string {
+    return this.toolsetHash;
+  }
+
+  /**
+   * Reload configuration (public wrapper)
+   */
+  async doReloadConfig(): Promise<void> {
+    return this.reloadConfig();
   }
 
   /**

@@ -4,7 +4,7 @@
  */
 
 import { existsSync, readFileSync, unwatchFile, watchFile } from 'node:fs';
-import type { ActivationPolicy, IdlePolicy } from '@himorishige/hatago-core';
+import type { ActivationPolicy, IdlePolicy, Tool } from '@himorishige/hatago-core';
 import {
   expandConfig,
   getServerTransportType,
@@ -16,7 +16,7 @@ import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 import { HatagoHub } from './hub.js';
 import { ActivationManager } from './mcp-server/activation-manager.js';
 import { IdleManager } from './mcp-server/idle-manager.js';
-import { MetadataStore } from './mcp-server/metadata-store.js';
+import { MetadataStore, type StoredServerMetadata } from './mcp-server/metadata-store.js';
 import { ServerStateMachine } from './mcp-server/state-machine.js';
 import { AuditLogger } from './security/audit-logger.js';
 import type { CallOptions, HubOptions, ListOptions, ServerSpec } from './types.js';
@@ -109,15 +109,15 @@ export class EnhancedHatagoHub extends HatagoHub {
     // Override tools object to use callToolWithActivation
     const originalTools = this.tools;
     this.tools = {
-      list: (options?: ListOptions) => {
-        return originalTools.list(options);
+      list: (options?: ListOptions): Tool[] => {
+        return originalTools.list(options) as Tool[];
       },
       call: async (
         name: string,
-        args: any,
+        args: unknown,
         options?: CallOptions & {
           progressToken?: string;
-          progressCallback?: any;
+          progressCallback?: (progress: unknown) => void;
         }
       ) => {
         // Use callToolWithActivation for on-demand activation support
@@ -176,7 +176,7 @@ export class EnhancedHatagoHub extends HatagoHub {
 
     try {
       const content = readFileSync(configFile, 'utf-8');
-      const rawConfig = JSON.parse(content);
+      const rawConfig = JSON.parse(content) as unknown;
 
       // Expand environment variables
       this.config = expandConfig(rawConfig) as HatagoConfig;
@@ -270,13 +270,20 @@ export class EnhancedHatagoHub extends HatagoHub {
     this.logger.debug(`[Enhanced] Detected transport type: ${transportType}`);
 
     const spec: ServerSpec = {
-      command: 'command' in config ? (config as any).command : undefined,
-      args: 'args' in config ? (config as any).args : undefined,
-      env: 'env' in config ? (config as any).env : undefined,
-      cwd: 'cwd' in config ? (config as any).cwd : undefined,
-      url: 'url' in config ? (config as any).url : undefined,
+      command:
+        'command' in config && typeof config.command === 'string' ? config.command : undefined,
+      args: 'args' in config && Array.isArray(config.args) ? (config.args as string[]) : undefined,
+      env:
+        'env' in config && typeof config.env === 'object' && config.env !== null
+          ? (config.env as Record<string, string>)
+          : undefined,
+      cwd: 'cwd' in config && typeof config.cwd === 'string' ? config.cwd : undefined,
+      url: 'url' in config && typeof config.url === 'string' ? config.url : undefined,
       type: transportType === 'stdio' ? undefined : transportType,
-      headers: 'headers' in config ? (config as any).headers : undefined
+      headers:
+        'headers' in config && typeof config.headers === 'object' && config.headers !== null
+          ? (config.headers as Record<string, string>)
+          : undefined
     };
 
     this.logger.debug(`[Enhanced] Created spec for ${serverId}:`, spec);
@@ -341,7 +348,11 @@ export class EnhancedHatagoHub extends HatagoHub {
   /**
    * Call a tool with on-demand activation support
    */
-  async callToolWithActivation(name: string, args: any, options: CallOptions = {}): Promise<any> {
+  async callToolWithActivation(
+    name: string,
+    args: unknown,
+    options: CallOptions = {}
+  ): Promise<unknown> {
     // Check if tool requires server activation
     const toolInfo = this.toolRegistry.getTool(name);
     if (toolInfo && this.activationManager && this.metadataStore) {
@@ -462,14 +473,18 @@ export class EnhancedHatagoHub extends HatagoHub {
   /**
    * Get server metadata
    */
-  getServerMetadata(serverId: string): any {
+  getServerMetadata(serverId: string): StoredServerMetadata | undefined {
     return this.metadataStore?.getServerMetadata(serverId);
   }
 
   /**
    * Search for tools across all servers
    */
-  searchTools(query: string): any[] {
+  searchTools(query: string): Array<{
+    serverId: string;
+    tool: Tool;
+    metadata: StoredServerMetadata;
+  }> {
     if (!this.metadataStore) return [];
     return this.metadataStore.searchTools(query);
   }
