@@ -2,6 +2,7 @@
  * HatagoHub - User-friendly facade for MCP Hub
  */
 
+import type { FSWatcher } from 'node:fs';
 import {
   createPromptRegistry,
   createResourceRegistry,
@@ -18,7 +19,10 @@ import {
   type ITransport
 } from '@himorishige/hatago-transport';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { CreateMessageRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CreateMessageRequestSchema,
+  type JSONRPCMessage
+} from '@modelcontextprotocol/sdk/types.js';
 import { UnsupportedFeatureError } from './errors.js';
 import { Logger } from './logger.js';
 import { type NotificationConfig, NotificationManager } from './notification-manager.js';
@@ -108,7 +112,7 @@ export class HatagoHub {
   private notificationManager?: NotificationManager;
 
   // Config file watcher
-  private configWatcher?: import('node:fs').FSWatcher;
+  private configWatcher?: FSWatcher;
 
   // Sampling request handlers
   private samplingSolvers: Map<
@@ -440,7 +444,7 @@ export class HatagoHub {
         }
 
         // Dynamically import StdioClientTransport only when needed
-        const transportModule = (await import('@himorishige/hatago-transport/stdio')) as any;
+        const transportModule = await import('@himorishige/hatago-transport/stdio');
         const { StdioClientTransport } = transportModule;
 
         this.logger.debug(`Creating StdioClientTransport for ${id}`, {
@@ -487,7 +491,10 @@ export class HatagoHub {
 
     // Set up notification handler to forward notifications
     // This will catch all notifications from the child server
-    (client as any).fallbackNotificationHandler = async (notification: any) => {
+    const clientWithHandler = client as Client & {
+      fallbackNotificationHandler?: (notification: JSONRPCMessage) => Promise<void>;
+    };
+    clientWithHandler.fallbackNotificationHandler = async (notification: JSONRPCMessage) => {
       this.logger.debug(`[Hub] Notification from server ${id}`, notification);
 
       // Forward notification to parent (Claude Code) via callback
@@ -514,13 +521,13 @@ export class HatagoHub {
       const toolArray = toolsResult.tools || [];
 
       this.logger.debug(`[Hub] Registering ${toolArray.length} tools from ${id}`, {
-        toolNames: toolArray.map((t: any) => t.name)
+        toolNames: toolArray.map((t) => t.name)
       });
 
       // Prepare all tools with handlers
-      const toolsWithHandlers = toolArray.map((tool: any) => ({
+      const toolsWithHandlers = toolArray.map((tool) => ({
         ...tool,
-        handler: async (args: any, progressCallback?: any) => {
+        handler: async (args: unknown, progressCallback?: (progress: unknown) => void) => {
           // Use high-level callTool API with progress support
           const result = await client.callTool(
             {
@@ -529,7 +536,12 @@ export class HatagoHub {
             },
             undefined, // Use default schema
             {
-              onprogress: (progress: any) => {
+              onprogress: (progress: {
+                progressToken?: string;
+                progress?: number;
+                total?: number;
+                message?: string;
+              }) => {
                 this.logger.debug(`[Hub] Tool progress from ${id}/${tool.name}`, progress);
 
                 // Forward progress notification to parent
@@ -571,7 +583,7 @@ export class HatagoHub {
         const tool = toolsWithHandlers[i];
         const registeredTool = registeredTools[i];
 
-        if (registeredTool) {
+        if (registeredTool && tool) {
           server.tools.push(registeredTool);
           this.toolInvoker.registerHandler(registeredTool.name, tool.handler);
           this.emit('tool:registered', { serverId: id, tool: registeredTool });
@@ -692,7 +704,20 @@ export class HatagoHub {
 
         const configPath = resolve(this.options.configFile);
         const configContent = readFileSync(configPath, 'utf-8');
-        const config = JSON.parse(configContent);
+        const config = JSON.parse(configContent) as {
+          notifications?: {
+            enabled?: boolean;
+            rateLimitSec?: number;
+            severity?: string[];
+          };
+          mcpServers?: Record<
+            string,
+            {
+              disabled?: boolean;
+              [key: string]: unknown;
+            }
+          >;
+        };
 
         // Initialize notification manager if configured
         if (config.notifications) {
@@ -708,7 +733,7 @@ export class HatagoHub {
         if (config.mcpServers) {
           for (const [id, serverConfig] of Object.entries(config.mcpServers)) {
             // Skip disabled servers
-            if ((serverConfig as any).disabled === true) {
+            if (serverConfig.disabled === true) {
               this.logger.info(`Skipping disabled server: ${id}`);
               continue;
             }
