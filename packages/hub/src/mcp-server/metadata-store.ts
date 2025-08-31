@@ -54,10 +54,7 @@ export class MetadataStore {
   /**
    * Store server metadata
    */
-  async storeServerMetadata(
-    serverId: string,
-    metadata: Partial<StoredServerMetadata>
-  ): Promise<void> {
+  storeServerMetadata(serverId: string, metadata: Partial<StoredServerMetadata>): void {
     const existing = this.metadata.get(serverId) || {
       serverId,
       serverType: 'local' as const,
@@ -219,7 +216,7 @@ export class MetadataStore {
   /**
    * Update connection info
    */
-  async updateConnectionInfo(serverId: string, connected: boolean, error?: string): Promise<void> {
+  updateConnectionInfo(serverId: string, connected: boolean, error?: string): void {
     const metadata = this.getServerMetadata(serverId);
     if (!metadata) return;
 
@@ -242,7 +239,7 @@ export class MetadataStore {
   /**
    * Update usage statistics
    */
-  async updateStatistics(serverId: string, callDuration?: number): Promise<void> {
+  updateStatistics(serverId: string, callDuration?: number): void {
     const metadata = this.getServerMetadata(serverId);
     if (!metadata) return;
 
@@ -329,7 +326,7 @@ export class MetadataStore {
   /**
    * Save metadata to disk
    */
-  async save(): Promise<void> {
+  save(): void {
     if (!this.metadataPath) return;
 
     const data = Object.fromEntries(this.metadata);
@@ -348,7 +345,7 @@ export class MetadataStore {
 
     try {
       const content = readFileSync(this.metadataPath, 'utf-8');
-      const data = JSON.parse(content);
+      const data = JSON.parse(content) as Record<string, StoredServerMetadata>;
 
       this.metadata = new Map(Object.entries(data));
     } catch {
@@ -425,7 +422,7 @@ export class MetadataStore {
   /**
    * Calculate hash for change detection
    */
-  private calculateHash(data: any): string {
+  private calculateHash(data: unknown): string {
     const str = JSON.stringify(data);
     let hash = 0;
 
@@ -447,9 +444,11 @@ export class MetadataStore {
     }
 
     this.saveTimer = setTimeout(() => {
-      this.save().catch((error) => {
+      try {
+        this.save();
+      } catch (error) {
         console.error('Failed to save metadata:', error);
-      });
+      }
     }, this.saveDebounceMs);
   }
 
@@ -463,9 +462,11 @@ export class MetadataStore {
 
     // Final save
     if (this.autoSave) {
-      this.save().catch(() => {
+      try {
+        this.save();
+      } catch {
         // Ignore errors on cleanup
-      });
+      }
     }
   }
 }

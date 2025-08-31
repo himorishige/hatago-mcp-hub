@@ -110,6 +110,9 @@ export function createResourceRegistry(options: ResourceRegistryOptions = {}): R
 
     // Return the first resource (in case of collisions)
     const resource = resourceList[0];
+    if (!resource) {
+      return null;
+    }
     return {
       serverId: resource.serverId,
       originalUri: resource.originalUri,
@@ -155,10 +158,13 @@ export function createResourceRegistry(options: ResourceRegistryOptions = {}): R
       if (!seen.has(uri) && resourceList.length > 0) {
         seen.add(uri);
         // Return the first resource for each URI (in case of collisions)
-        const { serverId, originalUri, ...resource } = resourceList[0];
-        void serverId; // Explicitly ignore
-        void originalUri; // Explicitly ignore
-        allResources.push(resource);
+        const firstResource = resourceList[0];
+        if (firstResource) {
+          const { serverId, originalUri, ...resource } = firstResource;
+          void serverId; // Explicitly ignore
+          void originalUri; // Explicitly ignore
+          allResources.push(resource);
+        }
       }
     }
 

@@ -18,3 +18,5 @@ export { HatagoHub } from './hub.js';
 export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
 export { createHub } from './index.js';
 export * from './types.js';
+// Export HubConfig as an alias for HubOptions
+export type { HubOptions as HubConfig } from './types.js';

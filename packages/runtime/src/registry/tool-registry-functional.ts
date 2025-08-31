@@ -47,8 +47,8 @@ export function generatePublicName(
     return config.aliases[aliasKey];
   }
 
-  // None/simple strategy - just use the tool name without server prefix
-  if (strategy === 'none' || (strategy as any) === 'simple') {
+  // None strategy - just use the tool name without server prefix
+  if (strategy === 'none') {
     return toolName;
   }
 

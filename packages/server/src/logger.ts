@@ -22,7 +22,7 @@ export class Logger {
     this.level = LOG_LEVELS[level as LogLevel] ?? LOG_LEVELS.info;
   }
 
-  private log(level: LogLevel, ...args: any[]): void {
+  private log(level: LogLevel, ...args: unknown[]): void {
     if (LOG_LEVELS[level] <= this.level) {
       const timestamp = new Date().toISOString();
       const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
@@ -30,23 +30,23 @@ export class Logger {
     }
   }
 
-  error(...args: any[]): void {
+  error(...args: unknown[]): void {
     this.log('error', ...args);
   }
 
-  warn(...args: any[]): void {
+  warn(...args: unknown[]): void {
     this.log('warn', ...args);
   }
 
-  info(...args: any[]): void {
+  info(...args: unknown[]): void {
     this.log('info', ...args);
   }
 
-  debug(...args: any[]): void {
+  debug(...args: unknown[]): void {
     this.log('debug', ...args);
   }
 
-  trace(...args: any[]): void {
+  trace(...args: unknown[]): void {
     this.log('trace', ...args);
   }
 }

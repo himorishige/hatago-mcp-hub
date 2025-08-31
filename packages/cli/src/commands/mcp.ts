@@ -118,7 +118,7 @@ function loadServers(): McpServer[] {
 
   try {
     const content = readFileSync(configPath, 'utf-8');
-    return JSON.parse(content);
+    return JSON.parse(content) as McpServer[];
   } catch (error) {
     console.error('Error loading server configuration:', error);
     return [];

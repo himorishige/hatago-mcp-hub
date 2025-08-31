@@ -103,7 +103,7 @@ export interface ServerMetadata {
   tools?: Array<{
     name: string;
     description: string;
-    inputSchema: any;
+    inputSchema: unknown;
   }>;
 
   /** Cached resource definitions */
@@ -117,7 +117,7 @@ export interface ServerMetadata {
   prompts?: Array<{
     name: string;
     description: string;
-    arguments?: any[];
+    arguments?: unknown[];
   }>;
 
   /** Usage statistics */

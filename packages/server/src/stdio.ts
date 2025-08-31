@@ -13,7 +13,11 @@ import type { Logger } from './logger.js';
 /**
  * Start the MCP server in STDIO mode
  */
-export async function startStdio(config: any, logger: Logger, watchConfig = false): Promise<void> {
+export async function startStdio(
+  config: { path?: string },
+  logger: Logger,
+  watchConfig = false
+): Promise<void> {
   // Ensure stdout is for protocol only
   process.stdout.setDefaultEncoding('utf8');
 
@@ -28,7 +32,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
   const hub = createHub({ configFile: config.path, watchConfig });
 
   // Set up notification handler to forward to Claude Code
-  hub.onNotification = async (notification: any) => {
+  hub.onNotification = async (notification: unknown) => {
     // Don't send notifications during shutdown
     if (isShuttingDown) {
       return;
@@ -36,12 +40,13 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
 
     logger.debug('[STDIO] Forwarding notification from child server:', notification);
     // Ensure it's a proper notification (no id field)
-    if (!notification.method) {
+    const notificationObj = notification as { method?: string; id?: unknown };
+    if (!notificationObj.method) {
       logger.warn('Invalid notification without method:', notification);
       return;
     }
     // Remove any id field to ensure it's treated as a notification
-    const { id, ...notificationWithoutId } = notification;
+    const { id, ...notificationWithoutId } = notificationObj;
     void id; // Explicitly ignore
     await sendMessage(notificationWithoutId, logger, isShuttingDown);
   };
@@ -106,7 +111,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
       if (!line.trim()) continue; // Skip empty lines
 
       try {
-        const message = JSON.parse(line);
+        const message = JSON.parse(line) as unknown;
 
         // Validate JSON-RPC structure
         if (!message || typeof message !== 'object') {
@@ -118,7 +123,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
                 message: 'Invalid Request',
                 data: 'Request must be an object'
               },
-              id: message?.id || null
+              id: (message as Record<string, unknown>)?.id || null
             },
             logger,
             isShuttingDown
@@ -127,7 +132,8 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
         }
 
         // Check for required fields
-        if (!message.method && !message.result && !message.error) {
+        const msg = message as Record<string, unknown>;
+        if (!msg.method && !msg.result && !msg.error) {
           await sendMessage(
             {
               jsonrpc: '2.0',
@@ -136,7 +142,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
                 message: 'Invalid Request',
                 data: 'Missing required fields'
               },
-              id: message.id || null
+              id: msg.id || null
             },
             logger,
             isShuttingDown
@@ -147,7 +153,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
         logger.debug('Received:', message);
 
         // Process message through hub
-        const response = await processMessage(hub, message, logger);
+        const response = await processMessage(hub, msg, logger);
 
         if (response) {
           await sendMessage(response, logger, isShuttingDown);
@@ -176,7 +182,7 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
   // Handle stdin errors
   process.stdin.on('error', (error) => {
     isShuttingDown = true; // Set flag immediately
-    if ((error as any).code === 'EPIPE') {
+    if ((error as { code?: string }).code === 'EPIPE') {
       logger.info('STDIN pipe closed');
     } else {
       logger.error('STDIN error:', error);
@@ -197,7 +203,11 @@ export async function startStdio(config: any, logger: Logger, watchConfig = fals
 /**
  * Send a message over STDIO with LSP framing
  */
-async function sendMessage(message: any, logger: Logger, isShuttingDown = false): Promise<void> {
+async function sendMessage(
+  message: unknown,
+  logger: Logger,
+  isShuttingDown = false
+): Promise<void> {
   // Don't send messages during shutdown
   if (isShuttingDown) {
     return;
@@ -214,7 +224,7 @@ async function sendMessage(message: any, logger: Logger, isShuttingDown = false)
       await once(process.stdout, 'drain');
     }
   } catch (error) {
-    if ((error as any).code === 'EPIPE') {
+    if ((error as { code?: string }).code === 'EPIPE') {
       logger.info('STDOUT pipe closed');
       process.exit(0);
     } else {
@@ -226,7 +236,11 @@ async function sendMessage(message: any, logger: Logger, isShuttingDown = false)
 /**
  * Process incoming MCP message
  */
-async function processMessage(hub: HatagoHub, message: any, logger: Logger): Promise<any> {
+async function processMessage(
+  hub: HatagoHub,
+  message: Record<string, unknown>,
+  logger: Logger
+): Promise<unknown> {
   const { method, params, id } = message;
   void params; // Currently unused but kept for future use
 
@@ -236,7 +250,7 @@ async function processMessage(hub: HatagoHub, message: any, logger: Logger): Pro
       case 'initialize':
         return {
           jsonrpc: '2.0',
-          id,
+          id: id as string | number | null,
           result: {
             protocolVersion: '2025-06-18',
             capabilities: {
@@ -276,7 +290,7 @@ async function processMessage(hub: HatagoHub, message: any, logger: Logger): Pro
         // For requests, return method not found error
         return {
           jsonrpc: '2.0',
-          id,
+          id: id as string | number | null,
           error: {
             code: -32601,
             message: 'Method not found',
@@ -287,7 +301,7 @@ async function processMessage(hub: HatagoHub, message: any, logger: Logger): Pro
   } catch (error) {
     return {
       jsonrpc: '2.0',
-      id,
+      id: id as string | number | null,
       error: {
         code: -32603,
         message: 'Internal error',

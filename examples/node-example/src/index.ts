@@ -8,8 +8,11 @@
  * - Automatic connection to configured MCP servers
  */
 
-import { createEventsEndpoint } from '@himorishige/hatago-hub';
-import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/node';
+import {
+  createHub,
+  handleMCPEndpoint,
+  createEventsEndpoint
+} from '@himorishige/hatago-mcp-hub/node';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -19,7 +22,9 @@ async function main() {
 
   // Create hub instance with config
   const configPath = process.env.HATAGO_CONFIG || './hatago.config.json';
-  const hub = createHub({ configFile: configPath });
+  const hub = createHub({
+    configFile: configPath
+  });
 
   // Initialize hub (loads config and connects to servers)
   await hub.start();

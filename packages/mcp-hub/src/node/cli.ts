@@ -15,7 +15,9 @@ import { createInterface } from 'node:readline';
 
 // Get package version
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8'));
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8')) as {
+  version: string;
+};
 
 // Create CLI program
 const program = new Command();
@@ -23,7 +25,7 @@ const program = new Command();
 program
   .name('hatago')
   .description('🏮 Hatago MCP Hub - Unified MCP server management')
-  .version(packageJson.version);
+  .version((packageJson as { version: string }).version);
 
 // Init command
 program
@@ -32,9 +34,10 @@ program
   .option('-c, --config <path>', 'Path to configuration file', './hatago.config.json')
   .option('-f, --force', 'Overwrite existing configuration file')
   .option('-m, --mode <mode>', 'Integration mode (stdio or http)')
-  .action(async (options) => {
-    const configPath = options.config;
-    const force = options.force || false;
+  .action(async (options: unknown) => {
+    const opts = options as { config?: string; force?: boolean; mode?: string };
+    const configPath = opts.config || './hatago.config.json';
+    const force = opts.force || false;
 
     // Check if file already exists
     if (existsSync(configPath) && !force) {
@@ -45,7 +48,7 @@ program
 
     try {
       // Determine mode
-      let mode = options.mode;
+      let mode = opts.mode;
 
       // If mode not specified, ask the user
       if (!mode) {
@@ -132,24 +135,34 @@ program
   .option('--verbose', 'Enable verbose logging')
   .option('--quiet', 'Minimize output')
   .option('--watch', 'Watch configuration file for changes')
-  .action(async (options) => {
+  .action(async (options: unknown) => {
     try {
+      const opts = options as {
+        http?: boolean;
+        config?: string;
+        port?: string;
+        host?: string;
+        verbose?: boolean;
+        quiet?: boolean;
+        watch?: boolean;
+      };
+
       // Determine mode
-      const mode = options.http ? 'http' : 'stdio';
+      const mode = opts.http ? 'http' : 'stdio';
 
       // Set log level
-      const logLevel = options.verbose ? 'debug' : options.quiet ? 'error' : 'info';
+      const logLevel = opts.verbose ? 'debug' : opts.quiet ? 'error' : 'info';
 
       // Start server
       await startServer({
         mode,
-        config: options.config,
-        port: parseInt(options.port, 10),
-        host: options.host,
+        config: opts.config,
+        port: opts.port ? parseInt(opts.port, 10) : 3535,
+        host: opts.host || '127.0.0.1',
         logLevel,
-        verbose: options.verbose,
-        quiet: options.quiet,
-        watchConfig: options.watch
+        verbose: opts.verbose,
+        quiet: opts.quiet,
+        watchConfig: opts.watch
       });
     } catch (error) {
       // Handle specific errors with cleaner messages

@@ -3,7 +3,7 @@
  */
 
 export interface LogData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export class Logger {
@@ -48,13 +48,13 @@ export class Logger {
     }
   }
 
-  private formatLog(entry: any): string {
+  private formatLog(entry: unknown): string {
     if (this.debugMode) {
       // In debug mode, output full JSON
       return JSON.stringify(entry, null, 2);
     } else {
       // In normal mode, output simple message
-      const { message, ...rest } = entry;
+      const { message, ...rest } = entry as { message: string; [key: string]: unknown };
       const extra = Object.keys(rest).length > 0 ? ` ${JSON.stringify(rest)}` : '';
       return `${message}${extra}`;
     }

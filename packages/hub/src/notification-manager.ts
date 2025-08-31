@@ -14,7 +14,7 @@ export interface NotificationEvent {
   severity: NotificationSeverity;
   category: NotificationCategory;
   message: string;
-  data?: any;
+  data?: unknown;
   timestamp: number;
 }
 
@@ -52,7 +52,7 @@ export class NotificationManager {
     severity: NotificationSeverity,
     category: NotificationCategory,
     message: string,
-    data?: any
+    data?: unknown
   ): void {
     // Check if notifications are enabled
     if (!this.config.enabled) {
@@ -93,7 +93,10 @@ export class NotificationManager {
 
     // Log the notification
     const logMethod = severity === 'error' ? 'error' : severity === 'warn' ? 'warn' : 'info';
-    this.logger[logMethod](`[${category.toUpperCase()}] ${message}`, data);
+    this.logger[logMethod](
+      `[${category.toUpperCase()}] ${message}`,
+      data as Record<string, unknown> | undefined
+    );
 
     // Send to handlers
     for (const handler of this.handlers) {

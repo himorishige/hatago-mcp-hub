@@ -52,11 +52,11 @@ export class IdleManager extends EventEmitter {
     this.activationManager = activationManager;
 
     // Listen to state changes
-    this.stateMachine.on('state:ACTIVE', ({ serverId }) => {
+    this.stateMachine.on('state:ACTIVE', ({ serverId }: { serverId: string }) => {
       this.initializeActivity(serverId);
     });
 
-    this.stateMachine.on('state:INACTIVE', ({ serverId }) => {
+    this.stateMachine.on('state:INACTIVE', ({ serverId }: { serverId: string }) => {
       this.clearActivity(serverId);
     });
   }

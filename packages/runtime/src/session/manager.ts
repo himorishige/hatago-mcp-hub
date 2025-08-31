@@ -99,6 +99,7 @@ export class SessionManager {
   /**
    * List all sessions
    */
+  // eslint-disable-next-line @typescript-eslint/require-await
   async list(): Promise<Session[]> {
     // Convert Map values to array
     return Array.from(this.state.sessions.values());

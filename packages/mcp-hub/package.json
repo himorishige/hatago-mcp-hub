@@ -43,6 +43,8 @@
     "dev": "tsdown --watch",
     "serve:http": "node dist/node/cli.js serve --http --config ./hatago.config.json",
     "serve:stdio": "node dist/node/cli.js serve --stdio --config ./hatago.config.json",
+    "prepack": "node scripts/prepare-publish.js",
+    "postpack": "node scripts/restore-package.js",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -55,6 +57,11 @@
     "commander": "^14.0.0"
   },
   "devDependencies": {
+    "@himorishige/hatago-core": "workspace:*",
+    "@himorishige/hatago-hub": "workspace:*",
+    "@himorishige/hatago-runtime": "workspace:*",
+    "@himorishige/hatago-server": "workspace:*",
+    "@himorishige/hatago-transport": "workspace:*",
     "@types/node": "^20.11.5",
     "tsdown": "^0.14.2",
     "typescript": "~5.7.2",

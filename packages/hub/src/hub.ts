@@ -2,6 +2,7 @@
  * HatagoHub - User-friendly facade for MCP Hub
  */
 
+import type { FSWatcher } from 'node:fs';
 import {
   createPromptRegistry,
   createResourceRegistry,
@@ -12,17 +13,34 @@ import {
   ToolInvoker,
   ToolRegistry
 } from '@himorishige/hatago-runtime';
-import { SSEClientTransport, StreamableHTTPTransport } from '@himorishige/hatago-transport';
+import type { Tool, LogData } from '@himorishige/hatago-core';
+import {
+  SSEClientTransport,
+  StreamableHTTPTransport,
+  type ITransport
+} from '@himorishige/hatago-transport';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { CreateMessageRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { ServerConfig } from '@himorishige/hatago-core/schemas';
+import {
+  CreateMessageRequestSchema,
+  type JSONRPCMessage
+} from '@modelcontextprotocol/sdk/types.js';
 import { UnsupportedFeatureError } from './errors.js';
 import { Logger } from './logger.js';
-import { type NotificationConfig, NotificationManager } from './notification-manager.js';
+import {
+  type NotificationConfig,
+  NotificationManager,
+  type NotificationSeverity
+} from './notification-manager.js';
 import { SSEManager } from './sse-manager.js';
+import type { ServerStateMachine } from './mcp-server/state-machine.js';
+import type { ActivationManager } from './mcp-server/activation-manager.js';
+import type { IdleManager } from './mcp-server/idle-manager.js';
 import type {
   CallOptions,
   ConnectedServer,
   HubEvent,
+  HubEventData,
   HubEventHandler,
   HubOptions,
   ListOptions,
@@ -37,7 +55,7 @@ type CapabilitySupport = 'supported' | 'unsupported' | 'unknown';
 
 class CapabilityRegistry {
   private serverCapabilities = new Map<string, Map<string, CapabilitySupport>>();
-  private clientCapabilities = new Map<string, any>(); // sessionId -> capabilities
+  private clientCapabilities = new Map<string, Record<string, unknown>>(); // sessionId -> capabilities
 
   // Track server capability support status
   markServerCapability(serverId: string, method: string, support: CapabilitySupport) {
@@ -53,11 +71,11 @@ class CapabilityRegistry {
   }
 
   // Store client capabilities
-  setClientCapabilities(sessionId: string, capabilities: any) {
+  setClientCapabilities(sessionId: string, capabilities: Record<string, unknown>) {
     this.clientCapabilities.set(sessionId, capabilities || {});
   }
 
-  getClientCapabilities(sessionId: string): any {
+  getClientCapabilities(sessionId: string): Record<string, unknown> {
     return this.clientCapabilities.get(sessionId) || {};
   }
 
@@ -104,13 +122,24 @@ export class HatagoHub {
   private notificationManager?: NotificationManager;
 
   // Config file watcher
-  private configWatcher?: any;
+  private configWatcher?: FSWatcher;
+
+  // Sampling request handlers
+  private samplingSolvers: Map<
+    string,
+    {
+      resolve: (value: unknown) => void;
+      reject: (reason: unknown) => void;
+      progressToken?: string;
+      serverId: string;
+    }
+  > = new Map();
 
   // Options
   protected options: Required<HubOptions>;
 
   // Notification callback for forwarding to parent
-  public onNotification?: (notification: any) => Promise<void>;
+  public onNotification?: (notification: unknown) => Promise<void>;
 
   // Toolset versioning
   private toolsetRevision = 0;
@@ -140,7 +169,7 @@ export class HatagoHub {
     this.sessions = new SessionManager(this.options.sessionTTL);
     this.toolRegistry = new ToolRegistry({
       namingConfig: {
-        strategy: this.options.namingStrategy as any,
+        strategy: this.options.namingStrategy,
         separator: this.options.separator
       }
     });
@@ -149,7 +178,7 @@ export class HatagoHub {
       {
         timeout: this.options.defaultTimeout
       },
-      this.sseManager as any
+      this.sseManager
     );
     this.resourceRegistry = createResourceRegistry();
     this.promptRegistry = createPromptRegistry();
@@ -248,13 +277,13 @@ export class HatagoHub {
   /**
    * Wrap transport for logging
    */
-  private wrapTransport(transport: any, serverId: string): any {
+  private wrapTransport(transport: ITransport, serverId: string): ITransport {
     const logger = this.logger.child(serverId);
 
     // Wrap send method for request logging
     const originalSend = transport.send?.bind(transport);
     if (originalSend) {
-      transport.send = async (message: any) => {
+      transport.send = async (message: unknown) => {
         logger.debug('RPC Request', { message });
         try {
           const result = await originalSend(message);
@@ -277,7 +306,7 @@ export class HatagoHub {
    */
   private async connectWithRetry(
     id: string,
-    createTransport: () => any,
+    createTransport: () => ITransport | Promise<ITransport>,
     maxRetries: number = 3
   ): Promise<Client> {
     let lastError: Error | undefined;
@@ -304,70 +333,81 @@ export class HatagoHub {
 
         // Set up sampling request handler to forward to the original client
         try {
-          (client as any).setRequestHandler(CreateMessageRequestSchema, async (request: any) => {
-            this.logger.info(`[Hub] Received sampling/createMessage from server ${id}`, {
-              request
-            });
-
-            // Check if the current client supports sampling
-            // TODO: Get current sessionId from context
-            const currentSessionId = 'default'; // This would need proper session context
-            const clientCaps = this.capabilityRegistry.getClientCapabilities(currentSessionId);
-
-            if (!clientCaps.sampling) {
-              // Client doesn't support sampling - provide clear error message
-              const error = new Error(
-                'Sampling not supported: The connected client (e.g., Claude Code/Desktop) ' +
-                  'does not currently support the sampling capability. ' +
-                  'This feature requires an LLM-capable client. ' +
-                  'Support for this feature may be added in a future update.'
-              );
-              (error as any).code = -32603;
-              throw error;
-            }
-
-            // Forward the request to the original client through StreamableHTTP
-            if (this.streamableTransport) {
-              // Create a unique ID for this sampling request
-              const samplingId = `sampling-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-              // Check if the request has a progress token
-              const progressToken = request.params?._meta?.progressToken;
-
-              // Send the sampling request to the client
-              const samplingRequest = {
-                jsonrpc: '2.0' as const,
-                id: samplingId,
-                method: 'sampling/createMessage',
-                params: request.params
-              };
-
-              // Create a promise to wait for the response
-              return new Promise((resolve, reject) => {
-                // Store the resolver for this sampling request with progress callback
-                (this as any).samplingSolvers = (this as any).samplingSolvers || new Map();
-                (this as any).samplingSolvers.set(samplingId, {
-                  resolve,
-                  reject,
-                  progressToken,
-                  serverId: id
-                });
-
-                // Send the request
-                this.streamableTransport?.send(samplingRequest).catch(reject);
-
-                // Set a timeout
-                setTimeout(() => {
-                  (this as any).samplingSolvers?.delete(samplingId);
-                  this.notificationManager?.notifyTimeout(id, 'sampling', 30000);
-                  reject(new Error('Sampling request timeout'));
-                }, 30000);
+          const clientWithHandler = client as Client & {
+            setRequestHandler: (
+              schema: unknown,
+              handler: (request: unknown) => Promise<unknown>
+            ) => void;
+          };
+          clientWithHandler.setRequestHandler(
+            CreateMessageRequestSchema,
+            async (request: unknown) => {
+              this.logger.info(`[Hub] Received sampling/createMessage from server ${id}`, {
+                request
               });
-            }
 
-            // Fallback if no transport available
-            throw new Error('Sampling not available - no client transport');
-          });
+              // Check if the current client supports sampling
+              // TODO: Get current sessionId from context
+              const currentSessionId = 'default'; // This would need proper session context
+              const clientCaps = this.capabilityRegistry.getClientCapabilities(currentSessionId);
+
+              if (!clientCaps.sampling) {
+                // Client doesn't support sampling - provide clear error message
+                const error = new Error(
+                  'Sampling not supported: The connected client (e.g., Claude Code/Desktop) ' +
+                    'does not currently support the sampling capability. ' +
+                    'This feature requires an LLM-capable client. ' +
+                    'Support for this feature may be added in a future update.'
+                ) as Error & { code?: number };
+                error.code = -32603;
+                throw error;
+              }
+
+              // Forward the request to the original client through StreamableHTTP
+              if (this.streamableTransport) {
+                // Create a unique ID for this sampling request
+                const samplingId = `sampling-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                // Check if the request has a progress token
+                const requestWithParams = request as {
+                  params?: { _meta?: { progressToken?: string } };
+                };
+                const progressToken = requestWithParams.params?._meta?.progressToken;
+
+                // Send the sampling request to the client
+                const samplingRequest = {
+                  jsonrpc: '2.0' as const,
+                  id: samplingId,
+                  method: 'sampling/createMessage',
+                  params: requestWithParams.params
+                };
+
+                // Create a promise to wait for the response
+                return new Promise((resolve, reject) => {
+                  // Store the resolver for this sampling request with progress callback
+                  this.samplingSolvers.set(samplingId, {
+                    resolve: resolve as (value: unknown) => void,
+                    reject,
+                    progressToken,
+                    serverId: id
+                  });
+
+                  // Send the request
+                  this.streamableTransport?.send(samplingRequest).catch(reject);
+
+                  // Set a timeout
+                  setTimeout(() => {
+                    this.samplingSolvers.delete(samplingId);
+                    this.notificationManager?.notifyTimeout(id, 'sampling', 30000);
+                    reject(new Error('Sampling request timeout'));
+                  }, 30000);
+                });
+              }
+
+              // Fallback if no transport available
+              throw new Error('Sampling not available - no client transport');
+            }
+          );
 
           this.logger.debug(`[Hub] Set up sampling handler for server ${id}`);
         } catch (error) {
@@ -414,7 +454,7 @@ export class HatagoHub {
         }
 
         // Dynamically import StdioClientTransport only when needed
-        const transportModule = (await import('@himorishige/hatago-transport/stdio')) as any;
+        const transportModule = await import('@himorishige/hatago-transport/stdio');
         const { StdioClientTransport } = transportModule;
 
         this.logger.debug(`Creating StdioClientTransport for ${id}`, {
@@ -454,24 +494,30 @@ export class HatagoHub {
     };
 
     // Connect with retry logic
-    const client = await this.connectWithRetry(id, createTransport);
+    const client = await this.connectWithRetry(
+      id,
+      createTransport as unknown as () => Promise<ITransport>
+    );
 
     // Store client
     this.clients.set(id, client);
 
     // Set up notification handler to forward notifications
     // This will catch all notifications from the child server
-    (client as any).fallbackNotificationHandler = async (notification: any) => {
-      this.logger.debug(`[Hub] Notification from server ${id}`, notification);
+    const clientWithHandler = client as Client & {
+      fallbackNotificationHandler?: (notification: JSONRPCMessage) => Promise<void>;
+    };
+    clientWithHandler.fallbackNotificationHandler = async (notification: unknown) => {
+      this.logger.debug(`[Hub] Notification from server ${id}`, notification as LogData);
 
       // Forward notification to parent (Claude Code) via callback
       if (this.onNotification) {
-        await this.onNotification(notification);
+        await this.onNotification(notification as JSONRPCMessage);
       }
 
       // Forward notification to parent via StreamableHTTP transport
       if (this.streamableTransport) {
-        await this.streamableTransport.send(notification);
+        await this.streamableTransport.send(notification as JSONRPCMessage);
       }
 
       // Emit event for other listeners
@@ -488,22 +534,27 @@ export class HatagoHub {
       const toolArray = toolsResult.tools || [];
 
       this.logger.debug(`[Hub] Registering ${toolArray.length} tools from ${id}`, {
-        toolNames: toolArray.map((t: any) => t.name)
+        toolNames: toolArray.map((t) => t.name)
       });
 
       // Prepare all tools with handlers
-      const toolsWithHandlers = toolArray.map((tool: any) => ({
+      const toolsWithHandlers = toolArray.map((tool) => ({
         ...tool,
-        handler: async (args: any, progressCallback?: any) => {
+        handler: async (args: unknown, progressCallback?: (progress: number) => void) => {
           // Use high-level callTool API with progress support
           const result = await client.callTool(
             {
               name: tool.name,
-              arguments: args
+              arguments: args as { [x: string]: unknown } | undefined
             },
             undefined, // Use default schema
             {
-              onprogress: (progress: any) => {
+              onprogress: (progress: {
+                progressToken?: string;
+                progress?: number;
+                total?: number;
+                message?: string;
+              }) => {
                 this.logger.debug(`[Hub] Tool progress from ${id}/${tool.name}`, progress);
 
                 // Forward progress notification to parent
@@ -519,8 +570,8 @@ export class HatagoHub {
                 };
 
                 // Call the progress callback if provided
-                if (progressCallback) {
-                  void progressCallback(progress);
+                if (progressCallback && typeof progress.progress === 'number') {
+                  void progressCallback(progress.progress);
                 }
 
                 // Forward to parent via onNotification
@@ -545,7 +596,7 @@ export class HatagoHub {
         const tool = toolsWithHandlers[i];
         const registeredTool = registeredTools[i];
 
-        if (registeredTool) {
+        if (registeredTool && tool) {
           server.tools.push(registeredTool);
           this.toolInvoker.registerHandler(registeredTool.name, tool.handler);
           this.emit('tool:registered', { serverId: id, tool: registeredTool });
@@ -633,12 +684,11 @@ export class HatagoHub {
       this.streamableTransport.onmessage = (message) => {
         void (async () => {
           // Check if this is a sampling response
-          const msg = message as any;
+          const msg = message as { id?: unknown; error?: { message?: string }; result?: unknown };
           if (msg.id && typeof msg.id === 'string' && msg.id.startsWith('sampling-')) {
-            const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
-            const solver = solvers?.get(msg.id);
+            const solver = this.samplingSolvers.get(msg.id);
             if (solver) {
-              solvers?.delete(msg.id);
+              this.samplingSolvers.delete(msg.id);
               if (msg.error) {
                 solver.reject(new Error(msg.error.message || 'Sampling failed'));
               } else {
@@ -650,9 +700,9 @@ export class HatagoHub {
           }
 
           // Handle message through existing JSON-RPC logic
-          const result = await this.handleJsonRpcRequest(message);
+          const result = await this.handleJsonRpcRequest(message as unknown as JSONRPCMessage);
           if (result && this.streamableTransport) {
-            await this.streamableTransport.send(result);
+            await this.streamableTransport.send(result as JSONRPCMessage);
           }
         })();
       };
@@ -667,14 +717,45 @@ export class HatagoHub {
 
         const configPath = resolve(this.options.configFile);
         const configContent = readFileSync(configPath, 'utf-8');
-        const config = JSON.parse(configContent);
+        const config = JSON.parse(configContent) as {
+          notifications?: {
+            enabled?: boolean;
+            rateLimitSec?: number;
+            severity?: string[];
+          };
+          mcpServers?: Record<
+            string,
+            {
+              disabled?: boolean;
+              hatagoOptions?: {
+                start?: string;
+                timeout?: number;
+              };
+              command?: string;
+              args?: string[];
+              env?: Record<string, string>;
+              cwd?: string;
+              url?: string;
+              transport?: {
+                type?: string;
+              };
+              headers?: Record<string, string>;
+              timeouts?: {
+                connect?: number;
+                request?: number;
+                response?: number;
+              };
+              [key: string]: unknown;
+            }
+          >;
+        };
 
         // Initialize notification manager if configured
         if (config.notifications) {
           const notificationConfig: NotificationConfig = {
             enabled: config.notifications.enabled ?? false,
             rateLimitSec: config.notifications.rateLimitSec ?? 60,
-            severity: config.notifications.severity ?? ['warn', 'error']
+            severity: (config.notifications.severity ?? ['warn', 'error']) as NotificationSeverity[]
           };
           this.notificationManager = new NotificationManager(notificationConfig, this.logger);
         }
@@ -683,15 +764,15 @@ export class HatagoHub {
         if (config.mcpServers) {
           for (const [id, serverConfig] of Object.entries(config.mcpServers)) {
             // Skip disabled servers
-            if ((serverConfig as any).disabled === true) {
+            if (serverConfig.disabled === true) {
               this.logger.info(`Skipping disabled server: ${id}`);
               continue;
             }
 
-            const spec = this.normalizeServerSpec(serverConfig as any);
+            const spec = this.normalizeServerSpec(serverConfig as ServerConfig);
 
             // Check if server should be started eagerly
-            const hatagoOptions = (serverConfig as any).hatagoOptions || {};
+            const hatagoOptions = serverConfig.hatagoOptions || {};
             if (hatagoOptions.start !== 'lazy') {
               try {
                 this.notificationManager?.notifyServerStatus(id, 'starting');
@@ -739,11 +820,11 @@ export class HatagoHub {
   /**
    * Normalize server spec from config format
    */
-  private normalizeServerSpec(config: any): ServerSpec {
+  private normalizeServerSpec(config: ServerConfig): ServerSpec {
     const spec: ServerSpec = {};
 
     // Local server via command
-    if (config.command) {
+    if ('command' in config) {
       spec.command = config.command;
       spec.args = config.args;
       spec.env = config.env;
@@ -751,11 +832,11 @@ export class HatagoHub {
     }
 
     // Remote server via URL
-    if (config.url) {
+    if ('url' in config) {
       spec.url = config.url;
       // Support both 'type' and 'transport' fields for remote servers
       // Default to 'streamable-http' for HTTP endpoints, 'sse' requires explicit type
-      spec.type = config.transport || config.type || 'streamable-http';
+      spec.type = config.type || 'streamable-http';
       spec.headers = config.headers;
     }
 
@@ -768,10 +849,24 @@ export class HatagoHub {
       spec.keepAliveTimeout = config.timeouts.keepAliveMs;
     } else {
       // Fallback to old config structure
-      spec.timeout = config.hatagoOptions?.timeouts?.timeout || config.timeout;
+      const hatagoOpts = config as unknown as {
+        hatagoOptions?: {
+          timeouts?: { timeout?: number };
+          reconnect?: boolean;
+          reconnectDelay?: number;
+        };
+        timeout?: number;
+      };
+      spec.timeout = hatagoOpts.hatagoOptions?.timeouts?.timeout || hatagoOpts.timeout;
     }
-    spec.reconnect = config.hatagoOptions?.reconnect;
-    spec.reconnectDelay = config.hatagoOptions?.reconnectDelay;
+    const hatagoOpts = config as unknown as {
+      hatagoOptions?: {
+        reconnect?: boolean;
+        reconnectDelay?: number;
+      };
+    };
+    spec.reconnect = hatagoOpts.hatagoOptions?.reconnect;
+    spec.reconnectDelay = hatagoOpts.hatagoOptions?.reconnectDelay;
 
     return spec;
   }
@@ -787,9 +882,9 @@ export class HatagoHub {
     const internalTools = getInternalTools();
     const managementServer = new HatagoManagementServer({
       configFilePath: '',
-      stateMachine: null as any,
-      activationManager: null as any,
-      idleManager: null as any
+      stateMachine: null as unknown as ServerStateMachine,
+      activationManager: null as unknown as ActivationManager,
+      idleManager: null as unknown as IdleManager
     });
 
     this.logger.info('[Hub] Registering internal management tools', {
@@ -801,11 +896,11 @@ export class HatagoHub {
       name: tool.name,
       description: tool.description,
       inputSchema: zodToJsonSchema(tool.inputSchema),
-      handler: async (args: any) => tool.handler(args, this)
+      handler: async (args: unknown) => Promise.resolve(tool.handler(args, this))
     }));
 
     // Register as internal server
-    this.toolRegistry.registerServerTools('_internal', toolsWithHandlers);
+    this.toolRegistry.registerServerTools('_internal', toolsWithHandlers as unknown as Tool[]);
 
     // Register management server resources
     const resources = managementServer.getResources();
@@ -840,10 +935,14 @@ export class HatagoHub {
    */
   private async calculateToolsetHash(): Promise<string> {
     const tools = this.tools.list();
-    const toolData = tools.map((t: any) => ({
-      name: t.name,
-      description: t.description
-    }));
+    const toolData = tools.map((t) => {
+      const tool = t as Tool;
+      const toolInfo = {
+        name: String(tool.name),
+        description: String(tool.description || '')
+      };
+      return toolInfo;
+    });
     const { createHash } = await import('node:crypto');
     return createHash('sha256').update(JSON.stringify(toolData)).digest('hex').substring(0, 16);
   }
@@ -905,7 +1004,7 @@ export class HatagoHub {
       // Create a debounced reload function to avoid multiple reloads
       let reloadTimeout: NodeJS.Timeout | undefined;
 
-      this.configWatcher = watch(configPath, async (eventType) => {
+      this.configWatcher = watch(configPath, (eventType) => {
         this.logger.debug(`Config file event: ${eventType}`, {
           path: configPath
         });
@@ -948,7 +1047,7 @@ export class HatagoHub {
 
       const configPath = resolve(this.options.configFile);
       const configContent = readFileSync(configPath, 'utf-8');
-      const newConfig = JSON.parse(configContent);
+      const newConfig = JSON.parse(configContent) as unknown;
 
       // Validate config using Zod
       const { safeParseConfig, formatConfigError } = await import(
@@ -970,7 +1069,10 @@ export class HatagoHub {
         const notificationConfig: NotificationConfig = {
           enabled: config.notifications.enabled ?? false,
           rateLimitSec: config.notifications.rateLimitSec ?? 60,
-          severity: (config.notifications.severity as any[]) ?? ['warn', 'error']
+          severity: (config.notifications.severity ?? [
+            'warn',
+            'error'
+          ]) as string[] as NotificationSeverity[]
         };
 
         if (this.notificationManager) {
@@ -998,7 +1100,7 @@ export class HatagoHub {
       if (config.mcpServers) {
         for (const [id, serverConfig] of Object.entries(config.mcpServers)) {
           // Skip disabled servers
-          if ((serverConfig as any).disabled === true) {
+          if (serverConfig.disabled === true) {
             // If server exists and is now disabled, remove it
             if (existingServerIds.has(id)) {
               this.logger.info(`Removing server ${id} (now disabled)`);
@@ -1009,11 +1111,12 @@ export class HatagoHub {
             continue;
           }
 
-          const spec = this.normalizeServerSpec(serverConfig as any);
+          const spec = this.normalizeServerSpec(serverConfig);
 
           // Check if server should be started eagerly
-          const hatagoOptions = (serverConfig as any).hatagoOptions || {};
-          if (hatagoOptions.start !== 'lazy') {
+          const hatagoOptions =
+            (serverConfig as unknown as { hatagoOptions?: { start?: string } }).hatagoOptions || {};
+          if (hatagoOptions?.start !== 'lazy') {
             try {
               // If server already exists, check if spec has changed
               if (existingServerIds.has(id)) {
@@ -1106,10 +1209,10 @@ export class HatagoHub {
      */
     call: async (
       name: string,
-      args: any,
+      args: unknown,
       options?: CallOptions & {
         progressToken?: string;
-        progressCallback?: any;
+        progressCallback?: unknown;
       }
     ) => {
       // Parse qualified name (serverId/toolName or just toolName)
@@ -1144,8 +1247,8 @@ export class HatagoHub {
    * Resources API
    */
   resources: {
-    list: (options?: ListOptions) => any[];
-    read: (uri: string, options?: ReadOptions) => Promise<any>;
+    list: (options?: ListOptions) => unknown[];
+    read: (uri: string, options?: ReadOptions) => Promise<unknown>;
   } = {
     /**
      * List available resources
@@ -1174,9 +1277,9 @@ export class HatagoHub {
           );
           const managementServer = new HatagoManagementServer({
             configFilePath: this.options.configFile || '',
-            stateMachine: null as any,
-            activationManager: null as any,
-            idleManager: null as any
+            stateMachine: null as unknown as ServerStateMachine,
+            activationManager: null as unknown as ActivationManager,
+            idleManager: null as unknown as IdleManager
           });
 
           try {
@@ -1249,8 +1352,8 @@ export class HatagoHub {
    * Prompts API
    */
   prompts: {
-    list: (options?: ListOptions) => any[];
-    get: (name: string, args?: any) => Promise<any>;
+    list: (options?: ListOptions) => unknown[];
+    get: (name: string, args?: unknown) => Promise<unknown>;
   } = {
     /**
      * List available prompts
@@ -1267,7 +1370,7 @@ export class HatagoHub {
     /**
      * Get a prompt
      */
-    get: async (name: string, args?: any) => {
+    get: async (name: string, args?: unknown) => {
       // Parse prompt name to check if it's namespaced
       let promptName = name;
       let serverId: string | undefined;
@@ -1285,7 +1388,7 @@ export class HatagoHub {
         if (client) {
           const result = await client.getPrompt({
             name: promptName,
-            arguments: args
+            arguments: args as { [x: string]: string } | undefined
           });
           this.emit('prompt:got', { name, args, result });
           return result;
@@ -1320,12 +1423,12 @@ export class HatagoHub {
     this.eventHandlers.get(event)?.delete(handler);
   }
 
-  private emit(event: HubEvent, data: any): void {
+  private emit(event: HubEvent, data: unknown): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
       for (const handler of handlers) {
         try {
-          handler(data);
+          handler(data as HubEventData);
         } catch (error) {
           this.logger.error(`Error in event handler for ${event}`, {
             error: error instanceof Error ? error.message : String(error)
@@ -1364,13 +1467,52 @@ export class HatagoHub {
   }
 
   /**
+   * Get toolset revision
+   */
+  getToolsetRevision(): number {
+    return this.toolsetRevision;
+  }
+
+  /**
+   * Get toolset hash
+   */
+  getToolsetHash(): string {
+    return this.toolsetHash;
+  }
+
+  /**
+   * Reload configuration (public wrapper)
+   */
+  async doReloadConfig(): Promise<void> {
+    return this.reloadConfig();
+  }
+
+  /**
    * Handle HTTP request for MCP protocol
    * This is designed to work with Hono or any similar framework
    */
-  async handleHttpRequest(context: any): Promise<Response> {
-    const request = context.req || context.request || context;
-    const method = request.method;
-    const url = new URL(request.url);
+  async handleHttpRequest(context: unknown): Promise<Response> {
+    const ctx = context as {
+      req?: {
+        method: string;
+        url: string;
+        json: () => Promise<unknown>;
+        headers: { get: (key: string) => string | null };
+      };
+      request?: {
+        method: string;
+        url: string;
+        json: () => Promise<unknown>;
+        headers: { get: (key: string) => string | null };
+      };
+      method?: string;
+      url?: string;
+      json?: () => Promise<unknown>;
+      headers?: { get: (key: string) => string | null };
+    };
+    const request = ctx.req || ctx.request || ctx;
+    const method = (request as { method: string }).method;
+    const url = new URL((request as { url: string }).url);
 
     this.logger.debug('[Hub] HTTP request received', {
       method,
@@ -1381,17 +1523,22 @@ export class HatagoHub {
     if (method === 'POST') {
       // JSON-RPC request handling
       try {
-        const body = await request.json();
-        const sessionId = request.headers.get('mcp-session-id') || 'default';
-        this.logger.debug('[Hub] Request body', body);
+        const body = await (request as { json: () => Promise<unknown> }).json();
+        const sessionId =
+          (request as { headers: { get: (key: string) => string | null } }).headers.get(
+            'mcp-session-id'
+          ) || 'default';
+        this.logger.debug('[Hub] Request body', body as LogData);
         const result = await this.handleJsonRpcRequest(body, sessionId);
-        this.logger.debug('[Hub] Response', result);
+        this.logger.debug('[Hub] Response', result as LogData);
 
         return new Response(JSON.stringify(result), {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'mcp-session-id': this.getOrCreateSessionId(request)
+            'mcp-session-id': this.getOrCreateSessionId(
+              request as { headers: { get: (key: string) => string | null } }
+            )
           }
         });
       } catch (error) {
@@ -1413,7 +1560,7 @@ export class HatagoHub {
       }
     } else if (method === 'GET') {
       // SSE stream initialization
-      const sessionId = request.headers.get('mcp-session-id');
+      const sessionId = request.headers?.get('mcp-session-id');
       if (!sessionId) {
         return new Response('Session ID required', { status: 400 });
       }
@@ -1436,7 +1583,9 @@ export class HatagoHub {
       });
     } else if (method === 'DELETE') {
       // Session termination
-      const sessionId = request.headers.get('mcp-session-id');
+      const sessionId = (
+        request as { headers: { get: (key: string) => string | null } }
+      ).headers.get('mcp-session-id');
       if (sessionId) {
         await this.sessions.destroy(sessionId);
       }
@@ -1449,8 +1598,13 @@ export class HatagoHub {
   /**
    * Handle JSON-RPC request
    */
-  public async handleJsonRpcRequest(body: any, sessionId?: string): Promise<any> {
-    const { method, params, id } = body;
+  public async handleJsonRpcRequest(body: unknown, sessionId?: string): Promise<unknown> {
+    const request = body as {
+      method?: string;
+      params?: Record<string, unknown>;
+      id?: string | number | null;
+    };
+    const { method, params, id } = request;
 
     try {
       switch (method) {
@@ -1458,14 +1612,14 @@ export class HatagoHub {
           // Save client capabilities
           this.capabilityRegistry.setClientCapabilities(
             sessionId || 'default',
-            params.capabilities
+            params?.capabilities as Record<string, unknown>
           );
 
           // Send initialized notification after initialize response
           // This is handled separately in MCP protocol
           return {
             jsonrpc: '2.0',
-            id,
+            id: id as string | number,
             result: {
               protocolVersion: '2025-06-18',
               capabilities: {
@@ -1486,35 +1640,34 @@ export class HatagoHub {
 
         case 'notifications/progress': {
           // Handle progress notifications from client for sampling requests
-          const notificationProgressToken = params?.progressToken;
+          const notificationProgressToken = params?.progressToken as string | number | undefined;
           if (notificationProgressToken) {
             // Check if this is a progress for a sampling request
-            const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
-            if (solvers) {
-              for (const [, solver] of solvers.entries()) {
-                if (solver.progressToken === notificationProgressToken) {
-                  // Forward progress to the server that requested sampling
-                  const client = this.clients.get(solver.serverId);
-                  if (client) {
-                    try {
-                      // Send progress notification to the server
-                      await (client as any).notification({
-                        method: 'notifications/progress',
-                        params: {
-                          progressToken: solver.progressToken,
-                          progress: params.progress,
-                          total: params.total,
-                          message: params.message
-                        }
-                      });
-                    } catch (error) {
-                      this.logger.warn(`Failed to forward progress to server ${solver.serverId}`, {
-                        error: error instanceof Error ? error.message : String(error)
-                      });
-                    }
+            for (const [, solver] of this.samplingSolvers.entries()) {
+              if (solver.progressToken === notificationProgressToken) {
+                // Forward progress to the server that requested sampling
+                const client = this.clients.get(solver.serverId);
+                if (client) {
+                  try {
+                    // Send progress notification to the server
+                    await (
+                      client as unknown as { notification: (msg: unknown) => Promise<void> }
+                    ).notification({
+                      method: 'notifications/progress',
+                      params: {
+                        progressToken: solver.progressToken,
+                        progress: params?.progress as number,
+                        total: params?.total as number | undefined,
+                        message: params?.message as string | undefined
+                      }
+                    });
+                  } catch (error) {
+                    this.logger.warn(`Failed to forward progress to server ${solver.serverId}`, {
+                      error: error instanceof Error ? error.message : String(error)
+                    });
                   }
-                  break;
                 }
+                break;
               }
             }
           }
@@ -1530,7 +1683,7 @@ export class HatagoHub {
 
           return {
             jsonrpc: '2.0',
-            id,
+            id: id as string | number,
             result: {
               tools: this.tools.list(),
               // Add toolset metadata
@@ -1543,10 +1696,11 @@ export class HatagoHub {
 
         case 'tools/call': {
           // Extract progress token from meta
-          const progressToken = params?._meta?.progressToken;
+          const progressToken = (params as { _meta?: { progressToken?: string | number } })?._meta
+            ?.progressToken;
 
           this.logger.info(`[Hub] tools/call request`, {
-            toolName: params.name,
+            toolName: (params as { name?: string })?.name,
             progressToken,
             hasTransport: !!this.streamableTransport,
             sessionId
@@ -1562,7 +1716,7 @@ export class HatagoHub {
           }
 
           // Parse tool name to find server
-          let toolName = params.name;
+          let toolName = (params as { name?: string })?.name || '';
           let serverId: string | undefined;
 
           if (toolName.includes('_')) {
@@ -1575,7 +1729,7 @@ export class HatagoHub {
           // This prevents duplicate progress notifications from the normal tool handler
           if (this.streamableTransport && serverId && progressToken) {
             const client = this.clients.get(serverId);
-            const server = this.servers.get(serverId);
+            // const server = this.servers.get(serverId);
             if (client) {
               // Direct call to client with progress support
               const transport = this.streamableTransport;
@@ -1583,15 +1737,23 @@ export class HatagoHub {
               // Create new progress token for upstream
               const upstreamToken = `upstream-${Date.now()}`;
 
-              const result = await (client as any).callTool(
+              const result = await (
+                client as unknown as {
+                  callTool: (
+                    request: unknown,
+                    schema: undefined,
+                    options: { onprogress: (progress: unknown) => void }
+                  ) => Promise<unknown>;
+                }
+              ).callTool(
                 {
                   name: toolName,
-                  arguments: params.arguments,
+                  arguments: (params as { arguments?: unknown })?.arguments,
                   _meta: { progressToken: upstreamToken }
                 },
                 undefined,
                 {
-                  onprogress: (progress: any) => {
+                  onprogress: (progress: unknown) => {
                     this.logger.info(`[Hub] Direct client onprogress`, {
                       serverId,
                       toolName,
@@ -1605,9 +1767,9 @@ export class HatagoHub {
                       method: 'notifications/progress',
                       params: {
                         progressToken,
-                        progress: progress.progress || 0,
-                        total: progress.total,
-                        message: progress.message
+                        progress: (progress as { progress?: number })?.progress || 0,
+                        total: (progress as { total?: number })?.total,
+                        message: (progress as { message?: string })?.message
                       }
                     };
 
@@ -1645,39 +1807,39 @@ export class HatagoHub {
                     if (progressToken && this.sseManager && sessionId) {
                       this.sseManager.sendProgress(progressToken.toString(), {
                         progressToken: progressToken.toString(),
-                        progress: progress.progress || 0,
-                        total: progress.total,
-                        message: progress.message
+                        progress: (progress as { progress?: number })?.progress || 0,
+                        total: (progress as { total?: number })?.total,
+                        message: (progress as { message?: string })?.message
                       });
                     }
-                  },
-                  timeout: server?.spec?.timeout || 30000,
-                  maxTotalTimeout: server?.spec?.timeout ? server.spec.timeout * 10 : 300000
+                  }
+                  // timeout and maxTotalTimeout are not part of the onprogress options
+                  // They should be removed or handled differently
                 }
               );
 
               // Unregister progress token after completion
               if (progressToken && this.sseManager) {
-                this.sseManager.unregisterProgressToken(progressToken);
+                this.sseManager.unregisterProgressToken(String(progressToken));
               }
 
               return {
                 jsonrpc: '2.0',
-                id,
+                id: id as string | number,
                 result
               };
             }
           }
 
           // Fallback to normal tool call without progress
-          const result = await this.tools.call(params.name, params.arguments, {
-            progressToken,
+          const result = await this.tools.call(params?.name as string, params?.arguments, {
+            progressToken: progressToken as string | undefined,
             sessionId
           });
 
           // Unregister progress token after completion
           if (progressToken && this.sseManager) {
-            this.sseManager.unregisterProgressToken(progressToken);
+            this.sseManager.unregisterProgressToken(String(progressToken));
           }
 
           return {
@@ -1697,7 +1859,7 @@ export class HatagoHub {
           };
 
         case 'resources/read': {
-          const resource = await this.resources.read(params.uri);
+          const resource = await this.resources.read(params?.uri as string);
           return {
             jsonrpc: '2.0',
             id,
@@ -1707,7 +1869,7 @@ export class HatagoHub {
 
         case 'resources/templates/list': {
           // Collect resource templates from all servers
-          const allTemplates: any[] = [];
+          const allTemplates: unknown[] = [];
 
           // Note: Most MCP servers don't implement resources/templates/list
           // This is an optional feature primarily used by MCP Inspector
@@ -1720,13 +1882,17 @@ export class HatagoHub {
 
               // Try to get resource templates from the server
               // Most servers will return an error for this method
-              const templatesResult = await (client as any).request(
+              const templatesResult = await (
+                client as unknown as {
+                  request: (req: unknown, schema: unknown) => Promise<unknown>;
+                }
+              ).request(
                 {
                   method: 'resources/templates/list',
                   params: {}
                 },
                 {
-                  parse: (data: any) => data,
+                  parse: (data: unknown) => data,
                   type: 'object',
                   properties: {
                     resourceTemplates: {
@@ -1742,21 +1908,21 @@ export class HatagoHub {
                       }
                     }
                   }
-                } as any
+                } as unknown
               );
 
-              if (templatesResult?.resourceTemplates) {
+              const result = templatesResult as { resourceTemplates?: unknown[] };
+              if (result?.resourceTemplates) {
                 // Add server prefix to template names
-                const namespacedTemplates = templatesResult.resourceTemplates.map(
-                  (template: any) => ({
-                    ...template,
-                    name: template.name
-                      ? `${serverId}${this.options.separator}${template.name}`
-                      : undefined,
+                const namespacedTemplates = result.resourceTemplates.map((template: unknown) => {
+                  const t = template as { name?: string };
+                  return {
+                    ...(template as Record<string, unknown>),
+                    name: t.name ? `${serverId}${this.options.separator}${t.name}` : undefined,
                     serverId
-                  })
-                );
-                allTemplates.push(...namespacedTemplates);
+                  };
+                });
+                allTemplates.push(...(namespacedTemplates as unknown[]));
               }
             } catch (error) {
               // Server doesn't support resource templates - this is normal
@@ -1790,7 +1956,7 @@ export class HatagoHub {
           };
 
         case 'prompts/get': {
-          const prompt = await this.prompts.get(params.name, params.arguments);
+          const prompt = await this.prompts.get(params?.name as string, params?.arguments);
           return {
             jsonrpc: '2.0',
             id,
@@ -1822,14 +1988,14 @@ export class HatagoHub {
         default:
           // Check if this is a sampling response
           if (id && typeof id === 'string' && id.startsWith('sampling-')) {
-            const solvers = (this as any).samplingSolvers as Map<string, any> | undefined;
-            const solver = solvers?.get(id);
+            const solver = this.samplingSolvers.get(id);
             if (solver) {
-              solvers?.delete(id);
-              if (body.error) {
-                solver.reject(new Error(body.error.message || 'Sampling failed'));
+              this.samplingSolvers.delete(id);
+              const requestBody = request as { error?: { message?: string }; result?: unknown };
+              if (requestBody.error) {
+                solver.reject(new Error(requestBody.error.message || 'Sampling failed'));
               } else {
-                solver.resolve(body.result);
+                solver.resolve(requestBody.result);
               }
               // No response needed for sampling responses
               return null;
@@ -1838,7 +2004,7 @@ export class HatagoHub {
 
           return {
             jsonrpc: '2.0',
-            id,
+            id: id as string | number,
             error: {
               code: -32601,
               message: 'Method not found'
@@ -1848,7 +2014,7 @@ export class HatagoHub {
     } catch (error) {
       return {
         jsonrpc: '2.0',
-        id,
+        id: id as string | number | null,
         error: {
           code: -32603,
           message: 'Internal error',
@@ -1861,9 +2027,14 @@ export class HatagoHub {
   /**
    * Get or create session ID
    */
-  private getOrCreateSessionId(request: any): string {
-    const existingId =
-      request.headers?.get?.('mcp-session-id') || request.headers?.['mcp-session-id'];
+  private getOrCreateSessionId(request: {
+    headers: { get?: (key: string) => string | null } | Record<string, string>;
+  }): string {
+    const headers = request.headers as { get?: (key: string) => string | null } & Record<
+      string,
+      string
+    >;
+    const existingId = headers.get?.('mcp-session-id') || headers['mcp-session-id'];
     if (existingId) return existingId;
 
     const newId = crypto.randomUUID();

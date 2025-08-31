@@ -79,7 +79,7 @@ export class FileAccessGuard {
   /**
    * Safe read operation
    */
-  async safeRead(path: string): Promise<string> {
+  safeRead(path: string): string {
     if (!this.canRead(path)) {
       throw new Error(`Unauthorized file access attempt: ${path}`);
     }
@@ -95,7 +95,7 @@ export class FileAccessGuard {
   /**
    * Safe write operation
    */
-  async safeWrite(path: string, content: string): Promise<void> {
+  safeWrite(path: string, content: string): void {
     if (!this.canWrite(path)) {
       throw new Error(`Unauthorized file write attempt: ${path}`);
     }
@@ -116,7 +116,7 @@ export class FileAccessGuard {
   /**
    * Preview changes before applying
    */
-  async previewChanges(changes: any): Promise<DiffResult> {
+  async previewChanges(changes: unknown): Promise<DiffResult> {
     if (!this.configFilePath) {
       throw new Error('No config file specified');
     }
@@ -125,10 +125,10 @@ export class FileAccessGuard {
     const currentContent = existsSync(this.configFilePath)
       ? readFileSync(this.configFilePath, 'utf-8')
       : '{}';
-    const current = JSON.parse(currentContent);
+    const current = JSON.parse(currentContent) as Record<string, unknown>;
 
     // Apply changes
-    const next = this.mergeConfig(current, changes);
+    const next = this.mergeConfig(current, changes as Record<string, unknown>);
 
     // Generate diff
     const currentFormatted = JSON.stringify(current, null, 2);
@@ -147,22 +147,25 @@ export class FileAccessGuard {
   /**
    * Merge configuration changes
    */
-  private mergeConfig(current: any, changes: any): any {
+  private mergeConfig(
+    current: Record<string, unknown>,
+    changes: Record<string, unknown>
+  ): Record<string, unknown> {
     // Deep merge logic
-    const merged = JSON.parse(JSON.stringify(current));
+    const merged = JSON.parse(JSON.stringify(current)) as Record<string, unknown>;
 
     // Handle server configurations
     if (changes.mcpServers) {
       merged.mcpServers = {
-        ...merged.mcpServers,
-        ...changes.mcpServers
+        ...((merged.mcpServers as Record<string, unknown>) || {}),
+        ...(changes.mcpServers as Record<string, unknown>)
       };
     }
 
     if (changes.servers) {
       merged.servers = {
-        ...merged.servers,
-        ...changes.servers
+        ...((merged.servers as Record<string, unknown>) || {}),
+        ...(changes.servers as Record<string, unknown>)
       };
     }
 
@@ -198,11 +201,13 @@ export class FileAccessGuard {
   /**
    * Validate configuration
    */
-  private async validateConfig(config: any): Promise<{ valid: boolean; errors?: string[] }> {
+  private validateConfig(config: Record<string, unknown>): { valid: boolean; errors?: string[] } {
     const errors: string[] = [];
 
     // Check required fields
-    const servers = { ...config.mcpServers, ...config.servers };
+    const mcpServers = config.mcpServers as Record<string, unknown> | undefined;
+    const legacyServers = config.servers as Record<string, unknown> | undefined;
+    const servers = { ...(mcpServers || {}), ...(legacyServers || {}) };
 
     for (const [id, server] of Object.entries(servers)) {
       if (!server || typeof server !== 'object') {
@@ -210,7 +215,7 @@ export class FileAccessGuard {
         continue;
       }
 
-      const s = server as any;
+      const s = server as Record<string, unknown>;
 
       // Check connection configuration
       const hasLocal = s.command;
@@ -226,17 +231,19 @@ export class FileAccessGuard {
 
       // Validate activation policy
       if (s.activationPolicy) {
+        const policy = s.activationPolicy as string;
         const validPolicies = ['always', 'onDemand', 'manual'];
-        if (!validPolicies.includes(s.activationPolicy)) {
-          errors.push(`Server ${id}: Invalid activation policy: ${s.activationPolicy}`);
+        if (!validPolicies.includes(policy)) {
+          errors.push(`Server ${id}: Invalid activation policy: ${policy}`);
         }
       }
 
       // Validate timeouts
       if (s.timeouts) {
-        for (const [key, value] of Object.entries(s.timeouts)) {
+        const timeouts = s.timeouts as Record<string, unknown>;
+        for (const [key, value] of Object.entries(timeouts)) {
           if (typeof value !== 'number' || value <= 0) {
-            errors.push(`Server ${id}: Invalid timeout ${key}: ${value}`);
+            errors.push(`Server ${id}: Invalid timeout ${key}: ${String(value)}`);
           }
         }
       }
@@ -251,9 +258,17 @@ export class FileAccessGuard {
   /**
    * Analyze configuration changes impact
    */
-  private analyzeImpacts(current: any, next: any): DiffResult['impacts'] {
-    const currentServers = { ...current.mcpServers, ...current.servers };
-    const nextServers = { ...next.mcpServers, ...next.servers };
+  private analyzeImpacts(
+    current: Record<string, unknown>,
+    next: Record<string, unknown>
+  ): DiffResult['impacts'] {
+    const currentMcp = current.mcpServers as Record<string, unknown> | undefined;
+    const currentLegacy = current.servers as Record<string, unknown> | undefined;
+    const currentServers = { ...(currentMcp || {}), ...(currentLegacy || {}) };
+
+    const nextMcp = next.mcpServers as Record<string, unknown> | undefined;
+    const nextLegacy = next.servers as Record<string, unknown> | undefined;
+    const nextServers = { ...(nextMcp || {}), ...(nextLegacy || {}) };
 
     const currentIds = new Set(Object.keys(currentServers));
     const nextIds = new Set(Object.keys(nextServers));
@@ -277,8 +292,10 @@ export class FileAccessGuard {
         serversModified.push(id);
 
         // Check for policy changes
-        const currentPolicy = currentServer?.activationPolicy || 'manual';
-        const nextPolicy = nextServer?.activationPolicy || 'manual';
+        const currentServerObj = currentServer as Record<string, unknown> | undefined;
+        const nextServerObj = nextServer as Record<string, unknown> | undefined;
+        const currentPolicy = (currentServerObj?.activationPolicy as string) || 'manual';
+        const nextPolicy = (nextServerObj?.activationPolicy as string) || 'manual';
 
         if (currentPolicy !== nextPolicy) {
           policyChanges.push({

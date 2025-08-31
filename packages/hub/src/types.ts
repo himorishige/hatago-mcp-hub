@@ -86,9 +86,20 @@ export type HubEvent =
   | 'prompt:got';
 
 /**
+ * Hub event data
+ */
+export interface HubEventData {
+  type: HubEvent;
+  serverId?: string;
+  data?: unknown;
+  error?: Error;
+  [key: string]: unknown;
+}
+
+/**
  * Hub event handler
  */
-export type HubEventHandler = (event: any) => void;
+export type HubEventHandler = (event: HubEventData) => void;
 
 /**
  * Connected server info

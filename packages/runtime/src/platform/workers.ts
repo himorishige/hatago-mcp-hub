@@ -16,7 +16,7 @@ export interface WorkersEnv {
   CONFIG_KV: KVNamespace;
   CACHE_KV?: KVNamespace;
   SESSION_DO?: DurableObjectNamespace;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -29,7 +29,7 @@ class KVConfigStore implements ConfigStore {
     private cacheKv?: KVNamespace
   ) {}
 
-  async get(key: string): Promise<any> {
+  async get(key: string): Promise<unknown> {
     // Try cache first if available
     if (this.cacheKv) {
       const cached = await this.cacheKv.get(key, {
@@ -52,7 +52,7 @@ class KVConfigStore implements ConfigStore {
     return value;
   }
 
-  async set(key: string, value: any): Promise<void> {
+  async set(key: string, value: unknown): Promise<void> {
     // Write to main KV
     await this.kv.put(key, JSON.stringify(value));
 
@@ -90,7 +90,7 @@ class DOSessionStore implements SessionStore {
     return this.namespace.get(doId);
   }
 
-  async create(id: string, data: any): Promise<void> {
+  async create(id: string, data: unknown): Promise<void> {
     const stub = this.getStub(id);
     await stub.fetch('https://session/create', {
       method: 'POST',
@@ -102,7 +102,7 @@ class DOSessionStore implements SessionStore {
       await this.kv.put(
         `session:${id}`,
         JSON.stringify({
-          ...data,
+          ...(data as Record<string, unknown>),
           createdAt: Date.now()
         }),
         {
@@ -112,7 +112,7 @@ class DOSessionStore implements SessionStore {
     }
   }
 
-  async get(id: string): Promise<any> {
+  async get(id: string): Promise<unknown> {
     // Try KV snapshot first for performance
     if (this.kv) {
       const snapshot = await this.kv.get(`session:${id}`, { type: 'json' });
@@ -128,7 +128,7 @@ class DOSessionStore implements SessionStore {
     return null;
   }
 
-  async update(id: string, data: any): Promise<void> {
+  async update(id: string, data: unknown): Promise<void> {
     const stub = this.getStub(id);
     await stub.fetch('https://session/update', {
       method: 'POST',
@@ -179,11 +179,11 @@ class DOSessionStore implements SessionStore {
 class KVSessionStore implements SessionStore {
   constructor(private kv: KVNamespace) {}
 
-  async create(id: string, data: any): Promise<void> {
+  async create(id: string, data: unknown): Promise<void> {
     await this.kv.put(
       `session:${id}`,
       JSON.stringify({
-        ...data,
+        ...(data as Record<string, unknown>),
         createdAt: Date.now(),
         updatedAt: Date.now()
       }),
@@ -193,18 +193,18 @@ class KVSessionStore implements SessionStore {
     );
   }
 
-  async get(id: string): Promise<any> {
+  async get(id: string): Promise<unknown> {
     return await this.kv.get(`session:${id}`, { type: 'json' });
   }
 
-  async update(id: string, data: any): Promise<void> {
+  async update(id: string, data: unknown): Promise<void> {
     const existing = await this.get(id);
     if (existing) {
       await this.kv.put(
         `session:${id}`,
         JSON.stringify({
-          ...existing,
-          ...data,
+          ...(existing as Record<string, unknown>),
+          ...(data as Record<string, unknown>),
           updatedAt: Date.now()
         }),
         {
@@ -240,7 +240,7 @@ export function createWorkersPlatform(env: WorkersEnv, _options: PlatformOptions
   return {
     // Core features
     randomUUID: () => crypto.randomUUID(),
-    getEnv: (key: string) => env[key],
+    getEnv: (key: string) => env[key] as string | undefined,
 
     // Workers doesn't support these Node.js features
     spawn: undefined,

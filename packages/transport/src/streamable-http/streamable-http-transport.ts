@@ -70,6 +70,7 @@ export class StreamableHTTPTransport implements Transport {
     this.onsessionclosed = options?.onsessionclosed;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async start(): Promise<void> {
     if (this.started) {
       throw new Error('Transport already started');
@@ -144,7 +145,7 @@ export class StreamableHTTPTransport implements Transport {
     // Handle notification messages
     else if (!('id' in message)) {
       // Route progress notifications to specific streams
-      const notification = message as any;
+      const notification = message as { method?: string; params?: { progressToken?: string } };
       if (notification.method === 'notifications/progress' && notification.params?.progressToken) {
         const streamId = this.progressTokenToStream.get(notification.params.progressToken);
         if (streamId) {
@@ -202,13 +203,13 @@ export class StreamableHTTPTransport implements Transport {
   async handleHttpRequest(
     method: string,
     headers: Record<string, string | undefined>,
-    body?: any,
+    body?: unknown,
     sseStream?: SSEStream
   ): Promise<
     | {
         status: number;
         headers?: Record<string, string>;
-        body?: any;
+        body?: unknown;
       }
     | undefined
   > {
@@ -235,6 +236,7 @@ export class StreamableHTTPTransport implements Transport {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async handleGetRequest(
     headers: Record<string, string | undefined>,
     sseStream?: SSEStream
@@ -305,9 +307,9 @@ export class StreamableHTTPTransport implements Transport {
 
   private async handlePostRequest(
     headers: Record<string, string | undefined>,
-    body: any,
+    body: unknown,
     sseStream?: SSEStream
-  ): Promise<{ status: number; headers?: Record<string, string>; body?: any }> {
+  ): Promise<{ status: number; headers?: Record<string, string>; body?: unknown }> {
     // Validate Accept header - at least one of the required types
     const acceptHeader = headers.accept;
     if (
@@ -329,7 +331,9 @@ export class StreamableHTTPTransport implements Transport {
     }
 
     // Parse messages
-    const messages: JSONRPCMessage[] = Array.isArray(body) ? body : [body];
+    const messages: JSONRPCMessage[] = Array.isArray(body)
+      ? (body as JSONRPCMessage[])
+      : [body as JSONRPCMessage];
 
     // Check for initialization
     const isInitialization = messages.some(isInitializeRequest);
@@ -380,11 +384,11 @@ export class StreamableHTTPTransport implements Transport {
 
     // Check if SSE response is needed
     const hasProgressToken = messages.some(
-      (msg: any) => isJSONRPCRequest(msg) && msg.params?._meta?.progressToken
+      (msg) =>
+        isJSONRPCRequest(msg) &&
+        (msg as { params?: { _meta?: { progressToken?: string } } }).params?._meta?.progressToken
     );
-    const isToolCall = messages.some(
-      (msg: any) => isJSONRPCRequest(msg) && msg.method === 'tools/call'
-    );
+    const isToolCall = messages.some((msg) => isJSONRPCRequest(msg) && msg.method === 'tools/call');
 
     // Check if there's an existing SSE stream for this session (from GET request)
     const sessionId = headers['mcp-session-id'];
@@ -499,6 +503,7 @@ export class StreamableHTTPTransport implements Transport {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async handleDeleteRequest(
     headers: Record<string, string | undefined>
   ): Promise<{ status: number }> {

@@ -40,7 +40,7 @@ export function expandEnvironmentVariables(value: string, getEnv: GetEnv = defau
   // Pattern matches ${VAR} or ${VAR:-default}
   const pattern = /\$\{([^}:]+)(?::-([^}]*))?\}/g;
 
-  return value.replace(pattern, (_match, varName, defaultValue) => {
+  return value.replace(pattern, (_match, varName: string, defaultValue?: string) => {
     const envValue = getEnv(varName);
 
     if (envValue !== undefined) {
@@ -65,30 +65,32 @@ export function expandEnvironmentVariables(value: string, getEnv: GetEnv = defau
  * @param getEnv - Function to get environment variable values
  * @returns Configuration with expanded environment variables
  */
-export function expandConfig(config: any, getEnv: GetEnv = defaultGetEnv): any {
+export function expandConfig(config: unknown, getEnv: GetEnv = defaultGetEnv): unknown {
   if (!config || typeof config !== 'object') {
     return config;
   }
 
   // Deep clone to avoid mutating original
-  const expanded = JSON.parse(JSON.stringify(config));
+  const expanded = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
 
   // Process mcpServers if present
   if (expanded.mcpServers && typeof expanded.mcpServers === 'object') {
-    for (const serverName in expanded.mcpServers) {
-      const server = expanded.mcpServers[serverName];
+    const mcpServers = expanded.mcpServers as Record<string, unknown>;
+    for (const serverName in mcpServers) {
+      const server = mcpServers[serverName];
       if (typeof server === 'object' && server !== null) {
-        expanded.mcpServers[serverName] = expandServerConfig(server, getEnv);
+        mcpServers[serverName] = expandServerConfig(server, getEnv);
       }
     }
   }
 
   // Process servers if present (VS Code compatibility)
   if (expanded.servers && typeof expanded.servers === 'object') {
-    for (const serverName in expanded.servers) {
-      const server = expanded.servers[serverName];
+    const servers = expanded.servers as Record<string, unknown>;
+    for (const serverName in servers) {
+      const server = servers[serverName];
       if (typeof server === 'object' && server !== null) {
-        expanded.servers[serverName] = expandServerConfig(server, getEnv);
+        servers[serverName] = expandServerConfig(server, getEnv);
       }
     }
   }
@@ -102,8 +104,8 @@ export function expandConfig(config: any, getEnv: GetEnv = defaultGetEnv): any {
  * @param getEnv - Function to get environment variable values
  * @returns Server configuration with expanded variables
  */
-function expandServerConfig(server: any, getEnv: GetEnv): any {
-  const expanded = { ...server };
+function expandServerConfig(server: unknown, getEnv: GetEnv): unknown {
+  const expanded = { ...(server as Record<string, unknown>) };
 
   // Expand command field
   if (typeof expanded.command === 'string') {
@@ -120,7 +122,7 @@ function expandServerConfig(server: any, getEnv: GetEnv): any {
   // Expand env object values
   if (expanded.env && typeof expanded.env === 'object') {
     const expandedEnv: Record<string, string> = {};
-    for (const [key, value] of Object.entries(expanded.env)) {
+    for (const [key, value] of Object.entries(expanded.env as Record<string, unknown>)) {
       if (typeof value === 'string') {
         expandedEnv[key] = expandEnvironmentVariables(value, getEnv);
       } else {
@@ -138,7 +140,7 @@ function expandServerConfig(server: any, getEnv: GetEnv): any {
   // Expand headers object values
   if (expanded.headers && typeof expanded.headers === 'object') {
     const expandedHeaders: Record<string, string> = {};
-    for (const [key, value] of Object.entries(expanded.headers)) {
+    for (const [key, value] of Object.entries(expanded.headers as Record<string, unknown>)) {
       if (typeof value === 'string') {
         expandedHeaders[key] = expandEnvironmentVariables(value, getEnv);
       } else {
@@ -158,7 +160,10 @@ function expandServerConfig(server: any, getEnv: GetEnv): any {
  * @param getEnv - Function to get environment variable values
  * @throws Error listing all missing required variables
  */
-export function validateEnvironmentVariables(config: any, getEnv: GetEnv = defaultGetEnv): void {
+export function validateEnvironmentVariables(
+  config: unknown,
+  getEnv: GetEnv = defaultGetEnv
+): void {
   const missingVars = new Set<string>();
 
   function checkValue(value: string) {
@@ -167,43 +172,45 @@ export function validateEnvironmentVariables(config: any, getEnv: GetEnv = defau
 
     while ((match = pattern.exec(value)) !== null) {
       const [, varName, defaultValue] = match;
-      if (defaultValue === undefined && getEnv(varName) === undefined) {
+      if (varName && defaultValue === undefined && getEnv(varName) === undefined) {
         missingVars.add(varName);
       }
     }
   }
 
-  function checkServer(server: any) {
-    if (typeof server.command === 'string') {
-      checkValue(server.command);
+  function checkServer(server: unknown) {
+    const serverConfig = server as Record<string, unknown>;
+    if (typeof serverConfig.command === 'string') {
+      checkValue(serverConfig.command);
     }
 
-    if (Array.isArray(server.args)) {
-      server.args.forEach((arg: any) => {
+    if (Array.isArray(serverConfig.args)) {
+      (serverConfig.args as unknown[]).forEach((arg: unknown) => {
         if (typeof arg === 'string') checkValue(arg);
       });
     }
 
-    if (server.env && typeof server.env === 'object') {
-      Object.values(server.env).forEach((value: any) => {
+    if (serverConfig.env && typeof serverConfig.env === 'object') {
+      Object.values(serverConfig.env as Record<string, unknown>).forEach((value: unknown) => {
         if (typeof value === 'string') checkValue(value);
       });
     }
 
-    if (typeof server.url === 'string') {
-      checkValue(server.url);
+    if (typeof serverConfig.url === 'string') {
+      checkValue(serverConfig.url);
     }
 
-    if (server.headers && typeof server.headers === 'object') {
-      Object.values(server.headers).forEach((value: any) => {
+    if (serverConfig.headers && typeof serverConfig.headers === 'object') {
+      Object.values(serverConfig.headers as Record<string, unknown>).forEach((value: unknown) => {
         if (typeof value === 'string') checkValue(value);
       });
     }
   }
 
   // Check mcpServers
-  if (config.mcpServers && typeof config.mcpServers === 'object') {
-    Object.values(config.mcpServers).forEach((server: any) => {
+  const configObj = config as Record<string, unknown>;
+  if (configObj.mcpServers && typeof configObj.mcpServers === 'object') {
+    Object.values(configObj.mcpServers as Record<string, unknown>).forEach((server: unknown) => {
       if (typeof server === 'object' && server !== null) {
         checkServer(server);
       }
@@ -211,8 +218,8 @@ export function validateEnvironmentVariables(config: any, getEnv: GetEnv = defau
   }
 
   // Check servers (VS Code compatibility)
-  if (config.servers && typeof config.servers === 'object') {
-    Object.values(config.servers).forEach((server: any) => {
+  if (configObj.servers && typeof configObj.servers === 'object') {
+    Object.values(configObj.servers as Record<string, unknown>).forEach((server: unknown) => {
       if (typeof server === 'object' && server !== null) {
         checkServer(server);
       }

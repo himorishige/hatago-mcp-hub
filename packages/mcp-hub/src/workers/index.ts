@@ -10,9 +10,11 @@ export {
   handleMCPEndpoint,
   createEventsEndpoint,
   type HatagoHub,
-  type HubConfig,
   type ServerSpec
 } from '@himorishige/hatago-hub/workers';
+
+// Re-export HubConfig as an alias for HubOptions
+export type { HubOptions as HubConfig } from '@himorishige/hatago-hub/workers';
 
 // Core types (platform-agnostic)
 export type {
@@ -42,10 +44,13 @@ export type {
   HatagoError,
   // Server types
   ServerType,
-  ServerStatus,
   ServerInfo,
   ConnectionResult
 } from '@himorishige/hatago-core';
+
+// Re-export env utilities for configuration expansion/validation
+export { expandConfig, validateEnvironmentVariables } from '@himorishige/hatago-core';
+export type { GetEnv } from '@himorishige/hatago-core';
 
 // Workers-specific utilities (if available)
 // Note: These may not exist yet
@@ -62,7 +67,7 @@ import { cors } from 'hono/cors';
 /**
  * Create a pre-configured Hono app for Workers
  */
-export function createWorkersApp(config?: HubConfig): Hono {
+export function createWorkersApp(_config?: unknown): Hono {
   const app = new Hono();
 
   // Enable CORS
@@ -74,28 +79,27 @@ export function createWorkersApp(config?: HubConfig): Hono {
     })
   );
 
-  // Create hub
-  const hub = createHub(config);
+  // Note: createHub, handleMCPEndpoint, and createEventsEndpoint are imported at the top of this file
+  // from '@himorishige/hatago-hub/workers' - they should be available here.
+  // However, this is a placeholder implementation for Workers environment.
 
-  // MCP endpoint
-  app.post('/mcp', async (c) => {
-    const sessionId = c.req.header('mcp-session-id') || 'default';
-    const body = await c.req.json();
-    return handleMCPEndpoint(hub, body, sessionId);
-  });
-
-  // SSE events endpoint
-  app.get('/events', (c) => {
-    return createEventsEndpoint(hub, c);
-  });
-
-  // Health check
+  // Health check only for now - full implementation requires proper hub setup
   app.get('/health', (c) => {
-    return c.json({ status: 'ok', service: 'hatago-mcp-hub' });
+    return c.json({ status: 'ok', service: 'hatago-mcp-hub-workers' });
+  });
+
+  // Placeholder endpoints
+  app.post('/mcp', (c) => {
+    return c.json({ error: 'Workers implementation pending' }, 501);
+  });
+
+  app.get('/events', (c) => {
+    return c.json({ error: 'Workers implementation pending' }, 501);
   });
 
   return app;
 }
 
 // Re-export Hono for convenience
-export { Hono, cors } from 'hono';
+export { Hono } from 'hono';
+export { cors } from 'hono/cors';

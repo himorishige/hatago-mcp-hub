@@ -5,10 +5,10 @@
 import { getPlatform, isPlatformInitialized } from '../platform/index.js';
 
 export interface Logger {
-  debug: (message: string, ...args: any[]) => void;
-  info: (message: string, ...args: any[]) => void;
-  warn: (message: string, ...args: any[]) => void;
-  error: (message: string, ...args: any[]) => void;
+  debug: (message: string, ...args: unknown[]) => void;
+  info: (message: string, ...args: unknown[]) => void;
+  warn: (message: string, ...args: unknown[]) => void;
+  error: (message: string, ...args: unknown[]) => void;
 }
 
 /**
@@ -24,7 +24,7 @@ function isDebugEnabled(): boolean {
   return (
     (typeof process !== 'undefined' &&
       (process.env?.DEBUG === 'true' || process.env?.DEBUG === '*')) ||
-    (typeof globalThis !== 'undefined' && (globalThis as any).DEBUG)
+    (typeof globalThis !== 'undefined' && Boolean((globalThis as Record<string, unknown>).DEBUG))
   );
 }
 
@@ -33,18 +33,18 @@ function isDebugEnabled(): boolean {
  * All output goes to stderr to keep stdout clean for STDIO protocol
  */
 export const logger: Logger = {
-  debug: (message: string, ...args: any[]) => {
+  debug: (message: string, ...args: unknown[]) => {
     if (isDebugEnabled()) {
       console.error(`[DEBUG] ${message}`, ...args);
     }
   },
-  info: (message: string, ...args: any[]) => {
+  info: (message: string, ...args: unknown[]) => {
     console.error(`[INFO] ${message}`, ...args);
   },
-  warn: (message: string, ...args: any[]) => {
+  warn: (message: string, ...args: unknown[]) => {
     console.error(`[WARN] ${message}`, ...args);
   },
-  error: (message: string, ...args: any[]) => {
+  error: (message: string, ...args: unknown[]) => {
     console.error(`[ERROR] ${message}`, ...args);
   }
 };

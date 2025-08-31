@@ -17,7 +17,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Read package.json for version
-const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
+const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')) as {
+  version: string;
+};
 
 // Create main program
 const program = new Command();
@@ -54,7 +56,7 @@ program
   });
 
 // Parse arguments and handle errors
-program.parseAsync(process.argv).catch((error) => {
-  console.error('Error:', error.message);
+program.parseAsync(process.argv).catch((error: unknown) => {
+  console.error('Error:', error instanceof Error ? error.message : String(error));
   process.exit(1);
 });

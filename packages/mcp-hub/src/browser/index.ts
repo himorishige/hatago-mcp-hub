@@ -33,7 +33,6 @@ export type {
   HatagoError,
   // Server types
   ServerType,
-  ServerStatus,
   ServerInfo,
   ConnectionResult
 } from '@himorishige/hatago-core';

@@ -9,7 +9,7 @@ export interface SSEClient {
   writer: WritableStreamDefaultWriter;
   closed: boolean;
   keepAliveInterval?: ReturnType<typeof setInterval>;
-  stream?: any; // For framework-specific streams
+  stream?: unknown; // For framework-specific streams
 }
 
 export interface ProgressNotification {
@@ -35,7 +35,7 @@ export class SSEManager {
   /**
    * Add a new SSE client
    */
-  addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: any): void {
+  addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: unknown): void {
     // Set up keepalive interval
     const keepAliveInterval = setInterval(() => {
       void this.sendKeepAliveToClient(clientId);
@@ -120,7 +120,7 @@ export class SSEManager {
   /**
    * Send event to a specific client
    */
-  private async sendToClient(clientId: string, event: string, data: any): Promise<void> {
+  private async sendToClient(clientId: string, event: string, data: unknown): Promise<void> {
     const client = this.clients.get(clientId);
     if (!client || client.closed) {
       return;
@@ -148,7 +148,7 @@ export class SSEManager {
   /**
    * Broadcast to all clients
    */
-  async broadcast(event: string, data: any): Promise<void> {
+  async broadcast(event: string, data: unknown): Promise<void> {
     const promises: Promise<void>[] = [];
 
     for (const clientId of this.clients.keys()) {
@@ -168,9 +168,12 @@ export class SSEManager {
     }
 
     try {
-      if (client.stream?.writeSSE) {
+      const streamWithWriteSSE = client.stream as
+        | { writeSSE?: (message: { comment: string }) => void }
+        | undefined;
+      if (streamWithWriteSSE?.writeSSE) {
         // Framework-specific stream (e.g., Hono)
-        client.stream.writeSSE({ comment: 'keepalive' });
+        streamWithWriteSSE.writeSSE({ comment: 'keepalive' });
       } else {
         // Standard SSE stream
         const encoder = new TextEncoder();

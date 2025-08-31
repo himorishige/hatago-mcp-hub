@@ -7,10 +7,15 @@
 // Core functionality from hub
 export {
   createHub,
+  // Streamable HTTP helpers (Node)
+  handleMCPEndpoint,
+  createEventsEndpoint,
   type HatagoHub,
-  type HubConfig,
   type ServerSpec
 } from '@himorishige/hatago-hub/node';
+
+// Re-export HubConfig as an alias for HubOptions
+export type { HubOptions as HubConfig } from '@himorishige/hatago-hub/node';
 
 // Server functionality
 export { startServer, type ServerOptions } from '@himorishige/hatago-server';
@@ -46,29 +51,32 @@ export type {
   HatagoError,
   // Server types
   ServerType,
-  ServerStatus,
   ServerInfo,
   ConnectionResult
 } from '@himorishige/hatago-core';
 
 // Runtime platform capabilities
-export { getPlatform, type PlatformCapabilities } from '@himorishige/hatago-runtime';
+export { getPlatform } from '@himorishige/hatago-runtime';
 
 // Configuration utilities
 export { loadConfig } from '@himorishige/hatago-server';
 
 // Re-export MCP SDK for convenience
-export {
-  Client,
-  Server,
-  StdioServerTransport,
-  type CallToolRequest,
-  type CallToolResult,
-  type ListResourcesResult,
-  type ListToolsResult,
-  type ListPromptsResult,
-  type ReadResourceRequest,
-  type ReadResourceResult,
-  type GetPromptRequest,
-  type GetPromptResult
-} from '@modelcontextprotocol/sdk';
+// Note: MCP SDK exports have module resolution issues with TypeScript
+// Users should import directly from @modelcontextprotocol/sdk packages
+/*
+export { Client } from '@modelcontextprotocol/sdk/client';
+export { Server } from '@modelcontextprotocol/sdk/server';
+export { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
+export type {
+  CallToolRequest,
+  CallToolResult,
+  ListResourcesResult,
+  ListToolsResult,
+  ListPromptsResult,
+  ReadResourceRequest,
+  ReadResourceResult,
+  GetPromptRequest,
+  GetPromptResult
+} from '@modelcontextprotocol/sdk/types';
+*/

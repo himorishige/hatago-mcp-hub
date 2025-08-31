@@ -30,23 +30,42 @@ export default tseslint.config(
       }
     },
     rules: {
-      '@typescript-eslint/consistent-type-imports': 'warn',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/no-floating-promises': 'warn',
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+
+      // Strict type safety rules - now at error level
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': [
-        'warn',
+        'error',
         {
           checksVoidReturn: {
             arguments: false
           }
         }
-      ]
+      ],
+
+      // Strict any usage rules
+      '@typescript-eslint/no-explicit-any': [
+        'error',
+        {
+          // Allow any in specific cases where it's truly needed
+          ignoreRestArgs: true,
+          fixToUnknown: true
+        }
+      ],
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+
+      // Additional strict rules now enabled
+      '@typescript-eslint/explicit-function-return-type': 'off', // Still off - too restrictive
+      '@typescript-eslint/explicit-module-boundary-types': 'off', // Still off - too restrictive
+      '@typescript-eslint/require-await': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'warn', // Start with warn
+      '@typescript-eslint/prefer-nullish-coalescing': 'warn', // Start with warn
+      '@typescript-eslint/prefer-optional-chain': 'warn' // Start with warn
     }
   },
 

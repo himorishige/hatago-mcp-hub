@@ -5,30 +5,30 @@
 import { z } from 'zod';
 import type { HatagoHub } from './hub.js';
 
-export interface InternalTool {
+export interface InternalTool<T = unknown> {
   name: string;
   description: string;
-  inputSchema: z.ZodObject<any>;
-  handler: (args: any, hub: HatagoHub) => Promise<any>;
+  inputSchema: z.ZodObject<z.ZodRawShape>;
+  handler: (args: T, hub: HatagoHub) => Promise<unknown> | unknown;
 }
 
 /**
  * Get internal management tools
  */
-export function getInternalTools(): InternalTool[] {
+export function getInternalTools(): Array<InternalTool<unknown>> {
   return [
     {
       name: 'hatago_status',
       description:
         'Get the current status of Hatago Hub including servers, tools, and configuration',
       inputSchema: z.object({}),
-      handler: async (_args, hub) => {
-        const servers = (hub as any).servers as Map<string, any>;
-        const tools = (hub as any).tools.list();
-        const revision = (hub as any).toolsetRevision;
-        const hash = (hub as any).toolsetHash;
+      handler: (_args, hub) => {
+        const servers = hub.getServers();
+        const tools = hub.tools.list();
+        const revision = hub.getToolsetRevision();
+        const hash = hub.getToolsetHash();
 
-        const serverList = Array.from(servers.values()).map((s) => ({
+        const serverList = servers.map((s) => ({
           id: s.id,
           status: s.status,
           toolCount: s.tools?.length || 0,
@@ -58,36 +58,33 @@ export function getInternalTools(): InternalTool[] {
       inputSchema: z.object({
         dry_run: z.boolean().optional().describe('Perform a dry run without applying changes')
       }),
-      handler: async (args, hub) => {
-        const dryRun = args.dry_run || false;
+      handler: async (args: unknown, hub) => {
+        const dryRun = (args as { dry_run?: boolean })?.dry_run || false;
 
         if (dryRun) {
           return {
             ok: true,
             message: 'Dry run mode - no changes applied',
-            current_revision: (hub as any).toolsetRevision,
-            current_hash: (hub as any).toolsetHash
+            current_revision: hub.getToolsetRevision(),
+            current_hash: hub.getToolsetHash()
           };
         }
 
         // Trigger reload
-        const reloadConfig = (hub as any).reloadConfig;
-        if (reloadConfig) {
-          try {
-            await reloadConfig.call(hub);
-            return {
-              ok: true,
-              message: 'Configuration reloaded successfully',
-              new_revision: (hub as any).toolsetRevision,
-              new_hash: (hub as any).toolsetHash
-            };
-          } catch (error) {
-            return {
-              ok: false,
-              message: 'Failed to reload configuration',
-              error: error instanceof Error ? error.message : String(error)
-            };
-          }
+        try {
+          await hub.doReloadConfig();
+          return {
+            ok: true,
+            message: 'Configuration reloaded successfully',
+            new_revision: hub.getToolsetRevision(),
+            new_hash: hub.getToolsetHash()
+          };
+        } catch (error) {
+          return {
+            ok: false,
+            message: 'Failed to reload configuration',
+            error: error instanceof Error ? error.message : String(error)
+          };
         }
 
         return {
@@ -101,17 +98,17 @@ export function getInternalTools(): InternalTool[] {
       name: 'hatago_list_servers',
       description: 'List all connected MCP servers with their details',
       inputSchema: z.object({}),
-      handler: async (_args, hub) => {
-        const servers = (hub as any).servers as Map<string, any>;
+      handler: (_args, hub) => {
+        const servers = hub.getServers();
 
-        const serverDetails = Array.from(servers.values()).map((s) => ({
+        const serverDetails = servers.map((s) => ({
           server_id: s.id,
           status: s.status,
           type: s.spec?.url ? 'remote' : 'local',
           url: s.spec?.url || null,
           command: s.spec?.command || null,
-          tools: s.tools?.map((t: any) => t.name) || [],
-          resources: s.resources?.map((r: any) => r.uri) || [],
+          tools: s.tools?.map((t) => t.name) || [],
+          resources: s.resources?.map((r) => r.uri) || [],
           error: s.error?.message || null
         }));
 

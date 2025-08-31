@@ -12,7 +12,7 @@ export type ProgressCallback = (progress: number, total?: number, message?: stri
 /**
  * Tool handler function
  */
-export type ToolHandler = (args: any, progressCallback?: ProgressCallback) => Promise<any>;
+export type ToolHandler = (args: unknown, progressCallback?: ProgressCallback) => Promise<unknown>;
 
 /**
  * Tool call result

@@ -136,10 +136,10 @@ function loadConfig(): HatagoConfig {
 
   try {
     const content = readFileSync(configPath, 'utf-8');
-    return JSON.parse(content);
+    return JSON.parse(content) as HatagoConfig;
   } catch (error) {
     console.error('Error loading configuration:', error);
-    return {};
+    return {} as HatagoConfig;
   }
 }
 

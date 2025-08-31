@@ -5,3 +5,4 @@ coverage
 pnpm-lock.yaml
 .turbo
 .cache
+schemas/
