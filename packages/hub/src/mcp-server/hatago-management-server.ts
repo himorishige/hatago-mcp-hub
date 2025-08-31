@@ -347,7 +347,7 @@ export class HatagoManagementServer {
   /**
    * Handle tool call
    */
-  async handleToolCall(name: string, args: any): Promise<any> {
+  async handleToolCall(name: string, args: unknown): Promise<unknown> {
     // Log tool call
     await this.auditLogger.log(
       'TOOL_CALLED',
@@ -355,63 +355,92 @@ export class HatagoManagementServer {
         type: 'mcp_tool',
         toolName: name
       },
-      { metadata: args },
+      { metadata: args as Record<string, unknown> },
       'info'
     );
 
     switch (name) {
       // Configuration
-      case 'hatago_get_config':
-        return this.getConfig(args.format);
+      case 'hatago_get_config': {
+        const a = args as { format?: string };
+        return this.getConfig(a.format);
+      }
 
-      case 'hatago_preview_config_change':
-        return this.previewConfigChange(args.changes);
+      case 'hatago_preview_config_change': {
+        const a = args as { changes: unknown };
+        return this.previewConfigChange(a.changes);
+      }
 
-      case 'hatago_apply_config_change':
-        return this.applyConfigChange(args.changes, args.force);
+      case 'hatago_apply_config_change': {
+        const a = args as { changes: unknown; force?: boolean };
+        return this.applyConfigChange(a.changes, a.force);
+      }
 
       // Server Management
-      case 'hatago_list_servers':
-        return this.listServers(args.filter);
+      case 'hatago_list_servers': {
+        const a = args as { filter?: string };
+        return this.listServers(a.filter);
+      }
 
-      case 'hatago_get_server_info':
-        return this.getServerInfo(args.serverId);
+      case 'hatago_get_server_info': {
+        const a = args as { serverId: string };
+        return this.getServerInfo(a.serverId);
+      }
 
-      case 'hatago_activate_server':
-        return this.activateServer(args.serverId, args.reason);
+      case 'hatago_activate_server': {
+        const a = args as { serverId: string; reason?: string };
+        return this.activateServer(a.serverId, a.reason);
+      }
 
-      case 'hatago_deactivate_server':
-        return this.deactivateServer(args.serverId, args.reason);
+      case 'hatago_deactivate_server': {
+        const a = args as { serverId: string; reason?: string };
+        return this.deactivateServer(a.serverId, a.reason);
+      }
 
-      case 'hatago_set_server_policy':
-        return this.setServerPolicy(args.serverId, args.policy);
+      case 'hatago_set_server_policy': {
+        const a = args as { serverId: string; policy: string };
+        return this.setServerPolicy(a.serverId, a.policy);
+      }
 
       // Server CRUD
-      case 'hatago_add_server':
-        return this.addServer(args.serverId, args.config);
+      case 'hatago_add_server': {
+        const a = args as { serverId: string; config: unknown };
+        return this.addServer(a.serverId, a.config);
+      }
 
-      case 'hatago_remove_server':
-        return this.removeServer(args.serverId, args.force);
+      case 'hatago_remove_server': {
+        const a = args as { serverId: string; force?: boolean };
+        return this.removeServer(a.serverId, a.force);
+      }
 
-      case 'hatago_update_server':
-        return this.updateServer(args.serverId, args.updates);
+      case 'hatago_update_server': {
+        const a = args as { serverId: string; updates: unknown };
+        return this.updateServer(a.serverId, a.updates);
+      }
 
       // Monitoring
       case 'hatago_get_server_states':
         return this.getServerStates();
 
-      case 'hatago_get_server_activity':
-        return this.getServerActivity(args.serverId);
+      case 'hatago_get_server_activity': {
+        const a = args as { serverId: string };
+        return this.getServerActivity(a.serverId);
+      }
 
-      case 'hatago_get_audit_log':
-        return this.getAuditLog(args);
+      case 'hatago_get_audit_log': {
+        return this.getAuditLog(args as Record<string, unknown>);
+      }
 
       // Diagnostics
-      case 'hatago_test_server_connection':
-        return this.testServerConnection(args.serverId);
+      case 'hatago_test_server_connection': {
+        const a = args as { serverId: string };
+        return this.testServerConnection(a.serverId);
+      }
 
-      case 'hatago_reset_server':
-        return this.resetServer(args.serverId);
+      case 'hatago_reset_server': {
+        const a = args as { serverId: string };
+        return this.resetServer(a.serverId);
+      }
 
       case 'hatago_stop_idle_servers':
         return this.stopIdleServers();
@@ -424,7 +453,7 @@ export class HatagoManagementServer {
   /**
    * Handle resource read
    */
-  async handleResourceRead(uri: string): Promise<any> {
+  async handleResourceRead(uri: string): Promise<unknown> {
     switch (uri) {
       case 'hatago://config':
         return this.getConfig('full');
@@ -449,13 +478,17 @@ export class HatagoManagementServer {
   /**
    * Handle prompt
    */
-  async handlePrompt(name: string, args: any): Promise<string> {
+  async handlePrompt(name: string, args: unknown): Promise<string> {
     switch (name) {
-      case 'configure_new_server':
-        return this.getNewServerPrompt(args.serverType);
+      case 'configure_new_server': {
+        const a = args as { serverType: string };
+        return this.getNewServerPrompt(a.serverType);
+      }
 
-      case 'diagnose_server_issues':
-        return this.getDiagnosticPrompt(args.serverId);
+      case 'diagnose_server_issues': {
+        const a = args as { serverId: string };
+        return this.getDiagnosticPrompt(a.serverId);
+      }
 
       case 'optimize_server_policies':
         return this.getOptimizationPrompt();
@@ -470,11 +503,11 @@ export class HatagoManagementServer {
   private loadConfig(): void {
     if (existsSync(this.configFilePath)) {
       const content = readFileSync(this.configFilePath, 'utf-8');
-      this.config = JSON.parse(content);
+      this.config = JSON.parse(content) as Record<string, unknown>;
     }
   }
 
-  private async getConfig(format?: string): Promise<any> {
+  private async getConfig(format?: string): Promise<unknown> {
     await this.auditLogger.logConfigRead({
       type: 'mcp_tool'
     });
@@ -497,11 +530,14 @@ export class HatagoManagementServer {
     }
   }
 
-  private async previewConfigChange(changes: any): Promise<DiffResult> {
+  private async previewConfigChange(changes: unknown): Promise<DiffResult> {
     return this.fileGuard.previewChanges(changes);
   }
 
-  private async applyConfigChange(changes: any, force?: boolean): Promise<any> {
+  private async applyConfigChange(
+    changes: unknown,
+    force?: boolean
+  ): Promise<Record<string, unknown>> {
     const preview = await this.fileGuard.previewChanges(changes);
 
     if (!preview.validation.valid && !force) {
@@ -513,13 +549,13 @@ export class HatagoManagementServer {
     }
 
     // Apply changes
-    const merged = { ...this.config, ...changes };
+    const merged = { ...this.config, ...(changes as Record<string, unknown>) };
     const content = JSON.stringify(merged, null, 2);
 
     await this.fileGuard.safeWrite(this.configFilePath, content);
     await this.auditLogger.logConfigWrite({ type: 'mcp_tool' }, changes);
 
-    this.config = merged;
+    this.config = merged as ServerConfig;
 
     return {
       success: true,
@@ -527,7 +563,7 @@ export class HatagoManagementServer {
     };
   }
 
-  private async listServers(filter?: string): Promise<any[]> {
+  private async listServers(filter?: string): Promise<Array<Record<string, unknown>>> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
     const result = [];
 
@@ -551,7 +587,7 @@ export class HatagoManagementServer {
     return result;
   }
 
-  private async getServerInfo(serverId: string): Promise<any> {
+  private async getServerInfo(serverId: string): Promise<Record<string, unknown>> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
     const config = servers[serverId] as ServerConfig;
 
@@ -572,7 +608,7 @@ export class HatagoManagementServer {
     };
   }
 
-  private async activateServer(serverId: string, reason?: string): Promise<any> {
+  private async activateServer(serverId: string, reason?: string): Promise<unknown> {
     const result = await this.activationManager.activate(serverId, { type: 'manual' }, reason);
 
     await this.auditLogger.logServerStateChange(serverId, 'SERVER_ACTIVATED', {
@@ -582,7 +618,7 @@ export class HatagoManagementServer {
     return result;
   }
 
-  private async deactivateServer(serverId: string, reason?: string): Promise<any> {
+  private async deactivateServer(serverId: string, reason?: string): Promise<unknown> {
     const result = await this.activationManager.deactivate(serverId, reason);
 
     await this.auditLogger.logServerStateChange(serverId, 'SERVER_DEACTIVATED', {
@@ -592,7 +628,10 @@ export class HatagoManagementServer {
     return result;
   }
 
-  private async setServerPolicy(serverId: string, policy: ActivationPolicy): Promise<any> {
+  private async setServerPolicy(
+    serverId: string,
+    policy: ActivationPolicy
+  ): Promise<Record<string, unknown>> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
 
     if (!servers[serverId]) {
@@ -607,7 +646,10 @@ export class HatagoManagementServer {
     return this.applyConfigChange(updates);
   }
 
-  private async addServer(serverId: string, config: ServerConfig): Promise<any> {
+  private async addServer(
+    serverId: string,
+    config: ServerConfig
+  ): Promise<Record<string, unknown>> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
 
     if (servers[serverId]) {
@@ -621,7 +663,7 @@ export class HatagoManagementServer {
       }
     };
 
-    const result = await this.applyConfigChange(updates);
+    const result = (await this.applyConfigChange(updates)) as { success: boolean };
 
     if (result.success) {
       this.activationManager.registerServer(serverId, config);
@@ -630,7 +672,7 @@ export class HatagoManagementServer {
     return result;
   }
 
-  private async removeServer(serverId: string, force?: boolean): Promise<any> {
+  private async removeServer(serverId: string, force?: boolean): Promise<Record<string, unknown>> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
 
     if (!servers[serverId]) {
@@ -664,7 +706,7 @@ export class HatagoManagementServer {
     return this.applyConfigChange(updates);
   }
 
-  private async updateServer(serverId: string, updates: any): Promise<any> {
+  private async updateServer(serverId: string, updates: unknown): Promise<Record<string, unknown>> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
 
     if (!servers[serverId]) {
@@ -676,10 +718,10 @@ export class HatagoManagementServer {
 
     const configUpdates = {
       [configKey]: {
-        ...this.config[configKey],
+        ...(this.config[configKey as keyof ServerConfig] as Record<string, unknown>),
         [serverId]: {
           ...servers[serverId],
-          ...updates
+          ...(updates as Record<string, unknown>)
         }
       }
     };
@@ -687,7 +729,7 @@ export class HatagoManagementServer {
     return this.applyConfigChange(configUpdates);
   }
 
-  private getServerStates(): any {
+  private getServerStates(): Record<string, unknown> {
     // Return empty states when stateMachine is not available
     if (!this.stateMachine) {
       return {};
@@ -696,7 +738,7 @@ export class HatagoManagementServer {
     return Object.fromEntries(states);
   }
 
-  private getServerActivity(serverId?: string): any {
+  private getServerActivity(serverId?: string): Record<string, unknown> | unknown {
     if (!this.idleManager) {
       return {};
     }
@@ -709,11 +751,11 @@ export class HatagoManagementServer {
     return Object.fromEntries(all);
   }
 
-  private async getAuditLog(options: any): Promise<any> {
+  private async getAuditLog(options: unknown): Promise<unknown> {
     return this.auditLogger.query(options);
   }
 
-  private async testServerConnection(serverId: string): Promise<any> {
+  private async testServerConnection(serverId: string): Promise<Record<string, unknown>> {
     // This would trigger actual connection test
     // For now, return current state
     return {
@@ -723,7 +765,7 @@ export class HatagoManagementServer {
     };
   }
 
-  private async resetServer(serverId: string): Promise<any> {
+  private async resetServer(serverId: string): Promise<Record<string, unknown>> {
     await this.activationManager.resetServer(serverId);
     return {
       success: true,
@@ -731,12 +773,12 @@ export class HatagoManagementServer {
     };
   }
 
-  private async stopIdleServers(): Promise<any> {
+  private async stopIdleServers(): Promise<Record<string, unknown>> {
     const results = await this.idleManager.stopIdleServers();
     return Object.fromEntries(results);
   }
 
-  private async getStatistics(): Promise<any> {
+  private async getStatistics(): Promise<Record<string, unknown>> {
     const auditStats = await this.auditLogger.getStatistics();
     const activities = this.idleManager?.getAllActivities() || new Map();
 
@@ -792,7 +834,7 @@ export class HatagoManagementServer {
     return `Server ${serverId} diagnostic:
 State: ${info.state}
 Policy: ${info.config.activationPolicy}
-Last Error: ${info.config._lastError?.message || 'None'}
+Last Error: ${(info.config._lastError as { message?: string } | undefined)?.message || 'None'}
 
 Suggested actions:
 1. Check server logs

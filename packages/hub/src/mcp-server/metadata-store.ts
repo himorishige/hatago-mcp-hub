@@ -348,7 +348,7 @@ export class MetadataStore {
 
     try {
       const content = readFileSync(this.metadataPath, 'utf-8');
-      const data = JSON.parse(content);
+      const data = JSON.parse(content) as Record<string, StoredServerMetadata>;
 
       this.metadata = new Map(Object.entries(data));
     } catch {
@@ -425,7 +425,7 @@ export class MetadataStore {
   /**
    * Calculate hash for change detection
    */
-  private calculateHash(data: any): string {
+  private calculateHash(data: unknown): string {
     const str = JSON.stringify(data);
     let hash = 0;
 
