@@ -109,9 +109,7 @@ Add to your `.mcp.json`:
 {
   "mcpServers": {
     "hatago": {
-      "type": "http",
-      "url": "http://localhost:3535",
-      "args": ["--config", "./hatago.config.json"]
+      "url": "http://localhost:3535"
     }
   }
 }
@@ -125,7 +123,6 @@ Add to your `~/.codex/config.toml`:
 [mcp_servers.hatago]
 type = "http"
 url = "http://localhost:3535"
-args = ["--config", "./hatago.config.json"]
 ```
 
 ### MCP Inspector

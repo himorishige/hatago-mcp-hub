@@ -118,14 +118,7 @@ args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago
 {
   "mcpServers": {
     "hatago": {
-      "command": "npx",
-      "args": [
-        "@himorishige/hatago-mcp-hub",
-        "serve",
-        "--stdio",
-        "--config",
-        "./hatago.config.json"
-      ]
+      "url": "http://localhost:3535"
     }
   }
 }
@@ -139,7 +132,6 @@ args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago
 [mcp_servers.hatago]
 type = "http"
 url = "http://localhost:3535"
-args = ["--config", "./hatago.config.json"]
 ```
 
 ### サーバー起動
