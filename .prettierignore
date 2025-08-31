@@ -1,3 +1,7 @@
-**/*.{ts,tsx,js,cjs,mjs,json}
-dist/
-build/
+node_modules
+dist
+build
+coverage
+pnpm-lock.yaml
+.turbo
+.cache

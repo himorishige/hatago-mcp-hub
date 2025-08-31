@@ -43,7 +43,9 @@
     "dev": "tsdown --watch",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write ./src",
+    "lint": "eslint ./src"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.4",
@@ -74,7 +76,7 @@
     "npx"
   ],
   "author": "",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/himorishige/hatago-mcp-hub.git"

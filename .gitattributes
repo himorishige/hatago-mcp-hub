@@ -1,0 +1,21 @@
+# Normalize line endings and diffs
+* text=auto eol=lf
+
+# Improve diffs for common files
+*.ts diff=ts
+*.tsx diff=ts
+*.js text
+*.jsx text
+*.json text
+*.md text
+*.yml text
+*.yaml text
+*.snap -diff
+
+# Exclude dev-only files from source archives
+.github export-ignore
+.vscode export-ignore
+.idea export-ignore
+docs/ export-ignore
+examples/ export-ignore
+

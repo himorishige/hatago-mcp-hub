@@ -1,19 +1,19 @@
 {
   "type": "module",
   "scripts": {
-    "format": "pnpm prettier:fix && pnpm biome:format",
-    "prettier:fix": "prettier --write \"**/*.{md,mdx,html,css,scss,less,yaml,yml,graphql}\"",
-    "biome:check": "biome check .",
-    "biome:check:fix": "biome check --write .",
-    "biome:lint": "biome lint .",
-    "biome:format": "biome format --write .",
-    "check": "pnpm biome:check && pnpm -r run typecheck",
-    "lint": "pnpm biome:lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check": "pnpm format:check && pnpm lint && pnpm -r run typecheck",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.0",
-    "prettier": "^3.6.2"
+    "@eslint/js": "^9.34.0",
+    "eslint": "^9.34.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.41.0"
   }
 }

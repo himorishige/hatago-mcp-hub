@@ -14,10 +14,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "biome:check": "npx biome check ./src",
-    "biome:check:fix": "npx biome check --write ./src",
-    "biome:lint": "npx biome lint ./src",
-    "biome:format": "npx biome format --write ./src"
+    "format": "prettier --write ./src",
+    "lint": "eslint ./src"
   },
   "files": [
     "dist",
@@ -51,5 +49,13 @@
     "cli",
     "model-context-protocol"
   ],
-  "license": "Apache-2.0"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/himorishige/hatago-mcp-hub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/himorishige/hatago-mcp-hub/issues"
+  },
+  "homepage": "https://github.com/himorishige/hatago-mcp-hub#readme"
 }

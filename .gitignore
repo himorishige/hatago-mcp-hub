@@ -1,51 +1,27 @@
-# .env
-.env
-.env.*
-
-# development
-.windsurf
-.mcp.json
-.serena/cache
-
-# worktree
-_wt/
-
-# misc
-.DS_Store
-
-# dev
-.yarn/
-!.yarn/releases
-.vscode/*
-!.vscode/launch.json
-!.vscode/*.code-snippets
-.idea/workspace.xml
-.idea/usage.statistics.xml
-.idea/shelf
-
-# deps
+# Node & TypeScript
 node_modules/
-
-# build artifacts
 dist/
-tsconfig.tsbuildinfo
-
-# test coverage
-test-results.json
+build/
 coverage/
-packages/*/coverage/
-*.lcov
-.nyc_output/
+*.tsbuildinfo
 
-# logs
-logs/
-*.log
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-cline-main/
+# Env & editor
+.env*
+.DS_Store
+.idea/
+.vscode/
 
-.wrangler
+# Caches
+.turbo/
+.cache/
+.parcel-cache/
+.next/
+
+# Monorepo
+**/.pnpm-store/

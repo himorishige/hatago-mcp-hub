@@ -1,0 +1,5 @@
+# Add commit hashes here (one per line) to ignore in git blame.
+# Typical use: formatting-only or mass-rename commits.
+# Example:
+# 0123456789abcdef0123456789abcdef01234567 Biome reformat all files
+
