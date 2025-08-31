@@ -50,6 +50,11 @@
     "lint": "eslint ./src"
   },
   "dependencies": {
+    "@himorishige/hatago-core": "workspace:*",
+    "@himorishige/hatago-hub": "workspace:*",
+    "@himorishige/hatago-runtime": "workspace:*",
+    "@himorishige/hatago-server": "workspace:*",
+    "@himorishige/hatago-transport": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "hono": "^4.9.4",
     "commander": "^14.0.0"
