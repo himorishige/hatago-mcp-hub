@@ -57,7 +57,8 @@ async function main() {
   });
 
   // SSE endpoint for progress notifications
-  app.get('/sse', (createEventsEndpoint as (hub: unknown) => unknown)(hub) as unknown);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  app.get('/sse', createEventsEndpoint(hub) as any);
 
   // Start HTTP server
   const port = Number(process.env.PORT || 3000);

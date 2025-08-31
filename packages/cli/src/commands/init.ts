@@ -19,7 +19,7 @@ export function setupInitCommand(program: Command): void {
     .option('-c, --config <path>', 'path to configuration file', './hatago.config.json')
     .option('-f, --force', 'overwrite existing configuration file')
     .option('--verbose', 'verbose output')
-    .action(async (options: InitOptions) => {
+    .action((options: InitOptions) => {
       const configPath = options.config || './hatago.config.json';
       const force = options.force || false;
 

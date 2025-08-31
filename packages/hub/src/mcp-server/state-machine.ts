@@ -88,7 +88,8 @@ export class ServerStateMachine extends EventEmitter {
     }
 
     // Create transition promise
-    const transitionPromise = this.executeTransition(serverId, from, to, reason);
+    this.executeTransition(serverId, from, to, reason);
+    const transitionPromise = Promise.resolve();
     this.transitions.set(serverId, transitionPromise);
 
     try {
@@ -101,12 +102,12 @@ export class ServerStateMachine extends EventEmitter {
   /**
    * Execute the actual transition
    */
-  private async executeTransition(
+  private executeTransition(
     serverId: string,
     from: ServerState,
     to: ServerState,
     reason?: string
-  ): Promise<void> {
+  ): void {
     // Update state
     this.states.set(serverId, to);
 

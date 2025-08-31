@@ -32,7 +32,7 @@ function createSSEAdapter(stream: SSEStreamingApi): SSEStream {
 /**
  * Handle SSE endpoint for StreamableHTTP
  */
-export async function handleSSEEndpoint(hub: HatagoHub, c: Context) {
+export function handleSSEEndpoint(hub: HatagoHub, c: Context) {
   const transport = hub.getStreamableTransport();
   if (!transport) {
     return c.text('StreamableHTTP not initialized', 500);
@@ -61,7 +61,7 @@ export async function handleSSEEndpoint(hub: HatagoHub, c: Context) {
  * This provides similar functionality to the example /events endpoint
  */
 export function createEventsEndpoint(hub: HatagoHub) {
-  return async (c: Context) => {
+  return (c: Context) => {
     const clientId = c.req.query('clientId') || `client-${Date.now()}`;
     const sseManager = hub.getSSEManager();
 
@@ -179,9 +179,12 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
       }
       const resultBody = result.body as unknown;
       const resultStatus = result.status as number | undefined;
+      // Using 'any' for Hono framework compatibility - status code type mismatch
       return resultBody
-        ? c.json(resultBody as any, (resultStatus || 200) as any)
-        : c.body(null, (resultStatus || 200) as any);
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          c.json(resultBody as any, (resultStatus || 200) as any)
+        : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          c.body(null, (resultStatus || 200) as any);
     }
   }
 

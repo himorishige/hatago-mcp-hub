@@ -119,9 +119,11 @@ export class EnhancedHatagoHub extends HatagoHub {
           progressToken?: string;
           progressCallback?: unknown;
         }
-      ): Promise<any> => {
+      ) => {
         // Use callToolWithActivation for on-demand activation support
-        return this.callToolWithActivation(name, args, options || {}) as any;
+        // Type assertion needed for ToolCallResult compatibility
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
+        return (await this.callToolWithActivation(name, args, options || {})) as any;
       }
     };
   }

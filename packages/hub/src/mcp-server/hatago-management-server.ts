@@ -563,7 +563,7 @@ export class HatagoManagementServer {
     };
   }
 
-  private async listServers(filter?: string): Promise<Array<Record<string, unknown>>> {
+  private listServers(filter?: string): Array<Record<string, unknown>> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
     const result = [];
 
@@ -587,7 +587,7 @@ export class HatagoManagementServer {
     return result;
   }
 
-  private async getServerInfo(serverId: string): Promise<Record<string, unknown>> {
+  private getServerInfo(serverId: string): Record<string, unknown> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
     const config = servers[serverId] as ServerConfig;
 
@@ -755,7 +755,7 @@ export class HatagoManagementServer {
     return this.auditLogger.query(options as Parameters<typeof this.auditLogger.query>[0]);
   }
 
-  private async testServerConnection(serverId: string): Promise<Record<string, unknown>> {
+  private testServerConnection(serverId: string): Record<string, unknown> {
     // This would trigger actual connection test
     // For now, return current state
     return {
@@ -843,7 +843,7 @@ Suggested actions:
 4. Reset server state if needed`;
   }
 
-  private async getOptimizationPrompt(): Promise<string> {
+  private getOptimizationPrompt(): string {
     const activities = this.idleManager.getAllActivities();
     const suggestions = [];
 

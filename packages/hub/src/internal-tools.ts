@@ -9,7 +9,7 @@ export interface InternalTool<T = unknown> {
   name: string;
   description: string;
   inputSchema: z.ZodObject<z.ZodRawShape>;
-  handler: (args: T, hub: HatagoHub) => Promise<unknown>;
+  handler: (args: T, hub: HatagoHub) => Promise<unknown> | unknown;
 }
 
 /**
@@ -22,7 +22,7 @@ export function getInternalTools(): Array<InternalTool<unknown>> {
       description:
         'Get the current status of Hatago Hub including servers, tools, and configuration',
       inputSchema: z.object({}),
-      handler: async (_args, hub) => {
+      handler: (_args, hub) => {
         const servers = hub.getServers();
         const tools = hub.tools.list();
         const revision = hub.getToolsetRevision();
@@ -98,7 +98,7 @@ export function getInternalTools(): Array<InternalTool<unknown>> {
       name: 'hatago_list_servers',
       description: 'List all connected MCP servers with their details',
       inputSchema: z.object({}),
-      handler: async (_args, hub) => {
+      handler: (_args, hub) => {
         const servers = hub.getServers();
 
         const serverDetails = servers.map((s) => ({

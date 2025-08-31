@@ -896,7 +896,7 @@ export class HatagoHub {
       name: tool.name,
       description: tool.description,
       inputSchema: zodToJsonSchema(tool.inputSchema),
-      handler: async (args: unknown) => tool.handler(args, this)
+      handler: async (args: unknown) => Promise.resolve(tool.handler(args, this))
     }));
 
     // Register as internal server
@@ -1004,7 +1004,7 @@ export class HatagoHub {
       // Create a debounced reload function to avoid multiple reloads
       let reloadTimeout: NodeJS.Timeout | undefined;
 
-      this.configWatcher = watch(configPath, async (eventType) => {
+      this.configWatcher = watch(configPath, (eventType) => {
         this.logger.debug(`Config file event: ${eventType}`, {
           path: configPath
         });

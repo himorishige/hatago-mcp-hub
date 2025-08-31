@@ -262,7 +262,7 @@ export class AuditLogger {
   /**
    * Clear audit logs (for testing)
    */
-  async clear(): Promise<void> {
+  clear(): void {
     if (!this.logFilePath) return;
 
     this.cache = [];
@@ -311,7 +311,7 @@ export class AuditLogger {
   /**
    * Write entry to file
    */
-  private async writeEntry(entry: AuditLogEntry): Promise<void> {
+  private writeEntry(entry: AuditLogEntry): void {
     if (!this.logFilePath) return;
 
     const line = `${JSON.stringify(entry)}\n`;
@@ -353,7 +353,7 @@ export class AuditLogger {
   /**
    * Get all entries from file
    */
-  private async getAllEntries(): Promise<AuditLogEntry[]> {
+  private getAllEntries(): AuditLogEntry[] {
     if (!this.logFilePath || !existsSync(this.logFilePath)) {
       return [];
     }
@@ -382,7 +382,7 @@ export class AuditLogger {
   /**
    * Rotate log file if needed
    */
-  private async rotateIfNeeded(): Promise<void> {
+  private rotateIfNeeded(): void {
     if (!this.logFilePath || !existsSync(this.logFilePath)) {
       return;
     }

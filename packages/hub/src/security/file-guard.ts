@@ -79,7 +79,7 @@ export class FileAccessGuard {
   /**
    * Safe read operation
    */
-  async safeRead(path: string): Promise<string> {
+  safeRead(path: string): string {
     if (!this.canRead(path)) {
       throw new Error(`Unauthorized file access attempt: ${path}`);
     }
@@ -95,7 +95,7 @@ export class FileAccessGuard {
   /**
    * Safe write operation
    */
-  async safeWrite(path: string, content: string): Promise<void> {
+  safeWrite(path: string, content: string): void {
     if (!this.canWrite(path)) {
       throw new Error(`Unauthorized file write attempt: ${path}`);
     }
@@ -201,9 +201,7 @@ export class FileAccessGuard {
   /**
    * Validate configuration
    */
-  private async validateConfig(
-    config: Record<string, unknown>
-  ): Promise<{ valid: boolean; errors?: string[] }> {
+  private validateConfig(config: Record<string, unknown>): { valid: boolean; errors?: string[] } {
     const errors: string[] = [];
 
     // Check required fields
