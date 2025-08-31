@@ -1,32 +1,78 @@
 name-template: "v$RESOLVED_VERSION"
 tag-template: "v$RESOLVED_VERSION"
+
 categories:
   - title: "🚀 Features"
-    labels: ["feat", "feature"]
-  - title: "🐞 Fixes"
+    labels: ["feat", "feature", "enhancement"]
+  - title: "🐞 Bug Fixes"
     labels: ["fix", "bugfix", "bug"]
   - title: "🧰 Maintenance"
-    labels: ["chore", "refactor", "deps"]
-  - title: "📝 Docs"
-    labels: ["docs"]
+    labels: ["chore", "refactor", "deps", "dependencies"]
+  - title: "📝 Documentation"
+    labels: ["docs", "documentation"]
   - title: "⚡ Performance"
-    labels: ["perf"]
+    labels: ["perf", "performance"]
   - title: "✅ Tests"
-    labels: ["test"]
-change-template: "- $TITLE (#$NUMBER) by @$AUTHOR"
+    labels: ["test", "tests"]
+
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+
+change-title-escapes: '\<*_&'
+
 template: |
-  ## Changes
+  ## What's Changed
 
   $CHANGES
 
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
 version-resolver:
   major:
-    labels: ["semver:major"]
+    labels: ["breaking", "semver:major"]
   minor:
-    labels: ["semver:minor", "feat"]
+    labels: ["feat", "feature", "enhancement", "semver:minor"]
   patch:
-    labels: ["semver:patch", "fix", "chore", "docs", "perf", "refactor", "test"]
+    labels: ["fix", "bugfix", "bug", "chore", "docs", "perf", "refactor", "test", "semver:patch"]
   default: patch
-replacers:
-  - search: '/\s+\(#(\d+)\)/g'
-    replace: " (#$1)"
+
+autolabeler:
+  - label: "documentation"
+    files:
+      - "*.md"
+      - "docs/**"
+      - "LICENSE*"
+  - label: "bug"
+    branch:
+      - '/^fix\/.+/'
+    title:
+      - "/^fix:/i"
+  - label: "enhancement"
+    branch:
+      - '/^feat\/.+/'
+      - '/^feature\/.+/'
+    title:
+      - "/^feat:/i"
+  - label: "chore"
+    title:
+      - "/^chore:/i"
+  - label: "refactor"
+    title:
+      - "/^refactor:/i"
+  - label: "test"
+    files:
+      - "**/*.test.ts"
+      - "**/*.spec.ts"
+    title:
+      - "/^test:/i"
+  - label: "dependencies"
+    files:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "**/package.json"
+
+exclude-labels:
+  - "skip-changelog"
+  - "no-changelog"
+
+exclude-contributors:
+  - "dependabot"
