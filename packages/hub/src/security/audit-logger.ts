@@ -8,6 +8,9 @@ import {
   existsSync,
   readFileSync,
   writeFileSync,
+  statSync,
+  unlinkSync,
+  renameSync
 } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -82,7 +85,7 @@ export class AuditLogger {
     options: {
       maxFileSize?: number;
       rotationCount?: number;
-    } = {},
+    } = {}
   ) {
     // Audit log is stored alongside config file
     this.logFilePath = configFile ? `${resolve(configFile)}.audit.log` : '';
@@ -100,7 +103,7 @@ export class AuditLogger {
     eventType: AuditLogEntry['eventType'],
     source: AuditLogEntry['source'],
     details: AuditLogEntry['details'],
-    severity?: AuditLogEntry['severity'],
+    severity?: AuditLogEntry['severity']
   ): Promise<void> {
     const entry: AuditLogEntry = {
       id: this.generateId(),
@@ -108,7 +111,7 @@ export class AuditLogger {
       eventType,
       source,
       details,
-      severity: severity || this.getSeverityForEvent(eventType),
+      severity: severity || this.getSeverityForEvent(eventType)
     };
 
     // Add to cache
@@ -129,20 +132,17 @@ export class AuditLogger {
    */
   async logConfigRead(source: AuditLogEntry['source']): Promise<void> {
     await this.log('CONFIG_READ', source, {
-      path: this.logFilePath.replace('.audit.log', ''),
+      path: this.logFilePath.replace('.audit.log', '')
     });
   }
 
   /**
    * Log configuration write
    */
-  async logConfigWrite(
-    source: AuditLogEntry['source'],
-    changes: any,
-  ): Promise<void> {
+  async logConfigWrite(source: AuditLogEntry['source'], changes: any): Promise<void> {
     await this.log('CONFIG_WRITE', source, {
       path: this.logFilePath.replace('.audit.log', ''),
-      changes,
+      changes
     });
   }
 
@@ -153,11 +153,11 @@ export class AuditLogger {
     serverId: string,
     eventType: 'SERVER_ACTIVATED' | 'SERVER_DEACTIVATED',
     source: AuditLogEntry['source'],
-    metadata?: Record<string, any>,
+    metadata?: Record<string, any>
   ): Promise<void> {
     await this.log(eventType, source, {
       serverId,
-      metadata,
+      metadata
     });
   }
 
@@ -167,16 +167,16 @@ export class AuditLogger {
   async logUnauthorizedAccess(
     path: string,
     source: AuditLogEntry['source'],
-    error: string,
+    error: string
   ): Promise<void> {
     await this.log(
       'UNAUTHORIZED_ACCESS',
       source,
       {
         path,
-        error,
+        error
       },
-      'critical',
+      'critical'
     );
   }
 
@@ -191,15 +191,13 @@ export class AuditLogger {
       eventsByType: {},
       eventsBySeverity: {},
       recentEvents: this.cache.slice(-10),
-      lastEventTime: allEntries[allEntries.length - 1]?.timestamp,
+      lastEventTime: allEntries[allEntries.length - 1]?.timestamp
     };
 
     // Count by type and severity
     for (const entry of allEntries) {
-      stats.eventsByType[entry.eventType] =
-        (stats.eventsByType[entry.eventType] || 0) + 1;
-      stats.eventsBySeverity[entry.severity] =
-        (stats.eventsBySeverity[entry.severity] || 0) + 1;
+      stats.eventsByType[entry.eventType] = (stats.eventsByType[entry.eventType] || 0) + 1;
+      stats.eventsBySeverity[entry.severity] = (stats.eventsBySeverity[entry.severity] || 0) + 1;
     }
 
     return stats;
@@ -216,7 +214,7 @@ export class AuditLogger {
       startTime?: string;
       endTime?: string;
       limit?: number;
-    } = {},
+    } = {}
   ): Promise<AuditLogEntry[]> {
     const allEntries = await this.getAllEntries();
 
@@ -224,21 +222,15 @@ export class AuditLogger {
 
     // Apply filters
     if (options.eventTypes?.length) {
-      filtered = filtered.filter((e) =>
-        options.eventTypes?.includes(e.eventType),
-      );
+      filtered = filtered.filter((e) => options.eventTypes?.includes(e.eventType));
     }
 
     if (options.severities?.length) {
-      filtered = filtered.filter((e) =>
-        options.severities?.includes(e.severity),
-      );
+      filtered = filtered.filter((e) => options.severities?.includes(e.severity));
     }
 
     if (options.serverId) {
-      filtered = filtered.filter(
-        (e) => e.details.serverId === options.serverId,
-      );
+      filtered = filtered.filter((e) => e.details.serverId === options.serverId);
     }
 
     if (options.startTime) {
@@ -263,7 +255,7 @@ export class AuditLogger {
   async getSecurityEvents(limit: number = 50): Promise<AuditLogEntry[]> {
     return this.query({
       severities: ['warning', 'error', 'critical'],
-      limit,
+      limit
     });
   }
 
@@ -291,9 +283,7 @@ export class AuditLogger {
   /**
    * Get default severity for event type
    */
-  private getSeverityForEvent(
-    eventType: AuditLogEntry['eventType'],
-  ): AuditLogEntry['severity'] {
+  private getSeverityForEvent(eventType: AuditLogEntry['eventType']): AuditLogEntry['severity'] {
     switch (eventType) {
       case 'CONFIG_READ':
       case 'SERVER_ACTIVATED':
@@ -353,7 +343,7 @@ export class AuditLogger {
             return null;
           }
         })
-        .filter((e) => e !== null) as AuditLogEntry[];
+        .filter((e) => e !== null);
     } catch (_error) {
       // Ignore errors during cache loading
       this.cache = [];
@@ -383,7 +373,7 @@ export class AuditLogger {
             return null;
           }
         })
-        .filter((e) => e !== null) as AuditLogEntry[];
+        .filter((e) => e !== null);
     } catch {
       return [];
     }
@@ -397,7 +387,7 @@ export class AuditLogger {
       return;
     }
 
-    const stats = require('node:fs').statSync(this.logFilePath);
+    const stats = statSync(this.logFilePath);
     if (stats.size < this.maxFileSize) {
       return;
     }
@@ -410,9 +400,9 @@ export class AuditLogger {
       if (existsSync(oldPath)) {
         if (i === this.rotationCount - 1 && existsSync(newPath)) {
           // Delete oldest
-          require('node:fs').unlinkSync(newPath);
+          unlinkSync(newPath);
         }
-        require('node:fs').renameSync(oldPath, newPath);
+        renameSync(oldPath, newPath);
       }
     }
 
@@ -445,7 +435,7 @@ export class AuditLogger {
       'toolName',
       'serverId',
       'path',
-      'error',
+      'error'
     ];
 
     const rows = [headers.join(',')];
@@ -462,7 +452,7 @@ export class AuditLogger {
         entry.source.toolName || '',
         entry.details.serverId || '',
         entry.details.path || '',
-        entry.details.error || '',
+        entry.details.error || ''
       ];
 
       rows.push(row.map((v) => `"${v}"`).join(','));

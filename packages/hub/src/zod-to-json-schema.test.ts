@@ -11,7 +11,7 @@ describe('zodToJsonSchema (smoke)', () => {
     const schema = z.object({
       name: z.string().describe('Human name'),
       age: z.number().optional().describe('Age in years'),
-      active: z.boolean(),
+      active: z.boolean()
     });
 
     const js = zodToJsonSchema(schema as any);

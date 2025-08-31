@@ -293,11 +293,7 @@ Hatago固有の拡張機能は `hatagoOptions` フィールドで設定します
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/username/projects"
-      ],
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/username/projects"],
       "hatagoOptions": {
         "start": "eager"
       }
@@ -359,11 +355,7 @@ Hatago固有の拡張機能は `hatagoOptions` フィールドで設定します
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/path/to/directory"
-      ],
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/directory"],
       "hatagoOptions": {
         "start": "eager"
       }

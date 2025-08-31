@@ -73,10 +73,7 @@ export function createKeyedMutex<K = string>(): KeyedMutex<K> {
     return mutex;
   };
 
-  const runExclusive = async <T>(
-    key: K,
-    fn: () => Promise<T> | T,
-  ): Promise<T> => {
+  const runExclusive = async <T>(key: K, fn: () => Promise<T> | T): Promise<T> => {
     const mutex = getMutex(key);
     return mutex.runExclusive(fn);
   };

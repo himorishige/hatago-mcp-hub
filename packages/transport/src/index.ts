@@ -14,7 +14,7 @@ export type {
   ITransport,
   ITransportFactory,
   TransportOptions,
-  WebSocketTransportOptions,
+  WebSocketTransportOptions
 } from './types.js';
 
 // Node.js specific exports are in './stdio.js'
@@ -24,9 +24,6 @@ export type {
 export { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 // Export type for StdioClientTransport without importing the implementation
 export type { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-export type {
-  SSEStream,
-  StreamableHTTPTransportOptions,
-} from './streamable-http/index.js';
+export type { SSEStream, StreamableHTTPTransportOptions } from './streamable-http/index.js';
 // StreamableHTTP Transport
 export { StreamableHTTPTransport } from './streamable-http/index.js';

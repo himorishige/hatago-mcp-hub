@@ -3,11 +3,7 @@
  * Pure types with no side effects
  */
 
-import type {
-  Prompt,
-  Resource,
-  Tool,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { Prompt, Resource, Tool } from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Tool metadata for registry

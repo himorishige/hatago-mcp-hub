@@ -17,7 +17,7 @@ vi.mock('@himorishige/hatago-core', () => ({
   expandConfig: vi.fn((data) => data),
   formatConfigError: vi.fn((_error) => 'Formatted error'),
   safeParseConfig: vi.fn((data) => ({ success: true, data })),
-  validateEnvironmentVariables: vi.fn(),
+  validateEnvironmentVariables: vi.fn()
 }));
 
 describe('loadConfig', () => {
@@ -28,7 +28,7 @@ describe('loadConfig', () => {
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
+      error: vi.fn()
     };
 
     vi.clearAllMocks();
@@ -45,9 +45,9 @@ describe('loadConfig', () => {
         mcpServers: {
           test: {
             command: 'test-cmd',
-            args: ['arg1'],
-          },
-        },
+            args: ['arg1']
+          }
+        }
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -59,7 +59,7 @@ describe('loadConfig', () => {
       expect(result.exists).toBe(true);
       expect(result.data).toBeDefined();
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Loaded, expanded, and validated config'),
+        expect.stringContaining('Loaded, expanded, and validated config')
       );
     });
 
@@ -72,7 +72,7 @@ describe('loadConfig', () => {
       expect(result.exists).toBe(false);
       expect(result.data).toBeDefined();
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Config file not found'),
+        expect.stringContaining('Config file not found')
       );
     });
 
@@ -135,7 +135,7 @@ describe('loadConfig', () => {
       vi.mocked(fsPromises.readFile).mockResolvedValue(invalidJson);
 
       await expect(loadConfig('config.json', mockLogger)).rejects.toThrow(
-        'Invalid JSON in configuration file',
+        'Invalid JSON in configuration file'
       );
       expect(mockLogger.error).toHaveBeenCalled();
     });
@@ -161,9 +161,7 @@ describe('loadConfig', () => {
 
   describe('Validation', () => {
     it('should validate environment variables', async () => {
-      const { validateEnvironmentVariables } = await import(
-        '@himorishige/hatago-core'
-      );
+      const { validateEnvironmentVariables } = await import('@himorishige/hatago-core');
       const configContent = '{"version": 1}';
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -173,10 +171,10 @@ describe('loadConfig', () => {
       });
 
       await expect(loadConfig('config.json', mockLogger)).rejects.toThrow(
-        'Missing env var: TEST_VAR',
+        'Missing env var: TEST_VAR'
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Environment variable validation failed'),
+        expect.stringContaining('Environment variable validation failed')
       );
     });
 
@@ -194,18 +192,14 @@ describe('loadConfig', () => {
 
       const result = await loadConfig('config.json', mockLogger);
 
-      expect(expandConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ test: '${TEST_VAR}' }),
-      );
+      expect(expandConfig).toHaveBeenCalledWith(expect.objectContaining({ test: '${TEST_VAR}' }));
       expect(result.data).toEqual(expandedData);
     });
 
     it('should handle validation errors', async () => {
-      const {
-        safeParseConfig,
-        formatConfigError,
-        validateEnvironmentVariables,
-      } = await import('@himorishige/hatago-core');
+      const { safeParseConfig, formatConfigError, validateEnvironmentVariables } = await import(
+        '@himorishige/hatago-core'
+      );
       const configContent = '{"version": 1}';
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -213,34 +207,26 @@ describe('loadConfig', () => {
       vi.mocked(validateEnvironmentVariables).mockImplementation(() => {}); // Pass validation
       vi.mocked(safeParseConfig).mockReturnValue({
         success: false,
-        error: new Error('Validation failed'),
+        error: new Error('Validation failed')
       } as any);
-      vi.mocked(formatConfigError).mockReturnValue(
-        'Formatted validation error',
-      );
+      vi.mocked(formatConfigError).mockReturnValue('Formatted validation error');
 
       await expect(loadConfig('config.json', mockLogger)).rejects.toThrow(
-        'Formatted validation error',
+        'Formatted validation error'
       );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Formatted validation error',
-      );
+      expect(mockLogger.error).toHaveBeenCalledWith('Formatted validation error');
     });
   });
 
   describe('Error Handling', () => {
     it('should handle file read errors', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fsPromises.readFile).mockRejectedValue(
-        new Error('Permission denied'),
-      );
+      vi.mocked(fsPromises.readFile).mockRejectedValue(new Error('Permission denied'));
 
-      await expect(loadConfig('config.json', mockLogger)).rejects.toThrow(
-        'Permission denied',
-      );
+      await expect(loadConfig('config.json', mockLogger)).rejects.toThrow('Permission denied');
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to load config'),
-        expect.any(Error),
+        expect.any(Error)
       );
     });
 
@@ -257,9 +243,7 @@ describe('loadConfig', () => {
         throw new Error('Unexpected error');
       });
 
-      await expect(loadConfig('config.json', mockLogger)).rejects.toThrow(
-        'Unexpected error',
-      );
+      await expect(loadConfig('config.json', mockLogger)).rejects.toThrow('Unexpected error');
     });
   });
 });

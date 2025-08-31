@@ -8,7 +8,7 @@ import type {
   IdlePolicy,
   Prompt,
   Resource,
-  Tool,
+  Tool
 } from '@himorishige/hatago-core';
 import { ServerState } from '@himorishige/hatago-core';
 
@@ -278,32 +278,32 @@ export class HatagoManagementServer {
         uri: 'hatago://config',
         name: 'Current Configuration',
         description: 'The current Hatago configuration file',
-        mimeType: 'application/json',
+        mimeType: 'application/json'
       },
       {
         uri: 'hatago://servers',
         name: 'Server List',
         description: 'List of all configured MCP servers',
-        mimeType: 'application/json',
+        mimeType: 'application/json'
       },
       {
         uri: 'hatago://states',
         name: 'Server States',
         description: 'Current state of all servers',
-        mimeType: 'application/json',
+        mimeType: 'application/json'
       },
       {
         uri: 'hatago://audit',
         name: 'Audit Log',
         description: 'Recent audit log entries',
-        mimeType: 'application/json',
+        mimeType: 'application/json'
       },
       {
         uri: 'hatago://stats',
         name: 'Statistics',
         description: 'Server usage and performance statistics',
-        mimeType: 'application/json',
-      },
+        mimeType: 'application/json'
+      }
     ];
   }
 
@@ -319,9 +319,9 @@ export class HatagoManagementServer {
           {
             name: 'serverType',
             description: 'Type of server (local, npx, remote)',
-            required: true,
-          },
-        ],
+            required: true
+          }
+        ]
       },
       {
         name: 'diagnose_server_issues',
@@ -330,15 +330,15 @@ export class HatagoManagementServer {
           {
             name: 'serverId',
             description: 'Server ID to diagnose',
-            required: true,
-          },
-        ],
+            required: true
+          }
+        ]
       },
       {
         name: 'optimize_server_policies',
         description: 'Analyze usage and suggest optimal activation policies',
-        arguments: [],
-      },
+        arguments: []
+      }
     ];
   }
 
@@ -351,10 +351,10 @@ export class HatagoManagementServer {
       'TOOL_CALLED',
       {
         type: 'mcp_tool',
-        toolName: name,
+        toolName: name
       },
       { metadata: args },
-      'info',
+      'info'
     );
 
     switch (name) {
@@ -474,7 +474,7 @@ export class HatagoManagementServer {
 
   private async getConfig(format?: string): Promise<any> {
     await this.auditLogger.logConfigRead({
-      type: 'mcp_tool',
+      type: 'mcp_tool'
     });
 
     switch (format) {
@@ -483,7 +483,7 @@ export class HatagoManagementServer {
         return {
           serverCount: Object.keys(servers).length,
           adminMode: this.config.adminMode,
-          defaults: this.config.defaults,
+          defaults: this.config.defaults
         };
       }
 
@@ -506,7 +506,7 @@ export class HatagoManagementServer {
       return {
         success: false,
         errors: preview.validation.errors,
-        message: 'Configuration validation failed',
+        message: 'Configuration validation failed'
       };
     }
 
@@ -521,7 +521,7 @@ export class HatagoManagementServer {
 
     return {
       success: true,
-      impacts: preview.impacts,
+      impacts: preview.impacts
     };
   }
 
@@ -541,8 +541,8 @@ export class HatagoManagementServer {
       result.push({
         id,
         state,
-        policy: (config as ServerConfig).activationPolicy || 'manual',
-        type: (config as ServerConfig).url ? 'remote' : 'local',
+        policy: config.activationPolicy || 'manual',
+        type: config.url ? 'remote' : 'local'
       });
     }
 
@@ -566,46 +566,31 @@ export class HatagoManagementServer {
       config,
       state,
       activity,
-      activationHistory: history.slice(-5),
+      activationHistory: history.slice(-5)
     };
   }
 
-  private async activateServer(
-    serverId: string,
-    reason?: string,
-  ): Promise<any> {
-    const result = await this.activationManager.activate(
-      serverId,
-      { type: 'manual' },
-      reason,
-    );
+  private async activateServer(serverId: string, reason?: string): Promise<any> {
+    const result = await this.activationManager.activate(serverId, { type: 'manual' }, reason);
 
     await this.auditLogger.logServerStateChange(serverId, 'SERVER_ACTIVATED', {
-      type: 'mcp_tool',
+      type: 'mcp_tool'
     });
 
     return result;
   }
 
-  private async deactivateServer(
-    serverId: string,
-    reason?: string,
-  ): Promise<any> {
+  private async deactivateServer(serverId: string, reason?: string): Promise<any> {
     const result = await this.activationManager.deactivate(serverId, reason);
 
-    await this.auditLogger.logServerStateChange(
-      serverId,
-      'SERVER_DEACTIVATED',
-      { type: 'mcp_tool' },
-    );
+    await this.auditLogger.logServerStateChange(serverId, 'SERVER_DEACTIVATED', {
+      type: 'mcp_tool'
+    });
 
     return result;
   }
 
-  private async setServerPolicy(
-    serverId: string,
-    policy: ActivationPolicy,
-  ): Promise<any> {
+  private async setServerPolicy(serverId: string, policy: ActivationPolicy): Promise<any> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
 
     if (!servers[serverId]) {
@@ -614,16 +599,13 @@ export class HatagoManagementServer {
 
     const updates = {
       [`${this.config.mcpServers?.[serverId] ? 'mcpServers' : 'servers'}.${serverId}.activationPolicy`]:
-        policy,
+        policy
     };
 
     return this.applyConfigChange(updates);
   }
 
-  private async addServer(
-    serverId: string,
-    config: ServerConfig,
-  ): Promise<any> {
+  private async addServer(serverId: string, config: ServerConfig): Promise<any> {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
 
     if (servers[serverId]) {
@@ -633,8 +615,8 @@ export class HatagoManagementServer {
     const updates = {
       mcpServers: {
         ...this.config.mcpServers,
-        [serverId]: config,
-      },
+        [serverId]: config
+      }
     };
 
     const result = await this.applyConfigChange(updates);
@@ -668,17 +650,13 @@ export class HatagoManagementServer {
     const updates = isInMcpServers
       ? {
           mcpServers: Object.fromEntries(
-            Object.entries(this.config.mcpServers || {}).filter(
-              ([id]) => id !== serverId,
-            ),
-          ),
+            Object.entries(this.config.mcpServers || {}).filter(([id]) => id !== serverId)
+          )
         }
       : {
           servers: Object.fromEntries(
-            Object.entries(this.config.servers || {}).filter(
-              ([id]) => id !== serverId,
-            ),
-          ),
+            Object.entries(this.config.servers || {}).filter(([id]) => id !== serverId)
+          )
         };
 
     return this.applyConfigChange(updates);
@@ -699,9 +677,9 @@ export class HatagoManagementServer {
         ...this.config[configKey],
         [serverId]: {
           ...servers[serverId],
-          ...updates,
-        },
-      },
+          ...updates
+        }
+      }
     };
 
     return this.applyConfigChange(configUpdates);
@@ -731,7 +709,7 @@ export class HatagoManagementServer {
     return {
       serverId,
       state: this.stateMachine.getState(serverId),
-      canActivate: this.stateMachine.canActivate(serverId),
+      canActivate: this.stateMachine.canActivate(serverId)
     };
   }
 
@@ -739,7 +717,7 @@ export class HatagoManagementServer {
     await this.activationManager.resetServer(serverId);
     return {
       success: true,
-      newState: this.stateMachine.getState(serverId),
+      newState: this.stateMachine.getState(serverId)
     };
   }
 
@@ -760,10 +738,10 @@ export class HatagoManagementServer {
           {
             totalCalls: data.totalCalls,
             uptime: Date.now() - data.startTime,
-            referenceCount: data.referenceCount,
-          },
-        ]),
-      ),
+            referenceCount: data.referenceCount
+          }
+        ])
+      )
     };
   }
 
@@ -821,8 +799,7 @@ Suggested actions:
       const config = this.config.mcpServers?.[id] || this.config.servers?.[id];
       if (!config) continue;
 
-      const currentPolicy =
-        (config as ServerConfig).activationPolicy || 'manual';
+      const currentPolicy = config.activationPolicy || 'manual';
 
       // Suggest based on usage
       if (data.totalCalls > 100 && currentPolicy !== 'always') {

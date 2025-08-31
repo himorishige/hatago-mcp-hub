@@ -258,19 +258,19 @@ await client.connect(transport);
 // ツール操作
 const tools = await client.listTools();
 const result = await client.callTool({
-  name: "tool_name",
-  arguments: args,
+  name: 'tool_name',
+  arguments: args
 });
 
 // リソース操作
 const resources = await client.listResources();
-const content = await client.readResource({ uri: "resource_uri" });
+const content = await client.readResource({ uri: 'resource_uri' });
 
 // プロンプト操作
 const prompts = await client.listPrompts();
 const prompt = await client.getPrompt({
-  name: "prompt_name",
-  arguments: args,
+  name: 'prompt_name',
+  arguments: args
 });
 ```
 
@@ -279,20 +279,20 @@ const prompt = await client.getPrompt({
 ```typescript
 // これはエラーになる
 const result = await (client as any).request({
-  method: "tools/list",
-  params: {},
+  method: 'tools/list',
+  params: {}
 }); // Error: resultSchema.parse is not a function
 ```
 
 #### ⚠️ 低レベルAPIを使う場合（上級者向け）
 
 ```typescript
-import { ListToolsResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import { ListToolsResultSchema } from '@modelcontextprotocol/sdk/types.js';
 
 // 第2引数にZodスキーマが必須
 const result = await client.request(
-  { method: "tools/list", params: {} },
-  ListToolsResultSchema, // Zodスキーマを渡す
+  { method: 'tools/list', params: {} },
+  ListToolsResultSchema // Zodスキーマを渡す
 );
 ```
 
@@ -335,24 +335,24 @@ const notification = {
 ```javascript
 // ✅ 正しい：z.object()を使用
 server.registerTool(
-  "tool_name",
+  'tool_name',
   {
     inputSchema: z.object({
-      param: z.string().describe("Parameter description"),
-    }),
+      param: z.string().describe('Parameter description')
+    })
   },
-  handler,
+  handler
 );
 
 // ❌ 間違い：プレーンオブジェクト
 server.registerTool(
-  "tool_name",
+  'tool_name',
   {
     inputSchema: {
-      param: z.string(), // これはZodオブジェクトではない
-    },
+      param: z.string() // これはZodオブジェクトではない
+    }
   },
-  handler,
+  handler
 );
 ```
 

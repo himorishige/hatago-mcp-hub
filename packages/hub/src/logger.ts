@@ -18,11 +18,7 @@ export class Logger {
     this.prefix = prefix;
   }
 
-  log(
-    level: 'debug' | 'info' | 'warn' | 'error',
-    message: string,
-    data?: LogData,
-  ): void {
+  log(level: 'debug' | 'info' | 'warn' | 'error', message: string, data?: LogData): void {
     // Skip debug logs if not in debug mode
     if (level === 'debug' && !this.debugMode) {
       return;
@@ -32,7 +28,7 @@ export class Logger {
       timestamp: new Date().toISOString(),
       level,
       message: `${this.prefix} ${message}`,
-      ...data,
+      ...data
     };
 
     // Output based on level
@@ -59,8 +55,7 @@ export class Logger {
     } else {
       // In normal mode, output simple message
       const { timestamp, level, message, ...rest } = entry;
-      const extra =
-        Object.keys(rest).length > 0 ? ` ${JSON.stringify(rest)}` : '';
+      const extra = Object.keys(rest).length > 0 ? ` ${JSON.stringify(rest)}` : '';
       return `${message}${extra}`;
     }
   }

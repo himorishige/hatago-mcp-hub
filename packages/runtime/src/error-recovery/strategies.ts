@@ -36,7 +36,7 @@ export const RetryStrategies = {
     maxDelay: 10000,
     multiplier: 2,
     jitter: true,
-    attemptTimeout: 30000,
+    attemptTimeout: 30000
   },
 
   /** Standard retry for normal operations */
@@ -46,7 +46,7 @@ export const RetryStrategies = {
     maxDelay: 30000,
     multiplier: 2,
     jitter: true,
-    attemptTimeout: 60000,
+    attemptTimeout: 60000
   },
 
   /** Conservative retry for non-critical operations */
@@ -56,7 +56,7 @@ export const RetryStrategies = {
     maxDelay: 60000,
     multiplier: 3,
     jitter: true,
-    attemptTimeout: 120000,
+    attemptTimeout: 120000
   },
 
   /** No retry */
@@ -65,17 +65,14 @@ export const RetryStrategies = {
     initialDelay: 0,
     maxDelay: 0,
     multiplier: 1,
-    jitter: false,
-  },
+    jitter: false
+  }
 } as const;
 
 /**
  * Calculate delay for next retry attempt
  */
-export function calculateDelay(
-  attempt: number,
-  strategy: RetryStrategy,
-): number {
+export function calculateDelay(attempt: number, strategy: RetryStrategy): number {
   if (attempt <= 0) return 0;
 
   // Calculate exponential backoff
@@ -103,22 +100,17 @@ export function shouldRetry(attempt: number, strategy: RetryStrategy): boolean {
 /**
  * Create custom retry strategy
  */
-export function createRetryStrategy(
-  options: Partial<RetryStrategy> = {},
-): RetryStrategy {
+export function createRetryStrategy(options: Partial<RetryStrategy> = {}): RetryStrategy {
   return {
     ...RetryStrategies.standard,
-    ...options,
+    ...options
   };
 }
 
 /**
  * Select strategy based on error classification
  */
-export function selectStrategy(
-  errorType: string,
-  severity: string,
-): RetryStrategy {
+export function selectStrategy(errorType: string, severity: string): RetryStrategy {
   // Critical errors get aggressive retry
   if (severity === 'critical') {
     return RetryStrategies.aggressive;

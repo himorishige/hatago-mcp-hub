@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 let CURRENT_CONFIG: any = {};
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => true),
-  readFileSync: vi.fn(() => JSON.stringify(CURRENT_CONFIG)),
+  readFileSync: vi.fn(() => JSON.stringify(CURRENT_CONFIG))
 }));
 
 // 副作用のあるセキュリティ系はスタブ
@@ -26,7 +26,7 @@ vi.mock('../security/audit-logger.js', () => ({
       return [];
     }
     async logServerStateChange() {}
-  },
+  }
 }));
 vi.mock('../security/file-guard.js', () => ({
   FileAccessGuard: class {
@@ -34,7 +34,7 @@ vi.mock('../security/file-guard.js', () => ({
       return { validation: { valid: true, errors: [] }, impacts: [] };
     }
     async safeWrite() {}
-  },
+  }
 }));
 
 describe('HatagoManagementServer (smoke)', () => {
@@ -47,11 +47,9 @@ describe('HatagoManagementServer (smoke)', () => {
 
     // 最小限のスタブ
     const stateMachine = {
-      getState: vi.fn((id: string) =>
-        id === 's1' ? ServerState.ACTIVE : ServerState.INACTIVE,
-      ),
+      getState: vi.fn((id: string) => (id === 's1' ? ServerState.ACTIVE : ServerState.INACTIVE)),
       getAllStates: vi.fn(() => new Map([['s1', ServerState.ACTIVE]])),
-      canActivate: vi.fn(() => true),
+      canActivate: vi.fn(() => true)
     } as any;
 
     const activationManager = {
@@ -59,42 +57,37 @@ describe('HatagoManagementServer (smoke)', () => {
       activate: vi.fn(async () => ({
         success: true,
         serverId: 's1',
-        state: ServerState.ACTIVE,
+        state: ServerState.ACTIVE
       })),
       deactivate: vi.fn(async () => ({
         success: true,
         serverId: 's1',
-        state: ServerState.INACTIVE,
+        state: ServerState.INACTIVE
       })),
       registerServer: vi.fn(),
-      resetServer: vi.fn(async () => ({})),
+      resetServer: vi.fn(async () => ({}))
     } as any;
 
     const idleManager = {
       getActivityStats: vi.fn(() => ({
         totalCalls: 0,
         startTime: Date.now(),
-        referenceCount: 0,
+        referenceCount: 0
       })),
       getAllActivities: vi.fn(
-        () =>
-          new Map([
-            ['s1', { totalCalls: 0, startTime: Date.now(), referenceCount: 0 }],
-          ]),
+        () => new Map([['s1', { totalCalls: 0, startTime: Date.now(), referenceCount: 0 }]])
       ),
-      stopIdleServers: vi.fn(async () => new Map([['s1', { stopped: true }]])),
+      stopIdleServers: vi.fn(async () => new Map([['s1', { stopped: true }]]))
     } as any;
 
     // 動的インポートでモジュールのモックを反映
-    const { HatagoManagementServer } = await import(
-      './hatago-management-server.js'
-    );
+    const { HatagoManagementServer } = await import('./hatago-management-server.js');
     const server = new HatagoManagementServer({
       configFilePath: '/fake/hatago.config.json',
       stateMachine,
       activationManager,
       idleManager,
-      enableAudit: false,
+      enableAudit: false
     });
     return { server, stateMachine, activationManager, idleManager };
   }
@@ -114,12 +107,12 @@ describe('HatagoManagementServer (smoke)', () => {
       version: 1,
       mcpServers: { s1: { command: 'node', args: ['srv.js'] } },
       servers: { s2: { url: 'https://remote' } },
-      adminMode: true,
+      adminMode: true
     };
     const { server } = await createServerWithConfig(cfg);
 
     const result = await server.handleToolCall('hatago_get_config', {
-      format: 'summary',
+      format: 'summary'
     });
     expect(result.serverCount).toBe(2);
     expect(result.adminMode).toBe(true);
@@ -127,12 +120,12 @@ describe('HatagoManagementServer (smoke)', () => {
 
   it('lists only active servers when filtered', async () => {
     const cfg = {
-      servers: { s1: { url: 'https://x' }, s2: { command: 'node' } },
+      servers: { s1: { url: 'https://x' }, s2: { command: 'node' } }
     };
     const { server } = await createServerWithConfig(cfg);
 
     const list = await server.handleToolCall('hatago_list_servers', {
-      filter: 'active',
+      filter: 'active'
     });
     const ids = list.map((s: any) => s.id);
     expect(ids).toEqual(['s1']);
@@ -140,12 +133,12 @@ describe('HatagoManagementServer (smoke)', () => {
 
   it('returns optimization and diagnostic prompts (smoke)', async () => {
     const cfg = {
-      servers: { s1: { url: 'https://x', activationPolicy: 'manual' } },
+      servers: { s1: { url: 'https://x', activationPolicy: 'manual' } }
     };
     const { server } = await createServerWithConfig(cfg);
 
     const diag = await server.handlePrompt('diagnose_server_issues', {
-      serverId: 's1',
+      serverId: 's1'
     });
     expect(diag).toContain('diagnostic');
     expect(diag).toContain('Suggested actions');

@@ -57,7 +57,7 @@ export enum ErrorCode {
   E_SYSTEM_NETWORK_ERROR = 'E_SYSTEM_NETWORK_ERROR',
   E_SYSTEM_SECURITY_ERROR = 'E_SYSTEM_SECURITY_ERROR',
   E_SYSTEM_FS_ERROR = 'E_SYSTEM_FS_ERROR',
-  E_SYSTEM_UNKNOWN = 'E_SYSTEM_UNKNOWN',
+  E_SYSTEM_UNKNOWN = 'E_SYSTEM_UNKNOWN'
 }
 
 /**
@@ -67,7 +67,7 @@ export enum ErrorSeverity {
   CRITICAL = 'critical', // System cannot continue
   ERROR = 'error', // Operation failed
   WARNING = 'warning', // Operation completed with issues
-  INFO = 'info', // Informational error
+  INFO = 'info' // Informational error
 }
 
 /**

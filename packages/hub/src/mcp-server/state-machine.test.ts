@@ -11,7 +11,7 @@ describe('ServerStateMachine', () => {
     const sm = new ServerStateMachine();
     sm.setState('s1', ServerState.MANUAL);
     await expect(sm.transition('s1', ServerState.ACTIVE)).rejects.toThrow(
-      'Invalid state transition',
+      'Invalid state transition'
     );
   });
 

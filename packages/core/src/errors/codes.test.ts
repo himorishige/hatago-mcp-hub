@@ -84,7 +84,7 @@ describe('ErrorContext', () => {
       toolName: 'test_tool',
       configPath: '/path/to/config',
       timestamp: new Date(),
-      stack: 'Error stack trace',
+      stack: 'Error stack trace'
     };
 
     expect(context.serverId).toBe('server1');
@@ -100,7 +100,7 @@ describe('ErrorContext', () => {
       serverId: 'server1',
       customField: 'custom value',
       numericField: 42,
-      booleanField: true,
+      booleanField: true
     };
 
     expect(context.customField).toBe('custom value');
@@ -111,9 +111,7 @@ describe('ErrorContext', () => {
 
 describe('Error Code Categories', () => {
   it('should have consistent MCP error codes', () => {
-    const mcpCodes = Object.values(ErrorCode).filter((code) =>
-      code.startsWith('E_MCP_'),
-    );
+    const mcpCodes = Object.values(ErrorCode).filter((code) => code.startsWith('E_MCP_'));
     expect(mcpCodes).toContain('E_MCP_INIT_TIMEOUT');
     expect(mcpCodes).toContain('E_MCP_TOOL_DISCOVERY_EMPTY');
     expect(mcpCodes).toContain('E_MCP_CONNECTION_FAILED');
@@ -122,9 +120,7 @@ describe('Error Code Categories', () => {
   });
 
   it('should have consistent NPX error codes', () => {
-    const npxCodes = Object.values(ErrorCode).filter((code) =>
-      code.startsWith('E_NPX_'),
-    );
+    const npxCodes = Object.values(ErrorCode).filter((code) => code.startsWith('E_NPX_'));
     expect(npxCodes).toContain('E_NPX_INSTALL_FAILED');
     expect(npxCodes).toContain('E_NPX_PACKAGE_NOT_FOUND');
     expect(npxCodes).toContain('E_NPX_SPAWN_FAILED');
@@ -133,9 +129,7 @@ describe('Error Code Categories', () => {
   });
 
   it('should have consistent session error codes', () => {
-    const sessionCodes = Object.values(ErrorCode).filter((code) =>
-      code.startsWith('E_SESSION_'),
-    );
+    const sessionCodes = Object.values(ErrorCode).filter((code) => code.startsWith('E_SESSION_'));
     expect(sessionCodes).toContain('E_SESSION_NOT_FOUND');
     expect(sessionCodes).toContain('E_SESSION_EXPIRED');
     expect(sessionCodes).toContain('E_SESSION_VERSION_CONFLICT');
@@ -144,9 +138,7 @@ describe('Error Code Categories', () => {
   });
 
   it('should have consistent config error codes', () => {
-    const configCodes = Object.values(ErrorCode).filter((code) =>
-      code.startsWith('E_CONFIG_'),
-    );
+    const configCodes = Object.values(ErrorCode).filter((code) => code.startsWith('E_CONFIG_'));
     expect(configCodes).toContain('E_CONFIG_INVALID');
     expect(configCodes).toContain('E_CONFIG_NOT_FOUND');
     expect(configCodes).toContain('E_CONFIG_PARSE_ERROR');
@@ -154,27 +146,21 @@ describe('Error Code Categories', () => {
   });
 
   it('should have consistent tool error codes', () => {
-    const toolCodes = Object.values(ErrorCode).filter((code) =>
-      code.startsWith('E_TOOL_'),
-    );
+    const toolCodes = Object.values(ErrorCode).filter((code) => code.startsWith('E_TOOL_'));
     expect(toolCodes).toContain('E_TOOL_NAME_COLLISION');
     expect(toolCodes).toContain('E_TOOL_NOT_FOUND');
     expect(toolCodes).toContain('E_TOOL_EXECUTION_FAILED');
   });
 
   it('should have consistent state error codes', () => {
-    const stateCodes = Object.values(ErrorCode).filter((code) =>
-      code.startsWith('E_STATE_'),
-    );
+    const stateCodes = Object.values(ErrorCode).filter((code) => code.startsWith('E_STATE_'));
     expect(stateCodes).toContain('E_STATE_INVALID_TRANSITION');
     expect(stateCodes).toContain('E_STATE_ALREADY_RUNNING');
     expect(stateCodes).toContain('E_STATE_NOT_RUNNING');
   });
 
   it('should have consistent security error codes', () => {
-    const securityCodes = Object.values(ErrorCode).filter((code) =>
-      code.startsWith('E_SECURITY_'),
-    );
+    const securityCodes = Object.values(ErrorCode).filter((code) => code.startsWith('E_SECURITY_'));
     expect(securityCodes).toContain('E_SECURITY_POLICY_DENIED');
     expect(securityCodes).toContain('E_SECURITY_ENCRYPTION_FAILED');
     expect(securityCodes).toContain('E_SECURITY_DECRYPTION_FAILED');
@@ -182,9 +168,7 @@ describe('Error Code Categories', () => {
   });
 
   it('should have consistent system error codes', () => {
-    const systemCodes = Object.values(ErrorCode).filter((code) =>
-      code.startsWith('E_SYSTEM_'),
-    );
+    const systemCodes = Object.values(ErrorCode).filter((code) => code.startsWith('E_SYSTEM_'));
     expect(systemCodes).toContain('E_SYSTEM_RESOURCE_EXHAUSTED');
     expect(systemCodes).toContain('E_SYSTEM_FILE_NOT_FOUND');
     expect(systemCodes).toContain('E_SYSTEM_PERMISSION_DENIED');

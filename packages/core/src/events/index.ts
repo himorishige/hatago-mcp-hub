@@ -11,5 +11,5 @@ export type {
   ResourceEvents,
   ServerEvents,
   SessionEvents,
-  ToolEvents,
+  ToolEvents
 } from './types.js';

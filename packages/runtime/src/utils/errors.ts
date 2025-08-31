@@ -26,19 +26,18 @@ export class HatagoError extends Error {
  */
 export const ErrorCode = {
   E_CONFIG_INVALID: 'E_CONFIG_INVALID',
-  E_MCP_CONNECTION_FAILED: 'E_MCP_CONNECTION_FAILED',
+  E_MCP_CONNECTION_FAILED: 'E_MCP_CONNECTION_FAILED'
 } as const;
 
 /**
  * Error helper functions for testing
  */
 export const ErrorHelpers = {
-  invalidConfiguration: () =>
-    new HatagoError(ErrorCode.E_CONFIG_INVALID, 'Invalid configuration'),
+  invalidConfiguration: () => new HatagoError(ErrorCode.E_CONFIG_INVALID, 'Invalid configuration'),
 
   mcpConnectionFailed: (serverId: string) =>
     new HatagoError(
       ErrorCode.E_MCP_CONNECTION_FAILED,
-      `Failed to connect to MCP server ${serverId}`,
-    ),
+      `Failed to connect to MCP server ${serverId}`
+    )
 };

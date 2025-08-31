@@ -1,5 +1,8 @@
 # @himorishige/hatago-mcp-hub
 
+[![npm](https://img.shields.io/npm/v/@himorishige/hatago-mcp-hub?logo=npm&color=cb0000)](https://www.npmjs.com/package/@himorishige/hatago-mcp-hub)
+[![GitHub Release](https://img.shields.io/github/v/release/himorishige/hatago-mcp-hub?display_name=tag&sort=semver)](https://github.com/himorishige/hatago-mcp-hub/releases)
+
 Unified MCP (Model Context Protocol) Hub for managing multiple MCP servers.
 
 ## Quick Start
@@ -53,34 +56,34 @@ args = ["-y", "@himorishige/hatago-mcp-hub"]
 ### Node.js
 
 ```typescript
-import { createHub, startServer } from "@himorishige/hatago-mcp-hub/node";
+import { createHub, startServer } from '@himorishige/hatago-mcp-hub/node';
 
 // Create hub instance
 const hub = createHub({
   mcpServers: {
     memory: {
-      command: "npx",
-      args: ["@modelcontextprotocol/server-memory"],
-    },
-  },
+      command: 'npx',
+      args: ['@modelcontextprotocol/server-memory']
+    }
+  }
 });
 
 // Start STDIO server
-await startServer({ mode: "stdio" });
+await startServer({ mode: 'stdio' });
 ```
 
 ### Cloudflare Workers
 
 ```typescript
-import { createWorkersApp } from "@himorishige/hatago-mcp-hub/workers";
+import { createWorkersApp } from '@himorishige/hatago-mcp-hub/workers';
 
 export default createWorkersApp({
   mcpServers: {
     // Remote servers only in Workers
     example: {
-      url: "https://api.example.com/mcp",
-    },
-  },
+      url: 'https://api.example.com/mcp'
+    }
+  }
 });
 ```
 

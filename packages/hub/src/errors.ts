@@ -16,7 +16,7 @@ export class HatagoError extends Error {
     options?: {
       cause?: unknown;
       data?: unknown;
-    },
+    }
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -98,10 +98,7 @@ export function toHatagoError(error: unknown): HatagoError {
     if (error.message.includes('timeout')) {
       return new TimeoutError(error.message, { cause: error });
     }
-    if (
-      error.message.includes('transport') ||
-      error.message.includes('connect')
-    ) {
+    if (error.message.includes('transport') || error.message.includes('connect')) {
       return new TransportError(error.message, { cause: error });
     }
     if (error.message.includes('config')) {

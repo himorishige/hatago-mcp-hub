@@ -41,7 +41,7 @@ describe('HatagoHub (Node.js)', () => {
         sessionTTL: 7200,
         defaultTimeout: 60000,
         namingStrategy: 'flat',
-        separator: '-',
+        separator: '-'
       });
       expect(customHub).toBeDefined();
       const options = (customHub as any).options;
@@ -74,11 +74,11 @@ describe('HatagoHub (Node.js)', () => {
         status: 'connected',
         tools: [],
         resources: [],
-        prompts: [],
+        prompts: []
       });
 
       await expect(
-        hub.addServer('test-server', { type: 'stdio', command: 'echo' }),
+        hub.addServer('test-server', { type: 'stdio', command: 'echo' })
       ).rejects.toThrow('Server test-server already exists');
     });
 
@@ -103,9 +103,9 @@ describe('HatagoHub (Node.js)', () => {
         inputSchema: {
           type: 'object',
           properties: {
-            message: { type: 'string' },
-          },
-        },
+            message: { type: 'string' }
+          }
+        }
       };
 
       toolRegistry.registerServerTools('test-server', [tool]);
@@ -120,11 +120,11 @@ describe('HatagoHub (Node.js)', () => {
       const toolRegistry = (hub as any).toolRegistry;
       const tool1 = {
         name: 'tool1',
-        inputSchema: { type: 'object' },
+        inputSchema: { type: 'object' }
       };
       const tool2 = {
         name: 'tool2',
-        inputSchema: { type: 'object' },
+        inputSchema: { type: 'object' }
       };
 
       toolRegistry.registerServerTools('server1', [tool1]);
@@ -150,7 +150,7 @@ describe('HatagoHub (Node.js)', () => {
       const resource = {
         uri: 'file:///test.txt',
         name: 'Test File',
-        mimeType: 'text/plain',
+        mimeType: 'text/plain'
       };
 
       resourceRegistry.registerServerResources('test-server', [resource]);
@@ -178,9 +178,9 @@ describe('HatagoHub (Node.js)', () => {
           {
             name: 'name',
             description: 'Name to greet',
-            required: true,
-          },
-        ],
+            required: true
+          }
+        ]
       };
 
       promptRegistry.registerServerPrompts('test-server', [prompt]);
@@ -243,14 +243,14 @@ describe('HatagoHub (Node.js)', () => {
       hub.on('server:error', handler);
       (hub as any).emit('server:error', {
         serverId: 'test',
-        error: new Error('Test'),
+        error: new Error('Test')
       });
       expect(callCount).toBe(1);
 
       hub.off('server:error', handler);
       (hub as any).emit('server:error', {
         serverId: 'test',
-        error: new Error('Test'),
+        error: new Error('Test')
       });
       expect(callCount).toBe(1); // Should not increment
     });
@@ -274,26 +274,14 @@ describe('HatagoHub (Node.js)', () => {
     it('should track server capabilities', () => {
       const capabilityRegistry = (hub as any).capabilityRegistry;
 
-      capabilityRegistry.markServerCapability(
-        'server1',
-        'tools/list',
-        'supported',
-      );
-      capabilityRegistry.markServerCapability(
-        'server1',
-        'resources/list',
-        'unsupported',
-      );
+      capabilityRegistry.markServerCapability('server1', 'tools/list', 'supported');
+      capabilityRegistry.markServerCapability('server1', 'resources/list', 'unsupported');
 
-      expect(
-        capabilityRegistry.getServerCapability('server1', 'tools/list'),
-      ).toBe('supported');
-      expect(
-        capabilityRegistry.getServerCapability('server1', 'resources/list'),
-      ).toBe('unsupported');
-      expect(
-        capabilityRegistry.getServerCapability('server1', 'prompts/list'),
-      ).toBe('unknown');
+      expect(capabilityRegistry.getServerCapability('server1', 'tools/list')).toBe('supported');
+      expect(capabilityRegistry.getServerCapability('server1', 'resources/list')).toBe(
+        'unsupported'
+      );
+      expect(capabilityRegistry.getServerCapability('server1', 'prompts/list')).toBe('unknown');
     });
 
     it('should track client capabilities', () => {
@@ -301,13 +289,11 @@ describe('HatagoHub (Node.js)', () => {
 
       const capabilities = {
         tools: { list: true },
-        sampling: false,
+        sampling: false
       };
 
       capabilityRegistry.setClientCapabilities('session1', capabilities);
-      expect(capabilityRegistry.getClientCapabilities('session1')).toEqual(
-        capabilities,
-      );
+      expect(capabilityRegistry.getClientCapabilities('session1')).toEqual(capabilities);
 
       capabilityRegistry.clearClientCapabilities('session1');
       expect(capabilityRegistry.getClientCapabilities('session1')).toEqual({});

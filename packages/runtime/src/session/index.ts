@@ -13,5 +13,5 @@ export {
   isExpired,
   removeExpired,
   type SessionState,
-  touchSession,
+  touchSession
 } from './operations.js';

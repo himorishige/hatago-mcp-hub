@@ -51,7 +51,7 @@ export class FileAccessGuard {
       this.configFilePath,
       `${this.configFilePath}.metadata.json`,
       `${this.configFilePath}.audit.log`,
-      `${this.configFilePath}.backup`,
+      `${this.configFilePath}.backup`
     ]);
 
     // Only config file is writable
@@ -155,14 +155,14 @@ export class FileAccessGuard {
     if (changes.mcpServers) {
       merged.mcpServers = {
         ...merged.mcpServers,
-        ...changes.mcpServers,
+        ...changes.mcpServers
       };
     }
 
     if (changes.servers) {
       merged.servers = {
         ...merged.servers,
-        ...changes.servers,
+        ...changes.servers
       };
     }
 
@@ -198,9 +198,7 @@ export class FileAccessGuard {
   /**
    * Validate configuration
    */
-  private async validateConfig(
-    config: any,
-  ): Promise<{ valid: boolean; errors?: string[] }> {
+  private async validateConfig(config: any): Promise<{ valid: boolean; errors?: string[] }> {
     const errors: string[] = [];
 
     // Check required fields
@@ -230,9 +228,7 @@ export class FileAccessGuard {
       if (s.activationPolicy) {
         const validPolicies = ['always', 'onDemand', 'manual'];
         if (!validPolicies.includes(s.activationPolicy)) {
-          errors.push(
-            `Server ${id}: Invalid activation policy: ${s.activationPolicy}`,
-          );
+          errors.push(`Server ${id}: Invalid activation policy: ${s.activationPolicy}`);
         }
       }
 
@@ -248,7 +244,7 @@ export class FileAccessGuard {
 
     return {
       valid: errors.length === 0,
-      errors: errors.length > 0 ? errors : undefined,
+      errors: errors.length > 0 ? errors : undefined
     };
   }
 
@@ -263,12 +259,8 @@ export class FileAccessGuard {
     const nextIds = new Set(Object.keys(nextServers));
 
     // Find added/removed servers
-    const serversAdded = Array.from(nextIds).filter(
-      (id) => !currentIds.has(id),
-    );
-    const serversRemoved = Array.from(currentIds).filter(
-      (id) => !nextIds.has(id),
-    );
+    const serversAdded = Array.from(nextIds).filter((id) => !currentIds.has(id));
+    const serversRemoved = Array.from(currentIds).filter((id) => !nextIds.has(id));
 
     // Find modified servers
     const serversModified: string[] = [];
@@ -292,7 +284,7 @@ export class FileAccessGuard {
           policyChanges.push({
             serverId: id,
             from: currentPolicy,
-            to: nextPolicy,
+            to: nextPolicy
           });
         }
       }
@@ -302,7 +294,7 @@ export class FileAccessGuard {
       serversAdded,
       serversRemoved,
       serversModified,
-      policyChanges,
+      policyChanges
     };
   }
 

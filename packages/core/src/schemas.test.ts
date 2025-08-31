@@ -11,7 +11,7 @@ import {
   isStdioServer,
   safeParseConfig,
   ServerConfigSchema,
-  HatagoConfigSchema,
+  HatagoConfigSchema
 } from './schemas.js';
 
 describe('ServerConfigSchema', () => {
@@ -21,7 +21,7 @@ describe('ServerConfigSchema', () => {
         command: 'node',
         args: ['server.js'],
         env: { NODE_ENV: 'production' },
-        cwd: '/app',
+        cwd: '/app'
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -33,7 +33,7 @@ describe('ServerConfigSchema', () => {
 
     it('should parse minimal STDIO server', () => {
       const config = {
-        command: 'npx',
+        command: 'npx'
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -47,7 +47,7 @@ describe('ServerConfigSchema', () => {
     it('should parse Claude Code filesystem example', () => {
       const config = {
         command: 'npx',
-        args: ['-y', '@modelcontextprotocol/server-filesystem', '.'],
+        args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -63,8 +63,8 @@ describe('ServerConfigSchema', () => {
       const config = {
         url: 'https://api.example.com/mcp',
         headers: {
-          Authorization: 'Bearer token',
-        },
+          Authorization: 'Bearer token'
+        }
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -77,7 +77,7 @@ describe('ServerConfigSchema', () => {
     it('should parse HTTP server with optional type field', () => {
       const config = {
         type: 'http' as const,
-        url: 'https://api.example.com/mcp',
+        url: 'https://api.example.com/mcp'
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -89,7 +89,7 @@ describe('ServerConfigSchema', () => {
 
     it('should parse minimal HTTP server', () => {
       const config = {
-        url: 'http://localhost:3000',
+        url: 'http://localhost:3000'
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -106,8 +106,8 @@ describe('ServerConfigSchema', () => {
         type: 'sse' as const,
         url: 'https://api.github.com/mcp/sse',
         headers: {
-          Authorization: 'Bearer ${GITHUB_TOKEN}',
-        },
+          Authorization: 'Bearer ${GITHUB_TOKEN}'
+        }
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -122,8 +122,8 @@ describe('ServerConfigSchema', () => {
       const config = {
         url: 'https://api.github.com/mcp/sse',
         headers: {
-          Authorization: 'Bearer ${GITHUB_TOKEN}',
-        },
+          Authorization: 'Bearer ${GITHUB_TOKEN}'
+        }
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -137,7 +137,7 @@ describe('ServerConfigSchema', () => {
     it('should parse minimal SSE server', () => {
       const config = {
         type: 'sse' as const,
-        url: 'https://example.com/sse',
+        url: 'https://example.com/sse'
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -152,7 +152,7 @@ describe('ServerConfigSchema', () => {
   describe('Invalid Configurations', () => {
     it('should reject server without command or url', () => {
       const config = {
-        headers: { 'X-Custom': 'value' },
+        headers: { 'X-Custom': 'value' }
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -162,7 +162,7 @@ describe('ServerConfigSchema', () => {
     it('should reject server with both command and url', () => {
       const config = {
         command: 'node',
-        url: 'https://example.com',
+        url: 'https://example.com'
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -171,7 +171,7 @@ describe('ServerConfigSchema', () => {
 
     it('should reject invalid URL', () => {
       const config = {
-        url: 'not-a-valid-url',
+        url: 'not-a-valid-url'
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -181,7 +181,7 @@ describe('ServerConfigSchema', () => {
     it('should reject wrong type value', () => {
       const config = {
         type: 'websocket' as any,
-        url: 'wss://example.com',
+        url: 'wss://example.com'
       };
 
       const result = ServerConfigSchema.safeParse(config);
@@ -195,7 +195,7 @@ describe('Transport Type Detection', () => {
     it('should detect STDIO transport', () => {
       const config = {
         command: 'node',
-        args: ['server.js'],
+        args: ['server.js']
       };
 
       const result = ServerConfigSchema.parse(config);
@@ -204,7 +204,7 @@ describe('Transport Type Detection', () => {
 
     it('should detect HTTP transport without type', () => {
       const config = {
-        url: 'https://api.example.com',
+        url: 'https://api.example.com'
       };
 
       const result = ServerConfigSchema.parse(config);
@@ -214,7 +214,7 @@ describe('Transport Type Detection', () => {
     it('should detect HTTP transport with type', () => {
       const config = {
         type: 'http' as const,
-        url: 'https://api.example.com',
+        url: 'https://api.example.com'
       };
 
       const result = ServerConfigSchema.parse(config);
@@ -224,7 +224,7 @@ describe('Transport Type Detection', () => {
     it('should detect SSE transport', () => {
       const config = {
         type: 'sse' as const,
-        url: 'https://api.github.com/mcp/sse',
+        url: 'https://api.github.com/mcp/sse'
       };
 
       const result = ServerConfigSchema.parse(config);
@@ -235,7 +235,7 @@ describe('Transport Type Detection', () => {
   describe('Type Guards', () => {
     it('should identify STDIO server', () => {
       const config = ServerConfigSchema.parse({
-        command: 'node',
+        command: 'node'
       });
 
       expect(isStdioServer(config)).toBe(true);
@@ -245,7 +245,7 @@ describe('Transport Type Detection', () => {
 
     it('should identify HTTP server without type', () => {
       const config = ServerConfigSchema.parse({
-        url: 'https://example.com',
+        url: 'https://example.com'
       });
 
       expect(isStdioServer(config)).toBe(false);
@@ -256,7 +256,7 @@ describe('Transport Type Detection', () => {
     it('should identify HTTP server with type', () => {
       const config = ServerConfigSchema.parse({
         type: 'http' as const,
-        url: 'https://example.com',
+        url: 'https://example.com'
       });
 
       expect(isStdioServer(config)).toBe(false);
@@ -267,7 +267,7 @@ describe('Transport Type Detection', () => {
     it('should identify SSE server', () => {
       const config = ServerConfigSchema.parse({
         type: 'sse' as const,
-        url: 'https://example.com/sse',
+        url: 'https://example.com/sse'
       });
 
       expect(isStdioServer(config)).toBe(false);
@@ -284,27 +284,27 @@ describe('HatagoConfigSchema', () => {
       logLevel: 'info',
       http: {
         port: 3535,
-        host: 'localhost',
+        host: 'localhost'
       },
       mcpServers: {
         filesystem: {
           command: 'npx',
-          args: ['-y', '@modelcontextprotocol/server-filesystem', '.'],
+          args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
         },
         'github-sse': {
           type: 'sse' as const,
           url: 'https://api.github.com/mcp/sse',
           headers: {
-            Authorization: 'Bearer ${GITHUB_TOKEN}',
-          },
+            Authorization: 'Bearer ${GITHUB_TOKEN}'
+          }
         },
         'openai-api': {
           url: 'https://api.openai.com/mcp',
           headers: {
-            Authorization: 'Bearer ${OPENAI_API_KEY}',
-          },
-        },
-      },
+            Authorization: 'Bearer ${OPENAI_API_KEY}'
+          }
+        }
+      }
     };
 
     const result = safeParseConfig(config);
@@ -318,7 +318,7 @@ describe('HatagoConfigSchema', () => {
 
   it('should parse minimal configuration', () => {
     const config = {
-      mcpServers: {},
+      mcpServers: {}
     };
 
     const result = safeParseConfig(config);
@@ -335,16 +335,16 @@ describe('HatagoConfigSchema', () => {
       mcpServers: {
         local: {
           command: 'node',
-          args: ['./server.js'],
+          args: ['./server.js']
         },
         remote: {
-          url: 'https://api.example.com/mcp',
+          url: 'https://api.example.com/mcp'
         },
         sse: {
           type: 'sse' as const,
-          url: 'https://stream.example.com/sse',
-        },
-      },
+          url: 'https://stream.example.com/sse'
+        }
+      }
     };
 
     const result = safeParseConfig(config);
@@ -363,14 +363,14 @@ describe('HatagoConfigSchema', () => {
         disabled: {
           command: 'node',
           args: ['./server.js'],
-          disabled: true,
+          disabled: true
         },
         enabled: {
           command: 'python',
           args: ['./server.py'],
-          disabled: false,
-        },
-      },
+          disabled: false
+        }
+      }
     };
 
     const result = safeParseConfig(config);
@@ -390,10 +390,10 @@ describe('HatagoConfigSchema', () => {
           timeouts: {
             connectMs: 10000,
             requestMs: 60000,
-            keepAliveMs: 30000,
-          },
-        },
-      },
+            keepAliveMs: 30000
+          }
+        }
+      }
     };
 
     const result = safeParseConfig(config);

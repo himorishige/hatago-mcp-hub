@@ -19,7 +19,7 @@ export interface SessionState {
 export function createSessionState(ttlSeconds = 3600): SessionState {
   return {
     sessions: new Map(),
-    ttlSeconds,
+    ttlSeconds
   };
 }
 
@@ -29,7 +29,7 @@ export function createSessionState(ttlSeconds = 3600): SessionState {
 export function createSession(
   state: SessionState,
   id: string,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): SessionState {
   const existing = state.sessions.get(id);
 
@@ -37,7 +37,7 @@ export function createSession(
   if (existing && !isExpired(existing, now)) {
     const updatedSession: Session = {
       ...existing,
-      lastAccessedAt: now,
+      lastAccessedAt: now
     };
 
     const newSessions = new Map(state.sessions);
@@ -45,7 +45,7 @@ export function createSession(
 
     return {
       ...state,
-      sessions: newSessions,
+      sessions: newSessions
     };
   }
 
@@ -54,7 +54,7 @@ export function createSession(
     id,
     createdAt: now,
     lastAccessedAt: now,
-    ttlSeconds: state.ttlSeconds,
+    ttlSeconds: state.ttlSeconds
   };
 
   const newSessions = new Map(state.sessions);
@@ -62,7 +62,7 @@ export function createSession(
 
   return {
     ...state,
-    sessions: newSessions,
+    sessions: newSessions
   };
 }
 
@@ -72,7 +72,7 @@ export function createSession(
 export function getSession(
   state: SessionState,
   id: string,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): Session | undefined {
   const session = state.sessions.get(id);
 
@@ -94,7 +94,7 @@ export function getSession(
 export function touchSession(
   state: SessionState,
   id: string,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): SessionState {
   const session = state.sessions.get(id);
 
@@ -104,7 +104,7 @@ export function touchSession(
 
   const updatedSession: Session = {
     ...session,
-    lastAccessedAt: now,
+    lastAccessedAt: now
   };
 
   const newSessions = new Map(state.sessions);
@@ -112,7 +112,7 @@ export function touchSession(
 
   return {
     ...state,
-    sessions: newSessions,
+    sessions: newSessions
   };
 }
 
@@ -129,17 +129,14 @@ export function deleteSession(state: SessionState, id: string): SessionState {
 
   return {
     ...state,
-    sessions: newSessions,
+    sessions: newSessions
   };
 }
 
 /**
  * Remove all expired sessions
  */
-export function removeExpired(
-  state: SessionState,
-  now: Date = new Date(),
-): SessionState {
+export function removeExpired(state: SessionState, now: Date = new Date()): SessionState {
   const activeSessions = new Map<string, Session>();
 
   for (const [id, session] of state.sessions) {
@@ -155,7 +152,7 @@ export function removeExpired(
 
   return {
     ...state,
-    sessions: activeSessions,
+    sessions: activeSessions
   };
 }
 
@@ -171,10 +168,7 @@ export function isExpired(session: Session, now: Date = new Date()): boolean {
 /**
  * Get all active sessions
  */
-export function getActiveSessions(
-  state: SessionState,
-  now: Date = new Date(),
-): Session[] {
+export function getActiveSessions(state: SessionState, now: Date = new Date()): Session[] {
   const active: Session[] = [];
 
   for (const session of state.sessions.values()) {
@@ -189,10 +183,7 @@ export function getActiveSessions(
 /**
  * Get active session count
  */
-export function getActiveSessionCount(
-  state: SessionState,
-  now: Date = new Date(),
-): number {
+export function getActiveSessionCount(state: SessionState, now: Date = new Date()): number {
   let count = 0;
 
   for (const session of state.sessions.values()) {
@@ -210,7 +201,7 @@ export function getActiveSessionCount(
 export function clearSessions(state: SessionState): SessionState {
   return {
     ...state,
-    sessions: new Map(),
+    sessions: new Map()
   };
 }
 
@@ -228,7 +219,7 @@ export interface SessionOperation {
 export function applyOperations(
   state: SessionState,
   operations: SessionOperation[],
-  now: Date = new Date(),
+  now: Date = new Date()
 ): SessionState {
   let currentState = state;
 
@@ -262,10 +253,7 @@ export interface SessionStats {
 /**
  * Get session statistics
  */
-export function getStats(
-  state: SessionState,
-  now: Date = new Date(),
-): SessionStats {
+export function getStats(state: SessionState, now: Date = new Date()): SessionStats {
   let active = 0;
   let expired = 0;
   let totalAgeMs = 0;
@@ -283,6 +271,6 @@ export function getStats(
     total: state.sessions.size,
     active,
     expired,
-    averageAgeSeconds: active > 0 ? totalAgeMs / active / 1000 : 0,
+    averageAgeSeconds: active > 0 ? totalAgeMs / active / 1000 : 0
   };
 }

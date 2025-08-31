@@ -30,16 +30,16 @@ Progress notifications allow MCP servers to report incremental progress during t
 #### Node.js Example
 
 ```typescript
-import { createHub, handleMCPEndpoint } from "@hatago/hub/node";
-import { Hono } from "hono";
-import { streamSSE } from "hono/streaming";
+import { createHub, handleMCPEndpoint } from '@hatago/hub/node';
+import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 
 const app = new Hono();
 const hub = createHub();
 
 // SSE endpoint for progress notifications
-app.get("/sse", async (c) => {
-  const clientId = c.req.query("clientId") || `client-${Date.now()}`;
+app.get('/sse', async (c) => {
+  const clientId = c.req.query('clientId') || `client-${Date.now()}`;
   const sseManager = hub.getSSEManager();
 
   return streamSSE(c, async (stream) => {
@@ -60,11 +60,11 @@ app.get("/sse", async (c) => {
 #### Cloudflare Workers Example
 
 ```typescript
-import { createHub } from "@hatago/hub/workers";
-import { streamSSE } from "hono/streaming";
+import { createHub } from '@hatago/hub/workers';
+import { streamSSE } from 'hono/streaming';
 
 // Similar setup, but with Workers environment
-app.get("/sse", async (c) => {
+app.get('/sse', async (c) => {
   const hub = createHub(c.env);
   // ... same SSE logic
 });
@@ -75,9 +75,9 @@ app.get("/sse", async (c) => {
 ```typescript
 // Call a tool with progress token
 const result = await hub.callTool({
-  name: "long_running_tool",
-  arguments: { data: "input" },
-  progressToken: "unique-token-123",
+  name: 'long_running_tool',
+  arguments: { data: 'input' },
+  progressToken: 'unique-token-123'
 });
 ```
 
@@ -86,9 +86,9 @@ const result = await hub.callTool({
 #### JavaScript/EventSource
 
 ```javascript
-const eventSource = new EventSource("/sse?clientId=my-client");
+const eventSource = new EventSource('/sse?clientId=my-client');
 
-eventSource.addEventListener("progress", (event) => {
+eventSource.addEventListener('progress', (event) => {
   const data = JSON.parse(event.data);
   console.log(`Progress: ${data.progress}/${data.total} - ${data.message}`);
 });
@@ -149,11 +149,7 @@ data: {"progressToken":"token","progress":5,"total":10,"message":"Processing..."
 ```typescript
 class SSEManager {
   // Add a new SSE client
-  addClient(
-    clientId: string,
-    writer: WritableStreamDefaultWriter,
-    stream?: any,
-  ): void;
+  addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: any): void;
 
   // Remove a client
   removeClient(clientId: string): void;

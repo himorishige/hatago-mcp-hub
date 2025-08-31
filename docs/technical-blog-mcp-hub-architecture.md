@@ -56,33 +56,33 @@ export interface ToolRegistryState {
 export function generatePublicName(
   config: ToolNamingConfig,
   serverId: string,
-  toolName: string,
+  toolName: string
 ): string {
-  const strategy = config.strategy || "namespace";
+  const strategy = config.strategy || 'namespace';
 
   // namespace戦略: サーバーIDをプレフィックスとして付与
-  if (strategy === "namespace") {
-    const separator = config.separator || "_";
-    const format = config.format || "{serverId}_{toolName}";
+  if (strategy === 'namespace') {
+    const separator = config.separator || '_';
+    const format = config.format || '{serverId}_{toolName}';
 
     let publicName = format
-      .replace("{serverId}", serverId)
-      .replace("{separator}", separator)
-      .replace("{toolName}", toolName);
+      .replace('{serverId}', serverId)
+      .replace('{separator}', separator)
+      .replace('{toolName}', toolName);
 
     // Claude Code互換性のため、ドットをアンダースコアに置換
-    publicName = publicName.replace(/\./g, "_");
+    publicName = publicName.replace(/\./g, '_');
 
     return publicName;
   }
 
   // alias戦略: 可能な限り元の名前を保持
-  if (strategy === "alias") {
+  if (strategy === 'alias') {
     return toolName;
   }
 
   // error戦略: 衝突時にエラーを発生
-  if (strategy === "error") {
+  if (strategy === 'error') {
     return toolName;
   }
 }
@@ -95,29 +95,25 @@ export function generatePublicName(
 ```typescript
 // packages/runtime/src/registry/tool-registry-functional.ts
 
-export function addTool(
-  state: ToolRegistryState,
-  serverId: string,
-  tool: Tool,
-): ToolRegistryState {
+export function addTool(state: ToolRegistryState, serverId: string, tool: Tool): ToolRegistryState {
   let publicName = generatePublicName(state.namingConfig, serverId, tool.name);
 
   // alias戦略の場合、衝突チェックとフォールバック
-  if (state.namingConfig.strategy === "alias") {
+  if (state.namingConfig.strategy === 'alias') {
     const existing = state.tools.get(publicName);
     if (existing && existing.serverId !== serverId) {
       // 衝突検出、namespace戦略にフォールバック
-      const separator = state.namingConfig.separator || "_";
-      publicName = `${serverId}${separator}${tool.name}`.replace(/\./g, "_");
+      const separator = state.namingConfig.separator || '_';
+      publicName = `${serverId}${separator}${tool.name}`.replace(/\./g, '_');
     }
   }
 
   // error戦略の場合、衝突時にエラー
-  if (state.namingConfig.strategy === "error") {
+  if (state.namingConfig.strategy === 'error') {
     const existing = state.tools.get(publicName);
     if (existing && existing.serverId !== serverId) {
       throw new Error(
-        `Tool name collision: ${publicName} already exists from server ${existing.serverId}`,
+        `Tool name collision: ${publicName} already exists from server ${existing.serverId}`
       );
     }
   }
@@ -127,7 +123,7 @@ export function addTool(
     serverId,
     originalName: tool.name,
     publicName,
-    tool,
+    tool
   };
 
   // イミュータブルな新しいMapを作成
@@ -144,7 +140,7 @@ export function addTool(
   return {
     ...state,
     tools: newTools,
-    serverTools: newServerTools,
+    serverTools: newServerTools
   };
 }
 ```
@@ -175,7 +171,7 @@ export class ToolInvoker {
     _sessionId: string,
     toolName: string,
     args: any,
-    options?: Partial<ToolInvokerOptions>,
+    options?: Partial<ToolInvokerOptions>
   ): Promise<ToolCallResult> {
     const opts = { ...this.options, ...options };
 
@@ -188,16 +184,14 @@ export class ToolInvoker {
 
       if (!tool) {
         return {
-          content: [{ type: "text", text: `Tool not found: ${toolName}` }],
-          isError: true,
+          content: [{ type: 'text', text: `Tool not found: ${toolName}` }],
+          isError: true
         };
       }
 
       return {
-        content: [
-          { type: "text", text: `No handler registered for tool: ${toolName}` },
-        ],
-        isError: true,
+        content: [{ type: 'text', text: `No handler registered for tool: ${toolName}` }],
+        isError: true
       };
     }
 
@@ -210,7 +204,7 @@ export class ToolInvoker {
                 progressToken: options.progressToken,
                 progress,
                 total,
-                message,
+                message
               });
             }
           : undefined;
@@ -218,34 +212,34 @@ export class ToolInvoker {
       // タイムアウト付きで実行
       const result = await this.executeWithTimeout(
         () => handler(args, progressHandler),
-        opts.timeout!,
+        opts.timeout!
       );
 
       // 結果のフォーマット
-      if (typeof result === "string") {
+      if (typeof result === 'string') {
         return {
-          content: [{ type: "text", text: result }],
+          content: [{ type: 'text', text: result }]
         };
       }
 
       // 既に正しいフォーマットの場合
-      if (result && typeof result === "object" && "content" in result) {
+      if (result && typeof result === 'object' && 'content' in result) {
         return result as ToolCallResult;
       }
 
       // その他のオブジェクトはJSONに変換
       return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
       };
     } catch (error) {
       return {
         content: [
           {
-            type: "text",
-            text: `Error calling tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,
-          },
+            type: 'text',
+            text: `Error calling tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`
+          }
         ],
-        isError: true,
+        isError: true
       };
     }
   }
@@ -261,17 +255,14 @@ export class ToolInvoker {
 
 // サーバー接続時にツールハンドラーを登録
 for (const tool of tools) {
-  const publicName = this.toolRegistry.resolveTool(
-    tool.name,
-    serverId,
-  )?.publicName;
+  const publicName = this.toolRegistry.resolveTool(tool.name, serverId)?.publicName;
 
   this.toolInvoker.registerHandler(publicName, async (args) => {
     // MCPクライアントを通じて実際のサーバーにツール呼び出しを転送
     const client = this.clients.get(serverId);
     const result = await client.callTool({
       name: tool.name, // 元のツール名を使用
-      arguments: args,
+      arguments: args
     });
     return result;
   });
@@ -295,7 +286,7 @@ class SessionManager {
         id: sessionId,
         createdAt: Date.now(),
         lastAccessedAt: Date.now(),
-        context: {},
+        context: {}
       });
     }
 
@@ -510,7 +501,7 @@ Hatagoの実装では、状態管理に関数型プログラミングのアプ�
 export function registerServerTools(
   state: ToolRegistryState,
   serverId: string,
-  tools: Tool[],
+  tools: Tool[]
 ): ToolRegistryState {
   // 既存のツールをクリア（新しい状態を作成）
   let newState = clearServerTools(state, serverId);

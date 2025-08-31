@@ -58,10 +58,7 @@ export interface ActivationResult {
  */
 export class ActivationManager extends EventEmitter {
   private readonly stateMachine: ServerStateMachine;
-  private readonly activationQueue = new Map<
-    string,
-    Promise<ActivationResult>
-  >();
+  private readonly activationQueue = new Map<string, Promise<ActivationResult>>();
   private readonly serverConfigs = new Map<string, ServerConfig>();
   private readonly activationHistory = new Map<string, ActivationRequest[]>();
   private readonly maxHistorySize = 100;
@@ -100,7 +97,7 @@ export class ActivationManager extends EventEmitter {
    */
   setHandlers(
     connect: (serverId: string) => Promise<void>,
-    disconnect: (serverId: string) => Promise<void>,
+    disconnect: (serverId: string) => Promise<void>
   ): void {
     this.connectHandler = connect;
     this.disconnectHandler = disconnect;
@@ -109,10 +106,7 @@ export class ActivationManager extends EventEmitter {
   /**
    * Check if server should activate
    */
-  shouldActivate(
-    serverId: string,
-    source: ActivationRequest['source'],
-  ): boolean {
+  shouldActivate(serverId: string, source: ActivationRequest['source']): boolean {
     const config = this.serverConfigs.get(serverId);
     if (!config) return false;
 
@@ -142,7 +136,7 @@ export class ActivationManager extends EventEmitter {
   async activate(
     serverId: string,
     source: ActivationRequest['source'],
-    reason?: string,
+    reason?: string
   ): Promise<ActivationResult> {
     // Check if already activating
     const existing = this.activationQueue.get(serverId);
@@ -159,7 +153,7 @@ export class ActivationManager extends EventEmitter {
       return {
         success: true,
         serverId,
-        state: currentState,
+        state: currentState
       };
     }
 
@@ -169,7 +163,7 @@ export class ActivationManager extends EventEmitter {
         success: false,
         serverId,
         state: currentState,
-        error: `Activation not allowed for policy: ${this.serverConfigs.get(serverId)?.activationPolicy}`,
+        error: `Activation not allowed for policy: ${this.serverConfigs.get(serverId)?.activationPolicy}`
       };
     }
 
@@ -178,7 +172,7 @@ export class ActivationManager extends EventEmitter {
       serverId,
       reason: reason || `Activated by ${source.type}`,
       source,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
 
     // Record in history
@@ -202,7 +196,7 @@ export class ActivationManager extends EventEmitter {
    */
   private async performActivation(
     serverId: string,
-    request: ActivationRequest,
+    request: ActivationRequest
   ): Promise<ActivationResult> {
     const startTime = Date.now();
 
@@ -222,7 +216,7 @@ export class ActivationManager extends EventEmitter {
           await this.stateMachine.transition(
             serverId,
             ServerState.COOLDOWN,
-            'Resetting from error',
+            'Resetting from error'
           );
           await this.waitForCooldown(serverId);
         } else {
@@ -231,11 +225,7 @@ export class ActivationManager extends EventEmitter {
       }
 
       // Transition to activating
-      await this.stateMachine.transition(
-        serverId,
-        ServerState.ACTIVATING,
-        request.reason,
-      );
+      await this.stateMachine.transition(serverId, ServerState.ACTIVATING, request.reason);
 
       // Connect to server
       if (this.connectHandler) {
@@ -243,46 +233,42 @@ export class ActivationManager extends EventEmitter {
       }
 
       // Transition to active
-      await this.stateMachine.transition(
-        serverId,
-        ServerState.ACTIVE,
-        'Successfully connected',
-      );
+      await this.stateMachine.transition(serverId, ServerState.ACTIVE, 'Successfully connected');
 
       // Emit success
       const duration = Date.now() - startTime;
       this.emit('activation:success', {
         serverId,
         duration,
-        request,
+        request
       });
 
       return {
         success: true,
         serverId,
         state: ServerState.ACTIVE,
-        duration,
+        duration
       };
     } catch (error) {
       // Transition to error
       await this.stateMachine.transition(
         serverId,
         ServerState.ERROR,
-        error instanceof Error ? error.message : 'Activation failed',
+        error instanceof Error ? error.message : 'Activation failed'
       );
 
       // Emit failure
       this.emit('activation:failed', {
         serverId,
         error,
-        request,
+        request
       });
 
       return {
         success: false,
         serverId,
         state: ServerState.ERROR,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -290,22 +276,16 @@ export class ActivationManager extends EventEmitter {
   /**
    * Deactivate a server
    */
-  async deactivate(
-    serverId: string,
-    reason?: string,
-  ): Promise<ActivationResult> {
+  async deactivate(serverId: string, reason?: string): Promise<ActivationResult> {
     const currentState = this.stateMachine.getState(serverId);
 
     // Check if can deactivate
-    if (
-      currentState !== ServerState.ACTIVE &&
-      currentState !== ServerState.IDLING
-    ) {
+    if (currentState !== ServerState.ACTIVE && currentState !== ServerState.IDLING) {
       return {
         success: false,
         serverId,
         state: currentState,
-        error: `Cannot deactivate from state: ${currentState}`,
+        error: `Cannot deactivate from state: ${currentState}`
       };
     }
 
@@ -314,7 +294,7 @@ export class ActivationManager extends EventEmitter {
       await this.stateMachine.transition(
         serverId,
         ServerState.STOPPING,
-        reason || 'Manual deactivation',
+        reason || 'Manual deactivation'
       );
 
       // Disconnect from server
@@ -326,7 +306,7 @@ export class ActivationManager extends EventEmitter {
       await this.stateMachine.transition(
         serverId,
         ServerState.INACTIVE,
-        'Successfully disconnected',
+        'Successfully disconnected'
       );
 
       this.emit('deactivation:success', { serverId });
@@ -334,26 +314,26 @@ export class ActivationManager extends EventEmitter {
       return {
         success: true,
         serverId,
-        state: ServerState.INACTIVE,
+        state: ServerState.INACTIVE
       };
     } catch (error) {
       // Transition to error
       await this.stateMachine.transition(
         serverId,
         ServerState.ERROR,
-        error instanceof Error ? error.message : 'Deactivation failed',
+        error instanceof Error ? error.message : 'Deactivation failed'
       );
 
       this.emit('deactivation:failed', {
         serverId,
-        error,
+        error
       });
 
       return {
         success: false,
         serverId,
         state: ServerState.ERROR,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -369,9 +349,9 @@ export class ActivationManager extends EventEmitter {
         const result = await this.activate(
           serverId,
           {
-            type: 'startup',
+            type: 'startup'
           },
-          'Startup activation for always policy',
+          'Startup activation for always policy'
         );
 
         results.set(serverId, result);
@@ -419,11 +399,7 @@ export class ActivationManager extends EventEmitter {
     await new Promise((resolve) => setTimeout(resolve, cooldownMs));
 
     // Transition from cooldown to inactive
-    await this.stateMachine.transition(
-      serverId,
-      ServerState.INACTIVE,
-      'Cooldown period complete',
-    );
+    await this.stateMachine.transition(serverId, ServerState.INACTIVE, 'Cooldown period complete');
   }
 
   /**
@@ -444,26 +420,18 @@ export class ActivationManager extends EventEmitter {
   /**
    * Handle server error
    */
-  async handleServerError(
-    serverId: string,
-    error: Error,
-    retryAfterMs?: number,
-  ): Promise<void> {
+  async handleServerError(serverId: string, error: Error, retryAfterMs?: number): Promise<void> {
     const config = this.serverConfigs.get(serverId);
     if (config) {
       config._lastError = {
         message: error.message,
         timestamp: new Date().toISOString(),
-        retryAfterMs: retryAfterMs || 5000,
+        retryAfterMs: retryAfterMs || 5000
       };
     }
 
     // Transition to error state
-    await this.stateMachine.transition(
-      serverId,
-      ServerState.ERROR,
-      error.message,
-    );
+    await this.stateMachine.transition(serverId, ServerState.ERROR, error.message);
 
     // Auto-transition to cooldown
     setTimeout(async () => {
@@ -471,7 +439,7 @@ export class ActivationManager extends EventEmitter {
         await this.stateMachine.transition(
           serverId,
           ServerState.COOLDOWN,
-          'Entering cooldown after error',
+          'Entering cooldown after error'
         );
       }
     }, 1000);
@@ -506,14 +474,10 @@ export class ActivationManager extends EventEmitter {
    * Shutdown all servers
    */
   async shutdown(): Promise<void> {
-    const activeServers = Array.from(this.serverConfigs.keys()).filter((id) =>
-      this.isActive(id),
-    );
+    const activeServers = Array.from(this.serverConfigs.keys()).filter((id) => this.isActive(id));
 
     // Deactivate all active servers
-    await Promise.all(
-      activeServers.map((id) => this.deactivate(id, 'System shutdown')),
-    );
+    await Promise.all(activeServers.map((id) => this.deactivate(id, 'System shutdown')));
 
     // Clear all state
     this.stateMachine.resetAll();

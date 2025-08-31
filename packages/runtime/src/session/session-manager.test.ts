@@ -124,9 +124,7 @@ describe('SessionManager', () => {
 
     it('should handle deletion of non-existent session', async () => {
       // Should not throw
-      await expect(
-        manager.deleteSession('non-existent'),
-      ).resolves.not.toThrow();
+      await expect(manager.deleteSession('non-existent')).resolves.not.toThrow();
     });
 
     it('should only delete specified session', async () => {
@@ -192,7 +190,7 @@ describe('SessionManager', () => {
   describe('Concurrent Access', () => {
     it('should handle concurrent session creation', async () => {
       const promises = Array.from({ length: 10 }, (_, i) =>
-        manager.createSession(`concurrent-${i}`),
+        manager.createSession(`concurrent-${i}`)
       );
 
       const sessions = await Promise.all(promises);
@@ -210,9 +208,7 @@ describe('SessionManager', () => {
       await manager.createSession('shared-session');
 
       // Multiple concurrent gets
-      const promises = Array.from({ length: 10 }, () =>
-        manager.getSession('shared-session'),
-      );
+      const promises = Array.from({ length: 10 }, () => manager.getSession('shared-session'));
 
       const results = await Promise.all(promises);
 
@@ -232,7 +228,7 @@ describe('SessionManager', () => {
         manager.deleteSession('session-b'),
         manager.createSession('session-d'),
         manager.getSession('session-c'),
-        manager.deleteSession('session-a'),
+        manager.deleteSession('session-a')
       ];
 
       await Promise.all(operations);

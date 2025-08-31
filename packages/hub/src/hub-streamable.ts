@@ -25,7 +25,7 @@ function createSSEAdapter(stream: any): SSEStream {
     },
     onAbort(callback: () => void) {
       stream.onAbort(callback);
-    },
+    }
   };
 }
 
@@ -94,17 +94,14 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
   }
 
   const method = c.req.method;
-  const _acceptHeader = c.req.header('Accept');
-  const _sessionId = c.req.header('mcp-session-id');
+  // const _acceptHeader = c.req.header('Accept');
+  // const _sessionId = c.req.header('mcp-session-id');
 
   // Debug logging disabled to prevent stdout pollution in STDIO mode
   // To enable debug logging, use proper logger instance with stderr output
 
   // Handle SSE request
-  if (
-    method === 'GET' &&
-    c.req.header('Accept')?.includes('text/event-stream')
-  ) {
+  if (method === 'GET' && c.req.header('Accept')?.includes('text/event-stream')) {
     return handleSSEEndpoint(hub, c);
   }
 
@@ -120,11 +117,11 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
           jsonrpc: '2.0',
           error: {
             code: -32700,
-            message: 'Parse error',
+            message: 'Parse error'
           },
-          id: null,
+          id: null
         },
-        400,
+        400
       );
     }
 
@@ -146,12 +143,7 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
         });
 
         // Handle through StreamableHTTP
-        const result = await transport.handleHttpRequest(
-          'POST',
-          headers,
-          body,
-          sseStream,
-        );
+        const result = await transport.handleHttpRequest('POST', headers, body, sseStream);
 
         if (result?.body) {
           // Send final response via SSE

@@ -9,14 +9,11 @@ export {
   createHub,
   type HatagoHub,
   type HubConfig,
-  type ServerSpec,
+  type ServerSpec
 } from '@himorishige/hatago-hub/node';
 
 // Server functionality
-export {
-  startServer,
-  type ServerOptions,
-} from '@himorishige/hatago-server';
+export { startServer, type ServerOptions } from '@himorishige/hatago-server';
 
 // Transport implementations
 export * from '@himorishige/hatago-transport';
@@ -51,14 +48,11 @@ export type {
   ServerType,
   ServerStatus,
   ServerInfo,
-  ConnectionResult,
+  ConnectionResult
 } from '@himorishige/hatago-core';
 
 // Runtime platform capabilities
-export {
-  getPlatform,
-  type PlatformCapabilities,
-} from '@himorishige/hatago-runtime';
+export { getPlatform, type PlatformCapabilities } from '@himorishige/hatago-runtime';
 
 // Configuration utilities
 export { loadConfig } from '@himorishige/hatago-server';
@@ -76,5 +70,5 @@ export {
   type ReadResourceRequest,
   type ReadResourceResult,
   type GetPromptRequest,
-  type GetPromptResult,
+  type GetPromptResult
 } from '@modelcontextprotocol/sdk';

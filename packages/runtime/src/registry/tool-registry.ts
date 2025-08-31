@@ -9,7 +9,7 @@ import {
   getStats,
   getToolByName,
   registerServerTools,
-  type ToolRegistryState,
+  type ToolRegistryState
 } from './tool-registry-functional.js';
 import type { ToolNamingConfig, ToolNamingStrategy } from './types.js';
 
@@ -38,9 +38,9 @@ export class ToolRegistry {
       namingConfig: {
         strategy: 'namespace',
         separator: '_',
-        format: '{serverId}_{toolName}',
-      },
-    },
+        format: '{serverId}_{toolName}'
+      }
+    }
   ) {
     this.state = createRegistry(options.namingConfig);
   }
@@ -68,7 +68,7 @@ export class ToolRegistry {
     for (const metadata of this.state.tools.values()) {
       result.push({
         ...metadata.tool,
-        name: metadata.publicName,
+        name: metadata.publicName
       });
     }
     return result;
@@ -87,16 +87,14 @@ export class ToolRegistry {
   getServerTools(serverId: string): Tool[] {
     return getServerTools(this.state, serverId).map(({ tool, publicName }) => ({
       ...tool,
-      name: publicName,
+      name: publicName
     }));
   }
 
   /**
    * Resolve tool name to original server ID and tool name
    */
-  resolveTool(
-    publicName: string,
-  ): { serverId: string; originalName: string } | undefined {
+  resolveTool(publicName: string): { serverId: string; originalName: string } | undefined {
     const metadata = getToolByName(this.state, publicName);
     if (!metadata) {
       return undefined;
@@ -104,7 +102,7 @@ export class ToolRegistry {
 
     return {
       serverId: metadata.serverId,
-      originalName: metadata.originalName,
+      originalName: metadata.originalName
     };
   }
 
@@ -118,7 +116,7 @@ export class ToolRegistry {
     for (const [toolName, serverIds] of collisions) {
       result.push({
         toolName,
-        serverIds,
+        serverIds
       });
     }
 
@@ -159,13 +157,11 @@ export class ToolRegistry {
       totalServers: stats.serverCount,
       collisions: this.detectCollisions(),
       namingStrategy: this.state.namingConfig.strategy,
-      tools: Array.from(this.state.tools.entries()).map(
-        ([publicName, metadata]) => ({
-          publicName,
-          serverId: metadata.serverId,
-          originalName: metadata.originalName,
-        }),
-      ),
+      tools: Array.from(this.state.tools.entries()).map(([publicName, metadata]) => ({
+        publicName,
+        serverId: metadata.serverId,
+        originalName: metadata.originalName
+      }))
     };
   }
 

@@ -1,28 +1,15 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: [
-    'src/node/cli.ts',
-    'src/node/index.ts',
-    'src/workers/index.ts',
-    'src/browser/index.ts'
-  ],
+  entry: ['src/node/cli.ts', 'src/node/index.ts', 'src/workers/index.ts', 'src/browser/index.ts'],
   format: 'esm',
   target: 'node20',
   dts: true,
   bundle: true,
   // Keep external to avoid bundling large dependencies
-  external: [
-    '@modelcontextprotocol/sdk',
-    'hono',
-    'commander'
-  ],
+  external: ['@modelcontextprotocol/sdk', 'hono', 'commander'],
   // Bundle workspace dependencies - include core and subpaths
-  noExternal: [
-    '@himorishige/hatago-core',
-    /^@himorishige\/hatago-core\/.*/,
-    /^@himorishige\//
-  ],
+  noExternal: ['@himorishige/hatago-core', /^@himorishige\/hatago-core\/.*/, /^@himorishige\//],
   clean: true,
   // Enable source maps for debugging
   sourcemap: true,

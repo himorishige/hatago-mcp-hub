@@ -4,146 +4,145 @@
  * This script generates a JSON schema for the Hatago configuration
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // Create a simple JSON schema for Hatago configuration
 const schema = {
-  $schema: "http://json-schema.org/draft-07/schema#",
-  $id: "https://github.com/himorishige/hatago-hub/schemas/config.schema.json",
-  title: "Hatago MCP Hub Configuration",
-  description:
-    "Configuration schema for Hatago MCP Hub - Lightweight MCP server management",
-  type: "object",
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: 'https://github.com/himorishige/hatago-hub/schemas/config.schema.json',
+  title: 'Hatago MCP Hub Configuration',
+  description: 'Configuration schema for Hatago MCP Hub - Lightweight MCP server management',
+  type: 'object',
   properties: {
     version: {
-      type: "number",
-      description: "Configuration version",
-      const: 1,
+      type: 'number',
+      description: 'Configuration version',
+      const: 1
     },
     logLevel: {
-      type: "string",
-      description: "Logging level",
-      enum: ["debug", "info", "warn", "error"],
-      default: "info",
+      type: 'string',
+      description: 'Logging level',
+      enum: ['debug', 'info', 'warn', 'error'],
+      default: 'info'
     },
     http: {
-      type: "object",
-      description: "HTTP server configuration",
+      type: 'object',
+      description: 'HTTP server configuration',
       properties: {
         port: {
-          type: "number",
-          description: "Port to listen on",
-          default: 3000,
+          type: 'number',
+          description: 'Port to listen on',
+          default: 3000
         },
         host: {
-          type: "string",
-          description: "Host to bind to",
-          default: "localhost",
-        },
-      },
+          type: 'string',
+          description: 'Host to bind to',
+          default: 'localhost'
+        }
+      }
     },
     mcpServers: {
-      type: "object",
-      description: "MCP servers configuration (Claude Code compatible)",
+      type: 'object',
+      description: 'MCP servers configuration (Claude Code compatible)',
       additionalProperties: {
-        type: "object",
+        type: 'object',
         properties: {
           type: {
-            type: "string",
-            enum: ["http", "sse"],
-            description: "Server type (optional for HTTP, required for SSE)",
+            type: 'string',
+            enum: ['http', 'sse'],
+            description: 'Server type (optional for HTTP, required for SSE)'
           },
           command: {
-            type: "string",
-            description: "Command to execute for STDIO servers",
+            type: 'string',
+            description: 'Command to execute for STDIO servers'
           },
           args: {
-            type: "array",
-            items: { type: "string" },
-            description: "Command arguments",
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Command arguments'
           },
           cwd: {
-            type: "string",
-            description: "Working directory for STDIO servers",
+            type: 'string',
+            description: 'Working directory for STDIO servers'
           },
           url: {
-            type: "string",
-            description: "URL for HTTP/SSE servers",
+            type: 'string',
+            description: 'URL for HTTP/SSE servers'
           },
           headers: {
-            type: "object",
-            additionalProperties: { type: "string" },
-            description: "HTTP headers for remote servers",
+            type: 'object',
+            additionalProperties: { type: 'string' },
+            description: 'HTTP headers for remote servers'
           },
           env: {
-            type: "object",
-            additionalProperties: { type: "string" },
-            description: "Environment variables",
+            type: 'object',
+            additionalProperties: { type: 'string' },
+            description: 'Environment variables'
           },
           disabled: {
-            type: "boolean",
-            description: "Whether this server is disabled",
-            default: false,
-          },
-        },
-      },
-    },
+            type: 'boolean',
+            description: 'Whether this server is disabled',
+            default: false
+          }
+        }
+      }
+    }
   },
-  required: ["version"],
+  required: ['version']
 };
 
 // Create output directory
-const outputDir = join(__dirname, "../../../schemas");
+const outputDir = join(__dirname, '../../../schemas');
 mkdirSync(outputDir, { recursive: true });
 
 // Write schema to file
-const outputPath = join(outputDir, "config.schema.json");
-writeFileSync(outputPath, JSON.stringify(schema, null, 2), "utf-8");
+const outputPath = join(outputDir, 'config.schema.json');
+writeFileSync(outputPath, JSON.stringify(schema, null, 2), 'utf-8');
 
 console.log(`✅ Schema generated: ${outputPath}`);
 
 // Also generate an example configuration (Claude Code compatible)
 const exampleConfig = {
-  $schema: "./config.schema.json",
+  $schema: './config.schema.json',
   version: 1,
-  logLevel: "info",
+  logLevel: 'info',
   http: {
     port: 3535,
-    host: "localhost",
+    host: 'localhost'
   },
   mcpServers: {
     filesystem: {
-      command: "npx",
-      args: ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
     },
-    "github-sse": {
-      type: "sse",
-      url: "https://api.github.com/mcp/sse",
+    'github-sse': {
+      type: 'sse',
+      url: 'https://api.github.com/mcp/sse',
       headers: {
-        Authorization: "Bearer ${GITHUB_TOKEN}",
-      },
+        Authorization: 'Bearer ${GITHUB_TOKEN}'
+      }
     },
-    "openai-api": {
-      url: "https://api.openai.com/mcp",
+    'openai-api': {
+      url: 'https://api.openai.com/mcp',
       headers: {
-        Authorization: "Bearer ${OPENAI_API_KEY}",
-      },
+        Authorization: 'Bearer ${OPENAI_API_KEY}'
+      }
     },
-    "local-script": {
-      command: "node",
-      args: ["./my-mcp-server.js"],
+    'local-script': {
+      command: 'node',
+      args: ['./my-mcp-server.js'],
       env: {
-        NODE_ENV: "production",
-      },
-    },
-  },
+        NODE_ENV: 'production'
+      }
+    }
+  }
 };
 
-const examplePath = join(outputDir, "example.config.json");
-writeFileSync(examplePath, JSON.stringify(exampleConfig, null, 2), "utf-8");
+const examplePath = join(outputDir, 'example.config.json');
+writeFileSync(examplePath, JSON.stringify(exampleConfig, null, 2), 'utf-8');
 
 console.log(`✅ Example config generated: ${examplePath}`);

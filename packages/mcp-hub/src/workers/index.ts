@@ -11,7 +11,7 @@ export {
   createEventsEndpoint,
   type HatagoHub,
   type HubConfig,
-  type ServerSpec,
+  type ServerSpec
 } from '@himorishige/hatago-hub/workers';
 
 // Core types (platform-agnostic)
@@ -44,7 +44,7 @@ export type {
   ServerType,
   ServerStatus,
   ServerInfo,
-  ConnectionResult,
+  ConnectionResult
 } from '@himorishige/hatago-core';
 
 // Workers-specific utilities (if available)
@@ -69,13 +69,9 @@ export function createWorkersApp(config?: HubConfig): Hono {
   app.use(
     '*',
     cors({
-      origin: [
-        'http://localhost:*',
-        'http://127.0.0.1:*',
-        'https://*.workers.dev',
-      ],
-      credentials: true,
-    }),
+      origin: ['http://localhost:*', 'http://127.0.0.1:*', 'https://*.workers.dev'],
+      credentials: true
+    })
   );
 
   // Create hub

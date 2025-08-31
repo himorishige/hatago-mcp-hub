@@ -15,7 +15,7 @@ export enum ErrorType {
   TIMEOUT = 'TimeoutError',
   NETWORK = 'NetworkError',
   VALIDATION = 'ValidationError',
-  UNKNOWN = 'UnknownError',
+  UNKNOWN = 'UnknownError'
 }
 
 /**
@@ -25,7 +25,7 @@ export enum ErrorSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical',
+  CRITICAL = 'critical'
 }
 
 /**
@@ -53,7 +53,7 @@ export function classifyError(error: unknown): ClassifiedError {
     severity,
     retryable,
     message,
-    originalError: error,
+    originalError: error
   };
 }
 
@@ -111,10 +111,7 @@ function determineErrorType(error: unknown, message: string): ErrorType {
 /**
  * Determine error severity
  */
-function determineErrorSeverity(
-  type: ErrorType,
-  message: string,
-): ErrorSeverity {
+function determineErrorSeverity(type: ErrorType, message: string): ErrorSeverity {
   // Critical errors
   if (type === ErrorType.LAUNCH) return ErrorSeverity.CRITICAL;
 

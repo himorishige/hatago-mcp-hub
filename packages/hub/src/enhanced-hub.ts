@@ -9,24 +9,17 @@ import {
   expandConfig,
   getServerTransportType,
   type ServerState,
-  type ServerConfig as CoreServerConfig,
+  type ServerConfig as CoreServerConfig
 } from '@himorishige/hatago-core';
 import { getPlatform, setPlatform } from '@himorishige/hatago-runtime';
 import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 import { HatagoHub } from './hub.js';
 import { ActivationManager } from './mcp-server/activation-manager.js';
-import { HatagoManagementServer } from './mcp-server/hatago-management-server.js';
 import { IdleManager } from './mcp-server/idle-manager.js';
 import { MetadataStore } from './mcp-server/metadata-store.js';
 import { ServerStateMachine } from './mcp-server/state-machine.js';
 import { AuditLogger } from './security/audit-logger.js';
-import { FileAccessGuard } from './security/file-guard.js';
-import type {
-  CallOptions,
-  HubOptions,
-  ListOptions,
-  ServerSpec,
-} from './types.js';
+import type { CallOptions, HubOptions, ListOptions, ServerSpec } from './types.js';
 
 // Extended types for our management features
 type ExtendedServerConfig = CoreServerConfig & {
@@ -82,12 +75,10 @@ export class EnhancedHatagoHub extends HatagoHub {
   private idleManager?: IdleManager;
   private metadataStore?: MetadataStore;
   private auditLogger?: AuditLogger;
-  private fileGuard?: FileAccessGuard;
-  private managementServer?: HatagoManagementServer;
 
   // Configuration
   private config: HatagoConfig = {
-    mcpServers: {},
+    mcpServers: {}
   };
   private enhancedOptions: EnhancedHubOptions;
 
@@ -127,11 +118,11 @@ export class EnhancedHatagoHub extends HatagoHub {
         options?: CallOptions & {
           progressToken?: string;
           progressCallback?: any;
-        },
+        }
       ) => {
         // Use callToolWithActivation for on-demand activation support
         return this.callToolWithActivation(name, args, options || {});
-      },
+      }
     };
   }
 
@@ -148,15 +139,12 @@ export class EnhancedHatagoHub extends HatagoHub {
     this.activationManager = new ActivationManager(this.stateMachine);
     this.activationManager.setHandlers(
       async (serverId) => this.handleServerActivation(serverId),
-      async (serverId) => this.handleServerDeactivation(serverId),
+      async (serverId) => this.handleServerDeactivation(serverId)
     );
 
     // Initialize idle manager if enabled
     if (this.enhancedOptions.enableIdleManagement !== false) {
-      this.idleManager = new IdleManager(
-        this.stateMachine,
-        this.activationManager,
-      );
+      this.idleManager = new IdleManager(this.stateMachine, this.activationManager);
       this.idleManager.start();
     }
 
@@ -164,20 +152,13 @@ export class EnhancedHatagoHub extends HatagoHub {
     this.metadataStore = new MetadataStore(configFile);
 
     // Initialize security components
-    this.fileGuard = new FileAccessGuard(configFile);
+    // File guard initialization removed - unused feature
 
     if (this.enhancedOptions.enableAudit !== false) {
       this.auditLogger = new AuditLogger(configFile);
     }
 
-    // Initialize management server
-    this.managementServer = new HatagoManagementServer({
-      configFilePath: configFile,
-      stateMachine: this.stateMachine,
-      activationManager: this.activationManager,
-      idleManager: this.idleManager!,
-      enableAudit: this.enhancedOptions.enableAudit,
-    });
+    // Management server initialization removed - using base class _internal tools instead
 
     // Register management tools/resources/prompts
     // Disabled to avoid duplicate management tools - using base class _internal tools instead
@@ -204,11 +185,11 @@ export class EnhancedHatagoHub extends HatagoHub {
       this.processConfiguration();
 
       this.logger.info('Configuration loaded', {
-        serverCount: this.getServerCount(),
+        serverCount: this.getServerCount()
       });
     } catch (error) {
       this.logger.error('Failed to load configuration', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
@@ -220,7 +201,7 @@ export class EnhancedHatagoHub extends HatagoHub {
     const servers = { ...this.config.mcpServers, ...this.config.servers };
 
     for (const [serverId, serverConfig] of Object.entries(servers)) {
-      const config = serverConfig as ServerConfig;
+      const config = serverConfig;
 
       // Register with activation manager
       if (this.activationManager) {
@@ -235,10 +216,7 @@ export class EnhancedHatagoHub extends HatagoHub {
       // Auto-start 'always' servers
       // Disabled by default to avoid blocking initialization
       // Can be enabled explicitly if needed
-      if (
-        this.enhancedOptions.autoStartAlways === true &&
-        config.activationPolicy === 'always'
-      ) {
+      if (this.enhancedOptions.autoStartAlways === true && config.activationPolicy === 'always') {
         this.scheduleServerStart(serverId);
       }
     }
@@ -259,7 +237,7 @@ export class EnhancedHatagoHub extends HatagoHub {
         const result = await this.activationManager.activate(
           serverId,
           { type: 'startup' },
-          'Startup activation for always policy',
+          'Startup activation for always policy'
         );
 
         if (!result.success) {
@@ -267,7 +245,7 @@ export class EnhancedHatagoHub extends HatagoHub {
         }
       } catch (error) {
         this.logger.error(`Failed to auto-start server ${serverId}`, {
-          error: error instanceof Error ? error.message : String(error),
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }, 1000);
@@ -298,7 +276,7 @@ export class EnhancedHatagoHub extends HatagoHub {
       cwd: 'cwd' in config ? (config as any).cwd : undefined,
       url: 'url' in config ? (config as any).url : undefined,
       type: transportType === 'stdio' ? undefined : transportType,
-      headers: 'headers' in config ? (config as any).headers : undefined,
+      headers: 'headers' in config ? (config as any).headers : undefined
     };
 
     this.logger.debug(`[Enhanced] Created spec for ${serverId}:`, spec);
@@ -338,11 +316,7 @@ export class EnhancedHatagoHub extends HatagoHub {
       throw new Error('Management features not enabled');
     }
 
-    const result = await this.activationManager.activate(
-      serverId,
-      { type: 'manual' },
-      reason,
-    );
+    const result = await this.activationManager.activate(serverId, { type: 'manual' }, reason);
 
     if (!result.success) {
       throw new Error(result.error || 'Activation failed');
@@ -367,11 +341,7 @@ export class EnhancedHatagoHub extends HatagoHub {
   /**
    * Call a tool with on-demand activation support
    */
-  async callToolWithActivation(
-    name: string,
-    args: any,
-    options: CallOptions = {},
-  ): Promise<any> {
+  async callToolWithActivation(name: string, args: any, options: CallOptions = {}): Promise<any> {
     // Check if tool requires server activation
     const toolInfo = this.toolRegistry.getTool(name);
     if (toolInfo && this.activationManager && this.metadataStore) {
@@ -388,13 +358,11 @@ export class EnhancedHatagoHub extends HatagoHub {
           const result = await this.activationManager.activate(
             serverId,
             { type: 'tool_call', toolName: name },
-            `Tool call: ${name}`,
+            `Tool call: ${name}`
           );
 
           if (!result.success) {
-            throw new Error(
-              `Failed to activate server ${serverId}: ${result.error}`,
-            );
+            throw new Error(`Failed to activate server ${serverId}: ${result.error}`);
           }
         }
       }
@@ -407,7 +375,7 @@ export class EnhancedHatagoHub extends HatagoHub {
         try {
           // Call the tool through invoker
           const result = await this.toolInvoker.callTool(serverId, name, args, {
-            timeout: options.timeout || this.options.defaultTimeout,
+            timeout: options.timeout || this.options.defaultTimeout
           });
 
           // Update statistics
@@ -425,7 +393,7 @@ export class EnhancedHatagoHub extends HatagoHub {
 
     // Fall back to normal tool invocation
     return this.toolInvoker.callTool('default', name, args, {
-      timeout: options.timeout || this.options.defaultTimeout,
+      timeout: options.timeout || this.options.defaultTimeout
     });
   }
 
@@ -467,19 +435,19 @@ export class EnhancedHatagoHub extends HatagoHub {
         await this.auditLogger.log(
           'CONFIG_READ',
           {
-            type: 'system',
+            type: 'system'
           },
           {
-            metadata: { reason: 'Config file watch' },
+            metadata: { reason: 'Config file watch' }
           },
-          'info',
+          'info'
         );
       }
 
       this.logger.info('Configuration reloaded successfully');
     } catch (error) {
       this.logger.error('Failed to reload configuration', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }

@@ -20,8 +20,8 @@ export function createHub(options?: HubOptions): HatagoHub {
       get: async () => null,
       put: async () => {},
       delete: async () => {},
-      list: async () => ({ keys: [] }),
-    } as any,
+      list: async () => ({ keys: [] })
+    } as any
   };
 
   setPlatform(createWorkersPlatform(minimalEnv));
@@ -32,9 +32,5 @@ export function createHub(options?: HubOptions): HatagoHub {
 export * from './errors.js';
 export { HatagoHub } from './hub.js';
 // Export hub-streamable for HTTP handling
-export {
-  createEventsEndpoint,
-  handleMCPEndpoint,
-  handleSSEEndpoint,
-} from './hub-streamable.js';
+export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
 export * from './types.js';

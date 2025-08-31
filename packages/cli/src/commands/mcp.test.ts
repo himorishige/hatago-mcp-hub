@@ -5,15 +5,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { Command } from 'commander';
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupMcpCommand } from './mcp.js';
 
 // Mock node modules
@@ -21,7 +13,7 @@ vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
-  mkdirSync: vi.fn(),
+  mkdirSync: vi.fn()
 }));
 vi.mock('node:os');
 
@@ -34,7 +26,7 @@ beforeAll(() => {
           mkdirSync: vi.fn(),
           existsSync: vi.fn(),
           readFileSync: vi.fn(),
-          writeFileSync: vi.fn(),
+          writeFileSync: vi.fn()
         };
       }
       return {};
@@ -101,13 +93,13 @@ describe('setupMcpCommand', () => {
           id: 'test-server',
           type: 'local',
           command: 'node',
-          args: ['server.js'],
+          args: ['server.js']
         },
         {
           id: 'remote-server',
           type: 'remote',
-          url: 'https://example.com/mcp',
-        },
+          url: 'https://example.com/mcp'
+        }
       ];
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -120,9 +112,7 @@ describe('setupMcpCommand', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith('  test-server (local)');
       expect(consoleLogSpy).toHaveBeenCalledWith('    Command: node server.js');
       expect(consoleLogSpy).toHaveBeenCalledWith('  remote-server (remote)');
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        '    URL: https://example.com/mcp',
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith('    URL: https://example.com/mcp');
     });
 
     it('should handle read errors gracefully', async () => {
@@ -136,7 +126,7 @@ describe('setupMcpCommand', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error loading server configuration:',
-        expect.any(Error),
+        expect.any(Error)
       );
       expect(consoleLogSpy).toHaveBeenCalledWith('No MCP servers configured');
     });
@@ -145,40 +135,30 @@ describe('setupMcpCommand', () => {
   describe('Add Command', () => {
     it('should add local server with command', async () => {
       // First call for loading servers, second for checking dir
-      vi.mocked(fs.existsSync)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
+      vi.mocked(fs.existsSync).mockReturnValueOnce(false).mockReturnValueOnce(true);
       vi.mocked(fs.writeFileSync).mockImplementation(() => {});
 
       setupMcpCommand(program);
-      await program.parseAsync(
-        ['mcp', 'add', 'myserver', 'node', 'server.js'],
-        { from: 'user' },
-      );
+      await program.parseAsync(['mcp', 'add', 'myserver', 'node', 'server.js'], { from: 'user' });
 
       expect(fs.writeFileSync).toHaveBeenCalledWith(
         '/home/user/.hatago/servers.json',
-        expect.stringContaining('"id": "myserver"'),
+        expect.stringContaining('"id": "myserver"')
       );
       expect(consoleLogSpy).toHaveBeenCalledWith('Added MCP server "myserver"');
     });
 
     it('should add npx server', async () => {
       // First call for loading servers, second for checking dir
-      vi.mocked(fs.existsSync)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
+      vi.mocked(fs.existsSync).mockReturnValueOnce(false).mockReturnValueOnce(true);
       vi.mocked(fs.writeFileSync).mockImplementation(() => {});
 
       setupMcpCommand(program);
-      await program.parseAsync(
-        ['mcp', 'add', 'npxserver', 'npx', '@example/server'],
-        { from: 'user' },
-      );
+      await program.parseAsync(['mcp', 'add', 'npxserver', 'npx', '@example/server'], {
+        from: 'user'
+      });
 
-      const savedData = JSON.parse(
-        vi.mocked(fs.writeFileSync).mock.calls[0][1] as string,
-      );
+      const savedData = JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string);
       expect(savedData[0].type).toBe('npx');
       expect(savedData[0].command).toBe('npx');
       expect(savedData[0].args).toEqual(['@example/server']);
@@ -186,47 +166,33 @@ describe('setupMcpCommand', () => {
 
     it('should add remote server with URL', async () => {
       // First call for loading servers, second for checking dir
-      vi.mocked(fs.existsSync)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
+      vi.mocked(fs.existsSync).mockReturnValueOnce(false).mockReturnValueOnce(true);
       vi.mocked(fs.writeFileSync).mockImplementation(() => {});
 
       setupMcpCommand(program);
-      await program.parseAsync(
-        ['mcp', 'add', 'remote', '--url', 'https://example.com'],
-        { from: 'user' },
-      );
+      await program.parseAsync(['mcp', 'add', 'remote', '--url', 'https://example.com'], {
+        from: 'user'
+      });
 
-      const savedData = JSON.parse(
-        vi.mocked(fs.writeFileSync).mock.calls[0][1] as string,
-      );
+      const savedData = JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string);
       expect(savedData[0].type).toBe('remote');
       expect(savedData[0].url).toBe('https://example.com');
     });
 
     it('should error if server already exists', async () => {
-      const existingServers = [
-        { id: 'existing', type: 'local', command: 'test' },
-      ];
+      const existingServers = [{ id: 'existing', type: 'local', command: 'test' }];
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(
-        JSON.stringify(existingServers),
-      );
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(existingServers));
 
       setupMcpCommand(program);
 
       try {
-        await program.parseAsync(
-          ['mcp', 'add', 'existing', 'node', 'server.js'],
-          { from: 'user' },
-        );
+        await program.parseAsync(['mcp', 'add', 'existing', 'node', 'server.js'], { from: 'user' });
       } catch (error) {
         expect(error).toBeDefined();
       }
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Server "existing" already exists',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Server "existing" already exists');
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -241,9 +207,7 @@ describe('setupMcpCommand', () => {
         expect(error).toBeDefined();
       }
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Either URL or command must be specified',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Either URL or command must be specified');
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -255,12 +219,12 @@ describe('setupMcpCommand', () => {
 
       setupMcpCommand(program);
       await program.parseAsync(['mcp', 'add', 'test', 'node', 'server.js'], {
-        from: 'user',
+        from: 'user'
       });
 
       // mkdirSync should be called with recursive option
       expect(fs.mkdirSync).toHaveBeenCalledWith('/home/user/.hatago', {
-        recursive: true,
+        recursive: true
       });
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
@@ -270,7 +234,7 @@ describe('setupMcpCommand', () => {
     it('should remove existing server', async () => {
       const servers = [
         { id: 'server1', type: 'local', command: 'test' },
-        { id: 'server2', type: 'local', command: 'test' },
+        { id: 'server2', type: 'local', command: 'test' }
       ];
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -280,14 +244,10 @@ describe('setupMcpCommand', () => {
       setupMcpCommand(program);
       await program.parseAsync(['mcp', 'remove', 'server1'], { from: 'user' });
 
-      const savedData = JSON.parse(
-        vi.mocked(fs.writeFileSync).mock.calls[0][1] as string,
-      );
+      const savedData = JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string);
       expect(savedData).toHaveLength(1);
       expect(savedData[0].id).toBe('server2');
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Removed MCP server "server1"',
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith('Removed MCP server "server1"');
     });
 
     it('should error if server not found', async () => {
@@ -297,15 +257,13 @@ describe('setupMcpCommand', () => {
 
       try {
         await program.parseAsync(['mcp', 'remove', 'nonexistent'], {
-          from: 'user',
+          from: 'user'
         });
       } catch (error) {
         expect(error).toBeDefined();
       }
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Server "nonexistent" not found',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Server "nonexistent" not found');
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
   });
@@ -313,9 +271,7 @@ describe('setupMcpCommand', () => {
   describe('Error Handling', () => {
     it('should handle write errors', async () => {
       // First call for loading servers returns false, second for creating dir returns true
-      vi.mocked(fs.existsSync)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
+      vi.mocked(fs.existsSync).mockReturnValueOnce(false).mockReturnValueOnce(true);
       vi.mocked(fs.writeFileSync).mockImplementation(() => {
         throw new Error('Write error');
       });
@@ -324,7 +280,7 @@ describe('setupMcpCommand', () => {
 
       try {
         await program.parseAsync(['mcp', 'add', 'test', 'node', 'server.js'], {
-          from: 'user',
+          from: 'user'
         });
       } catch (error) {
         expect(error).toBeDefined();
@@ -332,7 +288,7 @@ describe('setupMcpCommand', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error saving server configuration:',
-        expect.any(Error),
+        expect.any(Error)
       );
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
@@ -346,7 +302,7 @@ describe('setupMcpCommand', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error loading server configuration:',
-        expect.any(SyntaxError),
+        expect.any(SyntaxError)
       );
     });
   });

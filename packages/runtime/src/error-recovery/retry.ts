@@ -3,12 +3,7 @@
  */
 
 import { type ClassifiedError, classifyError } from './error-classifier.js';
-import {
-  calculateDelay,
-  type RetryStrategy,
-  selectStrategy,
-  shouldRetry,
-} from './strategies.js';
+import { calculateDelay, type RetryStrategy, selectStrategy, shouldRetry } from './strategies.js';
 
 /**
  * Retry options
@@ -53,7 +48,7 @@ function sleep(ms: number): Promise<void> {
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
-  options: RetryOptions = {},
+  options: RetryOptions = {}
 ): Promise<RetryResult<T>> {
   const startTime = Date.now();
   let attempts = 0;
@@ -68,7 +63,7 @@ export async function withRetry<T>(
         success: false,
         error: classifyError(new Error('Operation aborted')),
         attempts,
-        totalTime: Date.now() - startTime,
+        totalTime: Date.now() - startTime
       };
     }
 
@@ -78,14 +73,13 @@ export async function withRetry<T>(
         success: true,
         value,
         attempts,
-        totalTime: Date.now() - startTime,
+        totalTime: Date.now() - startTime
       };
     } catch (error) {
       lastError = classifyError(error);
 
       // Determine strategy
-      const strategy =
-        options.strategy || selectStrategy(lastError.type, lastError.severity);
+      const strategy = options.strategy || selectStrategy(lastError.type, lastError.severity);
 
       // Check if should retry
       const shouldRetryError = options.shouldRetry
@@ -101,7 +95,7 @@ export async function withRetry<T>(
           success: false,
           error: lastError,
           attempts,
-          totalTime: Date.now() - startTime,
+          totalTime: Date.now() - startTime
         };
       }
 
@@ -125,7 +119,7 @@ export async function withRetry<T>(
 export async function retry<T>(
   fn: () => Promise<T>,
   maxAttempts: number = 3,
-  delayMs: number = 1000,
+  delayMs: number = 1000
 ): Promise<T> {
   const result = await withRetry(fn, {
     strategy: {
@@ -133,8 +127,8 @@ export async function retry<T>(
       initialDelay: delayMs,
       maxDelay: delayMs * 10,
       multiplier: 2,
-      jitter: true,
-    },
+      jitter: true
+    }
   });
 
   if (!result.success) {
@@ -150,7 +144,7 @@ export async function retry<T>(
 export async function retryWithTimeout<T>(
   fn: () => Promise<T>,
   timeoutMs: number,
-  options: RetryOptions = {},
+  options: RetryOptions = {}
 ): Promise<RetryResult<T>> {
   const timeoutFn = async () => {
     const controller = new AbortController();
@@ -164,7 +158,7 @@ export async function retryWithTimeout<T>(
           controller.signal.addEventListener('abort', () => {
             reject(new Error(`Timeout after ${timeoutMs}ms`));
           });
-        }),
+        })
       ]);
 
       clearTimeout(timeoutId);
@@ -183,7 +177,7 @@ export async function retryWithTimeout<T>(
  */
 export async function batchRetry<T>(
   operations: Array<() => Promise<T>>,
-  options: RetryOptions = {},
+  options: RetryOptions = {}
 ): Promise<Array<RetryResult<T>>> {
   return Promise.all(operations.map((op) => withRetry(op, options)));
 }
@@ -193,7 +187,7 @@ export async function batchRetry<T>(
  */
 export function makeRetryable<T extends (...args: any[]) => Promise<any>>(
   fn: T,
-  options: RetryOptions = {},
+  options: RetryOptions = {}
 ): T {
   return (async (...args: Parameters<T>) => {
     const result = await withRetry(() => fn(...args), options);

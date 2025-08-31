@@ -12,7 +12,7 @@ export {
   generatePublicName,
   groupByServer,
   parsePublicName,
-  resolveRoute,
+  resolveRoute
 } from './router-functional.js';
 
 // Types
@@ -24,5 +24,5 @@ export type {
   RouterConfig,
   RouterContext,
   RouteTarget,
-  ToolRegistryInterface,
+  ToolRegistryInterface
 } from './router-types.js';

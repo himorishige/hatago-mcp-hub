@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 let CURRENT_CONFIG: any = {};
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => true),
-  readFileSync: vi.fn(() => JSON.stringify(CURRENT_CONFIG)),
+  readFileSync: vi.fn(() => JSON.stringify(CURRENT_CONFIG))
 }));
 
 // Side-effectful layers stubbed
@@ -25,7 +25,7 @@ vi.mock('../security/audit-logger.js', () => ({
       return [];
     }
     async logServerStateChange() {}
-  },
+  }
 }));
 vi.mock('../security/file-guard.js', () => ({
   FileAccessGuard: class {
@@ -33,7 +33,7 @@ vi.mock('../security/file-guard.js', () => ({
       return { validation: { valid: true, errors: [] }, impacts: [] };
     }
     async safeWrite() {}
-  },
+  }
 }));
 
 describe('HatagoManagementServer resources/prompts (smoke)', () => {
@@ -45,17 +45,15 @@ describe('HatagoManagementServer resources/prompts (smoke)', () => {
     CURRENT_CONFIG = config;
 
     const stateMachine = {
-      getState: vi.fn((id: string) =>
-        id === 's1' ? ServerState.ACTIVE : ServerState.INACTIVE,
-      ),
+      getState: vi.fn((id: string) => (id === 's1' ? ServerState.ACTIVE : ServerState.INACTIVE)),
       getAllStates: vi.fn(
         () =>
           new Map([
             ['s1', ServerState.ACTIVE],
-            ['s2', ServerState.INACTIVE],
-          ]),
+            ['s2', ServerState.INACTIVE]
+          ])
       ),
-      canActivate: vi.fn(() => true),
+      canActivate: vi.fn(() => true)
     } as any;
 
     const activationManager = {
@@ -63,41 +61,36 @@ describe('HatagoManagementServer resources/prompts (smoke)', () => {
       activate: vi.fn(async () => ({
         success: true,
         serverId: 's1',
-        state: ServerState.ACTIVE,
+        state: ServerState.ACTIVE
       })),
       deactivate: vi.fn(async () => ({
         success: true,
         serverId: 's1',
-        state: ServerState.INACTIVE,
+        state: ServerState.INACTIVE
       })),
       registerServer: vi.fn(),
-      resetServer: vi.fn(async () => ({})),
+      resetServer: vi.fn(async () => ({}))
     } as any;
 
     const idleManager = {
       getActivityStats: vi.fn(() => ({
         totalCalls: 0,
         startTime: Date.now(),
-        referenceCount: 0,
+        referenceCount: 0
       })),
       getAllActivities: vi.fn(
-        () =>
-          new Map([
-            ['s1', { totalCalls: 0, startTime: Date.now(), referenceCount: 0 }],
-          ]),
+        () => new Map([['s1', { totalCalls: 0, startTime: Date.now(), referenceCount: 0 }]])
       ),
-      stopIdleServers: vi.fn(async () => new Map([['s1', { stopped: true }]])),
+      stopIdleServers: vi.fn(async () => new Map([['s1', { stopped: true }]]))
     } as any;
 
-    const { HatagoManagementServer } = await import(
-      './hatago-management-server.js'
-    );
+    const { HatagoManagementServer } = await import('./hatago-management-server.js');
     const server = new HatagoManagementServer({
       configFilePath: '/fake/hatago.config.json',
       stateMachine,
       activationManager,
       idleManager,
-      enableAudit: false,
+      enableAudit: false
     });
     return { server, stateMachine };
   }
@@ -106,7 +99,7 @@ describe('HatagoManagementServer resources/prompts (smoke)', () => {
     const cfg = {
       version: 1,
       servers: { s1: { url: 'https://x' } },
-      adminMode: false,
+      adminMode: false
     };
     const { server } = await createServerWithConfig(cfg);
     const result = await server.handleResourceRead('hatago://config');
@@ -115,7 +108,7 @@ describe('HatagoManagementServer resources/prompts (smoke)', () => {
 
   it('lists servers resource (hatago://servers)', async () => {
     const cfg = {
-      servers: { s1: { url: 'https://x' }, s2: { command: 'node' } },
+      servers: { s1: { url: 'https://x' }, s2: { command: 'node' } }
     };
     const { server } = await createServerWithConfig(cfg);
     const list = await server.handleResourceRead('hatago://servers');
@@ -125,7 +118,7 @@ describe('HatagoManagementServer resources/prompts (smoke)', () => {
 
   it('returns states resource (hatago://states)', async () => {
     const cfg = {
-      servers: { s1: { url: 'https://x' }, s2: { command: 'node' } },
+      servers: { s1: { url: 'https://x' }, s2: { command: 'node' } }
     };
     const { server } = await createServerWithConfig(cfg);
     const states = await server.handleResourceRead('hatago://states');
@@ -136,7 +129,7 @@ describe('HatagoManagementServer resources/prompts (smoke)', () => {
     const cfg = { servers: {} };
     const { server } = await createServerWithConfig(cfg);
     const txt = await server.handlePrompt('configure_new_server', {
-      serverType: 'local',
+      serverType: 'local'
     });
     expect(txt).toContain('local MCP server');
     expect(txt).toContain('Server ID');

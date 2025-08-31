@@ -15,10 +15,6 @@ setPlatform(createNodePlatform());
 export * from './errors.js';
 export { HatagoHub } from './hub.js';
 // Export hub-streamable for HTTP handling
-export {
-  createEventsEndpoint,
-  handleMCPEndpoint,
-  handleSSEEndpoint,
-} from './hub-streamable.js';
+export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
 export { createHub } from './index.js';
 export * from './types.js';

@@ -35,15 +35,11 @@ export function setupServeCommand(program: Command): void {
         if (options.http) {
           mode = 'http';
         } else if (options.mode) {
-          mode = options.mode as 'stdio' | 'http';
+          mode = options.mode;
         }
 
         // Determine log level
-        const logLevel = options.quiet
-          ? 'error'
-          : options.verbose
-            ? 'debug'
-            : 'info';
+        const logLevel = options.quiet ? 'error' : options.verbose ? 'debug' : 'info';
 
         // Start server using @himorishige/hatago-server
         await startServer({
@@ -53,7 +49,7 @@ export function setupServeCommand(program: Command): void {
           host: options.host || '127.0.0.1',
           logLevel,
           verbose: options.verbose,
-          quiet: options.quiet,
+          quiet: options.quiet
         });
       } catch (error) {
         console.error('Failed to start server:', error);

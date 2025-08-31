@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Hatago MCP Hub Server - CLI Entry Point
  *
@@ -57,24 +58,19 @@ async function handleInitCommand(args: ParsedArgs) {
           mcpServers: {
             hatago: {
               command: 'npx',
-              args: [
-                '@himorishige/hatago-server',
-                '--stdio',
-                '--config',
-                configPath,
-              ],
-            },
-          },
+              args: ['@himorishige/hatago-server', '--stdio', '--config', configPath]
+            }
+          }
         },
         null,
-        2,
-      ),
+        2
+      )
     );
   } catch (error) {
     console.error(
       `❌ Failed to create configuration file: ${
         error instanceof Error ? error.message : String(error)
-      }`,
+      }`
     );
     process.exit(1);
   }
@@ -155,26 +151,17 @@ async function main() {
   }
 
   // Setup logger
-  const logLevel =
-    (args.flags['log-level'] as string) ??
-    process.env.HATAGO_LOG_LEVEL ??
-    'info';
+  const logLevel = (args.flags['log-level'] as string) ?? process.env.HATAGO_LOG_LEVEL ?? 'info';
   const logger = new Logger(logLevel);
 
   try {
     // Load configuration
     const configPath =
-      (args.flags.config as string) ??
-      process.env.HATAGO_CONFIG ??
-      './hatago.config.json';
+      (args.flags.config as string) ?? process.env.HATAGO_CONFIG ?? './hatago.config.json';
     const config = await loadConfig(configPath, logger);
 
     // Determine mode (default: stdio for Claude Code compatibility)
-    const mode = args.flags.stdio
-      ? 'stdio'
-      : args.flags.http
-        ? 'http'
-        : 'stdio';
+    const mode = args.flags.stdio ? 'stdio' : args.flags.http ? 'http' : 'stdio';
 
     // Get watch flag
     const watchConfig = args.flags.watch as boolean;
@@ -183,8 +170,7 @@ async function main() {
       logger.debug('Starting in STDIO mode');
       await startStdio(config, logger, watchConfig);
     } else {
-      const host =
-        (args.flags.host as string) ?? process.env.HATAGO_HOST ?? '127.0.0.1';
+      const host = (args.flags.host as string) ?? process.env.HATAGO_HOST ?? '127.0.0.1';
       const port = Number(args.flags.port ?? process.env.HATAGO_PORT ?? 3535);
 
       logger.debug(`Starting in HTTP mode on ${host}:${port}`);
@@ -193,19 +179,16 @@ async function main() {
         host,
         port,
         logger,
-        watchConfig,
+        watchConfig
       });
     }
   } catch (error) {
     // Handle specific errors with cleaner messages
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    if (
-      errorMessage.includes('ENOENT') &&
-      errorMessage.includes('hatago.config.json')
-    ) {
+    if (errorMessage.includes('ENOENT') && errorMessage.includes('hatago.config.json')) {
       logger.error(
-        "Configuration file not found. Run 'hatago init' to create one or specify a config file with --config",
+        "Configuration file not found. Run 'hatago init' to create one or specify a config file with --config"
       );
     } else {
       logger.error('Failed to start server:', errorMessage);

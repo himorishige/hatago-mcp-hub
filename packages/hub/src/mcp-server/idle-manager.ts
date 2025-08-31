@@ -46,10 +46,7 @@ export class IdleManager extends EventEmitter {
   private checkTimer?: NodeJS.Timeout;
   private readonly idleTimers = new Map<string, NodeJS.Timeout>();
 
-  constructor(
-    stateMachine: ServerStateMachine,
-    activationManager: ActivationManager,
-  ) {
+  constructor(stateMachine: ServerStateMachine, activationManager: ActivationManager) {
     super();
     this.stateMachine = stateMachine;
     this.activationManager = activationManager;
@@ -72,7 +69,7 @@ export class IdleManager extends EventEmitter {
       this.idlePolicies.set(serverId, {
         idleTimeoutMs: policy.idleTimeoutMs || 300000, // 5 min default
         minLingerMs: policy.minLingerMs || 30000, // 30 sec default
-        activityReset: policy.activityReset || 'onCallEnd',
+        activityReset: policy.activityReset || 'onCallEnd'
       });
     }
   }
@@ -111,11 +108,7 @@ export class IdleManager extends EventEmitter {
   /**
    * Track activity start (increment reference)
    */
-  trackActivityStart(
-    serverId: string,
-    sessionId: string,
-    toolName?: string,
-  ): void {
+  trackActivityStart(serverId: string, sessionId: string, toolName?: string): void {
     const activity = this.activities.get(serverId);
     if (!activity) return;
 
@@ -143,18 +136,14 @@ export class IdleManager extends EventEmitter {
       serverId,
       sessionId,
       toolName,
-      referenceCount: activity.referenceCount,
+      referenceCount: activity.referenceCount
     });
   }
 
   /**
    * Track activity end (decrement reference)
    */
-  trackActivityEnd(
-    serverId: string,
-    sessionId: string,
-    toolName?: string,
-  ): void {
+  trackActivityEnd(serverId: string, sessionId: string, toolName?: string): void {
     const activity = this.activities.get(serverId);
     if (!activity) return;
 
@@ -187,7 +176,7 @@ export class IdleManager extends EventEmitter {
       serverId,
       sessionId,
       toolName,
-      referenceCount: activity.referenceCount,
+      referenceCount: activity.referenceCount
     });
 
     // Schedule idle check if no references
@@ -225,7 +214,7 @@ export class IdleManager extends EventEmitter {
         idleTimeMs: 0,
         referenceCount: 0,
         shouldStop: false,
-        reason: 'Server not active',
+        reason: 'Server not active'
       };
     }
 
@@ -237,7 +226,7 @@ export class IdleManager extends EventEmitter {
         idleTimeMs: 0,
         referenceCount: 0,
         shouldStop: false,
-        reason: 'No activity data',
+        reason: 'No activity data'
       };
     }
 
@@ -249,7 +238,7 @@ export class IdleManager extends EventEmitter {
         idleTimeMs: 0,
         referenceCount: activity.referenceCount,
         shouldStop: false,
-        reason: 'Active references exist',
+        reason: 'Active references exist'
       };
     }
 
@@ -261,7 +250,7 @@ export class IdleManager extends EventEmitter {
         idleTimeMs: Date.now() - activity.lastActivity,
         referenceCount: 0,
         shouldStop: false,
-        reason: 'No idle policy defined',
+        reason: 'No idle policy defined'
       };
     }
 
@@ -277,7 +266,7 @@ export class IdleManager extends EventEmitter {
         idleTimeMs,
         referenceCount: 0,
         shouldStop: false,
-        reason: `Minimum linger time not met (${runTimeMs}ms < ${policy.minLingerMs}ms)`,
+        reason: `Minimum linger time not met (${runTimeMs}ms < ${policy.minLingerMs}ms)`
       };
     }
 
@@ -292,7 +281,7 @@ export class IdleManager extends EventEmitter {
       shouldStop,
       reason: shouldStop
         ? `Idle timeout exceeded (${idleTimeMs}ms >= ${policy.idleTimeoutMs}ms)`
-        : `Within idle timeout (${idleTimeMs}ms < ${policy.idleTimeoutMs}ms)`,
+        : `Within idle timeout (${idleTimeMs}ms < ${policy.idleTimeoutMs}ms)`
     };
   }
 
@@ -326,7 +315,7 @@ export class IdleManager extends EventEmitter {
       activeSessions: new Set(),
       activeTools: new Map(),
       startTime: now,
-      totalCalls: 0,
+      totalCalls: 0
     });
 
     this.emit('activity:initialized', { serverId });
@@ -362,11 +351,7 @@ export class IdleManager extends EventEmitter {
         // Transition to idling state
         const state = this.stateMachine.getState(serverId);
         if (state === ServerState.ACTIVE) {
-          await this.stateMachine.transition(
-            serverId,
-            ServerState.IDLING,
-            'Server is idle',
-          );
+          await this.stateMachine.transition(serverId, ServerState.IDLING, 'Server is idle');
         }
       }
     }, policy.idleTimeoutMs);
@@ -416,27 +401,21 @@ export class IdleManager extends EventEmitter {
   /**
    * Handle idle server stop
    */
-  private async handleIdleStop(
-    serverId: string,
-    result: IdleCheckResult,
-  ): Promise<void> {
+  private async handleIdleStop(serverId: string, result: IdleCheckResult): Promise<void> {
     this.emit('idle:stopping', {
       serverId,
       reason: result.reason,
-      idleTimeMs: result.idleTimeMs,
+      idleTimeMs: result.idleTimeMs
     });
 
     try {
-      await this.activationManager.deactivate(
-        serverId,
-        `Idle timeout: ${result.reason}`,
-      );
+      await this.activationManager.deactivate(serverId, `Idle timeout: ${result.reason}`);
 
       this.emit('idle:stopped', { serverId });
     } catch (error) {
       this.emit('idle:stop-failed', {
         serverId,
-        error,
+        error
       });
     }
   }
@@ -452,10 +431,7 @@ export class IdleManager extends EventEmitter {
 
       if (result.isIdle && result.referenceCount === 0) {
         try {
-          await this.activationManager.deactivate(
-            serverId,
-            'Force stop idle servers',
-          );
+          await this.activationManager.deactivate(serverId, 'Force stop idle servers');
           results.set(serverId, true);
         } catch {
           results.set(serverId, false);

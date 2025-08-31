@@ -41,10 +41,10 @@ npm install @hatago/runtime
 ## Usage
 
 ```typescript
-import { SessionManager } from "@hatago/runtime";
+import { SessionManager } from '@hatago/runtime';
 
 const sessionManager = new SessionManager(3600); // 1 hour TTL
-const session = await sessionManager.createSession("session-id");
+const session = await sessionManager.createSession('session-id');
 ```
 
 ## Dependencies

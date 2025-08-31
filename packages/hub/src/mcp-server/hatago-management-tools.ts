@@ -20,10 +20,10 @@ export function getManagementTools(): Tool[] {
           format: {
             type: 'string',
             enum: ['full', 'summary', 'servers_only'],
-            description: 'Output format',
-          },
-        },
-      },
+            description: 'Output format'
+          }
+        }
+      }
     },
 
     {
@@ -35,10 +35,10 @@ export function getManagementTools(): Tool[] {
           filter: {
             type: 'string',
             enum: ['all', 'active', 'inactive', 'error'],
-            description: 'Filter servers by state',
-          },
-        },
-      },
+            description: 'Filter servers by state'
+          }
+        }
+      }
     },
 
     {
@@ -49,15 +49,15 @@ export function getManagementTools(): Tool[] {
         properties: {
           serverId: {
             type: 'string',
-            description: 'Server ID',
+            description: 'Server ID'
           },
           reason: {
             type: 'string',
-            description: 'Activation reason',
-          },
+            description: 'Activation reason'
+          }
         },
-        required: ['serverId'],
-      },
+        required: ['serverId']
+      }
     },
 
     {
@@ -68,15 +68,15 @@ export function getManagementTools(): Tool[] {
         properties: {
           serverId: {
             type: 'string',
-            description: 'Server ID',
+            description: 'Server ID'
           },
           reason: {
             type: 'string',
-            description: 'Deactivation reason',
-          },
+            description: 'Deactivation reason'
+          }
         },
-        required: ['serverId'],
-      },
+        required: ['serverId']
+      }
     },
 
     {
@@ -87,11 +87,11 @@ export function getManagementTools(): Tool[] {
         properties: {
           serverId: {
             type: 'string',
-            description: 'Server ID',
-          },
+            description: 'Server ID'
+          }
         },
-        required: ['serverId'],
-      },
+        required: ['serverId']
+      }
     },
 
     {
@@ -99,8 +99,8 @@ export function getManagementTools(): Tool[] {
       description: 'Get current state of all servers',
       inputSchema: {
         type: 'object',
-        properties: {},
-      },
+        properties: {}
+      }
     },
 
     {
@@ -111,11 +111,11 @@ export function getManagementTools(): Tool[] {
         properties: {
           serverId: {
             type: 'string',
-            description: 'Server ID to reset',
-          },
+            description: 'Server ID to reset'
+          }
         },
-        required: ['serverId'],
-      },
-    },
+        required: ['serverId']
+      }
+    }
   ];
 }

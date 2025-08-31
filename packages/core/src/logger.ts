@@ -30,16 +30,13 @@ export const LOG_LEVELS: Record<LogLevel, number> = {
   warn: 2,
   info: 3,
   debug: 4,
-  trace: 5,
+  trace: 5
 };
 
 /**
  * Check if a log level should be output
  */
-export function shouldLog(
-  currentLevel: LogLevel,
-  messageLevel: LogLevel,
-): boolean {
+export function shouldLog(currentLevel: LogLevel, messageLevel: LogLevel): boolean {
   return LOG_LEVELS[messageLevel] <= LOG_LEVELS[currentLevel];
 }
 

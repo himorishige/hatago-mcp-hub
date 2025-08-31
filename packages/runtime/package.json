@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@himorishige/hatago-core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.17.3"
+    "@modelcontextprotocol/sdk": "^1.17.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",

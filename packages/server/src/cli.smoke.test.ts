@@ -13,8 +13,8 @@ vi.mock('./config.js', () => ({
   loadConfig: vi.fn().mockResolvedValue({
     path: './hatago.config.json',
     exists: true,
-    data: { mcpServers: {} },
-  }),
+    data: { mcpServers: {} }
+  })
 }));
 
 const startStdioMock = vi.fn().mockImplementation(() => {
@@ -28,11 +28,11 @@ const startHttpMock = vi.fn().mockImplementation(() => {
 });
 
 vi.mock('./stdio.js', () => ({
-  startStdio: startStdioMock,
+  startStdio: startStdioMock
 }));
 
 vi.mock('./http.js', () => ({
-  startHttp: startHttpMock,
+  startHttp: startHttpMock
 }));
 
 vi.mock('./utils.js', () => ({
@@ -50,7 +50,7 @@ vi.mock('./utils.js', () => ({
     }
     return { command: undefined, flags };
   }),
-  generateDefaultConfig: vi.fn(),
+  generateDefaultConfig: vi.fn()
 }));
 
 describe('server/cli (smoke)', () => {

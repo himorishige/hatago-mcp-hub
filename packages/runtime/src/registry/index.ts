@@ -9,7 +9,7 @@ export type {
   ResourceMetadata,
   ResourceRegistry,
   ResourceRegistryOptions,
-  ResourceResolveResult,
+  ResourceResolveResult
 } from './resource-registry.js';
 // Resource registry
 export { createResourceRegistry } from './resource-registry.js';

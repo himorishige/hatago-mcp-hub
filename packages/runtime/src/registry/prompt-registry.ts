@@ -33,9 +33,7 @@ export class PromptRegistry {
    * Register prompts from a server
    */
   registerServerPrompts(serverId: string, prompts: Prompt[]): void {
-    this.logger.info(
-      `Registering ${prompts.length} prompts from server ${serverId}`,
-    );
+    this.logger.info(`Registering ${prompts.length} prompts from server ${serverId}`);
 
     // Clear existing prompts for this server
     this.unregisterServerPrompts(serverId);
@@ -51,15 +49,13 @@ export class PromptRegistry {
         ...prompt,
         name: namespacedName,
         serverId,
-        originalName: prompt.name,
+        originalName: prompt.name
       };
 
       this.prompts.set(namespacedName, metadata);
       promptNames.add(namespacedName);
 
-      this.logger.debug(
-        `Registered prompt ${prompt.name} as ${namespacedName}`,
-      );
+      this.logger.debug(`Registered prompt ${prompt.name} as ${namespacedName}`);
     }
 
     // Track which prompts belong to this server
@@ -142,9 +138,7 @@ export class PromptRegistry {
   /**
    * Resolve prompt name to get server ID and original name
    */
-  resolvePrompt(
-    namespacedName: string,
-  ): { serverId: string; originalName: string } | null {
+  resolvePrompt(namespacedName: string): { serverId: string; originalName: string } | null {
     const metadata = this.prompts.get(namespacedName);
     if (!metadata) {
       return null;
@@ -152,7 +146,7 @@ export class PromptRegistry {
 
     return {
       serverId: metadata.serverId,
-      originalName: metadata.originalName,
+      originalName: metadata.originalName
     };
   }
 }

@@ -28,7 +28,7 @@ export enum ServerState {
   IDLING = 'idling', // Running but will stop soon
   STOPPING = 'stopping', // Shutting down
   ERROR = 'error', // Error state
-  COOLDOWN = 'cooldown', // Waiting before retry
+  COOLDOWN = 'cooldown' // Waiting before retry
 }
 
 /**

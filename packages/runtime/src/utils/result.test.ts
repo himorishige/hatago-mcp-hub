@@ -15,7 +15,7 @@ import {
   tryCatchAsync,
   unwrap,
   unwrapOr,
-  unwrapOrElse,
+  unwrapOrElse
 } from './result.js';
 
 describe('Result type', () => {
@@ -72,9 +72,7 @@ describe('Result type', () => {
   describe('mapErr', () => {
     it('should not map error on Ok result', () => {
       const result = ok(42);
-      const mapped = mapErr(result, () =>
-        ErrorHelpers.mcpConnectionFailed('test'),
-      );
+      const mapped = mapErr(result, () => ErrorHelpers.mcpConnectionFailed('test'));
       expect(isOk(mapped)).toBe(true);
       if (isOk(mapped)) {
         expect(mapped.value).toBe(42);
@@ -83,9 +81,7 @@ describe('Result type', () => {
 
     it('should map error on Err result', () => {
       const result = err(ErrorHelpers.invalidConfiguration());
-      const mapped = mapErr(result, () =>
-        ErrorHelpers.mcpConnectionFailed('test'),
-      );
+      const mapped = mapErr(result, () => ErrorHelpers.mcpConnectionFailed('test'));
       expect(isErr(mapped)).toBe(true);
       if (isErr(mapped)) {
         expect(mapped.error.code).toBe('E_MCP_CONNECTION_FAILED');
@@ -115,9 +111,7 @@ describe('Result type', () => {
 
     it('should propagate error from chained operation', () => {
       const result = ok(42);
-      const chained = flatMap(result, () =>
-        err(ErrorHelpers.mcpConnectionFailed('test')),
-      );
+      const chained = flatMap(result, () => err(ErrorHelpers.mcpConnectionFailed('test')));
       expect(isErr(chained)).toBe(true);
       if (isErr(chained)) {
         expect(chained.error.code).toBe('E_MCP_CONNECTION_FAILED');
@@ -184,9 +178,7 @@ describe('Result type', () => {
 
     it('should use error mapper for rejected promise', async () => {
       const promise = Promise.reject(new Error('test'));
-      const result = await fromPromise(promise, () =>
-        ErrorHelpers.mcpConnectionFailed('mapped'),
-      );
+      const result = await fromPromise(promise, () => ErrorHelpers.mcpConnectionFailed('mapped'));
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
         expect(result.error.code).toBe('E_MCP_CONNECTION_FAILED');
@@ -250,7 +242,7 @@ describe('Result type', () => {
         () => {
           throw new Error('test');
         },
-        () => ErrorHelpers.mcpConnectionFailed('mapped'),
+        () => ErrorHelpers.mcpConnectionFailed('mapped')
       );
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
@@ -280,7 +272,7 @@ describe('Result type', () => {
         async () => {
           throw new Error('test');
         },
-        () => ErrorHelpers.mcpConnectionFailed('mapped'),
+        () => ErrorHelpers.mcpConnectionFailed('mapped')
       );
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {

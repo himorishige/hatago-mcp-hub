@@ -14,9 +14,7 @@ import type { HubOptions, ServerSpec } from './types.js';
  * Create a new Hatago Hub instance
  * If a configFile is provided, creates an EnhancedHatagoHub with management features
  */
-export function createHub(
-  options?: HubOptions | EnhancedHubOptions,
-): HatagoHub {
+export function createHub(options?: HubOptions | EnhancedHubOptions): HatagoHub {
   // If configFile is provided, use EnhancedHatagoHub for management features
   if (options?.configFile) {
     return new EnhancedHatagoHub(options as EnhancedHubOptions);
@@ -34,7 +32,7 @@ export function cliServer(
     args?: string[];
     env?: Record<string, string>;
     cwd?: string;
-  },
+  }
 ): [string, ServerSpec] {
   return [id, spec];
 }
@@ -48,15 +46,15 @@ export function httpServer(
   options?: {
     headers?: Record<string, string>;
     timeout?: number;
-  },
+  }
 ): [string, ServerSpec] {
   return [
     id,
     {
       url,
       type: 'http',
-      ...options,
-    },
+      ...options
+    }
   ];
 }
 
@@ -69,15 +67,15 @@ export function sseServer(
   options?: {
     headers?: Record<string, string>;
     timeout?: number;
-  },
+  }
 ): [string, ServerSpec] {
   return [
     id,
     {
       url,
       type: 'sse',
-      ...options,
-    },
+      ...options
+    }
   ];
 }
 
@@ -92,16 +90,12 @@ export {
   TimeoutError,
   ToolInvocationError,
   TransportError,
-  toHatagoError,
+  toHatagoError
 } from './errors.js';
 // Export main class and types
 export { HatagoHub } from './hub.js';
 // Export streamable HTTP helpers
-export {
-  createEventsEndpoint,
-  handleMCPEndpoint,
-  handleSSEEndpoint,
-} from './hub-streamable.js';
+export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
 export { ActivationManager } from './mcp-server/activation-manager.js';
 export { HatagoManagementServer } from './mcp-server/hatago-management-server.js';
 export { IdleManager } from './mcp-server/idle-manager.js';
@@ -118,5 +112,5 @@ export type {
   HubOptions,
   ListOptions,
   ReadOptions,
-  ServerSpec,
+  ServerSpec
 } from './types.js';

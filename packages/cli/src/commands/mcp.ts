@@ -34,9 +34,7 @@ export function setupMcpCommand(program: Command): void {
       servers.forEach((server) => {
         console.log(`  ${server.id} (${server.type})`);
         if (server.command) {
-          console.log(
-            `    Command: ${server.command} ${server.args?.join(' ') || ''}`,
-          );
+          console.log(`    Command: ${server.command} ${server.args?.join(' ') || ''}`);
         }
         if (server.url) {
           console.log(`    URL: ${server.url}`);
@@ -48,56 +46,46 @@ export function setupMcpCommand(program: Command): void {
   mcp
     .command('add <name>')
     .description('Add a new MCP server')
-    .option(
-      '-t, --transport <transport>',
-      'transport type (stdio, http, sse)',
-      'stdio',
-    )
+    .option('-t, --transport <transport>', 'transport type (stdio, http, sse)', 'stdio')
     .option('-u, --url <url>', 'server URL (for remote servers)')
     .argument('[command...]', 'command to run (for local servers)')
-    .action(
-      (
-        name: string,
-        command: string[],
-        options: { transport?: string; url?: string },
-      ) => {
-        const servers = loadServers();
+    .action((name: string, command: string[], options: { transport?: string; url?: string }) => {
+      const servers = loadServers();
 
-        // Check if server already exists
-        if (servers.find((s) => s.id === name)) {
-          console.error(`Server "${name}" already exists`);
-          process.exit(1);
-        }
+      // Check if server already exists
+      if (servers.find((s) => s.id === name)) {
+        console.error(`Server "${name}" already exists`);
+        process.exit(1);
+      }
 
-        const server: McpServer = {
-          id: name,
-          type: 'local',
-          transport: options.transport as 'stdio' | 'http' | 'sse' | undefined,
-        };
+      const server: McpServer = {
+        id: name,
+        type: 'local',
+        transport: options.transport as 'stdio' | 'http' | 'sse' | undefined
+      };
 
-        if (options.url) {
-          server.type = 'remote';
-          server.url = options.url;
-        } else if (command.length > 0) {
-          // Check if it's an npx command
-          if (command[0] === 'npx') {
-            server.type = 'npx';
-            server.command = command[0];
-            server.args = command.slice(1);
-          } else {
-            server.command = command[0];
-            server.args = command.slice(1);
-          }
+      if (options.url) {
+        server.type = 'remote';
+        server.url = options.url;
+      } else if (command.length > 0) {
+        // Check if it's an npx command
+        if (command[0] === 'npx') {
+          server.type = 'npx';
+          server.command = command[0];
+          server.args = command.slice(1);
         } else {
-          console.error('Either URL or command must be specified');
-          process.exit(1);
+          server.command = command[0];
+          server.args = command.slice(1);
         }
+      } else {
+        console.error('Either URL or command must be specified');
+        process.exit(1);
+      }
 
-        servers.push(server);
-        saveServers(servers);
-        console.log(`Added MCP server "${name}"`);
-      },
-    );
+      servers.push(server);
+      saveServers(servers);
+      console.log(`Added MCP server "${name}"`);
+    });
 
   // Remove server
   mcp

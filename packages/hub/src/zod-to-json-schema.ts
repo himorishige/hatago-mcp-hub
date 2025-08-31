@@ -29,7 +29,7 @@ export function zodToJsonSchema(schema: z.ZodObject<any>): any {
     }
 
     properties[key] = {
-      type: jsonType,
+      type: jsonType
     };
 
     // Check if optional
@@ -45,7 +45,7 @@ export function zodToJsonSchema(schema: z.ZodObject<any>): any {
       }
 
       properties[key] = {
-        type: innerJsonType,
+        type: innerJsonType
       };
 
       // Add description if available
@@ -65,6 +65,6 @@ export function zodToJsonSchema(schema: z.ZodObject<any>): any {
   return {
     type: 'object',
     properties,
-    required: required.length > 0 ? required : undefined,
+    required: required.length > 0 ? required : undefined
   };
 }

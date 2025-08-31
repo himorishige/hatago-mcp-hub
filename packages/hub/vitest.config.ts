@@ -5,6 +5,6 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
-    exclude: ['src/**/*.workers.test.ts', 'src/**/*.workers.spec.ts'],
-  },
+    exclude: ['src/**/*.workers.test.ts', 'src/**/*.workers.spec.ts']
+  }
 });

@@ -175,8 +175,8 @@ Hatagoは、サーバーを独立したユニットとして扱うのではな�
 ```typescript
 // 自動ランタイム検出とプラットフォーム作成
 const platform = detectAndCreatePlatform({
-  storage: { type: "file", path: "./.hatago" },
-  logger: { level: "info" },
+  storage: { type: 'file', path: './.hatago' },
+  logger: { level: 'info' }
 });
 
 // プラットフォームでハブを初期化

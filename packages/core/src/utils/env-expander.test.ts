@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   expandConfig,
   expandEnvironmentVariables,
-  validateEnvironmentVariables,
+  validateEnvironmentVariables
 } from './env-expander.js';
 
 describe('env-expander', () => {
@@ -38,15 +38,11 @@ describe('env-expander', () => {
       // Simulate Cloudflare Workers environment
       const workersEnv = {
         API_KEY: 'secret-key-123',
-        BASE_URL: 'https://api.example.com',
+        BASE_URL: 'https://api.example.com'
       };
-      const getEnv = (key: string) =>
-        workersEnv[key as keyof typeof workersEnv];
+      const getEnv = (key: string) => workersEnv[key as keyof typeof workersEnv];
 
-      const result = expandEnvironmentVariables(
-        '${BASE_URL}/api?key=${API_KEY}',
-        getEnv,
-      );
+      const result = expandEnvironmentVariables('${BASE_URL}/api?key=${API_KEY}', getEnv);
       expect(result).toBe('https://api.example.com/api?key=secret-key-123');
     });
 
@@ -59,17 +55,13 @@ describe('env-expander', () => {
 
     it('should use default value when variable is not defined', () => {
       delete process.env.UNDEFINED_VAR;
-      const result = expandEnvironmentVariables(
-        '${UNDEFINED_VAR:-default_value}',
-      );
+      const result = expandEnvironmentVariables('${UNDEFINED_VAR:-default_value}');
       expect(result).toBe('default_value');
     });
 
     it('should use environment variable over default when defined', () => {
       process.env.DEFINED_VAR = 'actual_value';
-      const result = expandEnvironmentVariables(
-        '${DEFINED_VAR:-default_value}',
-      );
+      const result = expandEnvironmentVariables('${DEFINED_VAR:-default_value}');
       expect(result).toBe('actual_value');
     });
 
@@ -88,7 +80,7 @@ describe('env-expander', () => {
     it('should throw error for undefined variable without default', () => {
       delete process.env.REQUIRED_VAR;
       expect(() => expandEnvironmentVariables('${REQUIRED_VAR}')).toThrow(
-        "Environment variable 'REQUIRED_VAR' is not defined and no default value provided",
+        "Environment variable 'REQUIRED_VAR' is not defined and no default value provided"
       );
     });
 
@@ -128,9 +120,9 @@ describe('env-expander', () => {
       const config = {
         mcpServers: {
           test: {
-            command: '${MCP_PATH}/server',
-          },
-        },
+            command: '${MCP_PATH}/server'
+          }
+        }
       };
       const result = expandConfig(config);
       expect(result.mcpServers.test.command).toBe('/usr/local/bin/server');
@@ -141,17 +133,12 @@ describe('env-expander', () => {
       const config = {
         mcpServers: {
           test: {
-            args: ['--token', '${API_TOKEN}', '--port', '3000'],
-          },
-        },
+            args: ['--token', '${API_TOKEN}', '--port', '3000']
+          }
+        }
       };
       const result = expandConfig(config);
-      expect(result.mcpServers.test.args).toEqual([
-        '--token',
-        'secret-token',
-        '--port',
-        '3000',
-      ]);
+      expect(result.mcpServers.test.args).toEqual(['--token', 'secret-token', '--port', '3000']);
     });
 
     it('should expand env object values', () => {
@@ -161,10 +148,10 @@ describe('env-expander', () => {
           test: {
             env: {
               PATH: '${BASE_PATH}/bin:${PATH:-/usr/bin}',
-              NODE_ENV: 'production',
-            },
-          },
-        },
+              NODE_ENV: 'production'
+            }
+          }
+        }
       };
       const result = expandConfig(config);
       expect(result.mcpServers.test.env.PATH).toMatch(/^\/app\/bin:/);
@@ -176,9 +163,9 @@ describe('env-expander', () => {
       const config = {
         mcpServers: {
           test: {
-            url: '${API_BASE}/mcp',
-          },
-        },
+            url: '${API_BASE}/mcp'
+          }
+        }
       };
       const result = expandConfig(config);
       expect(result.mcpServers.test.url).toBe('https://api.example.com/mcp');
@@ -191,18 +178,14 @@ describe('env-expander', () => {
           test: {
             headers: {
               Authorization: '${AUTH_TOKEN}',
-              'Content-Type': 'application/json',
-            },
-          },
-        },
+              'Content-Type': 'application/json'
+            }
+          }
+        }
       };
       const result = expandConfig(config);
-      expect(result.mcpServers.test.headers.Authorization).toBe(
-        'Bearer abc123',
-      );
-      expect(result.mcpServers.test.headers['Content-Type']).toBe(
-        'application/json',
-      );
+      expect(result.mcpServers.test.headers.Authorization).toBe('Bearer abc123');
+      expect(result.mcpServers.test.headers['Content-Type']).toBe('application/json');
     });
 
     it('should support VS Code servers key', () => {
@@ -211,9 +194,9 @@ describe('env-expander', () => {
         servers: {
           github: {
             command: 'github-server',
-            args: ['--token', '${GITHUB_TOKEN}'],
-          },
-        },
+            args: ['--token', '${GITHUB_TOKEN}']
+          }
+        }
       };
       const result = expandConfig(config);
       expect(result.servers.github.args[1]).toBe('ghp_xxx');
@@ -225,14 +208,14 @@ describe('env-expander', () => {
       const config = {
         mcpServers: {
           server1: {
-            args: ['${TOKEN1}'],
-          },
+            args: ['${TOKEN1}']
+          }
         },
         servers: {
           server2: {
-            args: ['${TOKEN2}'],
-          },
-        },
+            args: ['${TOKEN2}']
+          }
+        }
       };
       const result = expandConfig(config);
       expect(result.mcpServers.server1.args[0]).toBe('token1');
@@ -244,9 +227,9 @@ describe('env-expander', () => {
       const config = {
         mcpServers: {
           test: {
-            command: '${TEST}',
-          },
-        },
+            command: '${TEST}'
+          }
+        }
       };
       const original = JSON.stringify(config);
       expandConfig(config);
@@ -256,8 +239,8 @@ describe('env-expander', () => {
     it('should handle missing server configs gracefully', () => {
       const config = {
         mcpServers: {
-          test: null,
-        },
+          test: null
+        }
       };
       const result = expandConfig(config);
       expect(result.mcpServers.test).toBeNull();
@@ -266,7 +249,7 @@ describe('env-expander', () => {
     it('should use custom getEnv for config expansion', () => {
       const customEnv = {
         CUSTOM_PATH: '/custom/path',
-        CUSTOM_TOKEN: 'secret-token',
+        CUSTOM_TOKEN: 'secret-token'
       };
       const getEnv = (key: string) => customEnv[key as keyof typeof customEnv];
 
@@ -274,9 +257,9 @@ describe('env-expander', () => {
         mcpServers: {
           test: {
             command: '${CUSTOM_PATH}/server',
-            args: ['--token', '${CUSTOM_TOKEN}'],
-          },
-        },
+            args: ['--token', '${CUSTOM_TOKEN}']
+          }
+        }
       };
 
       const result = expandConfig(config, getEnv);
@@ -293,9 +276,9 @@ describe('env-expander', () => {
         mcpServers: {
           test: {
             command: '${REQUIRED1}',
-            args: ['${REQUIRED2}'],
-          },
-        },
+            args: ['${REQUIRED2}']
+          }
+        }
       };
       expect(() => validateEnvironmentVariables(config)).not.toThrow();
     });
@@ -305,9 +288,9 @@ describe('env-expander', () => {
       const config = {
         mcpServers: {
           test: {
-            command: '${OPTIONAL:-/usr/bin/default}',
-          },
-        },
+            command: '${OPTIONAL:-/usr/bin/default}'
+          }
+        }
       };
       expect(() => validateEnvironmentVariables(config)).not.toThrow();
     });
@@ -322,13 +305,13 @@ describe('env-expander', () => {
             command: '${MISSING1}',
             args: ['${MISSING2}', '${MISSING3}'],
             env: {
-              VAR: '${MISSING1}', // Duplicate should only appear once
-            },
-          },
-        },
+              VAR: '${MISSING1}' // Duplicate should only appear once
+            }
+          }
+        }
       };
       expect(() => validateEnvironmentVariables(config)).toThrow(
-        'Missing required environment variables: MISSING1, MISSING2, MISSING3',
+        'Missing required environment variables: MISSING1, MISSING2, MISSING3'
       );
     });
 
@@ -345,12 +328,12 @@ describe('env-expander', () => {
             args: ['${ARG_VAR}'],
             env: { TEST: '${ENV_VAR}' },
             url: '${URL_VAR}',
-            headers: { Auth: '${HEADER_VAR}' },
-          },
-        },
+            headers: { Auth: '${HEADER_VAR}' }
+          }
+        }
       };
       expect(() => validateEnvironmentVariables(config)).toThrow(
-        'Missing required environment variables: ARG_VAR, CMD_VAR, ENV_VAR, HEADER_VAR, URL_VAR',
+        'Missing required environment variables: ARG_VAR, CMD_VAR, ENV_VAR, HEADER_VAR, URL_VAR'
       );
     });
 
@@ -359,12 +342,12 @@ describe('env-expander', () => {
       const config = {
         servers: {
           test: {
-            command: '${VS_CODE_VAR}',
-          },
-        },
+            command: '${VS_CODE_VAR}'
+          }
+        }
       };
       expect(() => validateEnvironmentVariables(config)).toThrow(
-        'Missing required environment variables: VS_CODE_VAR',
+        'Missing required environment variables: VS_CODE_VAR'
       );
     });
 
@@ -375,9 +358,9 @@ describe('env-expander', () => {
       const config = {
         mcpServers: {
           test: {
-            command: '${CUSTOM_VAR}',
-          },
-        },
+            command: '${CUSTOM_VAR}'
+          }
+        }
       };
 
       // Should pass with custom env
@@ -386,7 +369,7 @@ describe('env-expander', () => {
       // Should fail with empty custom env
       const emptyGetEnv = () => undefined;
       expect(() => validateEnvironmentVariables(config, emptyGetEnv)).toThrow(
-        'Missing required environment variables: CUSTOM_VAR',
+        'Missing required environment variables: CUSTOM_VAR'
       );
     });
   });

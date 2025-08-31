@@ -13,27 +13,28 @@ import type { Logger } from './logger.js';
 /**
  * Start the MCP server in STDIO mode
  */
-export async function startStdio(
-  config: any,
-  logger: Logger,
-  watchConfig = false,
-): Promise<void> {
+export async function startStdio(config: any, logger: Logger, watchConfig = false): Promise<void> {
   // Ensure stdout is for protocol only
   process.stdout.setDefaultEncoding('utf8');
+
+  // Shutdown flag to prevent sending messages during shutdown
+  let isShuttingDown = false;
 
   // Create hub instance
   logger.info('[STDIO] Creating hub with config watch', {
     configFile: config.path,
-    watchConfig,
+    watchConfig
   });
   const hub = createHub({ configFile: config.path, watchConfig });
 
   // Set up notification handler to forward to Claude Code
   hub.onNotification = async (notification: any) => {
-    logger.info(
-      '[STDIO] Forwarding notification from child server:',
-      notification,
-    );
+    // Don't send notifications during shutdown
+    if (isShuttingDown) {
+      return;
+    }
+
+    logger.info('[STDIO] Forwarding notification from child server:', notification);
     // Ensure it's a proper notification (no id field)
     if (!notification.method) {
       logger.warn('Invalid notification without method:', notification);
@@ -41,7 +42,7 @@ export async function startStdio(
     }
     // Remove any id field to ensure it's treated as a notification
     const { id, ...notificationWithoutId } = notification;
-    await sendMessage(notificationWithoutId, logger);
+    await sendMessage(notificationWithoutId, logger, isShuttingDown);
   };
 
   await hub.start();
@@ -50,8 +51,18 @@ export async function startStdio(
 
   // Setup graceful shutdown
   const shutdown = async (signal: string) => {
+    if (isShuttingDown) {
+      return; // Already shutting down
+    }
+    isShuttingDown = true;
     logger.info(`Received ${signal}, shutting down...`);
-    await hub.stop();
+
+    try {
+      await hub.stop();
+    } catch (error) {
+      logger.error('Error during hub shutdown:', error);
+    }
+
     process.exit(0);
   };
 
@@ -77,6 +88,11 @@ export async function startStdio(
   });
 
   process.stdin.on('data', async (chunk: Buffer) => {
+    // Don't process new data during shutdown
+    if (isShuttingDown) {
+      return;
+    }
+
     lastMessageTime = Date.now();
     // Append new data to buffer
     buffer += chunk.toString();
@@ -99,11 +115,12 @@ export async function startStdio(
               error: {
                 code: -32600,
                 message: 'Invalid Request',
-                data: 'Request must be an object',
+                data: 'Request must be an object'
               },
-              id: message?.id || null,
+              id: message?.id || null
             },
             logger,
+            isShuttingDown
           );
           continue;
         }
@@ -116,11 +133,12 @@ export async function startStdio(
               error: {
                 code: -32600,
                 message: 'Invalid Request',
-                data: 'Missing required fields',
+                data: 'Missing required fields'
               },
-              id: message.id || null,
+              id: message.id || null
             },
             logger,
+            isShuttingDown
           );
           continue;
         }
@@ -131,7 +149,7 @@ export async function startStdio(
         const response = await processMessage(hub, message, logger);
 
         if (response) {
-          await sendMessage(response, logger);
+          await sendMessage(response, logger, isShuttingDown);
         }
       } catch (error) {
         logger.error('Failed to parse message:', error, 'Line:', line);
@@ -143,11 +161,12 @@ export async function startStdio(
             error: {
               code: -32700,
               message: 'Parse error',
-              data: error instanceof Error ? error.message : 'Invalid JSON',
+              data: error instanceof Error ? error.message : 'Invalid JSON'
             },
-            id: null,
+            id: null
           },
           logger,
+          isShuttingDown
         );
       }
     }
@@ -155,6 +174,7 @@ export async function startStdio(
 
   // Handle stdin errors
   process.stdin.on('error', (error) => {
+    isShuttingDown = true; // Set flag immediately
     if ((error as any).code === 'EPIPE') {
       logger.info('STDIN pipe closed');
     } else {
@@ -164,6 +184,7 @@ export async function startStdio(
   });
 
   process.stdin.on('end', () => {
+    isShuttingDown = true; // Set flag immediately
     logger.info('STDIN closed, shutting down...');
     shutdown('STDIN_CLOSE');
   });
@@ -175,7 +196,12 @@ export async function startStdio(
 /**
  * Send a message over STDIO with LSP framing
  */
-async function sendMessage(message: any, logger: Logger): Promise<void> {
+async function sendMessage(message: any, logger: Logger, isShuttingDown = false): Promise<void> {
+  // Don't send messages during shutdown
+  if (isShuttingDown) {
+    return;
+  }
+
   const body = `${JSON.stringify(message)}\n`;
 
   // Log what we're sending at debug level
@@ -199,11 +225,7 @@ async function sendMessage(message: any, logger: Logger): Promise<void> {
 /**
  * Process incoming MCP message
  */
-async function processMessage(
-  hub: HatagoHub,
-  message: any,
-  logger: Logger,
-): Promise<any> {
+async function processMessage(hub: HatagoHub, message: any, logger: Logger): Promise<any> {
   const { method, params, id } = message;
 
   try {
@@ -218,13 +240,13 @@ async function processMessage(
             capabilities: {
               tools: {},
               resources: {},
-              prompts: {},
+              prompts: {}
             },
             serverInfo: {
               name: 'hatago-hub',
-              version: '0.1.0',
-            },
-          },
+              version: '0.1.0'
+            }
+          }
         };
 
       case 'notifications/initialized':
@@ -237,6 +259,7 @@ async function processMessage(
       case 'tools/call':
       case 'resources/list':
       case 'resources/read':
+      case 'resources/templates/list':
       case 'prompts/list':
       case 'prompts/get':
         // Forward to hub's JSON-RPC handler
@@ -255,8 +278,8 @@ async function processMessage(
           error: {
             code: -32601,
             message: 'Method not found',
-            data: { method },
-          },
+            data: { method }
+          }
         };
     }
   } catch (error) {
@@ -266,8 +289,8 @@ async function processMessage(
       error: {
         code: -32603,
         message: 'Internal error',
-        data: error instanceof Error ? error.message : String(error),
-      },
+        data: error instanceof Error ? error.message : String(error)
+      }
     };
   }
 }

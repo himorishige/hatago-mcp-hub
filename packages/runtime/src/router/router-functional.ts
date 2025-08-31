@@ -2,11 +2,7 @@
  * Pure functional router utilities
  */
 
-import type {
-  RouteDecision,
-  RouterConfig,
-  RouteTarget,
-} from './router-types.js';
+import type { RouteDecision, RouterConfig, RouteTarget } from './router-types.js';
 
 /**
  * Generate public name with namespace
@@ -14,7 +10,7 @@ import type {
 export function generatePublicName(
   serverId: string,
   originalName: string,
-  config: RouterConfig = {},
+  config: RouterConfig = {}
 ): string {
   const strategy = config.namingStrategy || 'namespace';
   const separator = config.separator || '_';
@@ -40,7 +36,7 @@ export function generatePublicName(
  */
 export function parsePublicName(
   publicName: string,
-  config: RouterConfig = {},
+  config: RouterConfig = {}
 ): { serverId?: string; originalName: string } {
   const strategy = config.namingStrategy || 'namespace';
   const separator = config.separator || '_';
@@ -54,14 +50,14 @@ export function parsePublicName(
   if (strategy === 'prefix' && parts.length > 1) {
     return {
       serverId: parts[0],
-      originalName: parts.slice(1).join(separator),
+      originalName: parts.slice(1).join(separator)
     };
   }
 
   if (strategy === 'suffix' && parts.length > 1) {
     return {
       serverId: parts[parts.length - 1],
-      originalName: parts.slice(0, -1).join(separator),
+      originalName: parts.slice(0, -1).join(separator)
     };
   }
 
@@ -69,7 +65,7 @@ export function parsePublicName(
   if (parts.length > 1) {
     return {
       serverId: parts[0],
-      originalName: parts.slice(1).join(separator),
+      originalName: parts.slice(1).join(separator)
     };
   }
 
@@ -83,19 +79,18 @@ export function resolveRoute(
   publicName: string,
   resolver: (name: string) => RouteTarget | null,
   _config: RouterConfig = {},
-  resolvedBy: string = 'registry',
+  resolvedBy: string = 'registry'
 ): RouteDecision {
   try {
     const target = resolver(publicName);
 
     if (!target) {
       const entityType = resolvedBy.replace('Registry', '');
-      const capitalizedType =
-        entityType.charAt(0).toUpperCase() + entityType.slice(1);
+      const capitalizedType = entityType.charAt(0).toUpperCase() + entityType.slice(1);
       return {
         found: false,
         target: null,
-        error: `${capitalizedType} not found: ${publicName}`,
+        error: `${capitalizedType} not found: ${publicName}`
       };
     }
 
@@ -104,14 +99,14 @@ export function resolveRoute(
       target,
       metadata: {
         publicName,
-        resolvedBy,
-      },
+        resolvedBy
+      }
     };
   } catch (error) {
     return {
       found: false,
       target: null,
-      error: error instanceof Error ? error.message : 'Unknown routing error',
+      error: error instanceof Error ? error.message : 'Unknown routing error'
     };
   }
 }
@@ -122,7 +117,7 @@ export function resolveRoute(
 export function batchResolveRoutes<T extends string>(
   names: T[],
   resolver: (name: string) => RouteTarget | null,
-  config: RouterConfig = {},
+  config: RouterConfig = {}
 ): Map<T, RouteDecision> {
   const results = new Map<T, RouteDecision>();
 
@@ -136,19 +131,14 @@ export function batchResolveRoutes<T extends string>(
 /**
  * Filter routes by server ID
  */
-export function filterByServer<T extends { serverId: string }>(
-  items: T[],
-  serverId: string,
-): T[] {
+export function filterByServer<T extends { serverId: string }>(items: T[], serverId: string): T[] {
   return items.filter((item) => item.serverId === serverId);
 }
 
 /**
  * Group routes by server ID
  */
-export function groupByServer<T extends { serverId: string }>(
-  items: T[],
-): Map<string, T[]> {
+export function groupByServer<T extends { serverId: string }>(items: T[]): Map<string, T[]> {
   const groups = new Map<string, T[]>();
 
   for (const item of items) {

@@ -17,7 +17,7 @@ export interface ParsedArgs {
 export function parseArgs(args: string[]): ParsedArgs {
   const result: ParsedArgs = {
     flags: {},
-    positional: [],
+    positional: []
   };
 
   let i = 0;
@@ -58,14 +58,15 @@ export function parseArgs(args: string[]): ParsedArgs {
  */
 export function generateDefaultConfig(): string {
   const defaultConfig = {
-    $schema: '../../../schemas/config.schema.json',
+    $schema:
+      'https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json',
     version: 1,
     mcpServers: {
       deepwiki: {
-        url: 'https://mcp.deepwiki.com/mcp',
-        transport: 'streamable-http' as const,
-      },
-    },
+        url: 'https://mcp.deepwiki.com/sse',
+        type: 'sse' as const
+      }
+    }
   };
 
   return JSON.stringify(defaultConfig, null, 2);

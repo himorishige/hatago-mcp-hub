@@ -18,9 +18,7 @@ function isDebugEnabled(): boolean {
   // Try platform first, fallback to direct check for backward compatibility
   if (isPlatformInitialized()) {
     const platform = getPlatform();
-    return (
-      platform.getEnv('DEBUG') === 'true' || platform.getEnv('DEBUG') === '*'
-    );
+    return platform.getEnv('DEBUG') === 'true' || platform.getEnv('DEBUG') === '*';
   }
   // Fallback for environments where platform isn't initialized yet
   return (
@@ -48,5 +46,5 @@ export const logger: Logger = {
   },
   error: (message: string, ...args: any[]) => {
     console.error(`[ERROR] ${message}`, ...args);
-  },
+  }
 };

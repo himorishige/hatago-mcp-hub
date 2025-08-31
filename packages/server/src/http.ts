@@ -39,8 +39,8 @@ export async function startHttp(options: HttpOptions): Promise<void> {
     cors({
       origin: ['http://localhost:*', 'http://127.0.0.1:*'],
       credentials: true,
-      allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id'],
-    }),
+      allowHeaders: ['Content-Type', 'Accept', 'mcp-session-id']
+    })
   );
 
   // Health check endpoint
@@ -48,8 +48,8 @@ export async function startHttp(options: HttpOptions): Promise<void> {
     c.json({
       status: 'healthy',
       mode: 'http',
-      uptime: process.uptime(),
-    }),
+      uptime: process.uptime()
+    })
   );
 
   // MCP protocol endpoint
@@ -64,7 +64,7 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   const server = serve({
     fetch: app.fetch,
     port,
-    hostname: host,
+    hostname: host
   });
 
   logger.info(`Hatago MCP Hub started in HTTP mode`);

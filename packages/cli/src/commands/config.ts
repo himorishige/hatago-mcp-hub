@@ -18,9 +18,7 @@ interface HatagoConfig {
 }
 
 export function setupConfigCommand(program: Command): void {
-  const config = program
-    .command('config')
-    .description('Manage Hatago configuration');
+  const config = program.command('config').description('Manage Hatago configuration');
 
   // Show config
   config
@@ -91,11 +89,7 @@ export function setupConfigCommand(program: Command): void {
       }
 
       // Output primitive values directly, objects/arrays as JSON
-      if (
-        typeof value === 'string' ||
-        typeof value === 'number' ||
-        typeof value === 'boolean'
-      ) {
+      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
         console.log(String(value));
       } else {
         console.log(JSON.stringify(value, null, 2));
@@ -113,8 +107,8 @@ export function setupConfigCommand(program: Command): void {
         servers: [],
         session: {
           timeout: 3600000,
-          maxSessions: 100,
-        },
+          maxSessions: 100
+        }
       };
 
       saveConfig(defaultConfig);
@@ -135,8 +129,8 @@ function loadConfig(): HatagoConfig {
       servers: [],
       session: {
         timeout: 3600000,
-        maxSessions: 100,
-      },
+        maxSessions: 100
+      }
     };
   }
 

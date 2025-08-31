@@ -8,9 +8,9 @@ export default defineConfig({
       modules: true,
       kvNamespaces: ['CONFIG_KV'],
       durableObjects: {
-        SESSION_DO: 'SessionDurableObject',
-      },
+        SESSION_DO: 'SessionDurableObject'
+      }
     },
-    include: ['src/**/*.workers.test.ts', 'src/**/*.workers.spec.ts'],
-  },
+    include: ['src/**/*.workers.test.ts', 'src/**/*.workers.spec.ts']
+  }
 });

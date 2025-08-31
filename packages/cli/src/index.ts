@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { setupConfigCommand } from './commands/config.js';
+import { setupInitCommand } from './commands/init.js';
 import { setupMcpCommand } from './commands/mcp.js';
 import { setupServeCommand } from './commands/serve.js';
 
@@ -16,9 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Read package.json for version
-const packageJson = JSON.parse(
-  readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'),
-);
+const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
 
 // Create main program
 const program = new Command();
@@ -31,6 +30,7 @@ program
   .option('-q, --quiet', 'quiet output');
 
 // Setup commands
+setupInitCommand(program);
 setupServeCommand(program);
 setupMcpCommand(program);
 setupConfigCommand(program);

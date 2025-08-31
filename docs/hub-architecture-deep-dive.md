@@ -78,7 +78,7 @@ class McpServer {
 
 ```typescript
 // packages/hub/src/hub.ts の概念的な実装 (pseudo-code)
-import { McpServer } from "./mcp-server";
+import { McpServer } from './mcp-server';
 
 class HatagoHub {
   private servers: McpServer[];
@@ -102,13 +102,11 @@ class HatagoHub {
   handleRequest(request: McpRequest): ReadableStream<McpResponse> {
     const toolName = request.tool_choice?.function?.name;
     if (!toolName) {
-      throw new Error("tool_choice is missing in the request.");
+      throw new Error('tool_choice is missing in the request.');
     }
 
     // toolNameを提供しているサーバーを探す
-    const targetServer = this.servers.find((server) =>
-      server.hasTool(toolName),
-    );
+    const targetServer = this.servers.find((server) => server.hasTool(toolName));
 
     if (!targetServer) {
       throw new Error(`Tool "${toolName}" not found in any configured server.`);
@@ -139,11 +137,7 @@ Hatago Hubの実装は、公式の `modelcontextprotocol/typescript-sdk` に大�
     SDKは `McpRequest`, `McpResponse`, `ToolDefinition` といった、MCPで通信されるすべてのデータ構造のTypeScript型を定義しています。Hatagoはこれらの型を全面的に採用しています。
 
     ```typescript
-    import type {
-      McpRequest,
-      McpResponse,
-      ToolDefinition,
-    } from "@model-context/core";
+    import type { McpRequest, McpResponse, ToolDefinition } from '@model-context/core';
     ```
 
     これにより、`HatagoHub` が送受信するデータが常にMCPの仕様に準拠していることがコンパイル時に保証されます。例えば、`handleRequest` メソッドの引数が `McpRequest` 型であるため、不正な形式のリクエストを受け付けません。

@@ -5,12 +5,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type {
-  Prompt,
-  Resource,
-  ServerMetadata,
-  Tool,
-} from '@himorishige/hatago-core';
+import type { Prompt, Resource, ServerMetadata, Tool } from '@himorishige/hatago-core';
 
 /**
  * Server metadata with MCP capabilities
@@ -49,9 +44,7 @@ export class MetadataStore {
   private readonly saveDebounceMs = 5000;
 
   constructor(configFilePath: string, autoSave = true) {
-    this.metadataPath = configFilePath
-      ? `${resolve(configFilePath)}.metadata.json`
-      : '';
+    this.metadataPath = configFilePath ? `${resolve(configFilePath)}.metadata.json` : '';
     this.autoSave = autoSave;
 
     // Load existing metadata
@@ -63,12 +56,12 @@ export class MetadataStore {
    */
   async storeServerMetadata(
     serverId: string,
-    metadata: Partial<StoredServerMetadata>,
+    metadata: Partial<StoredServerMetadata>
   ): Promise<void> {
     const existing = this.metadata.get(serverId) || {
       serverId,
       serverType: 'local' as const,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
     };
 
     // Merge with existing
@@ -76,7 +69,7 @@ export class MetadataStore {
       ...existing,
       ...metadata,
       serverId,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
     };
 
     // Calculate hashes for change detection
@@ -106,15 +99,13 @@ export class MetadataStore {
       tools: tools.map((t) => ({
         name: t.name,
         description: t.description || '',
-        inputSchema: t.inputSchema,
+        inputSchema: t.inputSchema
       })),
       capabilities: {
         tools: tools.length > 0,
-        resources:
-          this.getServerMetadata(serverId)?.capabilities?.resources || false,
-        prompts:
-          this.getServerMetadata(serverId)?.capabilities?.prompts || false,
-      },
+        resources: this.getServerMetadata(serverId)?.capabilities?.resources || false,
+        prompts: this.getServerMetadata(serverId)?.capabilities?.prompts || false
+      }
     });
   }
 
@@ -126,14 +117,13 @@ export class MetadataStore {
       resources: resources.map((r) => ({
         uri: r.uri,
         name: r.name,
-        mimeType: r.mimeType,
+        mimeType: r.mimeType
       })),
       capabilities: {
         tools: this.getServerMetadata(serverId)?.capabilities?.tools || false,
         resources: resources.length > 0,
-        prompts:
-          this.getServerMetadata(serverId)?.capabilities?.prompts || false,
-      },
+        prompts: this.getServerMetadata(serverId)?.capabilities?.prompts || false
+      }
     });
   }
 
@@ -145,14 +135,13 @@ export class MetadataStore {
       prompts: prompts.map((p) => ({
         name: p.name,
         description: p.description || '',
-        arguments: p.arguments,
+        arguments: p.arguments
       })),
       capabilities: {
         tools: this.getServerMetadata(serverId)?.capabilities?.tools || false,
-        resources:
-          this.getServerMetadata(serverId)?.capabilities?.resources || false,
-        prompts: prompts.length > 0,
-      },
+        resources: this.getServerMetadata(serverId)?.capabilities?.resources || false,
+        prompts: prompts.length > 0
+      }
     });
   }
 
@@ -201,7 +190,7 @@ export class MetadataStore {
     serverId: string,
     tools?: Tool[],
     resources?: Resource[],
-    prompts?: Prompt[],
+    prompts?: Prompt[]
   ): boolean {
     const metadata = this.metadata.get(serverId);
     if (!metadata) return true;
@@ -230,11 +219,7 @@ export class MetadataStore {
   /**
    * Update connection info
    */
-  async updateConnectionInfo(
-    serverId: string,
-    connected: boolean,
-    error?: string,
-  ): Promise<void> {
+  async updateConnectionInfo(serverId: string, connected: boolean, error?: string): Promise<void> {
     const metadata = this.getServerMetadata(serverId);
     if (!metadata) return;
 
@@ -257,17 +242,14 @@ export class MetadataStore {
   /**
    * Update usage statistics
    */
-  async updateStatistics(
-    serverId: string,
-    callDuration?: number,
-  ): Promise<void> {
+  async updateStatistics(serverId: string, callDuration?: number): Promise<void> {
     const metadata = this.getServerMetadata(serverId);
     if (!metadata) return;
 
     if (!metadata.statistics) {
       metadata.statistics = {
         totalCalls: 0,
-        totalErrors: 0,
+        totalErrors: 0
       };
     }
 
@@ -277,8 +259,7 @@ export class MetadataStore {
     if (callDuration !== undefined) {
       const current = metadata.statistics.averageResponseTime || 0;
       const total = metadata.statistics.totalCalls;
-      metadata.statistics.averageResponseTime =
-        (current * (total - 1) + callDuration) / total;
+      metadata.statistics.averageResponseTime = (current * (total - 1) + callDuration) / total;
     }
 
     this.metadata.set(serverId, metadata);
@@ -310,7 +291,7 @@ export class MetadataStore {
           results.push({
             serverId,
             tool: tool as Tool,
-            metadata,
+            metadata
           });
         }
       }
@@ -322,9 +303,7 @@ export class MetadataStore {
   /**
    * Get servers with specific capability
    */
-  getServersWithCapability(
-    capability: 'tools' | 'resources' | 'prompts',
-  ): string[] {
+  getServersWithCapability(capability: 'tools' | 'resources' | 'prompts'): string[] {
     const servers = [];
 
     for (const [serverId, metadata] of this.metadata) {
@@ -437,7 +416,7 @@ export class MetadataStore {
       serversWithPrompts,
       totalTools,
       totalResources,
-      totalPrompts,
+      totalPrompts
     };
   }
 

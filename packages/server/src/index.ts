@@ -13,6 +13,7 @@ export { loadConfig } from './config.js';
 export { startHttp } from './http.js';
 export { Logger } from './logger.js';
 export { startStdio } from './stdio.js';
+export { generateDefaultConfig } from './utils.js';
 
 /**
  * Server options for starting the MCP Hub
@@ -25,6 +26,7 @@ export interface ServerOptions {
   logLevel?: string;
   verbose?: boolean;
   quiet?: boolean;
+  watchConfig?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
     logLevel = 'info',
     verbose = false,
     quiet = false,
+    watchConfig = false
   } = options;
 
   // Create logger
@@ -53,7 +56,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
     // Start server based on mode
     if (mode === 'stdio') {
       logger.debug('Starting in STDIO mode');
-      await startStdio(config, logger);
+      await startStdio(config, logger, watchConfig);
     } else if (mode === 'http') {
       logger.debug(`Starting in HTTP mode on ${host}:${port}`);
       await startHttp({
@@ -61,6 +64,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
         host,
         port,
         logger,
+        watchConfig
       });
     } else {
       throw new Error(`Invalid mode: ${mode}`);
@@ -68,12 +72,9 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    if (
-      errorMessage.includes('ENOENT') &&
-      errorMessage.includes('hatago.config.json')
-    ) {
+    if (errorMessage.includes('ENOENT') && errorMessage.includes('hatago.config.json')) {
       logger.error(
-        'Configuration file not found. Create a hatago.config.json or specify a config file with --config',
+        'Configuration file not found. Create a hatago.config.json or specify a config file with --config'
       );
     } else {
       logger.error('Failed to start server:', errorMessage);

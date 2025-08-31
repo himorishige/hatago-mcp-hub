@@ -56,7 +56,7 @@ describe('Logger', () => {
         logger.error('error message');
         expect(consoleErrorSpy).toHaveBeenCalledWith(
           '[2024-01-01T12:00:00.000Z] [ERROR]',
-          'error message',
+          'error message'
         );
       });
 
@@ -72,17 +72,11 @@ describe('Logger', () => {
 
       // Should log error and warn
       logger.error('error');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[2024-01-01T12:00:00.000Z] [ERROR]',
-        'error',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[2024-01-01T12:00:00.000Z] [ERROR]', 'error');
 
       consoleErrorSpy.mockClear();
       logger.warn('warning');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[2024-01-01T12:00:00.000Z] [WARN]',
-        'warning',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[2024-01-01T12:00:00.000Z] [WARN]', 'warning');
 
       // Should not log info, debug, or trace
       consoleErrorSpy.mockClear();
@@ -99,7 +93,7 @@ describe('Logger', () => {
         ['warn', 'WARN'],
         ['info', 'INFO'],
         ['debug', 'DEBUG'],
-        ['trace', 'TRACE'],
+        ['trace', 'TRACE']
       ];
 
       messages.forEach(([method, level]) => {
@@ -107,7 +101,7 @@ describe('Logger', () => {
         (logger as any)[method](`${method} message`);
         expect(consoleErrorSpy).toHaveBeenCalledWith(
           `[2024-01-01T12:00:00.000Z] [${level}]`,
-          `${method} message`,
+          `${method} message`
         );
       });
     });
@@ -126,7 +120,7 @@ describe('Logger', () => {
         'message',
         obj,
         arr,
-        123,
+        123
       );
     });
 
@@ -139,7 +133,7 @@ describe('Logger', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '[2024-01-01T12:00:00.000Z] [ERROR]',
         'Error occurred:',
-        error,
+        error
       );
     });
   });
@@ -153,16 +147,13 @@ describe('Logger', () => {
       logger.info('end of year');
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '[2024-12-31T23:59:59.000Z] [INFO]',
-        'end of year',
+        'end of year'
       );
 
       consoleErrorSpy.mockClear();
       vi.setSystemTime(new Date('2025-01-01T00:00:00Z'));
       logger.info('new year');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[2025-01-01T00:00:00.000Z] [INFO]',
-        'new year',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[2025-01-01T00:00:00.000Z] [INFO]', 'new year');
     });
 
     it('should uppercase log level in output', () => {
@@ -171,14 +162,14 @@ describe('Logger', () => {
       logger.debug('debug message');
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[DEBUG]'),
-        'debug message',
+        'debug message'
       );
 
       consoleErrorSpy.mockClear();
       logger.warn('warning message');
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[WARN]'),
-        'warning message',
+        'warning message'
       );
     });
   });
@@ -188,9 +179,7 @@ describe('Logger', () => {
       const logger = new Logger('info');
       logger.info();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[2024-01-01T12:00:00.000Z] [INFO]',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[2024-01-01T12:00:00.000Z] [INFO]');
     });
 
     it('should handle undefined and null', () => {
@@ -200,7 +189,7 @@ describe('Logger', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '[2024-01-01T12:00:00.000Z] [INFO]',
         undefined,
-        null,
+        null
       );
     });
 

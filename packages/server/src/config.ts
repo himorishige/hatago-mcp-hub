@@ -14,7 +14,7 @@ import {
   formatConfigError,
   type HatagoConfig,
   safeParseConfig,
-  validateEnvironmentVariables,
+  validateEnvironmentVariables
 } from '@himorishige/hatago-core';
 import type { Logger } from './logger.js';
 
@@ -24,16 +24,14 @@ import type { Logger } from './logger.js';
  */
 export async function loadConfig(
   configPath: string,
-  logger: Logger,
+  logger: Logger
 ): Promise<{
   path: string;
   exists: boolean;
   data: HatagoConfig;
 }> {
   // Resolve path relative to CWD
-  const absolutePath = isAbsolute(configPath)
-    ? configPath
-    : resolve(process.cwd(), configPath);
+  const absolutePath = isAbsolute(configPath) ? configPath : resolve(process.cwd(), configPath);
 
   // Check if file exists (optional)
   if (!existsSync(absolutePath)) {
@@ -49,7 +47,7 @@ export async function loadConfig(
     return {
       path: absolutePath,
       exists: false,
-      data: defaultConfig.data,
+      data: defaultConfig.data
     };
   }
 
@@ -88,7 +86,7 @@ export async function loadConfig(
     return {
       path: absolutePath,
       exists: true,
-      data: parseResult.data,
+      data: parseResult.data
     };
   } catch (error) {
     logger.error(`Failed to load config from ${absolutePath}:`, error);

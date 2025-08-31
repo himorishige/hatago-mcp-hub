@@ -32,7 +32,7 @@
     "lint": "eslint ./src"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.3",
+    "@modelcontextprotocol/sdk": "^1.17.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {

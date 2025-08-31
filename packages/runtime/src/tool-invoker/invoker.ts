@@ -3,12 +3,7 @@
  */
 
 import type { ToolRegistry } from '../registry/tool-registry.js';
-import type {
-  ToolCallResult,
-  ToolHandler,
-  ToolInvokerOptions,
-  ToolWithHandler,
-} from './types.js';
+import type { ToolCallResult, ToolHandler, ToolInvokerOptions, ToolWithHandler } from './types.js';
 
 // SSE Manager interface for progress notifications
 interface SSEManager {
@@ -27,14 +22,14 @@ export class ToolInvoker {
   constructor(
     toolRegistry: ToolRegistry,
     options: ToolInvokerOptions = {},
-    sseManager?: SSEManager,
+    sseManager?: SSEManager
   ) {
     this.toolRegistry = toolRegistry;
     this.sseManager = sseManager;
     this.options = {
       timeout: options.timeout || 30000,
       retryCount: options.retryCount || 0,
-      retryDelay: options.retryDelay || 1000,
+      retryDelay: options.retryDelay || 1000
     };
   }
 
@@ -59,7 +54,7 @@ export class ToolInvoker {
     _sessionId: string,
     toolName: string,
     args: any,
-    options?: Partial<ToolInvokerOptions>,
+    options?: Partial<ToolInvokerOptions>
   ): Promise<ToolCallResult> {
     const opts = { ...this.options, ...options };
 
@@ -75,10 +70,10 @@ export class ToolInvoker {
           content: [
             {
               type: 'text',
-              text: `Tool not found: ${toolName}`,
-            },
+              text: `Tool not found: ${toolName}`
+            }
           ],
-          isError: true,
+          isError: true
         };
       }
 
@@ -86,10 +81,10 @@ export class ToolInvoker {
         content: [
           {
             type: 'text',
-            text: `No handler registered for tool: ${toolName}`,
-          },
+            text: `No handler registered for tool: ${toolName}`
+          }
         ],
-        isError: true,
+        isError: true
       };
     }
 
@@ -102,7 +97,7 @@ export class ToolInvoker {
                 progressToken: options.progressToken,
                 progress,
                 total,
-                message,
+                message
               });
             }
           : undefined;
@@ -110,7 +105,7 @@ export class ToolInvoker {
       // Execute with timeout and progress support
       const result = await this.executeWithTimeout(
         () => handler(args, progressHandler),
-        opts.timeout!,
+        opts.timeout!
       );
 
       // Format result
@@ -119,9 +114,9 @@ export class ToolInvoker {
           content: [
             {
               type: 'text',
-              text: result,
-            },
-          ],
+              text: result
+            }
+          ]
         };
       }
 
@@ -135,19 +130,19 @@ export class ToolInvoker {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
+            text: JSON.stringify(result, null, 2)
+          }
+        ]
       };
     } catch (error) {
       return {
         content: [
           {
             type: 'text',
-            text: `Error calling tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,
-          },
+            text: `Error calling tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`
+          }
         ],
-        isError: true,
+        isError: true
       };
     }
   }
@@ -155,10 +150,7 @@ export class ToolInvoker {
   /**
    * Execute handler with timeout
    */
-  private async executeWithTimeout<T>(
-    handler: () => Promise<any>,
-    timeout: number,
-  ): Promise<T> {
+  private async executeWithTimeout<T>(handler: () => Promise<any>, timeout: number): Promise<T> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(`Tool execution timed out after ${timeout}ms`));
@@ -188,9 +180,7 @@ export class ToolInvoker {
 
     // Get the public name that the registry assigned
     const registeredTools = this.toolRegistry.getServerTools(serverId);
-    const registeredTool = registeredTools.find((t) =>
-      t.name.endsWith(toolWithoutHandler.name),
-    );
+    const registeredTool = registeredTools.find((t) => t.name.endsWith(toolWithoutHandler.name));
 
     if (registeredTool) {
       this.registerHandler(registeredTool.name, handler);

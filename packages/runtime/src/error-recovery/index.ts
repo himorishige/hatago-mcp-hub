@@ -8,14 +8,14 @@ export {
   type CircuitBreakerConfig,
   CircuitState,
   createCircuitBreaker,
-  withCircuitBreaker,
+  withCircuitBreaker
 } from './circuit-breaker.js';
 // Error classification
 export {
   type ClassifiedError,
   classifyError,
   ErrorSeverity,
-  ErrorType,
+  ErrorType
 } from './error-classifier.js';
 // Retry mechanisms
 export {
@@ -25,7 +25,7 @@ export {
   type RetryResult,
   retry,
   retryWithTimeout,
-  withRetry,
+  withRetry
 } from './retry.js';
 // Retry strategies
 export {
@@ -34,5 +34,5 @@ export {
   RetryStrategies,
   type RetryStrategy,
   selectStrategy,
-  shouldRetry,
+  shouldRetry
 } from './strategies.js';

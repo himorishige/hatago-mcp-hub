@@ -7,7 +7,7 @@ import {
   generatePublicName,
   groupByServer,
   parsePublicName,
-  resolveRoute,
+  resolveRoute
 } from './router-functional.js';
 import type {
   PromptRegistryInterface,
@@ -16,7 +16,7 @@ import type {
   RouteDecision,
   RouterConfig,
   RouterContext,
-  ToolRegistryInterface,
+  ToolRegistryInterface
 } from './router-types.js';
 
 /**
@@ -32,7 +32,7 @@ export class McpRouter {
     toolRegistry: ToolRegistryInterface,
     resourceRegistry: ResourceRegistryInterface,
     promptRegistry: PromptRegistryInterface,
-    config: RouterConfig = {},
+    config: RouterConfig = {}
   ) {
     this.toolRegistry = toolRegistry;
     this.resourceRegistry = resourceRegistry;
@@ -40,7 +40,7 @@ export class McpRouter {
     this.config = {
       namingStrategy: config.namingStrategy || 'namespace',
       separator: config.separator || '_',
-      debug: config.debug || false,
+      debug: config.debug || false
     };
   }
 
@@ -56,17 +56,14 @@ export class McpRouter {
       publicName,
       (name) => this.toolRegistry.resolveTool(name),
       this.config,
-      'toolRegistry',
+      'toolRegistry'
     );
   }
 
   /**
    * Route resource request to appropriate server
    */
-  routeResource(
-    publicUri: string,
-    context?: RouterContext,
-  ): RouteDecision<ResourceRouteTarget> {
+  routeResource(publicUri: string, context?: RouterContext): RouteDecision<ResourceRouteTarget> {
     if (this.config.debug || context?.debug) {
       console.debug(`[McpRouter] Routing resource: ${publicUri}`);
     }
@@ -77,7 +74,7 @@ export class McpRouter {
       return {
         found: false,
         target: null,
-        error: `Resource not found: ${publicUri}`,
+        error: `Resource not found: ${publicUri}`
       };
     }
 
@@ -86,8 +83,8 @@ export class McpRouter {
       target,
       metadata: {
         publicName: publicUri,
-        resolvedBy: 'resourceRegistry',
-      },
+        resolvedBy: 'resourceRegistry'
+      }
     };
   }
 
@@ -103,7 +100,7 @@ export class McpRouter {
       publicName,
       (name) => this.promptRegistry.resolvePrompt(name),
       this.config,
-      'promptRegistry',
+      'promptRegistry'
     );
   }
 
@@ -175,7 +172,7 @@ export class McpRouter {
       const parsed = this.parsePublicName(tool.name);
       return {
         ...tool,
-        serverId: parsed.serverId || 'unknown',
+        serverId: parsed.serverId || 'unknown'
       };
     });
     return groupByServer(toolsWithServer);
@@ -190,7 +187,7 @@ export class McpRouter {
       const parsed = this.parsePublicName(resource.uri);
       return {
         ...resource,
-        serverId: parsed.serverId || 'unknown',
+        serverId: parsed.serverId || 'unknown'
       };
     });
     return groupByServer(resourcesWithServer);
@@ -205,7 +202,7 @@ export class McpRouter {
       const parsed = this.parsePublicName(prompt.name);
       return {
         ...prompt,
-        serverId: parsed.serverId || 'unknown',
+        serverId: parsed.serverId || 'unknown'
       };
     });
     return groupByServer(promptsWithServer);
@@ -244,7 +241,7 @@ export class McpRouter {
       tools: this.getAllTools().length,
       resources: this.getAllResources().length,
       prompts: this.getAllPrompts().length,
-      servers,
+      servers
     };
   }
 
@@ -276,7 +273,7 @@ export class McpRouter {
     const stats = this.getStatistics();
     return {
       ...stats,
-      metrics: this.getMetrics(),
+      metrics: this.getMetrics()
     };
   }
 
@@ -288,7 +285,7 @@ export class McpRouter {
     return {
       requestCount: 0,
       averageResponseTime: 0,
-      errorRate: 0,
+      errorRate: 0
     };
   }
 
@@ -304,7 +301,7 @@ export class McpRouter {
    */
   routeWithFunctionalApproach(
     publicName: string,
-    type: 'tool' | 'resource' | 'prompt',
+    type: 'tool' | 'resource' | 'prompt'
   ): RouteDecision {
     switch (type) {
       case 'tool':
@@ -317,7 +314,7 @@ export class McpRouter {
         return {
           found: false,
           target: null,
-          error: `Unknown type: ${type}`,
+          error: `Unknown type: ${type}`
         };
     }
   }
@@ -330,7 +327,7 @@ export function createRouter(
   toolRegistry: ToolRegistryInterface,
   resourceRegistry: ResourceRegistryInterface,
   promptRegistry: PromptRegistryInterface,
-  config?: RouterConfig,
+  config?: RouterConfig
 ): McpRouter {
   return new McpRouter(toolRegistry, resourceRegistry, promptRegistry, config);
 }

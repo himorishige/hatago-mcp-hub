@@ -2,10 +2,10 @@ import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   entry: {
-    'index': 'src/index.ts',
+    index: 'src/index.ts',
     'platform/index': 'src/platform/index.ts',
     'platform/node': 'src/platform/node.ts',
-    'platform/workers': 'src/platform/workers.ts',
+    'platform/workers': 'src/platform/workers.ts'
   },
   format: ['esm'],
   clean: true,
@@ -13,7 +13,7 @@ export default defineConfig({
   target: 'node20',
   external: [
     '@himorishige/hatago-core',
-    '@modelcontextprotocol/sdk',
+    '@modelcontextprotocol/sdk'
     // Node.js built-ins are automatically externalized with platform: 'node'
-  ],
+  ]
 });

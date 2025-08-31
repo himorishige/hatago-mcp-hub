@@ -9,7 +9,7 @@ import type { ProcessTransportOptions } from './types.js';
 
 // Mock child_process
 vi.mock('node:child_process', () => ({
-  spawn: vi.fn(),
+  spawn: vi.fn()
 }));
 
 describe('ProcessTransport', () => {
@@ -22,26 +22,26 @@ describe('ProcessTransport', () => {
       stdin: {
         write: vi.fn((_data, callback) => {
           if (callback) callback();
-        }),
+        })
       },
       stdout: {
-        on: vi.fn(),
+        on: vi.fn()
       },
       stderr: {
-        on: vi.fn(),
+        on: vi.fn()
       },
       on: vi.fn(),
-      kill: vi.fn(),
+      kill: vi.fn()
     };
 
     // Mock spawn to return our mock process
-    vi.mocked(spawn).mockReturnValue(mockProcess as any);
+    vi.mocked(spawn).mockReturnValue(mockProcess);
 
     const options: ProcessTransportOptions = {
       command: 'test-command',
       args: ['arg1', 'arg2'],
       env: { TEST_ENV: 'test' },
-      cwd: '/test/dir',
+      cwd: '/test/dir'
     };
 
     transport = new ProcessTransport(options);
@@ -64,43 +64,32 @@ describe('ProcessTransport', () => {
       expect(spawn).toHaveBeenCalledWith('test-command', ['arg1', 'arg2'], {
         env: expect.objectContaining({ TEST_ENV: 'test' }),
         cwd: '/test/dir',
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe']
       });
     });
 
     it('should throw if already started', async () => {
       await transport.start();
 
-      await expect(transport.start()).rejects.toThrow(
-        'Transport already started',
-      );
+      await expect(transport.start()).rejects.toThrow('Transport already started');
     });
 
     it('should register stdout handler', async () => {
       await transport.start();
 
-      expect(mockProcess.stdout.on).toHaveBeenCalledWith(
-        'data',
-        expect.any(Function),
-      );
+      expect(mockProcess.stdout.on).toHaveBeenCalledWith('data', expect.any(Function));
     });
 
     it('should register stderr handler', async () => {
       await transport.start();
 
-      expect(mockProcess.stderr.on).toHaveBeenCalledWith(
-        'data',
-        expect.any(Function),
-      );
+      expect(mockProcess.stderr.on).toHaveBeenCalledWith('data', expect.any(Function));
     });
 
     it('should register process error handler', async () => {
       await transport.start();
 
-      expect(mockProcess.on).toHaveBeenCalledWith(
-        'error',
-        expect.any(Function),
-      );
+      expect(mockProcess.on).toHaveBeenCalledWith('error', expect.any(Function));
     });
 
     it('should register process exit handler', async () => {
@@ -119,13 +108,13 @@ describe('ProcessTransport', () => {
 
       expect(mockProcess.stdin.write).toHaveBeenCalledWith(
         `${JSON.stringify(message)}\n`,
-        expect.any(Function),
+        expect.any(Function)
       );
     });
 
     it('should throw if transport not started', async () => {
       await expect(transport.send({ test: 'data' })).rejects.toThrow(
-        'Transport not started or stdin not available',
+        'Transport not started or stdin not available'
       );
     });
 
@@ -136,9 +125,7 @@ describe('ProcessTransport', () => {
         if (callback) callback(new Error('Write failed'));
       });
 
-      await expect(transport.send({ test: 'data' })).rejects.toThrow(
-        'Write failed',
-      );
+      await expect(transport.send({ test: 'data' })).rejects.toThrow('Write failed');
     });
   });
 
@@ -151,7 +138,7 @@ describe('ProcessTransport', () => {
 
       // Get the stdout data handler
       const stdoutHandler = mockProcess.stdout.on.mock.calls.find(
-        (call) => call[0] === 'data',
+        (call) => call[0] === 'data'
       )?.[1];
 
       // Simulate incoming data
@@ -173,7 +160,7 @@ describe('ProcessTransport', () => {
       await transport.start();
 
       const stdoutHandler = mockProcess.stdout.on.mock.calls.find(
-        (call) => call[0] === 'data',
+        (call) => call[0] === 'data'
       )?.[1];
 
       // Send partial message
@@ -194,7 +181,7 @@ describe('ProcessTransport', () => {
       await transport.start();
 
       const stdoutHandler = mockProcess.stdout.on.mock.calls.find(
-        (call) => call[0] === 'data',
+        (call) => call[0] === 'data'
       )?.[1];
 
       const message1 = { id: 1 };
@@ -215,7 +202,7 @@ describe('ProcessTransport', () => {
       await transport.start();
 
       const stdoutHandler = mockProcess.stdout.on.mock.calls.find(
-        (call) => call[0] === 'data',
+        (call) => call[0] === 'data'
       )?.[1];
 
       stdoutHandler?.(Buffer.from(`\n\n${JSON.stringify({ test: 1 })}\n\n`));
@@ -225,16 +212,14 @@ describe('ProcessTransport', () => {
     });
 
     it('should handle invalid JSON', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const messageHandler = vi.fn();
       transport.onMessage(messageHandler);
 
       await transport.start();
 
       const stdoutHandler = mockProcess.stdout.on.mock.calls.find(
-        (call) => call[0] === 'data',
+        (call) => call[0] === 'data'
       )?.[1];
 
       stdoutHandler?.(Buffer.from('invalid json\n'));
@@ -244,7 +229,7 @@ describe('ProcessTransport', () => {
         '[ProcessTransport] Failed to parse message:',
         expect.any(SyntaxError),
         'Line:',
-        'invalid json',
+        'invalid json'
       );
 
       consoleErrorSpy.mockRestore();
@@ -259,7 +244,7 @@ describe('ProcessTransport', () => {
       await transport.start();
 
       const processErrorHandler = mockProcess.on.mock.calls.find(
-        (call) => call[0] === 'error',
+        (call) => call[0] === 'error'
       )?.[1];
 
       const error = new Error('Process error');
@@ -274,33 +259,27 @@ describe('ProcessTransport', () => {
 
       await transport.start();
 
-      const exitHandler = mockProcess.on.mock.calls.find(
-        (call) => call[0] === 'exit',
-      )?.[1];
+      const exitHandler = mockProcess.on.mock.calls.find((call) => call[0] === 'exit')?.[1];
 
       exitHandler?.(1, null);
 
       expect(errorHandler).toHaveBeenCalledWith(
-        new Error('Process exited with code 1, signal null'),
+        new Error('Process exited with code 1, signal null')
       );
     });
 
     it('should handle stderr output', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await transport.start();
 
       const stderrHandler = mockProcess.stderr.on.mock.calls.find(
-        (call) => call[0] === 'data',
+        (call) => call[0] === 'data'
       )?.[1];
 
       stderrHandler?.(Buffer.from('Error output'));
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[ProcessTransport] stderr: Error output',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[ProcessTransport] stderr: Error output');
 
       consoleErrorSpy.mockRestore();
     });
@@ -350,7 +329,7 @@ describe('ProcessTransport', () => {
       await transport.start();
 
       await expect(transport.send({ test: 'data' })).rejects.toThrow(
-        'Transport not started or stdin not available',
+        'Transport not started or stdin not available'
       );
     });
 
@@ -360,14 +339,12 @@ describe('ProcessTransport', () => {
 
       await transport.start();
 
-      const exitHandler = mockProcess.on.mock.calls.find(
-        (call) => call[0] === 'exit',
-      )?.[1];
+      const exitHandler = mockProcess.on.mock.calls.find((call) => call[0] === 'exit')?.[1];
 
       exitHandler?.(null, 'SIGTERM');
 
       expect(errorHandler).toHaveBeenCalledWith(
-        new Error('Process exited with code null, signal SIGTERM'),
+        new Error('Process exited with code null, signal SIGTERM')
       );
     });
 
@@ -377,9 +354,7 @@ describe('ProcessTransport', () => {
 
       await transport.start();
 
-      const exitHandler = mockProcess.on.mock.calls.find(
-        (call) => call[0] === 'exit',
-      )?.[1];
+      const exitHandler = mockProcess.on.mock.calls.find((call) => call[0] === 'exit')?.[1];
 
       exitHandler?.(0, null);
 

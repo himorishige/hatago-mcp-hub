@@ -37,7 +37,7 @@ export class StdioSafeLogger implements Logger {
     const record: any = {
       level,
       time: timestamp,
-      msg: msg || (typeof obj === 'string' ? obj : undefined),
+      msg: msg || (typeof obj === 'string' ? obj : undefined)
     };
 
     // Add data if obj is an object
@@ -87,7 +87,7 @@ export class StdioSafeLogger implements Logger {
     return new StdioSafeLogger({
       level: this.level,
       json: this.json,
-      prefix: `${this.prefix}[${prefix}]`,
+      prefix: `${this.prefix}[${prefix}]`
     });
   }
 }
@@ -95,8 +95,6 @@ export class StdioSafeLogger implements Logger {
 /**
  * Create a STDIO-safe logger with default settings
  */
-export function createStdioSafeLogger(
-  options?: StdioSafeLoggerOptions,
-): Logger {
+export function createStdioSafeLogger(options?: StdioSafeLoggerOptions): Logger {
   return new StdioSafeLogger(options);
 }

@@ -8,7 +8,7 @@ import { McpRouter } from './router.js';
 import type {
   PromptRegistryInterface,
   ResourceRegistryInterface,
-  ToolRegistryInterface,
+  ToolRegistryInterface
 } from './router-types.js';
 
 describe('McpRouter', () => {
@@ -26,7 +26,7 @@ describe('McpRouter', () => {
       getServerTools: vi.fn(() => []),
       unregisterServerTools: vi.fn(),
       unregisterAllTools: vi.fn(),
-      clear: vi.fn(),
+      clear: vi.fn()
     };
 
     resourceRegistry = {
@@ -36,7 +36,7 @@ describe('McpRouter', () => {
       getServerResources: vi.fn(() => []),
       unregisterServerResources: vi.fn(),
       unregisterAllResources: vi.fn(),
-      clear: vi.fn(),
+      clear: vi.fn()
     };
 
     promptRegistry = {
@@ -46,7 +46,7 @@ describe('McpRouter', () => {
       getServerPrompts: vi.fn(() => []),
       unregisterServerPrompts: vi.fn(),
       unregisterAllPrompts: vi.fn(),
-      clear: vi.fn(),
+      clear: vi.fn()
     };
 
     router = new McpRouter(toolRegistry, resourceRegistry, promptRegistry);
@@ -59,13 +59,13 @@ describe('McpRouter', () => {
         description: 'Test tool',
         inputSchema: {
           type: 'object',
-          properties: {},
-        },
+          properties: {}
+        }
       };
 
       const mockTarget = {
         serverId: 'server1',
-        tool: mockTool,
+        tool: mockTool
       };
 
       vi.mocked(toolRegistry.resolveTool).mockReturnValue(mockTarget);
@@ -89,15 +89,11 @@ describe('McpRouter', () => {
     });
 
     it('should enable debug logging when context debug is true', () => {
-      const consoleSpy = vi
-        .spyOn(console, 'debug')
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
       router.routeTool('test_tool', { debug: true });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[McpRouter] Routing tool: test_tool',
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('[McpRouter] Routing tool: test_tool');
 
       consoleSpy.mockRestore();
     });
@@ -107,12 +103,12 @@ describe('McpRouter', () => {
     it('should route resource to correct server', () => {
       const mockResource: Resource = {
         uri: 'file:///test.txt',
-        name: 'Test Resource',
+        name: 'Test Resource'
       };
 
       const mockTarget = {
         serverId: 'server1',
-        resource: mockResource,
+        resource: mockResource
       };
 
       vi.mocked(resourceRegistry.resolveResource).mockReturnValue(mockTarget);
@@ -140,12 +136,12 @@ describe('McpRouter', () => {
     it('should route prompt to correct server', () => {
       const mockPrompt: Prompt = {
         name: 'test_prompt',
-        description: 'Test prompt',
+        description: 'Test prompt'
       };
 
       const mockTarget = {
         serverId: 'server1',
-        prompt: mockPrompt,
+        prompt: mockPrompt
       };
 
       vi.mocked(promptRegistry.resolvePrompt).mockReturnValue(mockTarget);
@@ -173,7 +169,7 @@ describe('McpRouter', () => {
     it('should get all tools', () => {
       const mockTools: Tool[] = [
         { name: 'tool1', description: 'Tool 1', inputSchema: {} },
-        { name: 'tool2', description: 'Tool 2', inputSchema: {} },
+        { name: 'tool2', description: 'Tool 2', inputSchema: {} }
       ];
 
       vi.mocked(toolRegistry.getAllTools).mockReturnValue(mockTools);
@@ -187,12 +183,10 @@ describe('McpRouter', () => {
     it('should get all resources', () => {
       const mockResources: Resource[] = [
         { uri: 'file:///1.txt', name: 'Resource 1' },
-        { uri: 'file:///2.txt', name: 'Resource 2' },
+        { uri: 'file:///2.txt', name: 'Resource 2' }
       ];
 
-      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(
-        mockResources,
-      );
+      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(mockResources);
 
       const resources = router.getAllResources();
 
@@ -203,7 +197,7 @@ describe('McpRouter', () => {
     it('should get all prompts', () => {
       const mockPrompts: Prompt[] = [
         { name: 'prompt1', description: 'Prompt 1' },
-        { name: 'prompt2', description: 'Prompt 2' },
+        { name: 'prompt2', description: 'Prompt 2' }
       ];
 
       vi.mocked(promptRegistry.getAllPrompts).mockReturnValue(mockPrompts);
@@ -218,7 +212,7 @@ describe('McpRouter', () => {
   describe('Get Server-specific Items', () => {
     it('should get tools for specific server', () => {
       const mockTools: Tool[] = [
-        { name: 'server1_tool', description: 'Server 1 Tool', inputSchema: {} },
+        { name: 'server1_tool', description: 'Server 1 Tool', inputSchema: {} }
       ];
 
       vi.mocked(toolRegistry.getServerTools).mockReturnValue(mockTools);
@@ -230,26 +224,18 @@ describe('McpRouter', () => {
     });
 
     it('should get resources for specific server', () => {
-      const mockResources: Resource[] = [
-        { uri: 'server1://resource', name: 'Server 1 Resource' },
-      ];
+      const mockResources: Resource[] = [{ uri: 'server1://resource', name: 'Server 1 Resource' }];
 
-      vi.mocked(resourceRegistry.getServerResources).mockReturnValue(
-        mockResources,
-      );
+      vi.mocked(resourceRegistry.getServerResources).mockReturnValue(mockResources);
 
       const resources = router.getServerResources('server1');
 
       expect(resources).toEqual(mockResources);
-      expect(resourceRegistry.getServerResources).toHaveBeenCalledWith(
-        'server1',
-      );
+      expect(resourceRegistry.getServerResources).toHaveBeenCalledWith('server1');
     });
 
     it('should get prompts for specific server', () => {
-      const mockPrompts: Prompt[] = [
-        { name: 'server1_prompt', description: 'Server 1 Prompt' },
-      ];
+      const mockPrompts: Prompt[] = [{ name: 'server1_prompt', description: 'Server 1 Prompt' }];
 
       vi.mocked(promptRegistry.getServerPrompts).mockReturnValue(mockPrompts);
 
@@ -276,14 +262,14 @@ describe('McpRouter', () => {
       const parsed = router.parsePublicName('server1_tool_name');
       expect(parsed).toEqual({
         serverId: 'server1',
-        originalName: 'tool_name',
+        originalName: 'tool_name'
       });
     });
 
     it('should parse public name without namespace', () => {
       const parsed = router.parsePublicName('simplename');
       expect(parsed).toEqual({
-        originalName: 'simplename',
+        originalName: 'simplename'
       });
     });
   });
@@ -293,7 +279,7 @@ describe('McpRouter', () => {
       const mockTools: Tool[] = [
         { name: 'server1_tool1', description: 'Tool 1', inputSchema: {} },
         { name: 'server1_tool2', description: 'Tool 2', inputSchema: {} },
-        { name: 'server2_tool1', description: 'Tool 3', inputSchema: {} },
+        { name: 'server2_tool1', description: 'Tool 3', inputSchema: {} }
       ];
 
       vi.mocked(toolRegistry.getAllTools).mockReturnValue(mockTools);
@@ -309,12 +295,10 @@ describe('McpRouter', () => {
       const mockResources: Resource[] = [
         { uri: 'server1_resource1', name: 'Resource 1' },
         { uri: 'server2_resource1', name: 'Resource 2' },
-        { uri: 'server2_resource2', name: 'Resource 3' },
+        { uri: 'server2_resource2', name: 'Resource 3' }
       ];
 
-      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(
-        mockResources,
-      );
+      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(mockResources);
 
       const grouped = router.groupResourcesByServer();
 
@@ -327,7 +311,7 @@ describe('McpRouter', () => {
       const mockPrompts: Prompt[] = [
         { name: 'server1_prompt1', description: 'Prompt 1' },
         { name: 'server1_prompt2', description: 'Prompt 2' },
-        { name: 'server1_prompt3', description: 'Prompt 3' },
+        { name: 'server1_prompt3', description: 'Prompt 3' }
       ];
 
       vi.mocked(promptRegistry.getAllPrompts).mockReturnValue(mockPrompts);
@@ -343,22 +327,18 @@ describe('McpRouter', () => {
     it('should return statistics about registered items', () => {
       const mockTools: Tool[] = [
         { name: 'server1_tool1', description: 'Tool 1', inputSchema: {} },
-        { name: 'server2_tool1', description: 'Tool 2', inputSchema: {} },
+        { name: 'server2_tool1', description: 'Tool 2', inputSchema: {} }
       ];
 
       const mockResources: Resource[] = [
         { uri: 'server1_resource1', name: 'Resource 1' },
-        { uri: 'server3_resource1', name: 'Resource 2' },
+        { uri: 'server3_resource1', name: 'Resource 2' }
       ];
 
-      const mockPrompts: Prompt[] = [
-        { name: 'server2_prompt1', description: 'Prompt 1' },
-      ];
+      const mockPrompts: Prompt[] = [{ name: 'server2_prompt1', description: 'Prompt 1' }];
 
       vi.mocked(toolRegistry.getAllTools).mockReturnValue(mockTools);
-      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(
-        mockResources,
-      );
+      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(mockResources);
       vi.mocked(promptRegistry.getAllPrompts).mockReturnValue(mockPrompts);
 
       const stats = router.getStatistics();
@@ -383,7 +363,7 @@ describe('McpRouter', () => {
       expect(stats.metrics).toEqual({
         requestCount: 0,
         averageResponseTime: 0,
-        errorRate: 0,
+        errorRate: 0
       });
     });
   });
@@ -393,7 +373,7 @@ describe('McpRouter', () => {
       router.updateConfig({
         namingStrategy: 'flat',
         separator: '__',
-        debug: true,
+        debug: true
       });
 
       const config = router.getNamingConfig();
@@ -415,7 +395,7 @@ describe('McpRouter', () => {
     it('should route tool with functional approach', () => {
       const mockTarget = {
         serverId: 'server1',
-        tool: { name: 'test', description: 'Test', inputSchema: {} },
+        tool: { name: 'test', description: 'Test', inputSchema: {} }
       };
 
       vi.mocked(toolRegistry.resolveTool).mockReturnValue(mockTarget);
@@ -429,15 +409,12 @@ describe('McpRouter', () => {
     it('should route resource with functional approach', () => {
       const mockTarget = {
         serverId: 'server1',
-        resource: { uri: 'test://uri', name: 'Test' },
+        resource: { uri: 'test://uri', name: 'Test' }
       };
 
       vi.mocked(resourceRegistry.resolveResource).mockReturnValue(mockTarget);
 
-      const result = router.routeWithFunctionalApproach(
-        'test://uri',
-        'resource',
-      );
+      const result = router.routeWithFunctionalApproach('test://uri', 'resource');
 
       expect(result.found).toBe(true);
       expect(result.target).toEqual(mockTarget);
@@ -446,25 +423,19 @@ describe('McpRouter', () => {
     it('should route prompt with functional approach', () => {
       const mockTarget = {
         serverId: 'server1',
-        prompt: { name: 'test', description: 'Test' },
+        prompt: { name: 'test', description: 'Test' }
       };
 
       vi.mocked(promptRegistry.resolvePrompt).mockReturnValue(mockTarget);
 
-      const result = router.routeWithFunctionalApproach(
-        'server1_test',
-        'prompt',
-      );
+      const result = router.routeWithFunctionalApproach('server1_test', 'prompt');
 
       expect(result.found).toBe(true);
       expect(result.target).toEqual(mockTarget);
     });
 
     it('should return error for unknown type', () => {
-      const result = router.routeWithFunctionalApproach(
-        'test',
-        'unknown' as any,
-      );
+      const result = router.routeWithFunctionalApproach('test', 'unknown' as any);
 
       expect(result.found).toBe(false);
       expect(result.error).toContain('Unknown type');

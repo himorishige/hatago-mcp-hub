@@ -12,7 +12,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   warn: 2,
   info: 3,
   debug: 4,
-  trace: 5,
+  trace: 5
 };
 
 export class Logger {

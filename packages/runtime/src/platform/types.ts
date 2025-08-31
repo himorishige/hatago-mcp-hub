@@ -89,7 +89,7 @@ export interface PlatformOptions {
 export class UnsupportedFeatureError extends Error {
   constructor(
     public feature: string,
-    public runtime: string,
+    public runtime: string
   ) {
     super(`Feature "${feature}" is not supported on ${runtime} runtime`);
     this.name = 'UnsupportedFeatureError';

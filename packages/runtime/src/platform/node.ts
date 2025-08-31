@@ -14,7 +14,7 @@ import type {
   Platform,
   PlatformOptions,
   SessionStore,
-  SpawnOptions,
+  SpawnOptions
 } from './types.js';
 
 /**
@@ -50,9 +50,7 @@ class FileConfigStore implements ConfigStore {
   async list(): Promise<string[]> {
     try {
       const files = await fs.readdir(this.basePath);
-      return files
-        .filter((f) => f.endsWith('.json'))
-        .map((f) => f.replace('.json', ''));
+      return files.filter((f) => f.endsWith('.json')).map((f) => f.replace('.json', ''));
     } catch {
       return [];
     }
@@ -77,7 +75,7 @@ class MemorySessionStore implements SessionStore {
   async create(id: string, data: any): Promise<void> {
     this.sessions.set(id, {
       data,
-      expires: Date.now() + this.ttl,
+      expires: Date.now() + this.ttl
     });
   }
 
@@ -145,7 +143,7 @@ export function createNodePlatform(options: PlatformOptions = {}): Platform {
       return spawn(opts.command, opts.args || [], {
         env: { ...process.env, ...opts.env },
         cwd: opts.cwd,
-        stdio: 'pipe',
+        stdio: 'pipe'
       });
     },
 
@@ -161,7 +159,7 @@ export function createNodePlatform(options: PlatformOptions = {}): Platform {
     // Storage implementations
     storage: {
       config: new FileConfigStore(configPath),
-      session: new MemorySessionStore(sessionTTL),
+      session: new MemorySessionStore(sessionTTL)
     },
 
     // Platform identification
@@ -173,8 +171,8 @@ export function createNodePlatform(options: PlatformOptions = {}): Platform {
       hasProcessSpawn: true,
       hasWebCrypto: true,
       hasDurableObjects: false,
-      hasKVStorage: false,
-    },
+      hasKVStorage: false
+    }
   };
 }
 

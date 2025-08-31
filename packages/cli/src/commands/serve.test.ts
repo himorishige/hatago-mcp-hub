@@ -8,7 +8,7 @@ import { setupServeCommand } from './serve.js';
 
 // Mock @himorishige/hatago-server
 vi.mock('@himorishige/hatago-server', () => ({
-  startServer: vi.fn(),
+  startServer: vi.fn()
 }));
 
 describe('setupServeCommand', () => {
@@ -73,7 +73,7 @@ describe('setupServeCommand', () => {
         host: '127.0.0.1',
         logLevel: 'info',
         verbose: undefined,
-        quiet: undefined,
+        quiet: undefined
       });
     });
 
@@ -85,8 +85,8 @@ describe('setupServeCommand', () => {
 
       expect(startServer).toHaveBeenCalledWith(
         expect.objectContaining({
-          mode: 'http',
-        }),
+          mode: 'http'
+        })
       );
     });
 
@@ -94,16 +94,13 @@ describe('setupServeCommand', () => {
       const { startServer } = await import('@himorishige/hatago-server');
       setupServeCommand(program);
 
-      await program.parseAsync(
-        ['serve', '--port', '8080', '--host', '0.0.0.0'],
-        { from: 'user' },
-      );
+      await program.parseAsync(['serve', '--port', '8080', '--host', '0.0.0.0'], { from: 'user' });
 
       expect(startServer).toHaveBeenCalledWith(
         expect.objectContaining({
           port: 8080,
-          host: '0.0.0.0',
-        }),
+          host: '0.0.0.0'
+        })
       );
     });
 
@@ -112,13 +109,13 @@ describe('setupServeCommand', () => {
       setupServeCommand(program);
 
       await program.parseAsync(['serve', '--config', 'custom.json'], {
-        from: 'user',
+        from: 'user'
       });
 
       expect(startServer).toHaveBeenCalledWith(
         expect.objectContaining({
-          config: 'custom.json',
-        }),
+          config: 'custom.json'
+        })
       );
     });
 
@@ -131,8 +128,8 @@ describe('setupServeCommand', () => {
       expect(startServer).toHaveBeenCalledWith(
         expect.objectContaining({
           logLevel: 'debug',
-          verbose: true,
-        }),
+          verbose: true
+        })
       );
     });
 
@@ -145,8 +142,8 @@ describe('setupServeCommand', () => {
       expect(startServer).toHaveBeenCalledWith(
         expect.objectContaining({
           logLevel: 'error',
-          quiet: true,
-        }),
+          quiet: true
+        })
       );
     });
 
@@ -155,13 +152,13 @@ describe('setupServeCommand', () => {
       setupServeCommand(program);
 
       await program.parseAsync(['serve', '--mode', 'stdio', '--http'], {
-        from: 'user',
+        from: 'user'
       });
 
       expect(startServer).toHaveBeenCalledWith(
         expect.objectContaining({
-          mode: 'http',
-        }),
+          mode: 'http'
+        })
       );
     });
   });
@@ -180,10 +177,7 @@ describe('setupServeCommand', () => {
         expect(error).toBeDefined();
       }
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to start server:',
-        expect.any(Error),
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to start server:', expect.any(Error));
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
   });

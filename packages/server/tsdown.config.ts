@@ -13,10 +13,11 @@ export default defineConfig({
     HATAGO_BUILD_TARGET: 'node'
   },
   // Bundle @himorishige/hatago-* packages, exclude external libraries
-  external: [
-    'node:*',
-    'hono',
-    '@hono/node-server'
-  ],
-
+  external: ['node:*', 'hono', '@hono/node-server'],
+  esbuildOptions: {
+    // Make the CLI executable
+    banner: {
+      js: '#!/usr/bin/env node'
+    }
+  }
 });

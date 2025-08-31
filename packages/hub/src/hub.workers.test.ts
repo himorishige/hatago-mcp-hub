@@ -9,7 +9,7 @@ import { HatagoHub } from './workers-entry.js';
 // Mock Workers environment
 const mockEnv: WorkersEnv = {
   CONFIG_KV: {} as any,
-  SESSION_DO: {} as any,
+  SESSION_DO: {} as any
 };
 
 describe('HatagoHub (Workers)', () => {
@@ -30,7 +30,7 @@ describe('HatagoHub (Workers)', () => {
   it('should accept custom options', () => {
     const hub = new HatagoHub(mockEnv, {
       sessionTTL: 7200,
-      defaultTimeout: 60000,
+      defaultTimeout: 60000
     });
     expect(hub).toBeDefined();
   });
@@ -56,12 +56,10 @@ describe('HatagoHub (Workers)', () => {
         {
           id: 'local-server',
           command: 'node',
-          args: ['server.js'],
-        },
-      ]),
-    ).rejects.toThrow(
-      'Local MCP servers are not supported in this environment',
-    );
+          args: ['server.js']
+        }
+      ])
+    ).rejects.toThrow('Local MCP servers are not supported in this environment');
   });
 
   it('should accept remote server connections', async () => {
@@ -72,8 +70,8 @@ describe('HatagoHub (Workers)', () => {
       {
         id: 'remote-sse',
         url: 'https://example.com/mcp',
-        type: 'sse' as const,
-      },
+        type: 'sse' as const
+      }
     ];
 
     // This won't actually connect (no real server), but should not throw capability error

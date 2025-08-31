@@ -53,33 +53,28 @@ export function createParsingFunction(config: ToolNamingConfig) {
     if (strategy === 'prefix' && parts.length > 1) {
       return {
         serverId: parts[0],
-        name: parts.slice(1).join(separator),
+        name: parts.slice(1).join(separator)
       };
     }
 
-    if (
-      (strategy === 'suffix' || strategy === 'namespace') &&
-      parts.length > 1
-    ) {
+    if ((strategy === 'suffix' || strategy === 'namespace') && parts.length > 1) {
       return {
         serverId: parts[parts.length - 1],
-        name: parts.slice(0, -1).join(separator),
+        name: parts.slice(0, -1).join(separator)
       };
     }
 
     if (strategy === 'alias' && config.aliases && parts.length > 1) {
-      const aliasEntry = Object.entries(config.aliases).find(
-        ([_, alias]) => alias === parts[0],
-      );
+      const aliasEntry = Object.entries(config.aliases).find(([_, alias]) => alias === parts[0]);
       if (aliasEntry) {
         return {
           serverId: aliasEntry[0],
-          name: parts.slice(1).join(separator),
+          name: parts.slice(1).join(separator)
         };
       }
       return {
         serverId: parts[0],
-        name: parts.slice(1).join(separator),
+        name: parts.slice(1).join(separator)
       };
     }
 

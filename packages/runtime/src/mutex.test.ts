@@ -47,7 +47,7 @@ describe('Mutex', () => {
       mutex.runExclusive(async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         results.push(i);
-      }),
+      })
     );
 
     await Promise.all(operations);
@@ -78,7 +78,7 @@ describe('KeyedMutex', () => {
       }),
       keyedMutex.runExclusive('key2', async () => {
         results.push('key2');
-      }),
+      })
     ]);
 
     expect(results).toContain('key1');
@@ -94,7 +94,7 @@ describe('KeyedMutex', () => {
       keyedMutex.runExclusive('same-key', async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         results.push(i);
-      }),
+      })
     );
 
     await Promise.all(operations);

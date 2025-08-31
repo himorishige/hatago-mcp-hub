@@ -36,10 +36,7 @@ const defaultGetEnv: GetEnv = (key) => {
  * @returns Expanded string
  * @throws Error if required variable is undefined
  */
-export function expandEnvironmentVariables(
-  value: string,
-  getEnv: GetEnv = defaultGetEnv,
-): string {
+export function expandEnvironmentVariables(value: string, getEnv: GetEnv = defaultGetEnv): string {
   // Pattern matches ${VAR} or ${VAR:-default}
   const pattern = /\$\{([^}:]+)(?::-([^}]*))?\}/g;
 
@@ -56,7 +53,7 @@ export function expandEnvironmentVariables(
 
     // Required variable is not defined and no default provided
     throw new Error(
-      `Environment variable '${varName}' is not defined and no default value provided`,
+      `Environment variable '${varName}' is not defined and no default value provided`
     );
   });
 }
@@ -116,7 +113,7 @@ function expandServerConfig(server: any, getEnv: GetEnv): any {
   // Expand args array
   if (Array.isArray(expanded.args)) {
     expanded.args = expanded.args.map((arg: unknown) =>
-      typeof arg === 'string' ? expandEnvironmentVariables(arg, getEnv) : arg,
+      typeof arg === 'string' ? expandEnvironmentVariables(arg, getEnv) : arg
     );
   }
 
@@ -161,10 +158,7 @@ function expandServerConfig(server: any, getEnv: GetEnv): any {
  * @param getEnv - Function to get environment variable values
  * @throws Error listing all missing required variables
  */
-export function validateEnvironmentVariables(
-  config: any,
-  getEnv: GetEnv = defaultGetEnv,
-): void {
+export function validateEnvironmentVariables(config: any, getEnv: GetEnv = defaultGetEnv): void {
   const missingVars = new Set<string>();
 
   function checkValue(value: string) {

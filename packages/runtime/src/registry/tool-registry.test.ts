@@ -14,8 +14,8 @@ describe('ToolRegistry', () => {
       namingConfig: {
         strategy: 'namespace',
         separator: '_',
-        format: '{serverId}_{toolName}',
-      },
+        format: '{serverId}_{toolName}'
+      }
     });
   });
 
@@ -34,9 +34,9 @@ describe('ToolRegistry', () => {
           inputSchema: {
             type: 'object',
             properties: {
-              text: { type: 'string' },
-            },
-          },
+              text: { type: 'string' }
+            }
+          }
         },
         {
           name: 'add',
@@ -45,10 +45,10 @@ describe('ToolRegistry', () => {
             type: 'object',
             properties: {
               a: { type: 'number' },
-              b: { type: 'number' },
-            },
-          },
-        },
+              b: { type: 'number' }
+            }
+          }
+        }
       ];
 
       registry.registerServerTools('server1', tools);
@@ -66,19 +66,19 @@ describe('ToolRegistry', () => {
       const server1Tools: Tool[] = [
         {
           name: 'tool1',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       const server2Tools: Tool[] = [
         {
           name: 'tool2',
-          inputSchema: { type: 'object' },
+          inputSchema: { type: 'object' }
         },
         {
           name: 'tool3',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('server1', server1Tools);
@@ -101,15 +101,15 @@ describe('ToolRegistry', () => {
       const initialTools: Tool[] = [
         {
           name: 'old_tool',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       const updatedTools: Tool[] = [
         {
           name: 'new_tool',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('server1', initialTools);
@@ -128,13 +128,13 @@ describe('ToolRegistry', () => {
         {
           name: 'echo',
           description: 'Echo tool',
-          inputSchema: { type: 'object' },
+          inputSchema: { type: 'object' }
         },
         {
           name: 'calc',
           description: 'Calculator tool',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('test-server', tools);
@@ -171,8 +171,8 @@ describe('ToolRegistry', () => {
       const tools: Tool[] = [
         {
           name: 'process',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('data-processor', tools);
@@ -196,15 +196,15 @@ describe('ToolRegistry', () => {
       const server1Tools: Tool[] = [
         {
           name: 'unique1',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       const server2Tools: Tool[] = [
         {
           name: 'unique2',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('server1', server1Tools);
@@ -218,30 +218,30 @@ describe('ToolRegistry', () => {
       const server1Tools: Tool[] = [
         {
           name: 'echo',
-          inputSchema: { type: 'object' },
+          inputSchema: { type: 'object' }
         },
         {
           name: 'process',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       const server2Tools: Tool[] = [
         {
           name: 'echo', // Collision!
-          inputSchema: { type: 'object' },
+          inputSchema: { type: 'object' }
         },
         {
           name: 'unique',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       const server3Tools: Tool[] = [
         {
           name: 'echo', // Another collision!
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('server1', server1Tools);
@@ -252,7 +252,7 @@ describe('ToolRegistry', () => {
       expect(collisions).toHaveLength(1);
       expect(collisions[0]).toMatchObject({
         toolName: 'echo',
-        serverIds: expect.arrayContaining(['server1', 'server2', 'server3']),
+        serverIds: expect.arrayContaining(['server1', 'server2', 'server3'])
       });
     });
 
@@ -261,8 +261,8 @@ describe('ToolRegistry', () => {
       const tools: Tool[] = [
         {
           name: 'test',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('my-server', tools);
@@ -281,12 +281,12 @@ describe('ToolRegistry', () => {
       const tools: Tool[] = [
         {
           name: 'tool1',
-          inputSchema: { type: 'object' },
+          inputSchema: { type: 'object' }
         },
         {
           name: 'tool2',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('server1', tools);
@@ -301,15 +301,15 @@ describe('ToolRegistry', () => {
       const server1Tools: Tool[] = [
         {
           name: 'tool1',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       const server2Tools: Tool[] = [
         {
           name: 'tool2',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('server1', server1Tools);
@@ -337,15 +337,13 @@ describe('ToolRegistry', () => {
 
       registry.registerServerTools('server1', [
         { name: 'tool1', inputSchema: { type: 'object' } },
-        { name: 'tool2', inputSchema: { type: 'object' } },
+        { name: 'tool2', inputSchema: { type: 'object' } }
       ]);
 
       expect(registry.getToolCount()).toBe(2);
       expect(registry.getServerCount()).toBe(1);
 
-      registry.registerServerTools('server2', [
-        { name: 'tool3', inputSchema: { type: 'object' } },
-      ]);
+      registry.registerServerTools('server2', [{ name: 'tool3', inputSchema: { type: 'object' } }]);
 
       expect(registry.getToolCount()).toBe(3);
       expect(registry.getServerCount()).toBe(2);
@@ -361,15 +359,15 @@ describe('ToolRegistry', () => {
       const simpleRegistry = new ToolRegistry({
         namingConfig: {
           strategy: 'simple',
-          separator: '-',
-        },
+          separator: '-'
+        }
       });
 
       const tools: Tool[] = [
         {
           name: 'my_tool',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       simpleRegistry.registerServerTools('server', tools);
@@ -384,15 +382,15 @@ describe('ToolRegistry', () => {
         namingConfig: {
           strategy: 'namespace',
           separator: '-',
-          format: '{serverId}-{toolName}',
-        },
+          format: '{serverId}-{toolName}'
+        }
       });
 
       const tools: Tool[] = [
         {
           name: 'tool',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       customRegistry.registerServerTools('server', tools);
@@ -413,9 +411,9 @@ describe('ToolRegistry', () => {
       const minimalTools: Tool[] = [
         {
           name: 'minimal',
-          inputSchema: { type: 'object' },
+          inputSchema: { type: 'object' }
           // No description or other optional fields
-        },
+        }
       ];
 
       registry.registerServerTools('server', minimalTools);
@@ -430,16 +428,16 @@ describe('ToolRegistry', () => {
       const tools: Tool[] = [
         {
           name: 'tool-with-dash',
-          inputSchema: { type: 'object' },
+          inputSchema: { type: 'object' }
         },
         {
           name: 'tool.with.dot',
-          inputSchema: { type: 'object' },
+          inputSchema: { type: 'object' }
         },
         {
           name: 'tool_with_underscore',
-          inputSchema: { type: 'object' },
-        },
+          inputSchema: { type: 'object' }
+        }
       ];
 
       registry.registerServerTools('special-server', tools);

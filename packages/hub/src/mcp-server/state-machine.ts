@@ -23,15 +23,11 @@ const VALID_TRANSITIONS: Record<ServerState, ServerState[]> = {
   [ServerState.MANUAL]: [], // Cannot transition from manual
   [ServerState.INACTIVE]: [ServerState.ACTIVATING],
   [ServerState.ACTIVATING]: [ServerState.ACTIVE, ServerState.ERROR],
-  [ServerState.ACTIVE]: [
-    ServerState.IDLING,
-    ServerState.STOPPING,
-    ServerState.ERROR,
-  ],
+  [ServerState.ACTIVE]: [ServerState.IDLING, ServerState.STOPPING, ServerState.ERROR],
   [ServerState.IDLING]: [ServerState.ACTIVE, ServerState.STOPPING],
   [ServerState.STOPPING]: [ServerState.INACTIVE, ServerState.ERROR],
   [ServerState.ERROR]: [ServerState.COOLDOWN],
-  [ServerState.COOLDOWN]: [ServerState.INACTIVE],
+  [ServerState.COOLDOWN]: [ServerState.INACTIVE]
 };
 
 /**
@@ -70,18 +66,12 @@ export class ServerStateMachine extends EventEmitter {
    * Transition to a new state
    * Returns a promise that resolves when transition is complete
    */
-  async transition(
-    serverId: string,
-    to: ServerState,
-    reason?: string,
-  ): Promise<void> {
+  async transition(serverId: string, to: ServerState, reason?: string): Promise<void> {
     const from = this.getState(serverId);
 
     // Check if transition is valid
     if (!this.canTransition(from, to)) {
-      throw new Error(
-        `Invalid state transition for ${serverId}: ${from} -> ${to}`,
-      );
+      throw new Error(`Invalid state transition for ${serverId}: ${from} -> ${to}`);
     }
 
     // Wait for any ongoing transition
@@ -92,18 +82,13 @@ export class ServerStateMachine extends EventEmitter {
       const currentState = this.getState(serverId);
       if (currentState !== from) {
         throw new Error(
-          `State changed during transition wait: expected ${from}, got ${currentState}`,
+          `State changed during transition wait: expected ${from}, got ${currentState}`
         );
       }
     }
 
     // Create transition promise
-    const transitionPromise = this.executeTransition(
-      serverId,
-      from,
-      to,
-      reason,
-    );
+    const transitionPromise = this.executeTransition(serverId, from, to, reason);
     this.transitions.set(serverId, transitionPromise);
 
     try {
@@ -120,7 +105,7 @@ export class ServerStateMachine extends EventEmitter {
     serverId: string,
     from: ServerState,
     to: ServerState,
-    reason?: string,
+    reason?: string
   ): Promise<void> {
     // Update state
     this.states.set(serverId, to);
@@ -131,7 +116,7 @@ export class ServerStateMachine extends EventEmitter {
       from,
       to,
       reason,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
 
     const history = this.transitionHistory.get(serverId) || [];

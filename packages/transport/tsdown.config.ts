@@ -7,5 +7,5 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   dts: true,
-  external: ['@modelcontextprotocol/sdk', '@himorishige/hatago-core'],
+  external: ['@modelcontextprotocol/sdk', '@himorishige/hatago-core']
 });

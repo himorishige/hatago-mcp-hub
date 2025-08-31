@@ -35,7 +35,7 @@ export type {
   ServerType,
   ServerStatus,
   ServerInfo,
-  ConnectionResult,
+  ConnectionResult
 } from '@himorishige/hatago-core';
 
 /**

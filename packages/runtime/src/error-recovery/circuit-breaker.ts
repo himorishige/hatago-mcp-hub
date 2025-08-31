@@ -8,7 +8,7 @@
 export enum CircuitState {
   CLOSED = 'closed',
   OPEN = 'open',
-  HALF_OPEN = 'half-open',
+  HALF_OPEN = 'half-open'
 }
 
 /**
@@ -47,7 +47,7 @@ export class CircuitBreaker {
       successThreshold: config.successThreshold || 3,
       timeWindow: config.timeWindow || 60000, // 1 minute
       cooldownPeriod: config.cooldownPeriod || 30000, // 30 seconds
-      onStateChange: config.onStateChange,
+      onStateChange: config.onStateChange
     };
   }
 
@@ -77,9 +77,7 @@ export class CircuitBreaker {
     this.successes.push(now);
 
     // Clean old successes
-    this.successes = this.successes.filter(
-      (time) => now - time <= this.config.timeWindow,
-    );
+    this.successes = this.successes.filter((time) => now - time <= this.config.timeWindow);
 
     // Check if should close from half-open
     if (this.state === CircuitState.HALF_OPEN) {
@@ -99,15 +97,10 @@ export class CircuitBreaker {
     this.lastFailureTime = now;
 
     // Clean old failures
-    this.failures = this.failures.filter(
-      (time) => now - time <= this.config.timeWindow,
-    );
+    this.failures = this.failures.filter((time) => now - time <= this.config.timeWindow);
 
     // Check if should open circuit
-    if (
-      this.state === CircuitState.CLOSED ||
-      this.state === CircuitState.HALF_OPEN
-    ) {
+    if (this.state === CircuitState.CLOSED || this.state === CircuitState.HALF_OPEN) {
       if (this.failures.length >= this.config.failureThreshold) {
         this.changeState(CircuitState.OPEN);
         this.successes = [];
@@ -136,7 +129,7 @@ export class CircuitBreaker {
       state: this.state,
       failures: this.failures.length,
       successes: this.successes.length,
-      lastFailureTime: this.lastFailureTime,
+      lastFailureTime: this.lastFailureTime
     };
   }
 
@@ -180,9 +173,7 @@ export class CircuitBreaker {
 /**
  * Create a circuit breaker with default config
  */
-export function createCircuitBreaker(
-  config?: Partial<CircuitBreakerConfig>,
-): CircuitBreaker {
+export function createCircuitBreaker(config?: Partial<CircuitBreakerConfig>): CircuitBreaker {
   return new CircuitBreaker(config);
 }
 
@@ -191,7 +182,7 @@ export function createCircuitBreaker(
  */
 export async function withCircuitBreaker<T>(
   breaker: CircuitBreaker,
-  fn: () => Promise<T>,
+  fn: () => Promise<T>
 ): Promise<T> {
   if (!breaker.shouldAllow()) {
     throw new Error(`Circuit breaker is ${breaker.getState()}`);

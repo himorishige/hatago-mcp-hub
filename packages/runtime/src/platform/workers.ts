@@ -7,12 +7,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import type {
-  ConfigStore,
-  Platform,
-  PlatformOptions,
-  SessionStore,
-} from './types.js';
+import type { ConfigStore, Platform, PlatformOptions, SessionStore } from './types.js';
 
 /**
  * Cloudflare Workers environment bindings
@@ -31,7 +26,7 @@ export interface WorkersEnv {
 class KVConfigStore implements ConfigStore {
   constructor(
     private kv: KVNamespace,
-    private cacheKv?: KVNamespace,
+    private cacheKv?: KVNamespace
   ) {}
 
   async get(key: string): Promise<any> {
@@ -39,7 +34,7 @@ class KVConfigStore implements ConfigStore {
     if (this.cacheKv) {
       const cached = await this.cacheKv.get(key, {
         type: 'json',
-        cacheTtl: 60, // 1 minute cache
+        cacheTtl: 60 // 1 minute cache
       });
       if (cached !== null) return cached;
     }
@@ -50,7 +45,7 @@ class KVConfigStore implements ConfigStore {
     // Update cache if available
     if (value !== null && this.cacheKv) {
       await this.cacheKv.put(key, JSON.stringify(value), {
-        expirationTtl: 60,
+        expirationTtl: 60
       });
     }
 
@@ -87,7 +82,7 @@ class KVConfigStore implements ConfigStore {
 class DOSessionStore implements SessionStore {
   constructor(
     private namespace: DurableObjectNamespace,
-    private kv?: KVNamespace, // Optional KV for snapshots
+    private kv?: KVNamespace // Optional KV for snapshots
   ) {}
 
   private getStub(id: string): DurableObjectStub {
@@ -99,7 +94,7 @@ class DOSessionStore implements SessionStore {
     const stub = this.getStub(id);
     await stub.fetch('https://session/create', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(data)
     });
 
     // Optional: Store snapshot in KV for quick reads
@@ -108,11 +103,11 @@ class DOSessionStore implements SessionStore {
         `session:${id}`,
         JSON.stringify({
           ...data,
-          createdAt: Date.now(),
+          createdAt: Date.now()
         }),
         {
-          expirationTtl: 3600, // 1 hour
-        },
+          expirationTtl: 3600 // 1 hour
+        }
       );
     }
   }
@@ -137,7 +132,7 @@ class DOSessionStore implements SessionStore {
     const stub = this.getStub(id);
     await stub.fetch('https://session/update', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(data)
     });
 
     // Invalidate KV snapshot
@@ -149,7 +144,7 @@ class DOSessionStore implements SessionStore {
   async delete(id: string): Promise<void> {
     const stub = this.getStub(id);
     await stub.fetch('https://session/delete', {
-      method: 'DELETE',
+      method: 'DELETE'
     });
 
     if (this.kv) {
@@ -190,11 +185,11 @@ class KVSessionStore implements SessionStore {
       JSON.stringify({
         ...data,
         createdAt: Date.now(),
-        updatedAt: Date.now(),
+        updatedAt: Date.now()
       }),
       {
-        expirationTtl: 86400, // 24 hours
-      },
+        expirationTtl: 86400 // 24 hours
+      }
     );
   }
 
@@ -210,11 +205,11 @@ class KVSessionStore implements SessionStore {
         JSON.stringify({
           ...existing,
           ...data,
-          updatedAt: Date.now(),
+          updatedAt: Date.now()
         }),
         {
-          expirationTtl: 86400,
-        },
+          expirationTtl: 86400
+        }
       );
     }
   }
@@ -236,10 +231,7 @@ class KVSessionStore implements SessionStore {
 /**
  * Create Cloudflare Workers platform implementation
  */
-export function createWorkersPlatform(
-  env: WorkersEnv,
-  _options: PlatformOptions = {},
-): Platform {
+export function createWorkersPlatform(env: WorkersEnv, _options: PlatformOptions = {}): Platform {
   // Choose session store based on available bindings
   const sessionStore = env.SESSION_DO
     ? new DOSessionStore(env.SESSION_DO, env.CACHE_KV)
@@ -258,7 +250,7 @@ export function createWorkersPlatform(
     // Storage implementations
     storage: {
       config: new KVConfigStore(env.CONFIG_KV, env.CACHE_KV),
-      session: sessionStore,
+      session: sessionStore
     },
 
     // Platform identification
@@ -270,7 +262,7 @@ export function createWorkersPlatform(
       hasProcessSpawn: false,
       hasWebCrypto: true,
       hasDurableObjects: !!env.SESSION_DO,
-      hasKVStorage: true,
-    },
+      hasKVStorage: true
+    }
   };
 }

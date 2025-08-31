@@ -34,15 +34,14 @@ export const isOk = <T, E>(result: Result<T, E>): result is Ok<T> => result.ok;
 /**
  * Type guard to check if result is Err
  */
-export const isErr = <T, E>(result: Result<T, E>): result is Err<E> =>
-  !result.ok;
+export const isErr = <T, E>(result: Result<T, E>): result is Err<E> => !result.ok;
 
 /**
  * Create a success result
  */
 export const ok = <T>(value: T): Ok<T> => ({
   ok: true,
-  value,
+  value
 });
 
 /**
@@ -50,16 +49,13 @@ export const ok = <T>(value: T): Ok<T> => ({
  */
 export const err = <E = HatagoError>(error: E): Err<E> => ({
   ok: false,
-  error,
+  error
 });
 
 /**
  * Map over a successful result
  */
-export const map = <T, U, E>(
-  result: Result<T, E>,
-  fn: (value: T) => U,
-): Result<U, E> => {
+export const map = <T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E> => {
   if (isOk(result)) {
     return ok(fn(result.value));
   }
@@ -69,10 +65,7 @@ export const map = <T, U, E>(
 /**
  * Map over an error result
  */
-export const mapErr = <T, E, F>(
-  result: Result<T, E>,
-  fn: (error: E) => F,
-): Result<T, F> => {
+export const mapErr = <T, E, F>(result: Result<T, E>, fn: (error: E) => F): Result<T, F> => {
   if (isErr(result)) {
     return err(fn(result.error));
   }
@@ -84,7 +77,7 @@ export const mapErr = <T, E, F>(
  */
 export const flatMap = <T, U, E>(
   result: Result<T, E>,
-  fn: (value: T) => Result<U, E>,
+  fn: (value: T) => Result<U, E>
 ): Result<U, E> => {
   if (isOk(result)) {
     return fn(result.value);
@@ -115,10 +108,7 @@ export const unwrapOr = <T, E>(result: Result<T, E>, defaultValue: T): T => {
 /**
  * Unwrap result or compute default value
  */
-export const unwrapOrElse = <T, E>(
-  result: Result<T, E>,
-  fn: (error: E) => T,
-): T => {
+export const unwrapOrElse = <T, E>(result: Result<T, E>, fn: (error: E) => T): T => {
   if (isOk(result)) {
     return result.value;
   }
@@ -130,7 +120,7 @@ export const unwrapOrElse = <T, E>(
  */
 export const fromPromise = async <T, E = HatagoError>(
   promise: Promise<T>,
-  errorMapper?: (error: unknown) => E,
+  errorMapper?: (error: unknown) => E
 ): Promise<Result<T, E>> => {
   try {
     const value = await promise;
@@ -172,7 +162,7 @@ export const combine = <T, E>(results: Result<T, E>[]): Result<T[], E> => {
  */
 export const tryCatch = <T, E = HatagoError>(
   fn: () => T,
-  errorMapper?: (error: unknown) => E,
+  errorMapper?: (error: unknown) => E
 ): Result<T, E> => {
   try {
     return ok(fn());
@@ -189,7 +179,7 @@ export const tryCatch = <T, E = HatagoError>(
  */
 export const tryCatchAsync = async <T, E = HatagoError>(
   fn: () => Promise<T>,
-  errorMapper?: (error: unknown) => E,
+  errorMapper?: (error: unknown) => E
 ): Promise<Result<T, E>> => {
   try {
     const value = await fn();

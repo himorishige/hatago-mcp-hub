@@ -35,11 +35,7 @@ export class SSEManager {
   /**
    * Add a new SSE client
    */
-  addClient(
-    clientId: string,
-    writer: WritableStreamDefaultWriter,
-    stream?: any,
-  ): void {
+  addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: any): void {
     // Set up keepalive interval
     const keepAliveInterval = setInterval(() => {
       this.sendKeepAliveToClient(clientId);
@@ -50,7 +46,7 @@ export class SSEManager {
       writer,
       closed: false,
       keepAliveInterval,
-      stream,
+      stream
     });
 
     this.logger.debug('[SSE] Client connected', { clientId });
@@ -58,7 +54,7 @@ export class SSEManager {
     // Send initial connection event
     this.sendToClient(clientId, 'connected', {
       clientId,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
   }
 
@@ -95,7 +91,7 @@ export class SSEManager {
     this.progressRoutes.set(progressToken, clientId);
     this.logger.debug('[SSE] Progress token registered', {
       progressToken,
-      clientId,
+      clientId
     });
   }
 
@@ -116,7 +112,7 @@ export class SSEManager {
       this.sendToClient(clientId, 'progress', progress);
     } else {
       this.logger.warn('[SSE] No client found for progress token', {
-        progressToken,
+        progressToken
       });
     }
   }
@@ -124,11 +120,7 @@ export class SSEManager {
   /**
    * Send event to a specific client
    */
-  private async sendToClient(
-    clientId: string,
-    event: string,
-    data: any,
-  ): Promise<void> {
+  private async sendToClient(clientId: string, event: string, data: any): Promise<void> {
     const client = this.clients.get(clientId);
     if (!client || client.closed) {
       return;
@@ -144,7 +136,7 @@ export class SSEManager {
       this.logger.error('[SSE] Failed to send event', {
         clientId,
         event,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : String(error)
       });
 
       // Mark client as closed on error
@@ -190,7 +182,7 @@ export class SSEManager {
     } catch (error) {
       this.logger.warn('[SSE] Keep-alive failed', {
         clientId,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : String(error)
       });
       this.removeClient(clientId);
     }

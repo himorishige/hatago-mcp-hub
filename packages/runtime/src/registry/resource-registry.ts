@@ -1,8 +1,5 @@
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
-import {
-  createNamingFunction,
-  createParsingFunction,
-} from '../utils/naming-strategy.js';
+import { createNamingFunction, createParsingFunction } from '../utils/naming-strategy.js';
 import type { ToolNamingConfig } from './types.js';
 
 export interface ResourceMetadata extends Resource {
@@ -35,16 +32,14 @@ export interface ResourceRegistry {
  * Create a resource registry for managing resources from multiple MCP servers
  * Using functional factory pattern for better adherence to Hatago principles
  */
-export function createResourceRegistry(
-  options: ResourceRegistryOptions = {},
-): ResourceRegistry {
+export function createResourceRegistry(options: ResourceRegistryOptions = {}): ResourceRegistry {
   // Private state managed through closure
   const resources = new Map<string, ResourceMetadata[]>();
   const serverResources = new Map<string, Set<string>>();
   const namingConfig: ToolNamingConfig = options.namingConfig || {
     strategy: 'namespace',
     separator: '_',
-    format: '{server}{separator}{tool}',
+    format: '{server}{separator}{tool}'
   };
 
   // Create naming functions
@@ -75,10 +70,7 @@ export function createResourceRegistry(
   /**
    * Register resources from a server
    */
-  function registerServerResources(
-    serverId: string,
-    newResources: Resource[],
-  ): void {
+  function registerServerResources(serverId: string, newResources: Resource[]): void {
     // Clear existing resources
     clearServerResources(serverId);
 
@@ -94,7 +86,7 @@ export function createResourceRegistry(
         name: namespacedName,
         uri: resource.uri, // Keep original URI
         serverId,
-        originalUri: resource.uri,
+        originalUri: resource.uri
       };
 
       // URI-based management - use original URI as key
@@ -121,7 +113,7 @@ export function createResourceRegistry(
     return {
       serverId: resource.serverId,
       originalUri: resource.originalUri,
-      publicUri: uri,
+      publicUri: uri
     };
   }
 
@@ -138,9 +130,7 @@ export function createResourceRegistry(
     for (const uri of uris) {
       const resourceList = resources.get(uri);
       if (resourceList) {
-        const serverResource = resourceList.find(
-          (r) => r.serverId === serverId,
-        );
+        const serverResource = resourceList.find((r) => r.serverId === serverId);
         if (serverResource) {
           // Return without serverId and originalUri metadata
           const { serverId: _, originalUri: __, ...resource } = serverResource;
@@ -206,6 +196,6 @@ export function createResourceRegistry(
     getAllResources,
     getResourceCollisions,
     getResourceCount: () => resources.size,
-    clear,
+    clear
   };
 }

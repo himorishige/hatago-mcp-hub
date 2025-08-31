@@ -56,13 +56,7 @@ describe('parseArgs', () => {
     });
 
     it('should handle mixed flags', () => {
-      const result = parseArgs([
-        '--config',
-        'file.json',
-        '--verbose',
-        '--port',
-        '3000',
-      ]);
+      const result = parseArgs(['--config', 'file.json', '--verbose', '--port', '3000']);
 
       expect(result.flags.config).toBe('file.json');
       expect(result.flags.verbose).toBe(true);
@@ -93,14 +87,7 @@ describe('parseArgs', () => {
     });
 
     it('should collect positional arguments mixed with flags', () => {
-      const result = parseArgs([
-        'serve',
-        '--port',
-        '3000',
-        'file1',
-        '--verbose',
-        'file2',
-      ]);
+      const result = parseArgs(['serve', '--port', '3000', 'file1', '--verbose', 'file2']);
 
       expect(result.command).toBe('serve');
       expect(result.flags.port).toBe('3000');
@@ -127,12 +114,7 @@ describe('parseArgs', () => {
     });
 
     it('should handle special characters in values', () => {
-      const result = parseArgs([
-        '--path',
-        '/path/with spaces/file.txt',
-        '--regex',
-        '.*\\.js$',
-      ]);
+      const result = parseArgs(['--path', '/path/with spaces/file.txt', '--regex', '.*\\.js$']);
 
       expect(result.flags.path).toBe('/path/with spaces/file.txt');
       expect(result.flags.regex).toBe('.*\\.js$');

@@ -3,13 +3,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import {
-  LOG_LEVELS,
-  type Logger,
-  type LogLevel,
-  SilentLogger,
-  shouldLog,
-} from './logger.js';
+import { LOG_LEVELS, type Logger, type LogLevel, SilentLogger, shouldLog } from './logger.js';
 
 describe('LOG_LEVELS', () => {
   it('should have correct numeric values', () => {
@@ -98,7 +92,7 @@ describe('SilentLogger', () => {
       warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
       info: vi.spyOn(console, 'info').mockImplementation(() => {}),
       debug: vi.spyOn(console, 'debug').mockImplementation(() => {}),
-      log: vi.spyOn(console, 'log').mockImplementation(() => {}),
+      log: vi.spyOn(console, 'log').mockImplementation(() => {})
     };
 
     logger.error('Error message');
@@ -164,7 +158,7 @@ describe('Logger Interface', () => {
       info: vi.fn(),
       debug: vi.fn(),
       trace: vi.fn(),
-      child: vi.fn(),
+      child: vi.fn()
     };
 
     expect(mockLogger.level).toBe('info');
@@ -183,7 +177,7 @@ describe('Logger Interface', () => {
       warn: () => {},
       info: () => {},
       debug: () => {},
-      trace: () => {},
+      trace: () => {}
     };
 
     expect(minimalLogger.child).toBeUndefined();
@@ -192,14 +186,7 @@ describe('Logger Interface', () => {
 
 describe('LogLevel types', () => {
   it('should only accept valid log levels', () => {
-    const validLevels: LogLevel[] = [
-      'silent',
-      'error',
-      'warn',
-      'info',
-      'debug',
-      'trace',
-    ];
+    const validLevels: LogLevel[] = ['silent', 'error', 'warn', 'info', 'debug', 'trace'];
 
     for (const level of validLevels) {
       expect(LOG_LEVELS).toHaveProperty(level);

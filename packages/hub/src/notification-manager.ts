@@ -52,7 +52,7 @@ export class NotificationManager {
     severity: NotificationSeverity,
     category: NotificationCategory,
     message: string,
-    data?: any,
+    data?: any
   ): void {
     // Check if notifications are enabled
     if (!this.config.enabled) {
@@ -74,9 +74,7 @@ export class NotificationManager {
       this.logger.debug('Notification rate limited', {
         category,
         message,
-        nextAllowedIn: `${Math.ceil(
-          (this.config.rateLimitSec * 1000 - (now - lastSent)) / 1000,
-        )}s`,
+        nextAllowedIn: `${Math.ceil((this.config.rateLimitSec * 1000 - (now - lastSent)) / 1000)}s`
       });
       return;
     }
@@ -90,12 +88,11 @@ export class NotificationManager {
       category,
       message,
       data,
-      timestamp: now,
+      timestamp: now
     };
 
     // Log the notification
-    const logMethod =
-      severity === 'error' ? 'error' : severity === 'warn' ? 'warn' : 'info';
+    const logMethod = severity === 'error' ? 'error' : severity === 'warn' ? 'warn' : 'info';
     this.logger[logMethod](`[${category.toUpperCase()}] ${message}`, data);
 
     // Send to handlers
@@ -104,7 +101,7 @@ export class NotificationManager {
         handler(event);
       } catch (error) {
         this.logger.error('Notification handler error', {
-          error: error instanceof Error ? error.message : String(error),
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -127,14 +124,10 @@ export class NotificationManager {
   notifyServerStatus(
     serverId: string,
     status: 'starting' | 'connected' | 'disconnected' | 'error',
-    error?: string,
+    error?: string
   ): void {
     const severity: NotificationSeverity =
-      status === 'error'
-        ? 'error'
-        : status === 'disconnected'
-          ? 'warn'
-          : 'info';
+      status === 'error' ? 'error' : status === 'disconnected' ? 'warn' : 'info';
     const message = `Server ${serverId} ${status}`;
     this.notify(severity, 'server', message, error ? { error } : undefined);
   }
@@ -143,12 +136,7 @@ export class NotificationManager {
    * Notify timeout occurred
    */
   notifyTimeout(serverId: string, operation: string, timeoutMs: number): void {
-    this.notify(
-      'warn',
-      'server',
-      `Timeout on ${operation} for server ${serverId}`,
-      { timeoutMs },
-    );
+    this.notify('warn', 'server', `Timeout on ${operation} for server ${serverId}`, { timeoutMs });
   }
 
   /**

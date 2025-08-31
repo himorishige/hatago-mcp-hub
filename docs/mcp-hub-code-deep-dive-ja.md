@@ -49,8 +49,8 @@ HatagoはSDKの「高水準API」を活用します。例えば：
 ```ts
 // packages/hub/src/hub.ts（接続確立）
 const client = new Client(
-  { name: `hatago-hub-${id}`, version: "0.1.0" },
-  { capabilities: { tools: {}, resources: {}, prompts: {}, sampling: {} } },
+  { name: `hatago-hub-${id}`, version: '0.1.0' },
+  { capabilities: { tools: {}, resources: {}, prompts: {}, sampling: {} } }
 );
 await client.connect(transport);
 
@@ -63,7 +63,7 @@ const promptsResult = await client.listPrompts();
 await client.callTool({ name: tool.name, arguments: args }, undefined, {
   onprogress: (p) => {
     /* 中継処理 */
-  },
+  }
 });
 ```
 
@@ -77,20 +77,20 @@ SDKのClientに依拠することで、低レイヤのJSON-RPC詳細を自前実
 // packages/hub/src/hub.ts（抜粋）
 if (spec.command) {
   // ローカル（stdio）
-  const { StdioClientTransport } = await import("@hatago/transport/stdio");
+  const { StdioClientTransport } = await import('@hatago/transport/stdio');
   return new StdioClientTransport({
     command: spec.command,
     args: spec.args,
     env: spec.env,
-    cwd: spec.cwd,
+    cwd: spec.cwd
   });
-} else if (spec.url && spec.type === "sse") {
+} else if (spec.url && spec.type === 'sse') {
   // リモート（SSE）
   return new SSEClientTransport(new URL(spec.url));
-} else if (spec.url && spec.type === "streamable-http") {
+} else if (spec.url && spec.type === 'streamable-http') {
   // リモート（Streamable HTTP）
   const { StreamableHTTPClientTransport } = await import(
-    "@modelcontextprotocol/sdk/client/streamableHttp.js"
+    '@modelcontextprotocol/sdk/client/streamableHttp.js'
   );
   return new StreamableHTTPClientTransport(new URL(spec.url));
 }
@@ -109,16 +109,12 @@ if (spec.command) {
 const toolsWithHandlers = toolArray.map((tool) => ({
   ...tool,
   handler: async (args: any, progressCallback?: any) => {
-    return await client.callTool(
-      { name: tool.name, arguments: args },
-      undefined,
-      {
-        onprogress: async (progress) => {
-          /* 進捗を転送 */
-        },
-      },
-    );
-  },
+    return await client.callTool({ name: tool.name, arguments: args }, undefined, {
+      onprogress: async (progress) => {
+        /* 進捗を転送 */
+      }
+    });
+  }
 }));
 this.toolRegistry.registerServerTools(id, toolsWithHandlers);
 // 公開名でハンドラ登録
@@ -145,16 +141,16 @@ if (this.streamableTransport && serverId && progressToken) {
     {
       name: toolName,
       arguments: params.arguments,
-      _meta: { progressToken: upstreamToken },
+      _meta: { progressToken: upstreamToken }
     },
     undefined,
     {
       onprogress: async (progress) => {
         /* progressTokenでそのまま上流へ転送 */
-      },
-    },
+      }
+    }
   );
-  return { jsonrpc: "2.0", id, result };
+  return { jsonrpc: '2.0', id, result };
 }
 ```
 
@@ -176,38 +172,34 @@ TypeScript SDKの `CreateMessageRequestSchema` を使い、下位サーバーか
 
 ```ts
 // packages/hub/src/hub.ts（接続後にハンドラ登録）
-(client as any).setRequestHandler(
-  CreateMessageRequestSchema,
-  async (request) => {
-    // クライアント側のcapabilitiesを確認（sampling非対応なら明確なエラー）
-    const clientCaps = this.capabilityRegistry.getClientCapabilities("default");
-    if (!clientCaps.sampling) throw new Error("Sampling not supported");
+(client as any).setRequestHandler(CreateMessageRequestSchema, async (request) => {
+  // クライアント側のcapabilitiesを確認（sampling非対応なら明確なエラー）
+  const clientCaps = this.capabilityRegistry.getClientCapabilities('default');
+  if (!clientCaps.sampling) throw new Error('Sampling not supported');
 
-    // StreamableHTTP経由で上位へ転送し、対応するレスポンスを待つ
-    const samplingId = `sampling-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    return await new Promise((resolve, reject) => {
-      (this as any).samplingSolvers =
-        (this as any).samplingSolvers || new Map();
-      (this as any).samplingSolvers.set(samplingId, {
-        resolve,
-        reject,
-        progressToken: request.params?._meta?.progressToken,
-        serverId: id,
-      });
-      this.streamableTransport
-        ?.send({
-          jsonrpc: "2.0",
-          id: samplingId,
-          method: "sampling/createMessage",
-          params: request.params,
-        })
-        .catch(reject);
-      setTimeout(() => {
-        /* タイムアウト処理 */
-      }, 30000);
+  // StreamableHTTP経由で上位へ転送し、対応するレスポンスを待つ
+  const samplingId = `sampling-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return await new Promise((resolve, reject) => {
+    (this as any).samplingSolvers = (this as any).samplingSolvers || new Map();
+    (this as any).samplingSolvers.set(samplingId, {
+      resolve,
+      reject,
+      progressToken: request.params?._meta?.progressToken,
+      serverId: id
     });
-  },
-);
+    this.streamableTransport
+      ?.send({
+        jsonrpc: '2.0',
+        id: samplingId,
+        method: 'sampling/createMessage',
+        params: request.params
+      })
+      .catch(reject);
+    setTimeout(() => {
+      /* タイムアウト処理 */
+    }, 30000);
+  });
+});
 ```
 
 上位から返る `sampling-...` のレスポンスは `onmessage` で受け取り、`samplingSolvers` で対応付けて解決します。`notifications/progress` は対応するサーバーへ折り返し転送します（Hubが「橋」の役目）。
@@ -326,24 +318,24 @@ private async registerInternalTools(): Promise<void> {
 export function getInternalTools(): InternalTool[] {
   return [
     {
-      name: "hatago_status",
+      name: 'hatago_status',
       inputSchema: z.object({}),
       handler: async (_args, hub) => ({
         /* 概要 */
-      }),
+      })
     },
     {
-      name: "hatago_reload",
+      name: 'hatago_reload',
       inputSchema: z.object({ dry_run: z.boolean().optional() }),
-      handler: async (args, hub) => hubReload(hub, args),
+      handler: async (args, hub) => hubReload(hub, args)
     },
     {
-      name: "hatago_list_servers",
+      name: 'hatago_list_servers',
       inputSchema: z.object({}),
       handler: async (_args, hub) => ({
         /* 一覧 */
-      }),
-    },
+      })
+    }
   ];
 }
 ```

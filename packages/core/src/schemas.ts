@@ -36,21 +36,15 @@ export const TimeoutConfigSchema = z.object({
     .max(MAX_TIMEOUT_MS)
     .optional()
     .default(DEFAULT_KEEPALIVE_TIMEOUT_MS)
-    .describe('Keep-alive timeout in milliseconds'),
+    .describe('Keep-alive timeout in milliseconds')
 });
 
 /**
  * Base server configuration (shared fields)
  */
 const BaseServerConfigSchema = z.object({
-  disabled: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe('Whether this server is disabled'),
-  timeouts: TimeoutConfigSchema.optional().describe(
-    'Server-specific timeout overrides',
-  ),
+  disabled: z.boolean().optional().default(false).describe('Whether this server is disabled'),
+  timeouts: TimeoutConfigSchema.optional().describe('Server-specific timeout overrides')
 });
 
 /**
@@ -58,16 +52,9 @@ const BaseServerConfigSchema = z.object({
  */
 export const StdioServerConfigSchema = BaseServerConfigSchema.extend({
   command: z.string().describe('Command to execute'),
-  args: z
-    .array(z.string())
-    .optional()
-    .default([])
-    .describe('Command arguments'),
+  args: z.array(z.string()).optional().default([]).describe('Command arguments'),
   cwd: z.string().optional().describe('Working directory'),
-  env: z
-    .record(z.string())
-    .optional()
-    .describe('Environment variables for the server'),
+  env: z.record(z.string()).optional().describe('Environment variables for the server')
 }).strict();
 
 /**
@@ -76,10 +63,7 @@ export const StdioServerConfigSchema = BaseServerConfigSchema.extend({
 export const HttpServerConfigSchema = BaseServerConfigSchema.extend({
   type: z.literal('http').optional(),
   url: z.string().url().describe('Server URL'),
-  headers: z
-    .record(z.string())
-    .optional()
-    .describe('HTTP headers for the request'),
+  headers: z.record(z.string()).optional().describe('HTTP headers for the request')
 }).strict();
 
 /**
@@ -88,10 +72,7 @@ export const HttpServerConfigSchema = BaseServerConfigSchema.extend({
 export const SseServerConfigSchema = BaseServerConfigSchema.extend({
   type: z.literal('sse'),
   url: z.string().url().describe('Server URL'),
-  headers: z
-    .record(z.string())
-    .optional()
-    .describe('HTTP headers for the request'),
+  headers: z.record(z.string()).optional().describe('HTTP headers for the request')
 }).strict();
 
 /**
@@ -101,7 +82,7 @@ export const SseServerConfigSchema = BaseServerConfigSchema.extend({
 export const ServerConfigSchema = z.union([
   SseServerConfigSchema,
   HttpServerConfigSchema,
-  StdioServerConfigSchema,
+  StdioServerConfigSchema
 ]);
 
 /**
@@ -113,15 +94,9 @@ export const ToolNamingConfigSchema = z.object({
     .default('prefix')
     .describe('Tool naming strategy'),
   separator: z.string().default('__').describe('Separator for tool names'),
-  serverIdInName: z
-    .boolean()
-    .default(true)
-    .describe('Include server ID in tool names'),
+  serverIdInName: z.boolean().default(true).describe('Include server ID in tool names'),
   format: z.string().optional().describe('Custom format string for tool names'),
-  aliases: z
-    .record(z.string())
-    .optional()
-    .describe('Alias mappings for tool names'),
+  aliases: z.record(z.string()).optional().describe('Alias mappings for tool names')
 });
 
 /**
@@ -138,20 +113,15 @@ export const NotificationConfigSchema = z.object({
   severity: z
     .array(z.enum(['info', 'warn', 'error']))
     .default(['warn', 'error'])
-    .describe('Severity levels to notify'),
+    .describe('Severity levels to notify')
 });
 
 /**
  * HTTP server configuration
  */
 export const HttpConfigSchema = z.object({
-  port: z
-    .number()
-    .min(1)
-    .max(65535)
-    .default(3000)
-    .describe('Port to listen on'),
-  host: z.string().default('localhost').describe('Host to bind to'),
+  port: z.number().min(1).max(65535).default(3000).describe('Port to listen on'),
+  host: z.string().default('localhost').describe('Host to bind to')
 });
 
 /**
@@ -159,22 +129,12 @@ export const HttpConfigSchema = z.object({
  */
 export const HatagoConfigSchema = z.object({
   version: z.number().default(1).describe('Configuration version'),
-  logLevel: z
-    .enum(['debug', 'info', 'warn', 'error'])
-    .default('info')
-    .describe('Logging level'),
+  logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info').describe('Logging level'),
   http: HttpConfigSchema.optional().describe('HTTP server configuration'),
-  mcpServers: z
-    .record(ServerConfigSchema)
-    .default({})
-    .describe('MCP server configurations'),
-  toolNaming: ToolNamingConfigSchema.optional().describe(
-    'Tool naming configuration',
-  ),
+  mcpServers: z.record(ServerConfigSchema).default({}).describe('MCP server configurations'),
+  toolNaming: ToolNamingConfigSchema.optional().describe('Tool naming configuration'),
   timeouts: TimeoutConfigSchema.optional().describe('Global timeout defaults'),
-  notifications: NotificationConfigSchema.optional().describe(
-    'Notification configuration',
-  ),
+  notifications: NotificationConfigSchema.optional().describe('Notification configuration')
 });
 
 /**
@@ -256,9 +216,7 @@ export function getServerTransportType(config: ServerConfig): TransportType {
 /**
  * Check if server config is STDIO type
  */
-export function isStdioServer(
-  config: ServerConfig,
-): config is StdioServerConfig {
+export function isStdioServer(config: ServerConfig): config is StdioServerConfig {
   return 'command' in config;
 }
 

@@ -9,11 +9,7 @@
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "."
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     },
     "github-sse": {
       "type": "sse",
@@ -30,9 +26,7 @@
     },
     "local-script": {
       "command": "node",
-      "args": [
-        "./my-mcp-server.js"
-      ],
+      "args": ["./my-mcp-server.js"],
       "env": {
         "NODE_ENV": "production"
       }

@@ -13,12 +13,7 @@
     "logLevel": {
       "type": "string",
       "description": "Logging level",
-      "enum": [
-        "debug",
-        "info",
-        "warn",
-        "error"
-      ],
+      "enum": ["debug", "info", "warn", "error"],
       "default": "info"
     },
     "http": {
@@ -45,10 +40,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": [
-              "http",
-              "sse"
-            ],
+            "enum": ["http", "sse"],
             "description": "Server type (optional for HTTP, required for SSE)"
           },
           "command": {
@@ -93,7 +85,5 @@
       }
     }
   },
-  "required": [
-    "version"
-  ]
+  "required": ["version"]
 }

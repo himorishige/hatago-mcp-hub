@@ -5,13 +5,7 @@
 /**
  * Tool naming strategies
  */
-export type ToolNamingStrategy =
-  | 'prefix'
-  | 'suffix'
-  | 'none'
-  | 'namespace'
-  | 'error'
-  | 'alias';
+export type ToolNamingStrategy = 'prefix' | 'suffix' | 'none' | 'namespace' | 'error' | 'alias';
 
 /**
  * Tool naming configuration
@@ -30,7 +24,7 @@ export interface ToolNamingConfig {
 export const DEFAULT_TOOL_NAMING_CONFIG: ToolNamingConfig = {
   strategy: 'prefix',
   separator: '__',
-  serverIdInName: true,
+  serverIdInName: true
 };
 
 /**

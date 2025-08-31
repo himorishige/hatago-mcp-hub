@@ -3,10 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type {
-  SSEStream,
-  StreamableHTTPTransportOptions,
-} from './streamable-http-transport.js';
+import type { SSEStream, StreamableHTTPTransportOptions } from './streamable-http-transport.js';
 import { StreamableHTTPTransport } from './streamable-http-transport.js';
 
 describe('StreamableHTTPTransport', () => {
@@ -20,14 +17,14 @@ describe('StreamableHTTPTransport', () => {
         mockStream.closed = true;
       }),
       write: vi.fn(async () => {}),
-      onAbort: vi.fn(),
+      onAbort: vi.fn()
     };
 
     const options: StreamableHTTPTransportOptions = {
       sessionIdGenerator: () => 'test-session-id',
       enableJsonResponse: true,
       onsessioninitialized: vi.fn(),
-      onsessionclosed: vi.fn(),
+      onsessionclosed: vi.fn()
     };
 
     transport = new StreamableHTTPTransport(options);
@@ -46,7 +43,7 @@ describe('StreamableHTTPTransport', () => {
     it('should create transport with custom options', () => {
       const customTransport = new StreamableHTTPTransport({
         sessionIdGenerator: () => 'custom-id',
-        enableJsonResponse: false,
+        enableJsonResponse: false
       });
       expect(customTransport).toBeInstanceOf(StreamableHTTPTransport);
     });
@@ -59,9 +56,7 @@ describe('StreamableHTTPTransport', () => {
 
     it('should throw if already started', async () => {
       await transport.start();
-      await expect(transport.start()).rejects.toThrow(
-        'Transport already started',
-      );
+      await expect(transport.start()).rejects.toThrow('Transport already started');
     });
   });
 
@@ -88,7 +83,7 @@ describe('StreamableHTTPTransport', () => {
     it('should call onsessionclosed when session exists', async () => {
       const onsessionclosed = vi.fn();
       const transportWithCallback = new StreamableHTTPTransport({
-        onsessionclosed,
+        onsessionclosed
       });
 
       transportWithCallback.sessionId = 'test-session';
@@ -102,9 +97,7 @@ describe('StreamableHTTPTransport', () => {
   describe('Send', () => {
     it('should throw if transport not started', async () => {
       const message = { jsonrpc: '2.0' as const, id: 1, result: 'test' };
-      await expect(transport.send(message)).rejects.toThrow(
-        'Transport not started',
-      );
+      await expect(transport.send(message)).rejects.toThrow('Transport not started');
     });
 
     it('should handle response messages', async () => {
@@ -113,7 +106,7 @@ describe('StreamableHTTPTransport', () => {
       const message = {
         jsonrpc: '2.0' as const,
         id: 1,
-        result: { data: 'test' },
+        result: { data: 'test' }
       };
 
       // Store response in map
@@ -131,8 +124,8 @@ describe('StreamableHTTPTransport', () => {
         id: 2,
         error: {
           code: -32600,
-          message: 'Invalid Request',
-        },
+          message: 'Invalid Request'
+        }
       };
 
       await transport.send(message);
@@ -147,7 +140,7 @@ describe('StreamableHTTPTransport', () => {
       const notification = {
         jsonrpc: '2.0' as const,
         method: 'test/notification',
-        params: { data: 'test' },
+        params: { data: 'test' }
       };
 
       // Should not throw
@@ -160,12 +153,7 @@ describe('StreamableHTTPTransport', () => {
       await transport.start();
 
       const headers = { 'mcp-session-id': 'test-session' };
-      const result = await transport.handleHttpRequest(
-        'GET',
-        headers,
-        undefined,
-        mockStream,
-      );
+      const result = await transport.handleHttpRequest('GET', headers, undefined, mockStream);
 
       expect(result).toBeUndefined(); // SSE response
       expect(transport.sessionId).toBe('test-session');
@@ -176,13 +164,13 @@ describe('StreamableHTTPTransport', () => {
 
       const headers = {
         'mcp-session-id': 'test-session',
-        accept: 'application/json',
+        accept: 'application/json'
       };
       const body = {
         jsonrpc: '2.0',
         id: 1,
         method: 'test/method',
-        params: {},
+        params: {}
       };
 
       // Set up onmessage handler to respond
@@ -191,7 +179,7 @@ describe('StreamableHTTPTransport', () => {
           await transport.send({
             jsonrpc: '2.0',
             id: 1,
-            result: { success: true },
+            result: { success: true }
           });
         }
       };
@@ -225,12 +213,7 @@ describe('StreamableHTTPTransport', () => {
     it('should send progress notification', async () => {
       await transport.start();
 
-      await transport.sendProgressNotification(
-        'token-1',
-        50,
-        100,
-        'Processing',
-      );
+      await transport.sendProgressNotification('token-1', 50, 100, 'Processing');
 
       // Since there's no stream registered, it should not throw
       expect(true).toBe(true);
@@ -241,7 +224,7 @@ describe('StreamableHTTPTransport', () => {
 
       const headers = {
         accept: 'text/event-stream',
-        'mcp-session-id': 'test-session',
+        'mcp-session-id': 'test-session'
       };
       const body = {
         jsonrpc: '2.0',
@@ -250,8 +233,8 @@ describe('StreamableHTTPTransport', () => {
         params: {
           name: 'test_tool',
           arguments: {},
-          _meta: { progressToken: 'progress-1' },
-        },
+          _meta: { progressToken: 'progress-1' }
+        }
       };
 
       // Set up response handler
@@ -263,17 +246,12 @@ describe('StreamableHTTPTransport', () => {
           await transport.send({
             jsonrpc: '2.0',
             id: 1,
-            result: { success: true },
+            result: { success: true }
           });
         }
       };
 
-      const result = await transport.handleHttpRequest(
-        'POST',
-        headers,
-        body,
-        mockStream,
-      );
+      const result = await transport.handleHttpRequest('POST', headers, body, mockStream);
 
       expect(result?.status).toBe(200);
     });
@@ -288,9 +266,7 @@ describe('StreamableHTTPTransport', () => {
       await transport.handleHttpRequest('GET', headers, undefined, mockStream);
 
       // Check internal state
-      expect((transport as any).sessionIdToStream.has('test-session')).toBe(
-        true,
-      );
+      expect((transport as any).sessionIdToStream.has('test-session')).toBe(true);
     });
 
     it('should cleanup on close', async () => {
@@ -331,7 +307,7 @@ describe('StreamableHTTPTransport', () => {
       const headers = { accept: 'application/json' };
       const body = {
         jsonrpc: '2.0',
-        method: 'notification/test',
+        method: 'notification/test'
       };
 
       const result = await transport.handleHttpRequest('POST', headers, body);
@@ -354,14 +330,14 @@ describe('StreamableHTTPTransport', () => {
     it('should handle initialization with session', async () => {
       const onsessioninitialized = vi.fn();
       const transportWithCallback = new StreamableHTTPTransport({
-        onsessioninitialized,
+        onsessioninitialized
       });
 
       await transportWithCallback.start();
 
       const headers = {
         'mcp-session-id': 'init-session',
-        accept: 'application/json',
+        accept: 'application/json'
       };
       const body = [
         {
@@ -371,9 +347,9 @@ describe('StreamableHTTPTransport', () => {
           params: {
             protocolVersion: '1.0.0',
             capabilities: {},
-            clientInfo: { name: 'test', version: '1.0' },
-          },
-        },
+            clientInfo: { name: 'test', version: '1.0' }
+          }
+        }
       ];
 
       transportWithCallback.onmessage = async (msg) => {
@@ -381,16 +357,12 @@ describe('StreamableHTTPTransport', () => {
           await transportWithCallback.send({
             jsonrpc: '2.0',
             id: 1,
-            result: { protocolVersion: '1.0.0', capabilities: {} },
+            result: { protocolVersion: '1.0.0', capabilities: {} }
           });
         }
       };
 
-      const result = await transportWithCallback.handleHttpRequest(
-        'POST',
-        headers,
-        body,
-      );
+      const result = await transportWithCallback.handleHttpRequest('POST', headers, body);
 
       expect(result?.status).toBe(200);
       expect(onsessioninitialized).toHaveBeenCalledWith('init-session');

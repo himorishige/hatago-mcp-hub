@@ -28,7 +28,7 @@ export function setPlatform(platform: Platform): void {
 export function getPlatform(): Platform {
   if (!_platform) {
     throw new Error(
-      'Platform not initialized. Call setPlatform() with appropriate platform implementation.',
+      'Platform not initialized. Call setPlatform() with appropriate platform implementation.'
     );
   }
   return _platform;
@@ -54,6 +54,6 @@ export type {
   Platform,
   PlatformOptions,
   SessionStore,
-  SpawnOptions,
+  SpawnOptions
 } from './types.js';
 export { UnsupportedFeatureError } from './types.js';

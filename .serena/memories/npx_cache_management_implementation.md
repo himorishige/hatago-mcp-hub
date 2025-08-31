@@ -76,10 +76,8 @@ Created comprehensive test suite in `npx-cache-manager.test.ts` covering:
 
 ```typescript
 const cacheManager = getNpxCacheManager();
-const isCached = await cacheManager.isCached(
-  "@modelcontextprotocol/server-filesystem",
-);
+const isCached = await cacheManager.isCached('@modelcontextprotocol/server-filesystem');
 if (!isCached) {
-  console.log("Package not cached, using extended timeout");
+  console.log('Package not cached, using extended timeout');
 }
 ```

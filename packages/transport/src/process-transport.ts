@@ -54,7 +54,7 @@ export class ProcessTransport implements ITransport {
     this.process = spawn(this.options.command, this.options.args || [], {
       env: { ...process.env, ...this.options.env },
       cwd: this.options.cwd,
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe']
     });
 
     this.isStarted = true;
@@ -79,9 +79,7 @@ export class ProcessTransport implements ITransport {
     this.process.on('exit', (code, signal) => {
       this.isStarted = false;
       if (code !== 0) {
-        this.errorHandler?.(
-          new Error(`Process exited with code ${code}, signal ${signal}`),
-        );
+        this.errorHandler?.(new Error(`Process exited with code ${code}, signal ${signal}`));
       }
     });
   }
@@ -110,12 +108,7 @@ export class ProcessTransport implements ITransport {
         const parsed = JSON.parse(line);
         this.messageHandler?.(parsed);
       } catch (error) {
-        console.error(
-          '[ProcessTransport] Failed to parse message:',
-          error,
-          'Line:',
-          line,
-        );
+        console.error('[ProcessTransport] Failed to parse message:', error, 'Line:', line);
       }
     }
   }

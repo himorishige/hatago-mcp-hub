@@ -5,15 +5,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { Command } from 'commander';
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupConfigCommand } from './config.js';
 
 // Mock node modules
@@ -21,7 +13,7 @@ vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
-  mkdirSync: vi.fn(),
+  mkdirSync: vi.fn()
 }));
 vi.mock('node:os');
 
@@ -34,7 +26,7 @@ beforeAll(() => {
           mkdirSync: vi.fn(),
           existsSync: vi.fn(),
           readFileSync: vi.fn(),
-          writeFileSync: vi.fn(),
+          writeFileSync: vi.fn()
         };
       }
       return {};
@@ -74,9 +66,7 @@ describe('setupConfigCommand', () => {
     it('should register config command with subcommands', () => {
       setupConfigCommand(program);
 
-      const configCommand = program.commands.find(
-        (cmd) => cmd.name() === 'config',
-      );
+      const configCommand = program.commands.find((cmd) => cmd.name() === 'config');
       expect(configCommand).toBeDefined();
       expect(configCommand?.description()).toBe('Manage Hatago configuration');
 
@@ -97,12 +87,8 @@ describe('setupConfigCommand', () => {
 
       expect(consoleLogSpy).toHaveBeenCalledWith('Current configuration:');
       // Default config includes port 3000 and host 127.0.0.1
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"port": 3000'),
-      );
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"host": "127.0.0.1"'),
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('"port": 3000'));
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('"host": "127.0.0.1"'));
     });
 
     it('should handle read errors and print empty object', async () => {
@@ -116,7 +102,7 @@ describe('setupConfigCommand', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error loading configuration:',
-        expect.any(Error),
+        expect.any(Error)
       );
       expect(consoleLogSpy).toHaveBeenCalledWith('Current configuration:');
       expect(consoleLogSpy).toHaveBeenCalledWith('{}');
@@ -136,13 +122,10 @@ describe('setupConfigCommand', () => {
 
       setupConfigCommand(program);
       await program.parseAsync(['config', 'set', 'session.timeout', '1234'], {
-        from: 'user',
+        from: 'user'
       });
 
-      expect(writeSpy).toHaveBeenCalledWith(
-        '/home/user/.hatago/config.json',
-        expect.any(String),
-      );
+      expect(writeSpy).toHaveBeenCalledWith('/home/user/.hatago/config.json', expect.any(String));
 
       const [, content] = writeSpy.mock.calls[0] as [string, string];
       const saved = JSON.parse(content);
@@ -160,7 +143,7 @@ describe('setupConfigCommand', () => {
 
       setupConfigCommand(program);
       await program.parseAsync(['config', 'set', 'host', '0.0.0.0'], {
-        from: 'user',
+        from: 'user'
       });
 
       const [, content] = writeSpy.mock.calls[0] as [string, string];
@@ -175,7 +158,7 @@ describe('setupConfigCommand', () => {
 
       setupConfigCommand(program);
       await expect(
-        program.parseAsync(['config', 'set', '', 'value'], { from: 'user' }),
+        program.parseAsync(['config', 'set', '', 'value'], { from: 'user' })
       ).rejects.toThrow('Process exit');
     });
   });
@@ -186,12 +169,8 @@ describe('setupConfigCommand', () => {
 
     it('should have get command registered', () => {
       setupConfigCommand(program);
-      const configCommand = program.commands.find(
-        (cmd) => cmd.name() === 'config',
-      );
-      const getCommand = configCommand?.commands.find(
-        (cmd) => cmd.name() === 'get',
-      );
+      const configCommand = program.commands.find((cmd) => cmd.name() === 'config');
+      const getCommand = configCommand?.commands.find((cmd) => cmd.name() === 'get');
       expect(getCommand).toBeDefined();
       expect(getCommand?.description()).toBe('Get a configuration value');
     });
@@ -207,16 +186,13 @@ describe('setupConfigCommand', () => {
       setupConfigCommand(program);
       await program.parseAsync(['config', 'reset'], { from: 'user' });
 
-      expect(writeSpy).toHaveBeenCalledWith(
-        '/home/user/.hatago/config.json',
-        expect.any(String),
-      );
+      expect(writeSpy).toHaveBeenCalledWith('/home/user/.hatago/config.json', expect.any(String));
       const [, content] = writeSpy.mock.calls[0] as [string, string];
       const saved = JSON.parse(content);
       expect(saved).toMatchObject({
         port: 3000,
         host: '127.0.0.1',
-        session: { timeout: 3600000, maxSessions: 100 },
+        session: { timeout: 3600000, maxSessions: 100 }
       });
     });
   });

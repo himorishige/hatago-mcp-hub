@@ -19,17 +19,15 @@ export interface ToolRegistryState {
 /**
  * Create an empty registry
  */
-export function createRegistry(
-  namingConfig?: ToolNamingConfig,
-): ToolRegistryState {
+export function createRegistry(namingConfig?: ToolNamingConfig): ToolRegistryState {
   return {
     tools: new Map(),
     serverTools: new Map(),
     namingConfig: namingConfig || {
       strategy: 'namespace',
       separator: '_',
-      format: '{serverId}_{toolName}',
-    },
+      format: '{serverId}_{toolName}'
+    }
   };
 }
 
@@ -39,7 +37,7 @@ export function createRegistry(
 export function generatePublicName(
   config: ToolNamingConfig,
   serverId: string,
-  toolName: string,
+  toolName: string
 ): string {
   const strategy = config.strategy || 'namespace';
 
@@ -104,11 +102,7 @@ export function generatePublicName(
 /**
  * Add a tool to the registry
  */
-export function addTool(
-  state: ToolRegistryState,
-  serverId: string,
-  tool: Tool,
-): ToolRegistryState {
+export function addTool(state: ToolRegistryState, serverId: string, tool: Tool): ToolRegistryState {
   let publicName = generatePublicName(state.namingConfig, serverId, tool.name);
 
   // Check for collision in alias strategy and fallback to namespace
@@ -126,7 +120,7 @@ export function addTool(
     const existing = state.tools.get(publicName);
     if (existing && existing.serverId !== serverId) {
       throw new Error(
-        `Tool name collision: ${publicName} already exists from server ${existing.serverId}`,
+        `Tool name collision: ${publicName} already exists from server ${existing.serverId}`
       );
     }
   }
@@ -136,7 +130,7 @@ export function addTool(
     serverId,
     originalName: tool.name,
     publicName,
-    tool,
+    tool
   };
 
   // Create new maps with the added tool
@@ -153,7 +147,7 @@ export function addTool(
   return {
     ...state,
     tools: newTools,
-    serverTools: newServerTools,
+    serverTools: newServerTools
   };
 }
 
@@ -163,7 +157,7 @@ export function addTool(
 export function registerServerTools(
   state: ToolRegistryState,
   serverId: string,
-  tools: Tool[],
+  tools: Tool[]
 ): ToolRegistryState {
   // Clear existing tools for this server first
   let newState = clearServerTools(state, serverId);
@@ -174,7 +168,7 @@ export function registerServerTools(
     newServerTools.set(serverId, new Set<string>());
     return {
       ...newState,
-      serverTools: newServerTools,
+      serverTools: newServerTools
     };
   }
 
@@ -189,10 +183,7 @@ export function registerServerTools(
 /**
  * Remove a tool by public name
  */
-export function removeTool(
-  state: ToolRegistryState,
-  publicName: string,
-): ToolRegistryState {
+export function removeTool(state: ToolRegistryState, publicName: string): ToolRegistryState {
   const metadata = state.tools.get(publicName);
   if (!metadata) {
     return state; // Tool doesn't exist, no change
@@ -217,23 +208,20 @@ export function removeTool(
     return {
       ...state,
       tools: newTools,
-      serverTools: newServerTools,
+      serverTools: newServerTools
     };
   }
 
   return {
     ...state,
-    tools: newTools,
+    tools: newTools
   };
 }
 
 /**
  * Clear all tools for a server
  */
-export function clearServerTools(
-  state: ToolRegistryState,
-  serverId: string,
-): ToolRegistryState {
+export function clearServerTools(state: ToolRegistryState, serverId: string): ToolRegistryState {
   const toolSet = state.serverTools.get(serverId);
   if (!toolSet) {
     return state; // No tools for this server
@@ -251,7 +239,7 @@ export function clearServerTools(
   return {
     ...state,
     tools: newTools,
-    serverTools: newServerTools,
+    serverTools: newServerTools
   };
 }
 
@@ -260,7 +248,7 @@ export function clearServerTools(
  */
 export function getToolByName(
   state: ToolRegistryState,
-  publicName: string,
+  publicName: string
 ): ToolMetadata | undefined {
   return state.tools.get(publicName);
 }
@@ -277,7 +265,7 @@ export function getAllTools(state: ToolRegistryState): Tool[] {
  */
 export function getServerTools(
   state: ToolRegistryState,
-  serverId: string,
+  serverId: string
 ): Array<{ publicName: string; tool: Tool }> {
   const toolSet = state.serverTools.get(serverId);
   if (!toolSet) {
@@ -290,7 +278,7 @@ export function getServerTools(
     if (metadata) {
       tools.push({
         publicName: metadata.publicName,
-        tool: metadata.tool,
+        tool: metadata.tool
       });
     }
   }
@@ -303,15 +291,11 @@ export function getServerTools(
 export function resolveTool(
   state: ToolRegistryState,
   toolName: string,
-  serverId?: string,
+  serverId?: string
 ): ToolMetadata | undefined {
   // If serverId is provided, try exact match first
   if (serverId) {
-    const publicName = generatePublicName(
-      state.namingConfig,
-      serverId,
-      toolName,
-    );
+    const publicName = generatePublicName(state.namingConfig, serverId, toolName);
     const metadata = state.tools.get(publicName);
     if (metadata) {
       return metadata;
@@ -331,9 +315,7 @@ export function resolveTool(
 /**
  * Detect naming collisions
  */
-export function detectCollisions(
-  state: ToolRegistryState,
-): Map<string, string[]> {
+export function detectCollisions(state: ToolRegistryState): Map<string, string[]> {
   const collisions = new Map<string, string[]>();
   const nameToServers = new Map<string, string[]>();
 
@@ -363,7 +345,7 @@ export function getStats(state: ToolRegistryState): {
   return {
     totalTools: state.tools.size,
     serverCount: state.serverTools.size,
-    collisions: detectCollisions(state).size,
+    collisions: detectCollisions(state).size
   };
 }
 
@@ -374,6 +356,6 @@ export function clearRegistry(state: ToolRegistryState): ToolRegistryState {
   return {
     ...state,
     tools: new Map(),
-    serverTools: new Map(),
+    serverTools: new Map()
   };
 }

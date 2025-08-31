@@ -23,7 +23,7 @@ export type {
   Platform,
   PlatformOptions,
   SessionStore,
-  SpawnOptions,
+  SpawnOptions
 } from './platform/index.js';
 // Platform abstraction
 export {
@@ -31,7 +31,7 @@ export {
   isPlatformInitialized,
   resetPlatform,
   setPlatform,
-  UnsupportedFeatureError,
+  UnsupportedFeatureError
 } from './platform/index.js';
 // Registry system
 export * from './registry/index.js';

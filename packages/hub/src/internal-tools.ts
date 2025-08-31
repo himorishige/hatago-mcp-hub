@@ -32,34 +32,31 @@ export function getInternalTools(): InternalTool[] {
           id: s.id,
           status: s.status,
           toolCount: s.tools?.length || 0,
-          resourceCount: s.resources?.length || 0,
+          resourceCount: s.resources?.length || 0
         }));
 
         return {
-          hub_version: '0.2.0',
+          hub_version: '0.0.1',
           mcp_protocol: '2025-06-18',
           toolset: {
             revision,
             hash,
-            total_tools: tools.length,
+            total_tools: tools.length
           },
           servers: {
             total: serverList.length,
-            list: serverList,
+            list: serverList
           },
-          last_reload: new Date().toISOString(),
+          last_reload: new Date().toISOString()
         };
-      },
+      }
     },
 
     {
       name: 'hatago_reload',
       description: 'Reload the Hatago configuration and refresh the tool list',
       inputSchema: z.object({
-        dry_run: z
-          .boolean()
-          .optional()
-          .describe('Perform a dry run without applying changes'),
+        dry_run: z.boolean().optional().describe('Perform a dry run without applying changes')
       }),
       handler: async (args, hub) => {
         const dryRun = args.dry_run || false;
@@ -69,7 +66,7 @@ export function getInternalTools(): InternalTool[] {
             ok: true,
             message: 'Dry run mode - no changes applied',
             current_revision: (hub as any).toolsetRevision,
-            current_hash: (hub as any).toolsetHash,
+            current_hash: (hub as any).toolsetHash
           };
         }
 
@@ -82,22 +79,22 @@ export function getInternalTools(): InternalTool[] {
               ok: true,
               message: 'Configuration reloaded successfully',
               new_revision: (hub as any).toolsetRevision,
-              new_hash: (hub as any).toolsetHash,
+              new_hash: (hub as any).toolsetHash
             };
           } catch (error) {
             return {
               ok: false,
               message: 'Failed to reload configuration',
-              error: error instanceof Error ? error.message : String(error),
+              error: error instanceof Error ? error.message : String(error)
             };
           }
         }
 
         return {
           ok: false,
-          message: 'Reload not available',
+          message: 'Reload not available'
         };
-      },
+      }
     },
 
     {
@@ -115,14 +112,14 @@ export function getInternalTools(): InternalTool[] {
           command: s.spec?.command || null,
           tools: s.tools?.map((t: any) => t.name) || [],
           resources: s.resources?.map((r: any) => r.uri) || [],
-          error: s.error?.message || null,
+          error: s.error?.message || null
         }));
 
         return {
           total_servers: serverDetails.length,
-          servers: serverDetails,
+          servers: serverDetails
         };
-      },
-    },
+      }
+    }
   ];
 }
