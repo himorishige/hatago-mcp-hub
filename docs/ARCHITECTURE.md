@@ -1,43 +1,31 @@
-# Architecture Overview
+# Hatago MCP Hub Architecture
+
+## Overview
+
+Hatago MCP Hub is a lightweight, modular hub server that manages multiple MCP (Model Context Protocol) servers. The architecture has been significantly simplified from earlier versions to focus on essential functionality while maintaining extensibility.
 
 ## System Architecture
-
-Hatago MCP Hub is a lightweight hub server that manages multiple MCP (Model Context Protocol) servers with a modular architecture designed for simplicity and extensibility.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    AI Clients                            │
-│        (Claude Code, Cursor, VS Code, etc.)             │
+│    (Claude Code, Codex CLI, Cursor, Windsurf, etc.)     │
 └────────────────────┬────────────────────────────────────┘
                      │ MCP Protocol
 ┌────────────────────▼────────────────────────────────────┐
 │                  Hatago MCP Hub                         │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │            Management Layer (v0.3.0)              │  │
-│  │                                                   │  │
-│  │  ┌──────────────┐  ┌──────────────────────┐    │  │
-│  │  │State Machine │  │Activation Manager    │    │  │
-│  │  └──────────────┘  └──────────────────────┘    │  │
-│  │  ┌──────────────┐  ┌──────────────────────┐    │  │
-│  │  │Idle Manager  │  │Metadata Store        │    │  │
-│  │  └──────────────┘  └──────────────────────┘    │  │
-│  │  ┌──────────────┐  ┌──────────────────────┐    │  │
-│  │  │File Guard    │  │Audit Logger          │    │  │
-│  │  └──────────────┘  └──────────────────────┘    │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                          │
-│  ┌──────────────────────────────────────────────────┐  │
 │  │                Core Layer                        │  │
 │  │                                                   │  │
+│  │  ┌──────────────┐  ┌──────────────────────┐    │  │
+│  │  │     Hub      │  │  Session Manager      │    │  │
+│  │  └──────────────┘  └──────────────────────┘    │  │
 │  │  ┌──────────────┐  ┌──────────────────────┐    │  │
 │  │  │Tool Registry │  │Resource Registry      │    │  │
 │  │  └──────────────┘  └──────────────────────┘    │  │
 │  │  ┌──────────────┐  ┌──────────────────────┐    │  │
-│  │  │Prompt Registry│ │Session Manager        │    │  │
-│  │  └──────────────┘  └──────────────────────┘    │  │
-│  │  ┌──────────────┐  ┌──────────────────────┐    │  │
-│  │  │Tool Invoker  │  │Router                │    │  │
+│  │  │Prompt Registry│ │Server Registry        │    │  │
 │  │  └──────────────┘  └──────────────────────┘    │  │
 │  └──────────────────────────────────────────────────┘  │
 │                                                          │
@@ -60,217 +48,149 @@ Hatago MCP Hub is a lightweight hub server that manages multiple MCP (Model Cont
 └──────────────────────────────────────────────────────────┘
 ```
 
-## Component Architecture
+## Package Structure
 
-### Core Components
+The project follows a monorepo structure with focused, single-responsibility packages:
 
-#### HatagoHub (`hub.ts`)
+```
+hatago-mcp-hub/
+├── packages/
+│   ├── mcp-hub/        # Main npm package (user-facing)
+│   ├── server/         # Server implementation
+│   ├── hub/            # Hub core functionality
+│   ├── core/           # Shared types and interfaces
+│   ├── runtime/        # Runtime components
+│   ├── transport/      # Transport implementations
+│   └── cli/            # CLI tools (development)
+├── schemas/            # JSON Schema definitions
+├── examples/           # Usage examples
+└── docs/              # Documentation
+```
 
-The central hub that coordinates all MCP server connections and manages tool/resource/prompt routing.
+### Package Dependencies
 
-**Responsibilities:**
+```
+@himorishige/hatago-core (pure type definitions)
+     ↑
+@himorishige/hatago-runtime (session, registry management)
+     ↑
+@himorishige/hatago-transport (communication layer)
+     ↑
+@himorishige/hatago-hub (hub core implementation)
+     ↑
+@himorishige/hatago-server (server with CLI)
+     ↑
+@himorishige/hatago-mcp-hub (main package)
+```
+
+## Core Components
+
+### Hub (`packages/hub/src/hub.ts`)
+
+The central coordinator for all MCP operations. Simplified to ~500 lines from 1000+ lines.
+
+**Key Responsibilities:**
 
 - Server lifecycle management
 - Request routing to appropriate servers
+- Tool/Resource/Prompt aggregation
 - Session management coordination
-- Tool name collision resolution
+- Notification forwarding
 
-#### EnhancedHatagoHub (`enhanced-hub.ts`)
+**Key Features:**
 
-Extended hub with management capabilities (v0.3.0+).
+- Tool name collision avoidance via prefixing
+- Dynamic tool list updates
+- Progress notification forwarding
+- Hot reload support
 
-**Additional Features:**
+### Server Registry (`packages/runtime/src/server-registry.ts`)
 
-- Automatic server activation/deactivation
-- Configuration hot-reload
-- Management MCP server integration
-- Activity tracking and statistics
+Manages the lifecycle of different server types.
 
-### Management Layer (v0.3.0)
+**Supported Server Types:**
 
-#### State Machine (`state-machine.ts`)
+- **Local Servers**: Direct command execution
+- **NPX Servers**: Dynamic npm package execution
+- **Remote HTTP Servers**: HTTP-based MCP endpoints
+- **Remote SSE Servers**: Server-Sent Events endpoints
 
-Manages server lifecycle states with defined transitions.
+### Session Manager (`packages/runtime/src/session-manager.ts`)
 
-**States:**
-
-- `MANUAL` - Manual activation required
-- `INACTIVE` - Server not running
-- `ACTIVATING` - Starting up
-- `ACTIVE` - Running and ready
-- `IDLING` - Active but idle
-- `STOPPING` - Shutting down
-- `ERROR` - Error state
-- `COOLDOWN` - Waiting before retry
-
-**State Transitions:**
-
-```
-INACTIVE → ACTIVATING → ACTIVE → IDLING → STOPPING → INACTIVE
-                ↓                             ↓
-              ERROR → COOLDOWN → INACTIVE ←──┘
-```
-
-#### Activation Manager (`activation-manager.ts`)
-
-Handles on-demand server activation with deduplication.
+Provides session isolation for multiple concurrent AI clients.
 
 **Features:**
 
-- Request deduplication for concurrent calls
-- Activation policy enforcement
-- Retry logic with exponential backoff
-- Activation history tracking
+- Per-session server instances
+- Session state persistence
+- Automatic cleanup on disconnect
 
-#### Idle Manager (`idle-manager.ts`)
+### Registry Components
 
-Monitors server activity and manages automatic shutdown.
+#### Tool Registry (`packages/runtime/src/tool-registry.ts`)
 
-**Features:**
+- Manages tool definitions
+- Handles namespace prefixing for collision avoidance
+- Supports dynamic tool updates
 
-- Reference counting for active operations
-- Configurable idle timeouts
-- Minimum linger time enforcement
-- Activity-based state transitions
+#### Resource Registry (`packages/runtime/src/resource-registry.ts`)
 
-#### Metadata Store (`metadata-store.ts`)
+- Resource discovery and management
+- URI-based resource access
 
-Caches server capabilities for offline access.
+#### Prompt Registry (`packages/runtime/src/prompt-registry.ts`)
 
-**Cached Data:**
+- Prompt template storage
+- Dynamic prompt generation
 
-- Tool definitions
-- Resource listings
-- Prompt templates
-- Server statistics
-- Connection history
+## Transport Layer
 
-#### Security Components
+### Supported Transports
 
-**File Access Guard (`file-guard.ts`):**
+1. **STDIO** (`packages/transport/src/stdio/`)
+   - Default for Claude Code integration
+   - Newline-delimited JSON (MCP standard)
+   - Bidirectional communication
 
-- Restricts file operations to config file only
-- Path traversal prevention
-- Write operation validation
+2. **HTTP** (`packages/transport/src/http/`)
+   - StreamableHTTP for Claude Code
+   - RESTful endpoints for debugging
+   - Session management via headers
 
-**Audit Logger (`audit-logger.ts`):**
+3. **SSE** (`packages/transport/src/sse/`)
+   - Server-Sent Events for streaming
+   - Real-time notifications
+   - Progress updates
 
-- Logs all configuration changes
-- Tracks activation/deactivation events
-- Records tool invocations
-- Maintains audit trail
+4. **WebSocket** (`packages/transport/src/websocket/`)
+   - Full-duplex communication
+   - Low-latency operations
+   - Real-time bidirectional messaging
 
-### Core Layer
-
-#### Registry Components
-
-- **Tool Registry**: Manages tool definitions with namespace prefixing
-- **Resource Registry**: Handles resource discovery and access
-- **Prompt Registry**: Stores and retrieves prompt templates
-
-#### Session Management
-
-- **Session Manager**: Maintains per-client session isolation
-- **Session Storage**: Persists session data across requests
-
-#### Request Processing
-
-- **Router**: Routes MCP requests to appropriate handlers
-- **Tool Invoker**: Executes tool calls with timeout management
-
-### Transport Layer
-
-#### Supported Transports
-
-1. **STDIO**: Direct process communication
-2. **HTTP**: RESTful API endpoints
-3. **SSE**: Server-Sent Events for streaming
-4. **WebSocket**: Bidirectional real-time communication
-
-### Server Types
-
-#### Local Servers
-
-- Spawned as child processes
-- Communicate via STDIO
-- Support all activation policies
-
-#### NPX Servers
-
-- Dynamically installed from npm
-- Cached for performance
-- Full lifecycle management
-
-#### Remote Servers
-
-- HTTP-based MCP servers
-- SSE for streaming responses
-- Transparent proxy mode
-
-## Data Flow
-
-### Tool Invocation Flow
-
-```
-1. Client Request → Hatago Hub
-2. Hub → Session Manager (session validation)
-3. Hub → Tool Registry (tool lookup)
-4. Hub → Activation Manager (ensure server active)
-5. Hub → Tool Invoker (execute call)
-6. Tool Invoker → Target Server
-7. Server Response → Hub
-8. Hub → Idle Manager (track activity)
-9. Hub → Client Response
-```
-
-### On-Demand Activation Flow
-
-```
-1. Tool Call Request
-2. Check Server State
-3. If INACTIVE:
-   a. Check Activation Policy
-   b. If allowed, queue activation
-   c. Start server process
-   d. Wait for initialization
-4. Execute tool call
-5. Track activity for idle management
-```
-
-## Configuration Management
+## Configuration System
 
 ### Configuration Schema
 
 ```typescript
 {
-  version: 1,
-  logLevel: "debug" | "info" | "warn" | "error",
-  notifications: {
-    enabled: boolean,
-    rateLimitSec: number,
-    severity: string[]
-  },
-  mcpServers: {
-    [serverId]: {
-      type: "local" | "remote",
-      command?: string,
-      args?: string[],
-      url?: string,
-      env?: Record<string, string>,
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "[serverId]": {
+      // Local/NPX server configuration
+      "command": "string",
+      "args": ["string"],
+      "env": { "KEY": "value" },
+      "cwd": "string",
 
-      // Management features
-      activationPolicy?: "always" | "onDemand" | "manual",
-      disabled?: boolean,
-      idlePolicy?: {
-        idleTimeoutMs: number,
-        minLingerMs: number,
-        activityReset: "onCallStart" | "onCallEnd"
-      },
-      timeouts?: {
-        connectMs: number,
-        requestMs: number,
-        keepAliveMs: number
-      }
+      // Remote server configuration
+      "url": "string",
+      "type": "http" | "sse",
+      "headers": { "KEY": "value" },
+
+      // Common options
+      "disabled": false
     }
   }
 }
@@ -278,127 +198,225 @@ Caches server capabilities for offline access.
 
 ### Environment Variable Expansion
 
-Supports Claude Code compatible syntax:
+Claude Code compatible syntax:
 
-- `${VAR}` - Required variable
-- `${VAR:-default}` - With default value
+- `${VAR}` - Required environment variable
+- `${VAR:-default}` - With default fallback
 
-## Security Model
+## Key Features
 
-### File System Protection
+### Hot Reload & Configuration Watching
 
-- Config file access restricted to startup file
-- No arbitrary file operations allowed
-- Path traversal prevention
+- File system watching with 1-second debounce
+- Graceful server reconnection
+- Session preservation during reload
+- `notifications/tools/list_changed` notification
 
-### Audit Trail
+### Progress Notification Forwarding
 
-- All configuration changes logged
-- User/system initiated events tracked
-- Timestamped with metadata
+- Transparent forwarding from child servers
+- `notifications/progress` pass-through
+- Works with all server types
 
-### Session Isolation
+### Internal Management Tools
 
-- Independent sessions per client
-- No cross-session data leakage
+Built-in tools prefixed with `_internal_`:
+
+- `_internal_hatago_status` - Server status monitoring
+- `_internal_hatago_reload` - Manual config reload
+- `_internal_hatago_list_servers` - Server listing
+
+## Data Flow
+
+### Request Processing Flow
+
+```
+1. Client Request → Transport Layer
+2. Transport → Hub (request parsing)
+3. Hub → Session Manager (session validation)
+4. Hub → Tool/Resource/Prompt Registry (lookup)
+5. Hub → Server Registry (server routing)
+6. Server Registry → Target MCP Server
+7. MCP Server Response → Hub
+8. Hub → Transport Layer
+9. Transport → Client Response
+```
+
+### Notification Flow
+
+```
+1. Child Server Notification → Hub
+2. Hub → Session Manager (session lookup)
+3. Hub → Transport Layer (forwarding)
+4. Transport → Client (notification delivery)
+```
+
+## Platform Support
+
+### Multi-Runtime Architecture
+
+The platform abstraction layer enables multiple JavaScript runtimes:
+
+- **Node.js** (Full Support)
+  - All server types (Local, NPX, Remote)
+  - File system operations
+  - Process spawning
+  - Full transport support
+
+- **Cloudflare Workers** (Remote Only)
+  - Remote HTTP/SSE servers only
+  - KV storage for persistence
+  - Edge deployment ready
+
+- **Bun** (Work in Progress)
+  - Currently uses Node.js compatibility layer
+  - Native support planned
+
+- **Deno** (Work in Progress)
+  - Currently uses Node.js compatibility layer
+  - Native support planned
+
+### Platform Abstraction (`packages/runtime/src/platform/`)
+
+```typescript
+interface Platform {
+  fs: FileSystem;
+  process: ProcessManager;
+  network: NetworkClient;
+  storage: StorageProvider;
+  crypto: CryptoProvider;
+}
+```
+
+## Security Considerations
+
+### Process Isolation
+
+- Each server runs in isolated process
+- No shared memory between servers
+- Controlled IPC via MCP protocol
+
+### Session Security
+
 - Session-specific server instances
+- No cross-session data leakage
+- Automatic session cleanup
 
-## Performance Considerations
+### Configuration Security
+
+- Environment variable validation
+- Path traversal prevention
+- Secure defaults
+
+## Performance Optimizations
 
 ### Resource Management
 
-- Automatic cleanup of idle servers
+- Lazy server initialization
 - Connection pooling for remote servers
-- Process lifecycle management
+- Automatic cleanup of unused resources
 
-### Optimization Strategies
+### Caching Strategy
 
 - Tool definition caching
-- Metadata persistence
-- Request deduplication
-- Lazy server initialization
+- Resource metadata caching
+- Configuration caching with invalidation
+
+### Request Optimization
+
+- Request batching where applicable
+- Parallel server queries
+- Response streaming support
+
+## Error Handling
+
+### Error Recovery
+
+- Automatic retry with exponential backoff
+- Graceful degradation
+- Circuit breaker for failing servers
+
+### Error Format
+
+- JSON-RPC 2.0 compliant errors
+- Detailed error messages
+- Stack traces in debug mode
+
+## Development Guidelines
+
+### Code Style
+
+- TypeScript with strict mode
+- ESM modules only
+- Functional programming patterns where appropriate
+- Minimal external dependencies
+
+### Testing Strategy
+
+- Unit tests with Vitest
+- Integration tests for transport layers
+- E2E tests for full flow validation
+
+### Build System
+
+- tsdown for fast builds
+- Biome for linting and formatting
+- pnpm for package management
 
 ## Extension Points
 
 ### Adding New Server Types
 
-1. Implement server interface
-2. Register with server factory
+1. Implement `MCPServer` interface
+2. Register in `ServerRegistry`
 3. Add configuration schema
-4. Update activation manager
+4. Update documentation
 
-### Custom Management Tools
-
-1. Extend HatagoManagementServer
-2. Define tool schemas
-3. Implement handlers
-4. Register with hub
-
-### Transport Extensions
+### Custom Transports
 
 1. Implement transport interface
 2. Add to transport factory
-3. Update router configuration
-4. Handle protocol negotiation
+3. Handle protocol negotiation
+4. Update router configuration
 
-## Error Handling
+### Custom Tools
 
-### Error Recovery Strategies
+1. Define tool schema with Zod
+2. Implement tool handler
+3. Register with hub
+4. Add tests
 
-- Automatic retry with backoff
-- State machine error transitions
-- Graceful degradation
-- Circuit breaker pattern
+## Version History
 
-### Error Propagation
+### v0.0.1 (Current)
 
-- JSON-RPC 2.0 error format
-- Detailed error messages
-- Stack traces in debug mode
-- User-friendly error codes
+- Simplified architecture (38+ files removed)
+- Core functionality focus
+- Lightweight implementation (~500 lines hub)
+- Full MCP compliance
+- Multi-transport support
+- Hot reload capability
+- Progress notifications
+- Internal management tools
 
-## Monitoring and Observability
+## Future Roadmap
 
-### Metrics Collection
+### Short Term
 
-- Tool invocation counts
-- Response times
-- Error rates
-- Active sessions
+- Native Bun support
+- Native Deno support
+- Enhanced error recovery
+- Performance monitoring
 
-### Health Checks
+### Long Term
 
-- Server connectivity
-- Resource availability
-- System resource usage
-- Configuration validity
+- WebAssembly support
+- Browser runtime support
+- Distributed hub clustering
+- Advanced caching strategies
 
-### Logging
+## References
 
-- Structured logging with context
-- Log levels per component
-- Audit trail separation
-- Performance logging
-
-## Development Guidelines
-
-### Code Organization
-
-- Modular component design
-- Clear separation of concerns
-- Dependency injection
-- Platform abstraction
-
-### Testing Strategy
-
-- Unit tests for components
-- Integration tests for flows
-- E2E tests for transports
-- Performance benchmarks
-
-### Documentation
-
-- Inline code documentation
-- API documentation
-- Configuration examples
-- Migration guides
+- [MCP Specification](https://modelcontextprotocol.io/)
+- [Hono Framework](https://hono.dev/)
+- [Repository](https://github.com/himorishige/hatago-mcp-hub)

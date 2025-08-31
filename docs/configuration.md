@@ -2,104 +2,101 @@
 
 ## Overview
 
-Hatago MCP Hub uses a JSON configuration file to manage server settings, activation policies, and runtime behavior. The configuration supports environment variable expansion and hot-reload capabilities.
+Hatago MCP Hub uses a JSON configuration file to manage MCP server connections. The configuration supports environment variable expansion and hot-reload capabilities.
 
-## Configuration File Location
+## Quick Start
+
+### Generate Configuration
+
+```bash
+# Interactive mode selection
+npx @himorishige/hatago-mcp-hub init
+
+# Or specify mode directly
+npx @himorishige/hatago-mcp-hub init --mode stdio  # For Claude Code
+npx @himorishige/hatago-mcp-hub init --mode http   # For debugging
+```
+
+### Configuration File Location
 
 The configuration file can be specified via:
 
-1. Command line: `hatago serve --config hatago.config.json`
-2. Default locations (searched in order):
-   - `./hatago.config.json`
-   - `./hatago.json`
-   - `./.hatago.json`
+1. Command line: `hatago serve --config ./hatago.config.json`
+2. Environment variable: `HATAGO_CONFIG=./my-config.json`
+3. Default location: `./hatago.config.json`
 
 ## Configuration Schema
 
-### Root Configuration
+### Basic Structure
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
-  "notifications": {
-    "enabled": true,
-    "rateLimitSec": 60,
-    "severity": ["warn", "error"]
-  },
   "mcpServers": {
     // Server configurations
   }
 }
 ```
 
-### Field Descriptions
+### Root Fields
 
-| Field                        | Type     | Description                                     | Default           |
-| ---------------------------- | -------- | ----------------------------------------------- | ----------------- |
-| `version`                    | number   | Configuration schema version                    | 1                 |
-| `logLevel`                   | string   | Logging level: "debug", "info", "warn", "error" | "info"            |
-| `notifications`              | object   | Notification settings                           | -                 |
-| `notifications.enabled`      | boolean  | Enable notifications                            | true              |
-| `notifications.rateLimitSec` | number   | Rate limit in seconds                           | 60                |
-| `notifications.severity`     | string[] | Severity levels to notify                       | ["warn", "error"] |
-| `mcpServers`                 | object   | MCP server configurations                       | {}                |
+| Field        | Type   | Description                                     | Default | Required |
+| ------------ | ------ | ----------------------------------------------- | ------- | -------- |
+| `$schema`    | string | JSON Schema URL for validation                  | -       | No       |
+| `version`    | number | Configuration schema version                    | 1       | Yes      |
+| `logLevel`   | string | Logging level: "debug", "info", "warn", "error" | "info"  | No       |
+| `mcpServers` | object | MCP server configurations                       | {}      | No       |
 
 ## Server Configuration
 
-Each server in `mcpServers` can be configured with the following properties:
+Each server in `mcpServers` can be configured as either a local/NPX server or a remote server.
 
-### Basic Configuration
+### Local/NPX Server
 
 ```json
 {
   "mcpServers": {
-    "server-id": {
-      "type": "local",
-      "command": "node",
-      "args": ["./server.js"],
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
       "env": {
-        "API_KEY": "${API_KEY}"
+        "LOG_LEVEL": "${LOG_LEVEL:-info}"
       },
-      "cwd": "/path/to/server"
+      "cwd": "./servers",
+      "disabled": false
     }
   }
 }
 ```
 
-### Full Configuration with Management Features
+### Remote Server (HTTP)
 
 ```json
 {
   "mcpServers": {
-    "server-id": {
-      // Basic settings
-      "type": "local",
-      "command": "node",
-      "args": ["./server.js"],
-      "env": {},
-      "cwd": ".",
-
-      // Management features (v0.3.0+)
-      "disabled": false,
-      "activationPolicy": "onDemand",
-      "idlePolicy": {
-        "idleTimeoutMs": 300000,
-        "minLingerMs": 30000,
-        "activityReset": "onCallEnd"
+    "api-server": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}"
       },
-      "timeouts": {
-        "connectMs": 5000,
-        "requestMs": 30000,
-        "keepAliveMs": 60000
-      },
+      "disabled": false
+    }
+  }
+}
+```
 
-      // Metadata (managed by system)
-      "_metadata": {
-        "lastConnected": "2024-01-01T00:00:00Z",
-        "toolCount": 10,
-        "resourceCount": 5
-      }
+### Remote Server (SSE)
+
+```json
+{
+  "mcpServers": {
+    "deepwiki": {
+      "url": "https://mcp.deepwiki.com/sse",
+      "type": "sse",
+      "disabled": false
     }
   }
 }
@@ -107,210 +104,102 @@ Each server in `mcpServers` can be configured with the following properties:
 
 ### Server Configuration Fields
 
-| Field              | Type     | Description                      | Default               |
-| ------------------ | -------- | -------------------------------- | --------------------- |
-| `type`             | string   | Server type: "local" or "remote" | Required              |
-| `command`          | string   | Command to execute (local only)  | Required for local    |
-| `args`             | string[] | Command arguments                | []                    |
-| `url`              | string   | Server URL (remote only)         | Required for remote   |
-| `headers`          | object   | HTTP headers (remote only)       | {}                    |
-| `env`              | object   | Environment variables            | {}                    |
-| `cwd`              | string   | Working directory                | Config file directory |
-| `disabled`         | boolean  | Disable server                   | false                 |
-| `activationPolicy` | string   | Activation policy                | "manual"              |
-| `idlePolicy`       | object   | Idle management settings         | null                  |
-| `timeouts`         | object   | Timeout configurations           | Default timeouts      |
-
-## Activation Policies
-
-### Policy Types
-
-| Policy     | Description                                | Use Case              |
-| ---------- | ------------------------------------------ | --------------------- |
-| `always`   | Server starts with hub and stays running   | Critical services     |
-| `onDemand` | Server starts when needed, stops when idle | Resource optimization |
-| `manual`   | Server requires explicit activation        | Development/testing   |
-
-### Policy Behavior
-
-```json
-{
-  "mcpServers": {
-    "critical-service": {
-      "type": "local",
-      "command": "node",
-      "args": ["./critical.js"],
-      "activationPolicy": "always"
-    },
-
-    "occasional-tool": {
-      "type": "local",
-      "command": "python",
-      "args": ["./tool.py"],
-      "activationPolicy": "onDemand",
-      "idlePolicy": {
-        "idleTimeoutMs": 300000
-      }
-    },
-
-    "dev-server": {
-      "type": "local",
-      "command": "npm",
-      "args": ["run", "dev"],
-      "activationPolicy": "manual"
-    }
-  }
-}
-```
-
-## Idle Management
-
-### Idle Policy Configuration
-
-```json
-{
-  "idlePolicy": {
-    "idleTimeoutMs": 300000,
-    "minLingerMs": 30000,
-    "activityReset": "onCallEnd"
-  }
-}
-```
-
-| Field           | Type   | Description                                            | Default        |
-| --------------- | ------ | ------------------------------------------------------ | -------------- |
-| `idleTimeoutMs` | number | Time before stopping idle server (ms)                  | 300000 (5 min) |
-| `minLingerMs`   | number | Minimum time to keep server running (ms)               | 30000 (30 sec) |
-| `activityReset` | string | When to reset idle timer: "onCallStart" or "onCallEnd" | "onCallEnd"    |
-
-### Activity Reset Strategies
-
-- **onCallStart**: Reset timer when tool call begins (keeps server active during long operations)
-- **onCallEnd**: Reset timer when tool call completes (allows server to idle during operations)
+| Field      | Type     | Description                         | Required                 |
+| ---------- | -------- | ----------------------------------- | ------------------------ |
+| `command`  | string   | Command to execute (local/NPX)      | Yes (local)              |
+| `args`     | string[] | Command arguments                   | No                       |
+| `env`      | object   | Environment variables               | No                       |
+| `cwd`      | string   | Working directory                   | No (default: config dir) |
+| `url`      | string   | Server URL (remote)                 | Yes (remote)             |
+| `type`     | string   | Remote server type: "http" or "sse" | No (default: "http")     |
+| `headers`  | object   | HTTP headers (remote)               | No                       |
+| `disabled` | boolean  | Disable this server                 | No (default: false)      |
 
 ## Environment Variable Expansion
 
-Hatago supports Claude Code compatible environment variable expansion:
+Hatago supports Claude Code compatible environment variable expansion throughout the configuration.
 
 ### Syntax
-
-```json
-{
-  "env": {
-    "API_KEY": "${API_KEY}",
-    "BASE_URL": "${BASE_URL:-https://api.example.com}",
-    "LOG_LEVEL": "${LOG_LEVEL:-info}"
-  }
-}
-```
-
-### Expansion Rules
 
 | Syntax            | Description           | Example         |
 | ----------------- | --------------------- | --------------- |
 | `${VAR}`          | Required variable     | `${API_KEY}`    |
 | `${VAR:-default}` | Variable with default | `${PORT:-3000}` |
 
-### Platform Support
+### Expansion Locations
 
-Environment variable expansion works across all platforms:
+Environment variables can be used in:
 
-- **Node.js**: Uses `process.env`
-- **Cloudflare Workers**: Uses worker environment bindings
-- **Deno/Bun**: Uses respective environment APIs
+- `command` - Server command
+- `args` - Command arguments
+- `env` - Environment variables
+- `url` - Remote server URLs
+- `headers` - HTTP headers
 
-## Server Types
-
-### Local Server
+### Examples
 
 ```json
 {
-  "filesystem": {
-    "type": "local",
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
-    "env": {
-      "DEBUG": "${DEBUG:-false}"
+  "mcpServers": {
+    "github": {
+      "command": "${MCP_PATH:-npx}",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "api": {
+      "url": "${API_BASE_URL:-https://api.example.com}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${API_KEY}",
+        "X-Environment": "${ENVIRONMENT:-production}"
+      }
     }
   }
 }
 ```
-
-### NPX Server
-
-```json
-{
-  "npx-tool": {
-    "type": "local",
-    "command": "npx",
-    "args": ["-y", "@example/mcp-server"],
-    "activationPolicy": "onDemand"
-  }
-}
-```
-
-### Remote HTTP Server
-
-```json
-{
-  "api-server": {
-    "type": "remote",
-    "url": "${API_URL:-https://api.example.com}/mcp",
-    "headers": {
-      "Authorization": "Bearer ${API_TOKEN}"
-    }
-  }
-}
-```
-
-### Remote SSE Server
-
-```json
-{
-  "sse-server": {
-    "type": "remote",
-    "url": "https://mcp.example.com/sse",
-    "transport": "sse"
-  }
-}
-```
-
-## Timeout Configuration
-
-```json
-{
-  "timeouts": {
-    "connectMs": 5000,
-    "requestMs": 30000,
-    "keepAliveMs": 60000
-  }
-}
-```
-
-| Timeout       | Description         | Default  |
-| ------------- | ------------------- | -------- |
-| `connectMs`   | Connection timeout  | 5000 ms  |
-| `requestMs`   | Request timeout     | 30000 ms |
-| `keepAliveMs` | Keep-alive interval | 60000 ms |
 
 ## Configuration Examples
+
+### Minimal Configuration
+
+```json
+{
+  "version": 1,
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
 
 ### Development Configuration
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "debug",
   "mcpServers": {
-    "dev-tools": {
-      "type": "local",
-      "command": "npm",
-      "args": ["run", "dev:mcp"],
-      "activationPolicy": "manual",
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
       "env": {
-        "NODE_ENV": "development",
-        "DEBUG": "*"
+        "DEBUG": "true"
       }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "deepwiki": {
+      "url": "https://mcp.deepwiki.com/sse",
+      "type": "sse"
     }
   }
 }
@@ -322,36 +211,27 @@ Environment variable expansion works across all platforms:
 {
   "version": 1,
   "logLevel": "info",
-  "notifications": {
-    "enabled": true,
-    "rateLimitSec": 300,
-    "severity": ["error"]
-  },
   "mcpServers": {
     "database": {
-      "type": "local",
       "command": "node",
       "args": ["./db-server.js"],
-      "activationPolicy": "always",
       "env": {
         "DB_HOST": "${DB_HOST}",
+        "DB_USER": "${DB_USER}",
         "DB_PASS": "${DB_PASS}"
-      }
+      },
+      "cwd": "/opt/mcp-servers"
     },
     "cache": {
-      "type": "remote",
       "url": "${CACHE_URL}",
-      "activationPolicy": "always"
-    },
-    "analytics": {
-      "type": "local",
-      "command": "python",
-      "args": ["./analytics.py"],
-      "activationPolicy": "onDemand",
-      "idlePolicy": {
-        "idleTimeoutMs": 600000,
-        "minLingerMs": 60000
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${CACHE_TOKEN}"
       }
+    },
+    "monitoring": {
+      "url": "https://monitor.example.com/mcp",
+      "type": "sse"
     }
   }
 }
@@ -365,13 +245,18 @@ Environment variable expansion works across all platforms:
   "logLevel": "${LOG_LEVEL:-info}",
   "mcpServers": {
     "api": {
-      "type": "remote",
       "url": "${API_BASE_URL:-https://api.example.com}/mcp",
+      "type": "${API_TYPE:-http}",
       "headers": {
         "Authorization": "Bearer ${API_TOKEN}",
-        "X-Environment": "${ENVIRONMENT:-production}"
-      },
-      "activationPolicy": "${API_ACTIVATION:-onDemand}"
+        "X-Environment": "${ENVIRONMENT:-production}",
+        "X-Region": "${AWS_REGION:-us-east-1}"
+      }
+    },
+    "local-dev": {
+      "command": "npm",
+      "args": ["run", "mcp:${ENVIRONMENT:-dev}"],
+      "disabled": "${DISABLE_LOCAL:-false}"
     }
   }
 }
@@ -379,62 +264,143 @@ Environment variable expansion works across all platforms:
 
 ## Hot Reload
 
-Configuration hot-reload can be enabled via command line:
+Configuration hot-reload can be enabled via the `--watch` flag:
 
 ```bash
-hatago serve --config hatago.config.json --watch
+hatago serve --watch
 ```
 
 When enabled:
 
 - Configuration file is monitored for changes
-- Changes are applied without restarting the hub
-- Active connections are maintained when possible
-- Incompatible changes trigger graceful reconnection
+- Changes are detected with a 1-second debounce
+- Servers are gracefully reconnected on changes
+- Active sessions are preserved when possible
+- `notifications/tools/list_changed` is sent to clients
 
-## Migration from v0.2.x
+## Server Types
 
-### Key Changes
+### NPX Servers
 
-1. **Unified Configuration**: Both `servers` and `mcpServers` are now supported
-2. **Activation Policies**: New `activationPolicy` field replaces `autoStart`
-3. **Idle Management**: New `idlePolicy` configuration
-4. **Environment Expansion**: Now supports `${VAR:-default}` syntax
-
-### Migration Example
-
-**Before (v0.2.x):**
-
-```json
-{
-  "servers": {
-    "myserver": {
-      "command": "node",
-      "args": ["./server.js"],
-      "autoStart": true
-    }
-  }
-}
-```
-
-**After (v0.3.x):**
+Common NPX-based MCP servers:
 
 ```json
 {
   "mcpServers": {
-    "myserver": {
-      "type": "local",
-      "command": "node",
-      "args": ["./server.js"],
-      "activationPolicy": "always"
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
     }
   }
 }
 ```
 
+### Local Executable Servers
+
+```json
+{
+  "mcpServers": {
+    "python-server": {
+      "command": "python",
+      "args": ["./mcp_server.py"],
+      "cwd": "./python-servers"
+    },
+    "node-server": {
+      "command": "node",
+      "args": ["./server.js"],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    },
+    "binary-server": {
+      "command": "/usr/local/bin/mcp-tool",
+      "args": ["--port", "0"]
+    }
+  }
+}
+```
+
+### Remote Servers
+
+```json
+{
+  "mcpServers": {
+    "http-api": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}"
+      }
+    },
+    "sse-stream": {
+      "url": "https://stream.example.com/sse",
+      "type": "sse"
+    },
+    "deepwiki": {
+      "url": "https://mcp.deepwiki.com/sse",
+      "type": "sse"
+    }
+  }
+}
+```
+
+## Platform-Specific Configuration
+
+### Node.js
+
+All server types are supported:
+
+```json
+{
+  "mcpServers": {
+    "local": { "command": "node", "args": ["./server.js"] },
+    "npx": { "command": "npx", "args": ["-y", "@example/server"] },
+    "remote": { "url": "https://api.example.com/mcp" }
+  }
+}
+```
+
+### Cloudflare Workers
+
+Only remote servers are supported:
+
+```json
+{
+  "mcpServers": {
+    "api": {
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CF_API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+## Validation
+
+Configuration files are validated against the JSON Schema. To validate your configuration:
+
+1. Use the `$schema` field for IDE support
+2. Run `hatago serve` to validate on startup
+3. Check logs for validation errors
+
 ## Best Practices
 
 ### 1. Use Environment Variables for Secrets
+
+Never hardcode sensitive information:
 
 ```json
 {
@@ -445,39 +411,68 @@ When enabled:
 }
 ```
 
-### 2. Configure Appropriate Activation Policies
-
-- Use `always` for critical services
-- Use `onDemand` for resource-intensive tools
-- Use `manual` for development/debugging
-
-### 3. Set Reasonable Idle Timeouts
+### 2. Provide Defaults for Optional Variables
 
 ```json
 {
-  "idlePolicy": {
-    "idleTimeoutMs": 300000, // 5 minutes for standard tools
-    "minLingerMs": 30000 // 30 seconds minimum
+  "env": {
+    "LOG_LEVEL": "${LOG_LEVEL:-info}",
+    "TIMEOUT": "${TIMEOUT_MS:-30000}"
   }
 }
 ```
 
-### 4. Use Metadata for Monitoring
+### 3. Use Descriptive Server IDs
 
-The system automatically maintains `_metadata` fields:
+```json
+{
+  "mcpServers": {
+    "github-api": {
+      /* ... */
+    }, // Good
+    "filesystem-tmp": {
+      /* ... */
+    }, // Good
+    "server1": {
+      /* ... */
+    } // Bad
+  }
+}
+```
 
-- Monitor `lastConnected` for connection health
-- Track `toolCount` and `resourceCount` for capability changes
-- Review `_lastError` for troubleshooting
+### 4. Group Related Servers
 
-### 5. Leverage Hot Reload for Development
+```json
+{
+  "mcpServers": {
+    // Development tools
+    "dev-filesystem": {
+      /* ... */
+    },
+    "dev-github": {
+      /* ... */
+    },
 
-```bash
-# Development with hot-reload
-hatago serve --config dev.config.json --watch --log-level debug
+    // Production services
+    "prod-api": {
+      /* ... */
+    },
+    "prod-cache": {
+      /* ... */
+    }
+  }
+}
+```
 
-# Production without hot-reload
-hatago serve --config prod.config.json
+### 5. Use Schema Validation
+
+Always include the schema URL:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1
+}
 ```
 
 ## Troubleshooting
@@ -485,36 +480,101 @@ hatago serve --config prod.config.json
 ### Common Issues
 
 1. **Environment Variable Not Found**
-   - Error: `Environment variable 'API_KEY' is not defined`
-   - Solution: Ensure variable is exported or use default value
 
-2. **Server Won't Activate**
-   - Check `activationPolicy` setting
-   - Review `disabled` flag
-   - Check `_lastError` in metadata
+   ```
+   Error: Environment variable 'API_KEY' is not defined
+   ```
 
-3. **Server Stops Unexpectedly**
-   - Review `idlePolicy` settings
-   - Check `minLingerMs` value
-   - Monitor activity patterns
+   Solution: Export the variable or provide a default value
 
-4. **Configuration Not Reloading**
-   - Ensure `--watch` flag is used
-   - Check file permissions
-   - Review audit logs for errors
+2. **Server Command Not Found**
+
+   ```
+   Error: spawn npx ENOENT
+   ```
+
+   Solution: Ensure the command is in PATH or use absolute path
+
+3. **Invalid Configuration**
+
+   ```
+   Error: Configuration validation failed
+   ```
+
+   Solution: Check against schema, ensure required fields are present
+
+4. **Remote Server Connection Failed**
+   ```
+   Error: Failed to connect to https://api.example.com/mcp
+   ```
+   Solution: Verify URL, check network connectivity, validate headers
 
 ### Debug Mode
 
 Enable debug logging for detailed information:
 
-```json
+```bash
+# Via command line
+hatago serve --verbose
+
+# Or in configuration
 {
   "logLevel": "debug"
 }
 ```
 
-Or via command line:
+### Checking Configuration
+
+View the parsed configuration:
 
 ```bash
-hatago serve --log-level debug
+# Display loaded configuration (with secrets masked)
+hatago config show
+
+# Validate configuration without starting
+hatago config validate
 ```
+
+## Migration from Earlier Versions
+
+If you're using an older configuration format, update as follows:
+
+### Old Format (pre-0.0.1)
+
+```json
+{
+  "servers": {
+    "myserver": {
+      "command": "node",
+      "args": ["./server.js"]
+    }
+  }
+}
+```
+
+### New Format (0.0.1+)
+
+```json
+{
+  "version": 1,
+  "mcpServers": {
+    "myserver": {
+      "command": "node",
+      "args": ["./server.js"]
+    }
+  }
+}
+```
+
+Key changes:
+
+- Added `version` field (required)
+- Renamed `servers` to `mcpServers`
+- Added schema support
+- Enhanced environment variable expansion
+
+## Additional Resources
+
+- [JSON Schema](https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json)
+- [Example Configurations](https://github.com/himorishige/hatago-mcp-hub/tree/main/schemas)
+- [MCP Protocol Documentation](https://modelcontextprotocol.io/)
