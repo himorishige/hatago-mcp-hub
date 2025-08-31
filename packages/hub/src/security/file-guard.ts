@@ -218,8 +218,8 @@ export class FileAccessGuard {
       const s = server as Record<string, unknown>;
 
       // Check connection configuration
-      const hasLocal = s.command as unknown;
-      const hasRemote = s.url as unknown;
+      const hasLocal = s.command;
+      const hasRemote = s.url;
 
       if (!hasLocal && !hasRemote) {
         errors.push(`Server ${id}: Must have either command or url`);

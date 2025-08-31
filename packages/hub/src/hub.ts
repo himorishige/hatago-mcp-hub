@@ -169,7 +169,7 @@ export class HatagoHub {
     this.sessions = new SessionManager(this.options.sessionTTL);
     this.toolRegistry = new ToolRegistry({
       namingConfig: {
-        strategy: this.options.namingStrategy as 'none' | 'namespace' | 'prefix',
+        strategy: this.options.namingStrategy,
         separator: this.options.separator
       }
     });

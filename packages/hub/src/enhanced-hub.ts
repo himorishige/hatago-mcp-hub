@@ -274,17 +274,17 @@ export class EnhancedHatagoHub extends HatagoHub {
     const spec: ServerSpec = {
       command:
         'command' in config && typeof config.command === 'string' ? config.command : undefined,
-      args: 'args' in config && Array.isArray(config.args) ? (config.args as string[]) : undefined,
+      args: 'args' in config && Array.isArray(config.args) ? config.args : undefined,
       env:
         'env' in config && typeof config.env === 'object' && config.env !== null
-          ? (config.env as Record<string, string>)
+          ? config.env
           : undefined,
       cwd: 'cwd' in config && typeof config.cwd === 'string' ? config.cwd : undefined,
       url: 'url' in config && typeof config.url === 'string' ? config.url : undefined,
       type: transportType === 'stdio' ? undefined : transportType,
       headers:
         'headers' in config && typeof config.headers === 'object' && config.headers !== null
-          ? (config.headers as Record<string, string>)
+          ? config.headers
           : undefined
     };
 

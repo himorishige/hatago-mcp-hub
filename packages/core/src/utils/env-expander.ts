@@ -48,7 +48,7 @@ export function expandEnvironmentVariables(value: string, getEnv: GetEnv = defau
     }
 
     if (defaultValue !== undefined) {
-      return defaultValue as string;
+      return defaultValue;
     }
 
     // Required variable is not defined and no default provided

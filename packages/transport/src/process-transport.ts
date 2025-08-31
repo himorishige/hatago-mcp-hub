@@ -21,7 +21,7 @@ export class ProcessTransport implements ITransport {
   }
 
   async send(message: unknown): Promise<void> {
-    if (!this.process || !this.process.stdin) {
+    if (!this.process?.stdin) {
       throw new Error('Transport not started or stdin not available');
     }
 

@@ -149,7 +149,7 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
         // Handle through StreamableHTTP
         const result = await transport.handleHttpRequest('POST', headers, body, sseStream);
 
-        const resultBody = result?.body as unknown;
+        const resultBody = result?.body;
         if (resultBody) {
           // Send final response via SSE
           await stream.write(`data: ${JSON.stringify(resultBody)}\n\n`);
@@ -177,7 +177,7 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
           }
         });
       }
-      const resultBody = result.body as unknown;
+      const resultBody = result.body;
       const resultStatus = result.status as number | undefined;
       // Using 'any' for Hono framework compatibility - status code type mismatch
       return resultBody

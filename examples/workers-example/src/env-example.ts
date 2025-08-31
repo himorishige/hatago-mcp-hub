@@ -51,7 +51,7 @@ export async function loadConfigWithEnvExpansion(
 
   // Create GetEnv function for Workers
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const getEnv = createWorkersGetEnv(env) as GetEnv;
+  const getEnv = createWorkersGetEnv(env);
 
   // Validate environment variables
   try {

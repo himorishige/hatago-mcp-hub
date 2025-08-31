@@ -159,7 +159,7 @@ export class ToolInvoker {
       handler()
         .then((result) => {
           clearTimeout(timer);
-          resolve(result as T);
+          resolve(result);
         })
         .catch((error) => {
           clearTimeout(timer);
