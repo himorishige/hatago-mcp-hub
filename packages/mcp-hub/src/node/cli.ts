@@ -135,6 +135,7 @@ program
   .option('--verbose', 'Enable verbose logging')
   .option('--quiet', 'Minimize output')
   .option('--watch', 'Watch configuration file for changes')
+  .option('--tags <tags>', 'Filter servers by tags (comma-separated)')
   .action(async (options: unknown) => {
     try {
       const opts = options as {
@@ -145,6 +146,7 @@ program
         verbose?: boolean;
         quiet?: boolean;
         watch?: boolean;
+        tags?: string;
       };
 
       // Determine mode
@@ -152,6 +154,9 @@ program
 
       // Set log level
       const logLevel = opts.verbose ? 'debug' : opts.quiet ? 'error' : 'info';
+
+      // Parse tags if provided
+      const tags = opts.tags ? opts.tags.split(',').map((t) => t.trim()) : undefined;
 
       // Start server
       await startServer({
@@ -162,7 +167,8 @@ program
         logLevel,
         verbose: opts.verbose,
         quiet: opts.quiet,
-        watchConfig: opts.watch
+        watchConfig: opts.watch,
+        tags
       });
     } catch (error) {
       // Handle specific errors with cleaner messages

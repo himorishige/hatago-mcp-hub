@@ -37,6 +37,7 @@ export interface HubOptions {
   defaultTimeout?: number;
   namingStrategy?: 'none' | 'namespace' | 'prefix';
   separator?: string;
+  tags?: string[]; // Filter servers by tags
 }
 
 /**

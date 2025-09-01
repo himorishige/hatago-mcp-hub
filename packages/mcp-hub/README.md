@@ -330,6 +330,7 @@ hatago serve --verbose
 
 ## Version History
 
+- **v0.0.2** - Tag-based server filtering with multi-language support
 - **v0.0.1** - Initial lightweight release with full MCP support
 
 ## License

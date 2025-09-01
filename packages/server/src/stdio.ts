@@ -16,7 +16,8 @@ import type { Logger } from './logger.js';
 export async function startStdio(
   config: { path?: string },
   logger: Logger,
-  watchConfig = false
+  watchConfig = false,
+  tags?: string[]
 ): Promise<void> {
   // Ensure stdout is for protocol only
   process.stdout.setDefaultEncoding('utf8');
@@ -29,7 +30,7 @@ export async function startStdio(
     configFile: config.path,
     watchConfig
   });
-  const hub = createHub({ configFile: config.path, watchConfig });
+  const hub = createHub({ configFile: config.path, watchConfig, tags });
 
   // Set up notification handler to forward to Claude Code
   hub.onNotification = async (notification: unknown) => {

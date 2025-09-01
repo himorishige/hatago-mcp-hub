@@ -88,6 +88,7 @@ pnpm dev          # Start dev server with watch mode
 # Using the CLI (after building)
 npx @himorishige/hatago-mcp-hub init   # Initialize config
 npx @himorishige/hatago-mcp-hub serve  # Start server
+npx @himorishige/hatago-mcp-hub serve --tags dev,test  # With tag filtering
 ```
 
 ## CLI Commands
@@ -106,6 +107,7 @@ hatago serve --stdio     # Explicit STDIO mode
 hatago serve --http      # HTTP mode for debugging
 hatago serve --watch     # Enable hot reload
 hatago serve --verbose   # Debug logging
+hatago serve --tags dev,test  # Filter servers by tags
 ```
 
 ## Configuration
@@ -131,7 +133,8 @@ hatago serve --verbose   # Debug logging
       "headers": { "Authorization": "Bearer ${TOKEN}" },
 
       // Common
-      "disabled": false
+      "disabled": false,
+      "tags": ["dev", "production"]  // Optional: for tag-based filtering
     }
   }
 }
@@ -153,6 +156,7 @@ Claude Code compatible syntax:
 - **Tool Collision Avoidance**: Automatic prefixing with server ID
 - **Session Management**: Independent sessions per client
 - **Internal Tools**: `_internal_hatago_status`, `_internal_hatago_reload`, `_internal_hatago_list_servers`
+- **Tag-based Filtering**: Filter servers by tags for different profiles/environments
 
 ### Protocol Compliance
 
@@ -262,7 +266,19 @@ pnpm check  # Runs format + lint + typecheck
 
 ## Version History
 
-### v0.0.1 (Current)
+### v0.0.2 (Development)
+
+- Tag-based server filtering for profile management
+- Support for Japanese tags in configuration
+
+### v0.0.2 (Current)
+
+- Tag-based server filtering (OR logic)
+- Support for Japanese tags
+- CLI --tags option for server grouping
+- Backward compatibility maintained
+
+### v0.0.1
 
 - Simplified architecture (38+ files removed)
 - Core functionality focus (~500 lines hub)
@@ -312,6 +328,17 @@ pnpm check  # Runs format + lint + typecheck
 3. Add tests
 4. Update configuration schema if needed
 5. Document in relevant files
+
+#### Example: Tag-based Filtering Implementation
+
+The tag filtering feature was implemented with:
+
+1. **Schema Update**: Added `tags` field to server config (string[], optional)
+2. **CLI Option**: Added `--tags` option to serve command
+3. **Hub Logic**: Filter servers in `hub.ts` start() and reloadConfig()
+4. **Type Updates**: Extended HubOptions and ServerOptions interfaces
+5. **Tests**: Created comprehensive tests for tag matching logic
+6. **Documentation**: Updated README files with usage examples
 
 ### Common Tasks
 

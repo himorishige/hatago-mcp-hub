@@ -48,6 +48,7 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 - **環境変数展開** - Claude Code互換の`${VAR}`と`${VAR:-default}`構文
 - **設定検証** - Zodスキーマによる型安全な設定
+- **タグベースフィルタリング** - タグによるサーバーのグループ化とフィルタリング
 
 ## 📦 インストール
 
@@ -159,6 +160,10 @@ hatago serve --stdio --watch
 
 # カスタム設定ファイル
 hatago serve --config ./my-config.json
+
+# タグでサーバーをフィルタリング
+hatago serve --tags dev,test      # dev または test タグを持つサーバーのみ起動
+hatago serve --tags 開発,テスト    # 日本語タグもサポート
 ```
 
 ### 設定ファイル例
@@ -200,6 +205,44 @@ hatago serve --config ./my-config.json
 
 - `${VAR}` - 環境変数VARの値に展開（未定義の場合はエラー）
 - `${VAR:-default}` - VARが未定義の場合はdefaultを使用
+
+### タグベースのサーバーフィルタリング
+
+環境や用途に応じてサーバーをグループ化できます：
+
+```json
+{
+  "mcpServers": {
+    "filesystem-dev": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["dev", "local", "開発"]
+    },
+    "github-prod": {
+      "url": "https://api.github.com/mcp",
+      "type": "http",
+      "tags": ["production", "github", "本番"]
+    },
+    "database": {
+      "command": "mcp-server-postgres",
+      "tags": ["dev", "production", "database", "データベース"]
+    }
+  }
+}
+```
+
+特定のタグを持つサーバーのみを起動：
+
+```bash
+# 開発環境用のサーバーのみ起動
+hatago serve --tags dev
+
+# 本番またはステージング環境用
+hatago serve --tags production,staging
+
+# 日本語タグでの指定
+hatago serve --tags 開発,テスト
+```
 
 ### MCP Inspectorでのテスト
 
