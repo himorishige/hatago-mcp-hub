@@ -137,17 +137,17 @@ Each server in `mcpServers` can be configured as either a local/NPX server or a 
 
 ### Server Configuration Fields
 
-| Field      | Type     | Description                         | Required                 |
-| ---------- | -------- | ----------------------------------- | ------------------------ |
-| `command`  | string   | Command to execute (local/NPX)      | Yes (local)              |
-| `args`     | string[] | Command arguments                   | No                       |
-| `env`      | object   | Environment variables               | No                       |
-| `cwd`      | string   | Working directory                   | No (default: config dir) |
-| `url`      | string   | Server URL (remote)                 | Yes (remote)             |
-| `type`     | string   | Remote server type: "http" or "sse" | No (default: "http")     |
-| `headers`  | object   | HTTP headers (remote)               | No                       |
-| `disabled` | boolean  | Disable this server                 | No (default: false)      |
-| `tags`     | string[] | Optional tags for server grouping/filtering | No                |
+| Field      | Type     | Description                                 | Required                 |
+| ---------- | -------- | ------------------------------------------- | ------------------------ |
+| `command`  | string   | Command to execute (local/NPX)              | Yes (local)              |
+| `args`     | string[] | Command arguments                           | No                       |
+| `env`      | object   | Environment variables                       | No                       |
+| `cwd`      | string   | Working directory                           | No (default: config dir) |
+| `url`      | string   | Server URL (remote)                         | Yes (remote)             |
+| `type`     | string   | Remote server type: "http" or "sse"         | No (default: "http")     |
+| `headers`  | object   | HTTP headers (remote)                       | No                       |
+| `disabled` | boolean  | Disable this server                         | No (default: false)      |
+| `tags`     | string[] | Optional tags for server grouping/filtering | No                       |
 
 ## Environment Variable Expansion
 

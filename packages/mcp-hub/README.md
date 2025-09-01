@@ -96,7 +96,7 @@ Add to your `~/.codex/config.toml`:
 ```toml
 [mcp_servers.hatago]
 command = "npx"
-args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
 ```
 
 ### StreamableHTTP Mode
@@ -109,7 +109,7 @@ Add to your `.mcp.json`:
 {
   "mcpServers": {
     "hatago": {
-      "url": "http://localhost:3535"
+      "url": "http://localhost:3535/mcp"
     }
   }
 }
@@ -121,9 +121,11 @@ Add to your `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.hatago]
-type = "http"
-url = "http://localhost:3535"
+command = "npx"
+args = ["-y", "mcp-remote", "http://localhost:3535/mcp"]
 ```
+
+Note: Codex CLI connects via STDIO; use `mcp-remote` to bridge HTTP endpoints.
 
 ### MCP Inspector
 
@@ -330,6 +332,7 @@ hatago serve --verbose
 
 ## Version History
 
+- **v0.0.3** - Docs and examples update
 - **v0.0.2** - Tag-based server filtering with multi-language support
 - **v0.0.1** - Initial lightweight release with full MCP support
 
