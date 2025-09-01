@@ -2,7 +2,7 @@
  * Hub types and interfaces
  */
 
-import type { Prompt, Resource, Tool } from '@himorishige/hatago-core';
+import type { Prompt, Resource, Tool, HatagoConfig } from '@himorishige/hatago-core';
 
 /**
  * Server specification
@@ -32,9 +32,8 @@ export interface ServerSpec {
  */
 export interface HubOptions {
   configFile?: string;
-  /** Preloaded, already-validated configuration. Preferred over configFile when provided. */
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  preloadedConfig?: { path?: string; data: object } | undefined;
+  /** Preloaded configuration data. Takes precedence over configFile when provided. */
+  preloadedConfig?: { path?: string; data: HatagoConfig } | undefined;
   watchConfig?: boolean; // Enable config file watching
   sessionTTL?: number;
   defaultTimeout?: number;

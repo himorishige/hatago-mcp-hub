@@ -100,14 +100,16 @@ export class EnhancedHatagoHub extends HatagoHub {
       this.initializeManagement();
     }
 
-    // Load configuration: prefer preloaded data; fallback to file
+    // Load configuration: preloaded data > config file > empty config
     if (options.preloadedConfig?.data) {
+      // Highest priority: preloaded configuration (already validated/expanded by server loader)
       this.config = options.preloadedConfig.data as HatagoConfig;
       this.processConfiguration();
       if (options.watchConfig && this.configPath) {
         this.startConfigWatch();
       }
     } else if (options.configFile) {
+      // Fallback: load from config file path (JSON/JSONC). Note: validation happens in server loader path.
       this.loadConfiguration(options.configFile);
       if (options.watchConfig) {
         this.startConfigWatch();
