@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.2] - 2025-09-01
 
 ### Added
+
 - 🏷️ **Tag-based server filtering**: Filter MCP servers using tags with OR logic
 - **Multi-language tag support**: Full support for Japanese tags (e.g., "開発", "本番")
 - **CLI --tags option**: New command-line option to specify tags for filtering
@@ -28,11 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
 ### Changed
+
 - Updated JSON Schema to include tags field definition
 - Enhanced Zod schema validation for tags
 - Improved hub filtering logic with tag support
 
 ### Technical Details
+
 - Tags use OR logic: servers match if they have ANY of the specified tags
 - Tags field is optional to maintain backward compatibility
 - Tag filtering applies at startup time (not per-request in HTTP mode)
@@ -41,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.1] - 2025-08-31
 
 ### Added
+
 - Initial lightweight release with full MCP support
 - Simplified architecture (38+ files removed from original design)
 - Core functionality in ~500 lines hub implementation
@@ -52,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Claude Code compatible configuration format
 
 ### Features
+
 - **Hub Core**: Central coordinator for multiple MCP servers
 - **Server Types**: Support for local, NPX, and remote servers
 - **Session Management**: Client isolation with independent sessions
@@ -60,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI**: Comprehensive command-line interface with subcommands
 
 ### Platform Support
+
 - Node.js 20+ (full support)
 - Cloudflare Workers (remote servers only)
 - Bun/Deno (work in progress)

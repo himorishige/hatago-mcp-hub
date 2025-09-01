@@ -1,0 +1,38 @@
+{
+  "$schema": "../schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "filesystem-dev": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["dev", "local", "開発"]
+    },
+    "github-prod": {
+      "url": "https://api.github.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
+      },
+      "tags": ["production", "github", "本番"]
+    },
+    "database-all": {
+      "command": "mcp-server-postgres",
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      },
+      "tags": ["dev", "production", "database", "データベース"]
+    },
+    "test-server": {
+      "command": "echo",
+      "args": ["test"],
+      "tags": ["test", "テスト"]
+    },
+    "disabled-server": {
+      "command": "echo",
+      "args": ["disabled"],
+      "disabled": true,
+      "tags": ["never-used"]
+    }
+  }
+}
