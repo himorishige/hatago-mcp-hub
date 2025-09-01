@@ -13,9 +13,7 @@
     },
     "./platform": {
       "types": "./dist/platform/index.d.ts",
-      "workerd": "./dist/platform/workers.js",
-      "node": "./dist/platform/node.js",
-      "default": "./dist/platform/index.js"
+      "import": "./dist/platform/index.js"
     },
     "./platform/node": {
       "types": "./dist/platform/node.d.ts",
