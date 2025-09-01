@@ -32,6 +32,9 @@ export interface ServerSpec {
  */
 export interface HubOptions {
   configFile?: string;
+  /** Preloaded, already-validated configuration. Preferred over configFile when provided. */
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  preloadedConfig?: { path?: string; data: object } | undefined;
   watchConfig?: boolean; // Enable config file watching
   sessionTTL?: number;
   defaultTimeout?: number;
