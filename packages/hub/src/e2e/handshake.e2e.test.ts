@@ -108,6 +108,9 @@ describe('E2E: Handshake', () => {
 
         // Each API call creates a new session internally
         for (let i = 0; i < 3; i++) {
+          // Add a small delay to ensure temporal uniqueness
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
           const sessionId = await new Promise<string>((resolve) => {
             // Simulate an API request that creates a session
             const id = hub.getOrCreateSessionId({ headers: {} } as any);

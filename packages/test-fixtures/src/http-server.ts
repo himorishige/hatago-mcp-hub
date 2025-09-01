@@ -41,7 +41,7 @@ app.get('/health', (c) => {
 
 // MCP initialization/handshake
 app.post('/initialize', async (c) => {
-  const body = (await c.req.json()) as { id: number | string; method?: string };
+  const body = await c.req.json();
 
   return c.json({
     jsonrpc: '2.0',
@@ -62,7 +62,7 @@ app.post('/initialize', async (c) => {
 
 // List tools
 app.post('/tools/list', async (c) => {
-  const body = (await c.req.json()) as { id: number | string };
+  const body = await c.req.json();
   const tools = [];
 
   if (features.echo) {
@@ -127,10 +127,7 @@ app.post('/tools/list', async (c) => {
 
 // Call tool
 app.post('/tools/call', async (c) => {
-  const body = (await c.req.json()) as {
-    id: number | string;
-    params: { name: string; arguments?: Record<string, unknown> };
-  };
+  const body = await c.req.json();
   const { name, arguments: args = {} } = body.params;
 
   if (name === 'echo' && features.echo) {
@@ -211,7 +208,7 @@ app.post('/tools/call', async (c) => {
 // List resources
 if (features.resources) {
   app.post('/resources/list', async (c) => {
-    const body = (await c.req.json()) as { id: number | string };
+    const body = await c.req.json();
 
     return c.json({
       jsonrpc: '2.0',
@@ -236,7 +233,7 @@ if (features.resources) {
   });
 
   app.post('/resources/read', async (c) => {
-    const body = (await c.req.json()) as { id: number | string; params: { uri: string } };
+    const body = await c.req.json();
     const { uri } = body.params;
 
     if (uri === 'test://example/file.txt') {

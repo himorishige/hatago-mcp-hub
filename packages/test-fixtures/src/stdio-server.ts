@@ -45,93 +45,83 @@ const server = new Server(
   }
 );
 
-// Register echo tool
-if (features.echo) {
-  server.setRequestHandler(CallToolRequestSchema, (request) => {
-    if (request.params.name === 'echo') {
-      const { text = '' } = request.params.arguments as { text?: string };
-      return {
-        content: [
-          {
-            type: 'text',
-            text: String(text)
-          }
-        ]
-      };
+// Register unified tool handler
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const toolName = request.params.name;
+
+  // Handle echo tools
+  if (toolName === 'echo' && features.echo) {
+    const { text = '' } = request.params.arguments as { text?: string };
+    return {
+      content: [
+        {
+          type: 'text',
+          text: String(text)
+        }
+      ]
+    };
+  }
+
+  if (toolName === 'echo_object' && features.echo) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(request.params.arguments)
+        }
+      ]
+    };
+  }
+
+  // Handle stream tool
+  if (toolName === 'stream_echo' && features.stream) {
+    const { count = 3, text = 'chunk' } = request.params.arguments as {
+      count?: number;
+      text?: string;
+    };
+
+    // Stream responses
+    const chunks = [];
+    for (let i = 0; i < count; i++) {
+      chunks.push({
+        type: 'text' as const,
+        text: `${text}-${i + 1}`
+      });
     }
 
-    if (request.params.name === 'echo_object') {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(request.params.arguments)
-          }
-        ]
-      };
-    }
+    return {
+      content: chunks
+    };
+  }
 
-    throw new Error(`Unknown tool: ${request.params.name}`);
-  });
-}
+  // Handle slow tool
+  if (toolName === 'slow' && features.slow) {
+    const { delay = 1000 } = request.params.arguments as { delay?: number };
 
-// Register stream tool
-if (features.stream) {
-  server.setRequestHandler(CallToolRequestSchema, (request) => {
-    if (request.params.name === 'stream_echo') {
-      const { count = 3, text = 'chunk' } = request.params.arguments as {
-        count?: number;
-        text?: string;
-      };
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
-      // Stream responses
-      const chunks = [];
-      for (let i = 0; i < count; i++) {
-        chunks.push({
-          type: 'text' as const,
-          text: `${text}-${i + 1}`
-        });
-      }
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Delayed for ${delay}ms`
+        }
+      ]
+    };
+  }
 
-      return {
-        content: chunks
-      };
-    }
-  });
-}
+  // Handle fail tool
+  if (toolName === 'fail' && features.fail) {
+    const { message = 'Intentional failure' } = request.params.arguments as {
+      message?: string;
+    };
 
-// Register slow tool
-if (features.slow) {
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    if (request.params.name === 'slow') {
-      const { delay = 1000 } = request.params.arguments as { delay?: number };
+    throw new Error(message);
+  }
 
-      await new Promise((resolve) => setTimeout(resolve, delay));
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Delayed for ${delay}ms`
-          }
-        ]
-      };
-    }
-  });
-}
-
-// Register fail tool
-if (features.fail) {
-  server.setRequestHandler(CallToolRequestSchema, (request) => {
-    if (request.params.name === 'fail') {
-      const { message = 'Intentional failure' } = request.params.arguments as {
-        message?: string;
-      };
-
-      throw new Error(message);
-    }
-  });
-}
+  // Unknown tool
+  throw new Error(`Unknown tool: ${toolName}`);
+});
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, () => {
