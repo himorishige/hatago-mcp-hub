@@ -136,7 +136,16 @@ export class HatagoHub {
   > = new Map();
 
   // Options
-  protected options: Required<Omit<HubOptions, 'tags'>> & { tags?: string[] };
+  protected options: {
+    configFile: string;
+    preloadedConfig?: { path?: string; data: object };
+    watchConfig: boolean;
+    sessionTTL: number;
+    defaultTimeout: number;
+    namingStrategy: 'none' | 'namespace' | 'prefix';
+    separator: string;
+    tags?: string[];
+  };
 
   // Notification callback for forwarding to parent
   public onNotification?: (notification: unknown) => Promise<void>;
@@ -152,6 +161,7 @@ export class HatagoHub {
   constructor(options: HubOptions = {}) {
     this.options = {
       configFile: options.configFile || '',
+      preloadedConfig: options.preloadedConfig || undefined,
       watchConfig: options.watchConfig || false,
       sessionTTL: options.sessionTTL || 3600,
       defaultTimeout: options.defaultTimeout || 30000,

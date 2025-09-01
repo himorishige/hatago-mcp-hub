@@ -81,6 +81,7 @@ export class EnhancedHatagoHub extends HatagoHub {
     mcpServers: {}
   };
   private enhancedOptions: EnhancedHubOptions;
+  private configPath: string | undefined;
 
   constructor(options: EnhancedHubOptions = {}) {
     super(options);
@@ -91,16 +92,25 @@ export class EnhancedHatagoHub extends HatagoHub {
       setPlatform(createNodePlatform());
     }
 
+    // Resolve config path (prefer preloaded)
+    this.configPath = options.preloadedConfig?.path || options.configFile || undefined;
+
     // Initialize management components if enabled
     if (options.enableManagement !== false) {
       this.initializeManagement();
     }
 
-    // Load configuration if provided
-    if (options.configFile) {
+    // Load configuration: preloaded data > config file > empty config
+    if (options.preloadedConfig?.data) {
+      // Highest priority: preloaded configuration (already validated/expanded by server loader)
+      this.config = options.preloadedConfig.data as HatagoConfig;
+      this.processConfiguration();
+      if (options.watchConfig && this.configPath) {
+        this.startConfigWatch();
+      }
+    } else if (options.configFile) {
+      // Fallback: load from config file path (JSON/JSONC). Note: validation happens in server loader path.
       this.loadConfiguration(options.configFile);
-
-      // Watch for config changes if enabled
       if (options.watchConfig) {
         this.startConfigWatch();
       }
@@ -132,7 +142,7 @@ export class EnhancedHatagoHub extends HatagoHub {
    * Initialize management components
    */
   private initializeManagement(): void {
-    const configFile = this.enhancedOptions.configFile || '';
+    const configFile = this.configPath || '';
 
     // Initialize state machine
     this.stateMachine = new ServerStateMachine();
@@ -422,9 +432,9 @@ export class EnhancedHatagoHub extends HatagoHub {
    * Start watching config file
    */
   private startConfigWatch(): void {
-    if (!this.enhancedOptions.configFile) return;
+    if (!this.configPath) return;
 
-    const configFile = this.enhancedOptions.configFile;
+    const configFile = this.configPath;
 
     // Watch for changes
     watchFile(configFile, { interval: 2000 }, () => {
@@ -437,11 +447,11 @@ export class EnhancedHatagoHub extends HatagoHub {
    * Reload configuration
    */
   async reloadConfiguration(): Promise<void> {
-    if (!this.enhancedOptions.configFile) return;
+    if (!this.configPath) return;
 
     try {
       // Load new configuration
-      this.loadConfiguration(this.enhancedOptions.configFile);
+      this.loadConfiguration(this.configPath);
 
       // Log reload
       if (this.auditLogger) {
@@ -496,9 +506,7 @@ export class EnhancedHatagoHub extends HatagoHub {
    */
   async shutdown(): Promise<void> {
     // Stop config watching
-    if (this.enhancedOptions.configFile) {
-      unwatchFile(this.enhancedOptions.configFile);
-    }
+    if (this.configPath) unwatchFile(this.configPath);
 
     // Shutdown management components
     if (this.activationManager) {

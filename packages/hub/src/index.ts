@@ -15,8 +15,11 @@ import type { HubOptions, ServerSpec } from './types.js';
  * If a configFile is provided, creates an EnhancedHatagoHub with management features
  */
 export function createHub(options?: HubOptions | EnhancedHubOptions): HatagoHub {
-  // If configFile is provided, use EnhancedHatagoHub for management features
-  if (options?.configFile) {
+  // Use EnhancedHatagoHub when config is provided (file or preloaded)
+  const hasEnhanced = Boolean(
+    (options as EnhancedHubOptions)?.configFile || (options as EnhancedHubOptions)?.preloadedConfig
+  );
+  if (hasEnhanced) {
     return new EnhancedHatagoHub(options as EnhancedHubOptions);
   }
   return new HatagoHub(options);

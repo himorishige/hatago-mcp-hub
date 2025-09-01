@@ -11,9 +11,10 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Logger } from './logger.js';
+import type { HatagoConfig } from '@himorishige/hatago-core';
 
 interface HttpOptions {
-  config: { path?: string };
+  config: { path?: string; data: HatagoConfig };
   host: string;
   port: number;
   logger: Logger;
@@ -28,7 +29,12 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   const { config, host, port, logger, watchConfig = false, tags } = options;
 
   // Create hub instance
-  const hub = createHub({ configFile: config.path, watchConfig, tags });
+  const hub = createHub({
+    configFile: config.path,
+    preloadedConfig: { path: config.path, data: config.data },
+    watchConfig,
+    tags
+  });
   await hub.start();
 
   // Create Hono app

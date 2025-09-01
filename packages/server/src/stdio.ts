@@ -7,6 +7,7 @@
 
 import { once } from 'node:events';
 import type { HatagoHub } from '@himorishige/hatago-hub';
+import type { HatagoConfig } from '@himorishige/hatago-core';
 import { createHub } from '@himorishige/hatago-hub/node';
 import type { Logger } from './logger.js';
 
@@ -14,7 +15,7 @@ import type { Logger } from './logger.js';
  * Start the MCP server in STDIO mode
  */
 export async function startStdio(
-  config: { path?: string },
+  config: { path?: string; data: HatagoConfig },
   logger: Logger,
   watchConfig = false,
   tags?: string[]
@@ -30,7 +31,12 @@ export async function startStdio(
     configFile: config.path,
     watchConfig
   });
-  const hub = createHub({ configFile: config.path, watchConfig, tags });
+  const hub = createHub({
+    configFile: config.path,
+    preloadedConfig: { path: config.path, data: config.data },
+    watchConfig,
+    tags
+  });
 
   // Set up notification handler to forward to Claude Code
   hub.onNotification = async (notification: unknown) => {
