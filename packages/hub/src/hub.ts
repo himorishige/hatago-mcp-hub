@@ -308,7 +308,8 @@ export class HatagoHub {
   private async connectWithRetry(
     id: string,
     createTransport: () => ITransport | Promise<ITransport>,
-    maxRetries: number = 3
+    maxRetries: number = 3,
+    connectTimeoutMs?: number
   ): Promise<Client> {
     let lastError: Error | undefined;
 
@@ -330,7 +331,26 @@ export class HatagoHub {
           }
         );
 
-        await client.connect(transport);
+        // Apply connection timeout if provided
+        if (connectTimeoutMs && Number.isFinite(connectTimeoutMs)) {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const race = Promise.race([
+            client.connect(transport),
+            new Promise((_, reject) => {
+              timer = setTimeout(
+                () => reject(new Error(`Connection timed out after ${connectTimeoutMs}ms`)),
+                connectTimeoutMs
+              );
+            })
+          ]);
+          try {
+            await race;
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
+        } else {
+          await client.connect(transport);
+        }
 
         // Set up sampling request handler to forward to the original client
         try {
@@ -497,7 +517,9 @@ export class HatagoHub {
     // Connect with retry logic
     const client = await this.connectWithRetry(
       id,
-      createTransport as unknown as () => Promise<ITransport>
+      createTransport as unknown as () => Promise<ITransport>,
+      3,
+      spec.connectTimeout
     );
 
     // Store client
@@ -539,11 +561,12 @@ export class HatagoHub {
       });
 
       // Prepare all tools with handlers
+      const requestTimeoutMs = spec.timeout ?? this.options.defaultTimeout;
       const toolsWithHandlers = toolArray.map((tool) => ({
         ...tool,
         handler: async (args: unknown, progressCallback?: (progress: number) => void) => {
           // Use high-level callTool API with progress support
-          const result = await client.callTool(
+          const toolCall = client.callTool(
             {
               name: tool.name,
               arguments: args as { [x: string]: unknown } | undefined
@@ -582,7 +605,21 @@ export class HatagoHub {
               }
             }
           );
-          return result;
+
+          // Apply request timeout per server
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`Tool call timed out after ${requestTimeoutMs}ms`)),
+              requestTimeoutMs
+            );
+          });
+          try {
+            const result = await Promise.race([toolCall, timeoutPromise]);
+            return result;
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
         }
       }));
 
@@ -677,38 +714,6 @@ export class HatagoHub {
     // Register internal management tools
     await this.registerInternalTools();
 
-    // Start StreamableHTTP Transport
-    await this.streamableTransport?.start();
-
-    // Set up message handler for StreamableHTTP
-    if (this.streamableTransport) {
-      this.streamableTransport.onmessage = (message) => {
-        void (async () => {
-          // Check if this is a sampling response
-          const msg = message as { id?: unknown; error?: { message?: string }; result?: unknown };
-          if (msg.id && typeof msg.id === 'string' && msg.id.startsWith('sampling-')) {
-            const solver = this.samplingSolvers.get(msg.id);
-            if (solver) {
-              this.samplingSolvers.delete(msg.id);
-              if (msg.error) {
-                solver.reject(new Error(msg.error.message || 'Sampling failed'));
-              } else {
-                solver.resolve(msg.result);
-              }
-              // No further processing needed for sampling responses
-              return;
-            }
-          }
-
-          // Handle message through existing JSON-RPC logic
-          const result = await this.handleJsonRpcRequest(message as unknown as JSONRPCMessage);
-          if (result && this.streamableTransport) {
-            await this.streamableTransport.send(result as JSONRPCMessage);
-          }
-        })();
-      };
-    }
-
     // Load config if provided
     if (this.options.configFile) {
       try {
@@ -742,13 +747,18 @@ export class HatagoHub {
               };
               headers?: Record<string, string>;
               timeouts?: {
-                connect?: number;
-                request?: number;
-                response?: number;
+                connectMs?: number;
+                requestMs?: number;
+                keepAliveMs?: number;
               };
               [key: string]: unknown;
             }
           >;
+          timeouts?: {
+            connectMs?: number;
+            requestMs?: number;
+            keepAliveMs?: number;
+          };
         };
 
         // Initialize notification manager if configured
@@ -759,6 +769,57 @@ export class HatagoHub {
             severity: (config.notifications.severity ?? ['warn', 'error']) as NotificationSeverity[]
           };
           this.notificationManager = new NotificationManager(notificationConfig, this.logger);
+        }
+
+        // Apply global timeouts to ToolInvoker default timeout if provided
+        if (config.timeouts?.requestMs && Number.isFinite(config.timeouts.requestMs)) {
+          // Recreate ToolInvoker with new default timeout before connecting servers
+          this.toolInvoker = new ToolInvoker(
+            this.toolRegistry,
+            {
+              timeout: config.timeouts.requestMs
+            },
+            this.sseManager
+          );
+          // Also reflect to options for consistency
+          this.options.defaultTimeout = config.timeouts.requestMs;
+        }
+
+        // Apply keepAliveMs to StreamableHTTP transport and start it
+        if (this.streamableTransport) {
+          if (config.timeouts?.keepAliveMs && Number.isFinite(config.timeouts.keepAliveMs)) {
+            this.streamableTransport.setKeepAliveMs(config.timeouts.keepAliveMs);
+          }
+          await this.streamableTransport.start();
+          this.streamableTransport.onmessage = (message) => {
+            void (async () => {
+              // Check if this is a sampling response
+              const msg = message as {
+                id?: unknown;
+                error?: { message?: string };
+                result?: unknown;
+              };
+              if (msg.id && typeof msg.id === 'string' && msg.id.startsWith('sampling-')) {
+                const solver = this.samplingSolvers.get(msg.id);
+                if (solver) {
+                  this.samplingSolvers.delete(msg.id);
+                  if (msg.error) {
+                    solver.reject(new Error(msg.error.message || 'Sampling failed'));
+                  } else {
+                    solver.resolve(msg.result);
+                  }
+                  // No further processing needed for sampling responses
+                  return;
+                }
+              }
+
+              // Handle message through existing JSON-RPC logic
+              const result = await this.handleJsonRpcRequest(message as unknown as JSONRPCMessage);
+              if (result && this.streamableTransport) {
+                await this.streamableTransport.send(result as JSONRPCMessage);
+              }
+            })();
+          };
         }
 
         // Process MCP servers from config
@@ -827,6 +888,35 @@ export class HatagoHub {
       if (this.options.watchConfig) {
         await this.setupConfigWatcher();
       }
+    }
+    // No config file case: start StreamableHTTP transport with defaults
+    else if (this.streamableTransport) {
+      await this.streamableTransport.start();
+      this.streamableTransport.onmessage = (message) => {
+        void (async () => {
+          // Check if this is a sampling response
+          const msg = message as { id?: unknown; error?: { message?: string }; result?: unknown };
+          if (msg.id && typeof msg.id === 'string' && msg.id.startsWith('sampling-')) {
+            const solver = this.samplingSolvers.get(msg.id);
+            if (solver) {
+              this.samplingSolvers.delete(msg.id);
+              if (msg.error) {
+                solver.reject(new Error(msg.error.message || 'Sampling failed'));
+              } else {
+                solver.resolve(msg.result);
+              }
+              // No further processing needed for sampling responses
+              return;
+            }
+          }
+
+          // Handle message through existing JSON-RPC logic
+          const result = await this.handleJsonRpcRequest(message as unknown as JSONRPCMessage);
+          if (result && this.streamableTransport) {
+            await this.streamableTransport.send(result as JSONRPCMessage);
+          }
+        })();
+      };
     }
 
     return this;

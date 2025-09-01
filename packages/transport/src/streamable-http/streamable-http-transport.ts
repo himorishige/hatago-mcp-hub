@@ -22,6 +22,8 @@ export interface StreamableHTTPTransportOptions {
   enableJsonResponse?: boolean;
   onsessioninitialized?: (sessionId: string) => void;
   onsessionclosed?: (sessionId: string) => void;
+  // Heartbeat interval (milliseconds) for SSE keepalive. Default: 30000ms
+  keepAliveMs?: number;
 }
 
 export interface SSEStream {
@@ -44,6 +46,8 @@ export class StreamableHTTPTransport implements Transport {
   private sessionIdGenerator?: () => string;
   private onsessioninitialized?: (sessionId: string) => void;
   private onsessionclosed?: (sessionId: string) => void;
+  // Configurable heartbeat interval for SSE keepalive
+  private keepAliveMs = 30000;
 
   // Stream management
   private streamMapping = new Map<string, StreamData>();
@@ -68,6 +72,9 @@ export class StreamableHTTPTransport implements Transport {
     // this._enableJsonResponse = options?.enableJsonResponse ?? true;
     this.onsessioninitialized = options?.onsessioninitialized;
     this.onsessionclosed = options?.onsessionclosed;
+    if (options?.keepAliveMs && Number.isFinite(options.keepAliveMs)) {
+      this.keepAliveMs = options.keepAliveMs;
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
@@ -112,6 +119,16 @@ export class StreamableHTTPTransport implements Transport {
 
     this.started = false;
     this.onclose?.();
+  }
+
+  /**
+   * Update keepalive interval (milliseconds) used for SSE heartbeats.
+   * Should be called before start().
+   */
+  setKeepAliveMs(ms: number): void {
+    if (Number.isFinite(ms) && ms > 0) {
+      this.keepAliveMs = ms;
+    }
   }
 
   async send(message: JSONRPCMessage): Promise<void> {
@@ -263,7 +280,7 @@ export class StreamableHTTPTransport implements Transport {
       } catch {
         clearInterval(keepaliveInterval);
       }
-    }, 30000);
+    }, this.keepAliveMs);
 
     // Store stream data
     const streamId = crypto.randomUUID();
