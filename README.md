@@ -48,6 +48,7 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 
 - **Environment Variable Expansion** - Claude Code compatible `${VAR}` and `${VAR:-default}` syntax
 - **Configuration Validation** - Type-safe configuration with Zod schemas
+- **Tag-based Server Filtering** - Group and filter servers using tags
 
 ## 📦 Installation
 
@@ -210,6 +211,44 @@ Create `hatago.config.json`:
 }
 ```
 
+### Tag-based Server Filtering
+
+Group servers with tags for different environments or use cases:
+
+```json
+{
+  "mcpServers": {
+    "filesystem-dev": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["dev", "local"]
+    },
+    "github-prod": {
+      "url": "https://api.github.com/mcp",
+      "type": "http",
+      "tags": ["production", "github"]
+    },
+    "database": {
+      "command": "mcp-server-postgres",
+      "tags": ["dev", "production", "database"]
+    }
+  }
+}
+```
+
+Start with specific tags:
+
+```bash
+# Only start servers tagged as "dev"
+hatago serve --tags dev
+
+# Start servers with either "dev" or "test" tags
+hatago serve --tags dev,test
+
+# Japanese tags are supported
+hatago serve --tags 開発,テスト
+```
+
 ### Environment Variable Expansion
 
 Supports Claude Code compatible syntax:
@@ -240,6 +279,7 @@ hatago serve --http            # HTTP mode
 hatago serve --watch           # Watch config changes
 hatago serve --config custom.json  # Custom config
 hatago serve --verbose         # Debug logging
+hatago serve --tags dev,test   # Filter servers by tags
 ```
 
 ## 🔧 Advanced Usage

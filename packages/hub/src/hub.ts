@@ -136,7 +136,7 @@ export class HatagoHub {
   > = new Map();
 
   // Options
-  protected options: Required<HubOptions>;
+  protected options: Required<Omit<HubOptions, 'tags'>> & { tags?: string[] };
 
   // Notification callback for forwarding to parent
   public onNotification?: (notification: unknown) => Promise<void>;
@@ -156,7 +156,8 @@ export class HatagoHub {
       sessionTTL: options.sessionTTL || 3600,
       defaultTimeout: options.defaultTimeout || 30000,
       namingStrategy: options.namingStrategy || 'namespace',
-      separator: options.separator || '_'
+      separator: options.separator || '_',
+      tags: options.tags
     };
 
     // Initialize logger
@@ -769,6 +770,20 @@ export class HatagoHub {
               continue;
             }
 
+            // Check tag filtering
+            if (this.options.tags && this.options.tags.length > 0) {
+              const serverTags = (serverConfig as unknown as { tags?: string[] }).tags || [];
+              const hasMatchingTag = this.options.tags.some((tag) => serverTags.includes(tag));
+
+              if (!hasMatchingTag) {
+                this.logger.info(`Skipping server ${id} (no matching tags)`, {
+                  requiredTags: this.options.tags,
+                  serverTags
+                });
+                continue;
+              }
+            }
+
             const spec = this.normalizeServerSpec(serverConfig as ServerConfig);
 
             // Check if server should be started eagerly
@@ -1109,6 +1124,29 @@ export class HatagoHub {
               this.logger.info(`Skipping disabled server: ${id}`);
             }
             continue;
+          }
+
+          // Check tag filtering
+          if (this.options.tags && this.options.tags.length > 0) {
+            const serverTags = (serverConfig as unknown as { tags?: string[] }).tags || [];
+            const hasMatchingTag = this.options.tags.some((tag) => serverTags.includes(tag));
+
+            if (!hasMatchingTag) {
+              // If server exists but no longer matches tags, remove it
+              if (existingServerIds.has(id)) {
+                this.logger.info(`[ConfigReload] Removing server ${id} (no matching tags)`, {
+                  requiredTags: this.options.tags,
+                  serverTags
+                });
+                await this.removeServer(id);
+              } else {
+                this.logger.info(`[ConfigReload] Skipping server ${id} (no matching tags)`, {
+                  requiredTags: this.options.tags,
+                  serverTags
+                });
+              }
+              continue;
+            }
           }
 
           const spec = this.normalizeServerSpec(serverConfig);

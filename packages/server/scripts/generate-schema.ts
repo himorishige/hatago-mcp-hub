@@ -87,6 +87,11 @@ const schema = {
             type: 'boolean',
             description: 'Whether this server is disabled',
             default: false
+          },
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Tags for grouping servers (e.g., "dev", "production", "開発")'
           }
         }
       }

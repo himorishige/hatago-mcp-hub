@@ -44,7 +44,8 @@ export const TimeoutConfigSchema = z.object({
  */
 const BaseServerConfigSchema = z.object({
   disabled: z.boolean().optional().default(false).describe('Whether this server is disabled'),
-  timeouts: TimeoutConfigSchema.optional().describe('Server-specific timeout overrides')
+  timeouts: TimeoutConfigSchema.optional().describe('Server-specific timeout overrides'),
+  tags: z.array(z.string()).optional().describe('Tags for grouping servers')
 });
 
 /**
