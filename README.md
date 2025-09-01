@@ -396,4 +396,4 @@ MIT License
 
 ## 🙏 Credits
 
-Built with the [Model Context Protocol SDK](https://github.com/modelcontextprotocol/sdk) by Anthropic.
+Built with the [Hono](https://github.com/honojs/hono) and the [Model Context Protocol SDK](https://github.com/modelcontextprotocol/sdk) by Anthropic.

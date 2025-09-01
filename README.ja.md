@@ -375,8 +375,8 @@ MIT License
 
 ## 🙏 謝辞
 
-- [Anthropic MCP Team](https://github.com/modelcontextprotocol) - MCPプロトコルの設計と実装
 - [Hono](https://hono.dev/) - 優れたWebフレームワーク
+- [Model Context Protocol SDK](https://github.com/modelcontextprotocol) - MCPプロトコルの設計と実装
 - すべてのコントリビューターとユーザーの皆様
 
 ---
