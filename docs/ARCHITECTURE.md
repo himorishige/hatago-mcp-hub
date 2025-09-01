@@ -388,7 +388,14 @@ interface Platform {
 
 ## Version History
 
-### v0.0.1 (Current)
+### v0.0.2 (Current)
+
+- **Tag-based filtering**: Filter servers by tags (OR logic)
+- **Multi-language support**: Japanese tags supported
+- **CLI enhancement**: Added --tags option
+- **Backward compatibility**: Tags field is optional
+
+### v0.0.1
 
 - Simplified architecture (38+ files removed)
 - Core functionality focus

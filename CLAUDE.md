@@ -271,7 +271,14 @@ pnpm check  # Runs format + lint + typecheck
 - Tag-based server filtering for profile management
 - Support for Japanese tags in configuration
 
-### v0.0.1 (Current)
+### v0.0.2 (Current)
+
+- Tag-based server filtering (OR logic)
+- Support for Japanese tags
+- CLI --tags option for server grouping
+- Backward compatibility maintained
+
+### v0.0.1
 
 - Simplified architecture (38+ files removed)
 - Core functionality focus (~500 lines hub)

@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-server",
-  "version": "0.0.1",
+    "version": "0.0.2",
   "description": "NPX-ready MCP Hub server for Claude Code and other AI assistants",
   "type": "module",
   "main": "./dist/index.js",
