@@ -2,10 +2,16 @@
   "$schema": "../schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
+  "timeouts": {
+    "connectMs": 4000,
+    "requestMs": 20000,
+    "keepAliveMs": 15000
+  },
   "mcpServers": {
     "filesystem-dev": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "timeouts": { "requestMs": 10000 },
       "tags": ["dev", "local", "開発"]
     },
     "github-prod": {
@@ -14,6 +20,7 @@
       "headers": {
         "Authorization": "Bearer ${GITHUB_TOKEN}"
       },
+      "timeouts": { "connectMs": 7000, "requestMs": 25000 },
       "tags": ["production", "github", "本番"]
     },
     "database-all": {
@@ -21,6 +28,7 @@
       "env": {
         "DATABASE_URL": "${DATABASE_URL}"
       },
+      "timeouts": { "keepAliveMs": 30000 },
       "tags": ["dev", "production", "database", "データベース"]
     },
     "test-server": {

@@ -5,6 +5,23 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.3] - 2025-09-01
+
+### Added
+
+- Timeout controls across transports and hub flows:
+  - Connection timeout for server connections (fail fast on connect)
+  - Per-request timeout for tool invocations (server-specific or default)
+  - Configurable HTTP/SSE keep-alive interval applied by Hub
+
+### Docs
+
+- Configuration Guide: document tag-based filtering (added in 0.0.2) and keep it consistent with CLI options
+
+### Notes
+
+- These changes are backward compatible. If no timeout values are specified, prior defaults apply.
+
 ## [0.0.2] - 2025-09-01
 
 ### Added

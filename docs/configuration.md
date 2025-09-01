@@ -40,6 +40,39 @@ The configuration file can be specified via:
 }
 ```
 
+## Tag-based Filtering
+
+You can assign tags to each server and filter which servers the Hub loads by specifying tags at startup. Tags use OR logic: a server is included if it has ANY of the specified tags.
+
+### Adding Tags in Configuration
+
+```json
+{
+  "mcpServers": {
+    "server-a": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["dev", "fs"]
+    },
+    "server-b": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "tags": ["prod", "api"]
+    }
+  }
+}
+```
+
+### Selecting Tags via CLI
+
+Use the `--tags` option to load only matching servers:
+
+```bash
+hatago serve --tags dev,api
+```
+
+The above will load servers that contain at least one of the provided tags (`dev` OR `api`). If `--tags` is omitted, all non-disabled servers are loaded.
+
 ### Root Fields
 
 | Field        | Type   | Description                                     | Default | Required |
@@ -114,6 +147,7 @@ Each server in `mcpServers` can be configured as either a local/NPX server or a 
 | `type`     | string   | Remote server type: "http" or "sse" | No (default: "http")     |
 | `headers`  | object   | HTTP headers (remote)               | No                       |
 | `disabled` | boolean  | Disable this server                 | No (default: false)      |
+| `tags`     | string[] | Optional tags for server grouping/filtering | No                |
 
 ## Environment Variable Expansion
 

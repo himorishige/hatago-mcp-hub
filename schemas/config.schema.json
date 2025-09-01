@@ -37,6 +37,34 @@
         }
       }
     },
+    "timeouts": {
+      "type": "object",
+      "description": "Global timeout defaults (milliseconds)",
+      "properties": {
+        "connectMs": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 300000,
+          "description": "Connection timeout in milliseconds",
+          "default": 5000
+        },
+        "requestMs": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 300000,
+          "description": "Request timeout in milliseconds",
+          "default": 30000
+        },
+        "keepAliveMs": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 300000,
+          "description": "Keep-alive timeout in milliseconds",
+          "default": 20000
+        }
+      },
+      "additionalProperties": false
+    },
     "mcpServers": {
       "type": "object",
       "description": "MCP servers configuration (Claude Code compatible)",
@@ -95,6 +123,31 @@
               "type": "string"
             },
             "description": "Tags for grouping servers (e.g., \"dev\", \"production\", \"開発\")"
+          },
+          "timeouts": {
+            "type": "object",
+            "description": "Per-server timeout overrides (milliseconds)",
+            "properties": {
+              "connectMs": {
+                "type": "number",
+                "minimum": 1000,
+                "maximum": 300000,
+                "description": "Connection timeout in milliseconds"
+              },
+              "requestMs": {
+                "type": "number",
+                "minimum": 1000,
+                "maximum": 300000,
+                "description": "Request timeout in milliseconds"
+              },
+              "keepAliveMs": {
+                "type": "number",
+                "minimum": 1000,
+                "maximum": 300000,
+                "description": "Keep-alive timeout in milliseconds"
+              }
+            },
+            "additionalProperties": false
           }
         }
       }
