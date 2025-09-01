@@ -121,7 +121,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.hatago]
 command = "npx"
-args = ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
 ```
 
 #### StreamableHTTP Mode
@@ -134,7 +134,7 @@ Add to `.mcp.json`:
 {
   "mcpServers": {
     "hatago": {
-      "url": "http://localhost:3535"
+      "url": "http://localhost:3535/mcp"
     }
   }
 }
@@ -146,8 +146,8 @@ Add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.hatago]
-type = "http"
-url = "http://localhost:3535"
+command = "npx"
+args = ["-y", "mcp-remote", "http://localhost:3535/mcp"]
 ```
 
 ### MCP Inspector
