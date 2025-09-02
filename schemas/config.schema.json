@@ -154,6 +154,22 @@
       }
     }
   },
+  "extends": {
+    "oneOf": [
+      {
+        "type": "string",
+        "description": "Single parent configuration file path"
+      },
+      {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Multiple parent configuration file paths (merged in order)"
+      }
+    ],
+    "description": "Parent configuration files to inherit from"
+  },
   "required": [
     "version"
   ]

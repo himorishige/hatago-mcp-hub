@@ -2,6 +2,20 @@
  * Deep merge utility for configuration inheritance
  */
 
+// Dangerous keys that should never be merged to prevent prototype pollution
+const DANGEROUS_KEYS = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+  'toString',
+  'valueOf',
+  'hasOwnProperty',
+  '__defineGetter__',
+  '__defineSetter__',
+  '__lookupGetter__',
+  '__lookupSetter__'
+]);
+
 /**
  * Check if value is a plain object
  */
@@ -74,7 +88,7 @@ export function deepMerge<T = unknown>(target: unknown, source: unknown): T {
 
     for (const key in source) {
       // Prototype pollution protection
-      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      if (DANGEROUS_KEYS.has(key)) {
         continue;
       }
 

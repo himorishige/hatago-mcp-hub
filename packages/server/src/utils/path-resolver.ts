@@ -69,10 +69,29 @@ export function isSafePath(filePath: string, baseDir?: string): boolean {
     return false;
   }
 
+  // Reject URL encoded traversal patterns
+  if (/%2e/i.test(filePath) || /%2f/i.test(filePath) || /%5c/i.test(filePath)) {
+    return false;
+  }
+
+  // Decode and normalize the path
+  let normalized: string;
+  try {
+    normalized = decodeURIComponent(filePath).replace(/[/\\]+/g, '/');
+  } catch {
+    // If decoding fails, the path is likely malformed
+    return false;
+  }
+
+  // Check for null bytes in decoded path
+  if (normalized.includes('\0')) {
+    return false;
+  }
+
   // If a base directory is provided, ensure the resolved target stays within it
   if (baseDir) {
     const base = resolve(baseDir);
-    const target = isAbsolute(filePath) ? resolve(filePath) : resolve(base, filePath);
+    const target = isAbsolute(normalized) ? resolve(normalized) : resolve(base, normalized);
     const rel = relative(base, target);
     // relative() starts with '..' when target is outside base
     if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) {
@@ -82,7 +101,7 @@ export function isSafePath(filePath: string, baseDir?: string): boolean {
   }
 
   // Without a base, be conservative: reject explicit parent traversal tokens
-  const segments = filePath.split(/[/\\]/);
+  const segments = normalized.split(/[/\\]/);
   return !segments.includes('..');
 }
 

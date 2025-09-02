@@ -171,6 +171,8 @@ async function loadConfigWithExtends(
     const parentPaths = Array.isArray(extendsField) ? extendsField : [extendsField];
 
     // Add current path to visited set for child recursions
+    // This prevents circular references by tracking the inheritance chain
+    // The Set is passed by reference, so all recursive calls share the same tracking
     visited.add(resolvedPath);
 
     for (const parentPath of parentPaths) {
