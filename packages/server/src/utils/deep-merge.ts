@@ -104,5 +104,5 @@ export function mergeConfigs<T = unknown>(configs: unknown[]): T {
     return {} as T;
   }
 
-  return configs.reduce((acc, config) => deepMerge<T>(acc, config), {} as T);
+  return configs.reduce((acc, config) => deepMerge<T>(acc, config), {} as unknown) as T;
 }
