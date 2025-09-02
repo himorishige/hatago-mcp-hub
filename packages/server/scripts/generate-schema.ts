@@ -7,6 +7,13 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_CONNECT_TIMEOUT_MS,
+  DEFAULT_KEEPALIVE_TIMEOUT_MS,
+  DEFAULT_REQUEST_TIMEOUT_MS,
+  MAX_TIMEOUT_MS,
+  MIN_TIMEOUT_MS
+} from '@himorishige/hatago-core';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -42,6 +49,34 @@ const schema = {
           type: 'string',
           description: 'Host to bind to',
           default: 'localhost'
+        }
+      }
+    },
+    // Global timeout defaults
+    timeouts: {
+      type: 'object',
+      description: 'Global timeout defaults',
+      properties: {
+        connectMs: {
+          type: 'number',
+          minimum: MIN_TIMEOUT_MS,
+          maximum: MAX_TIMEOUT_MS,
+          default: DEFAULT_CONNECT_TIMEOUT_MS,
+          description: 'Connection timeout in milliseconds'
+        },
+        requestMs: {
+          type: 'number',
+          minimum: MIN_TIMEOUT_MS,
+          maximum: MAX_TIMEOUT_MS,
+          default: DEFAULT_REQUEST_TIMEOUT_MS,
+          description: 'Request timeout in milliseconds'
+        },
+        keepAliveMs: {
+          type: 'number',
+          minimum: MIN_TIMEOUT_MS,
+          maximum: MAX_TIMEOUT_MS,
+          default: DEFAULT_KEEPALIVE_TIMEOUT_MS,
+          description: 'Keep-alive timeout in milliseconds'
         }
       }
     },
@@ -82,6 +117,34 @@ const schema = {
             type: 'object',
             additionalProperties: { type: 'string' },
             description: 'Environment variables'
+          },
+          // Server-specific timeout overrides
+          timeouts: {
+            type: 'object',
+            description: 'Server-specific timeout overrides',
+            properties: {
+              connectMs: {
+                type: 'number',
+                minimum: MIN_TIMEOUT_MS,
+                maximum: MAX_TIMEOUT_MS,
+                default: DEFAULT_CONNECT_TIMEOUT_MS,
+                description: 'Connection timeout in milliseconds'
+              },
+              requestMs: {
+                type: 'number',
+                minimum: MIN_TIMEOUT_MS,
+                maximum: MAX_TIMEOUT_MS,
+                default: DEFAULT_REQUEST_TIMEOUT_MS,
+                description: 'Request timeout in milliseconds'
+              },
+              keepAliveMs: {
+                type: 'number',
+                minimum: MIN_TIMEOUT_MS,
+                maximum: MAX_TIMEOUT_MS,
+                default: DEFAULT_KEEPALIVE_TIMEOUT_MS,
+                description: 'Keep-alive timeout in milliseconds'
+              }
+            }
           },
           disabled: {
             type: 'boolean',
