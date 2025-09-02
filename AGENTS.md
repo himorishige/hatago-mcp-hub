@@ -24,7 +24,7 @@
 
 - Node.js 20 以上（`engines` に準拠）
 - TypeScript（ESM）
-- Lint/Format: Biome + Prettier（ルートの `biome.jsonc`/`pnpm` スクリプトに準拠）
+- Lint/Format: ESLint + Prettier（ルートの `eslint.config.js`/`prettier.config.js` と `pnpm` スクリプトに準拠）
 
 ## 開発コマンド（ルート）
 
@@ -35,6 +35,11 @@
 - Lint/Format: `pnpm lint` / `pnpm format`
 - パッケージ個別開発: `cd packages/<name> && pnpm dev`
 
+補足:
+
+- サンドボックス環境などで Vitest のワーカープールが制限される場合、`packages/core/vitest.config.ts` の `pool: 'forks'` を利用します。
+- 実行時に問題が出る場合は、対象パッケージディレクトリで `pnpm test` を実行してください。
+
 ## コーディング規約
 
 - TypeScript（strict）。`any` や非 null アサーションは極力避けます。
@@ -42,11 +47,17 @@
 - 小さく理解しやすいモジュールを保ち、型は可能な限り近接配置します。
 - エラーは型で表現し、明確なメッセージを返します。
 
+ESLintポリシー（抜粋）:
+
+- `@typescript-eslint/no-unsafe-*` を原則エラーに設定しています。回避のために `eslint-disable` は基本的に使用しません。Node ビルトインを使うユーティリティでは、`node:` 名前空間の import と最小限の型シム（`packages/core/src/types/node-shim.d.ts`）で対応します。
+- 未使用変数は `_` プレフィックスで許容します（`@typescript-eslint/no-unused-vars` の設定に準拠）。
+
 ## テスト方針
 
 - フレームワーク: Vitest
 - 置き場所: ソース隣接 `*.test.ts`
 - 単体テストを基本とし、責務のオーナーで統合テストを追加します。
+- Node 依存のファイル操作（シンボリックリンク等）は CI/サンドボックスで不安定になる場合があるため、必要に応じてスキップまたはフォールバックの分岐テストを用意します。
 
 ## コミット / PR
 
@@ -56,8 +67,13 @@
 ## セキュリティと設定
 
 - 秘密情報はコミットしません。環境変数を用い、設定の参照展開（`${VAR}` / `${VAR:-default}`）を活用します。
-- 設定は `schemas/config.schema.json` で検証します。
+- 設定は `schemas/config.schema.json` で検証します。`timeouts`（グローバルおよびサーバー個別）を含みます。
 - 脆弱性報告は X（Twitter）の DM（[@\_himorishige](https://x.com/_himorishige)）または GitHub Security Advisories をご利用ください。詳細は `SECURITY.md` を参照してください。
+
+スキーマ生成について:
+
+- 生成スクリプトは `packages/server/scripts/generate-schema.ts` にあります。`pnpm -C packages/server build:schema` で `schemas/config.schema.json` を再生成します。
+- `timeouts` の最小値/最大値/デフォルトは `@himorishige/hatago-core` の定数（`MIN_TIMEOUT_MS`、`MAX_TIMEOUT_MS`、`DEFAULT_*_TIMEOUT_MS`）に追従します（重複定義を避けます）。
 
 ## リリース運用
 
@@ -95,5 +111,10 @@
 - 設定ガイド: `docs/configuration.md`, `docs/mcp-config-examples.md`
 - 進捗通知: `docs/PROGRESS_NOTIFICATIONS.md`
 - リリース運用: `docs/release-guide.ja.md` / `docs/release-guide.md`
+
+## 環境依存ユーティリティの方針
+
+- `@himorishige/hatago-core` は環境非依存を基本とします。Node 依存ユーティリティ（例: `utils/path-resolver`）は「サブパスのみ」エクスポートとし、`src/index.ts` からの一括再エクスポートには含めません。これにより Deno/Bun/Workers でも `core` のデフォルト入口を安全に利用できます。
+- Node 依存コードでは `import 'node:fs'` 等の `node:` 名前空間を使用します。Deno/Bun/Workers では当該ユーティリティを直接使用せず、各環境向けのアダプタ実装を用意してください。
 
 以上です。疑問点や更新が必要な点があれば Issue または PR でお知らせください。
