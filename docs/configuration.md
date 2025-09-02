@@ -40,9 +40,104 @@ The configuration file can be specified via:
 }
 ```
 
+## Configuration Strategies
+
+Hatago supports two primary strategies for managing configurations across different environments and use cases:
+
+### Strategy 1: Tag-based Filtering
+
+Use a single configuration file with tags to group servers, then filter at runtime using the `--tags` option. This approach uses OR logic: a server is included if it has ANY of the specified tags.
+
+**Advantages:**
+
+- Single source of truth for all configurations
+- Easy to see all available servers at once
+- Quick switching between environments via CLI
+- Good for team sharing and simple setups
+
+**Best for:**
+
+- Small to medium projects
+- Teams sharing a common configuration
+- Quick prototyping and development
+- Environments with similar server requirements
+
+### Strategy 2: Configuration Inheritance
+
+Use the `extends` field to create a hierarchy of configuration files, where child configs inherit and override parent settings.
+
+**Advantages:**
+
+- Clean separation of concerns
+- Environment-specific customization
+- Avoids duplication (DRY principle)
+- Better for complex multi-environment setups
+
+**Best for:**
+
+- Large projects with many environments
+- Personal customization on top of team defaults
+- Complex deployment scenarios
+- Strict environment isolation requirements
+
+### Choosing a Strategy
+
+Consider these factors when choosing between strategies:
+
+| Factor                    | Tag-based           | Inheritance-based      |
+| ------------------------- | ------------------- | ---------------------- |
+| **Configuration Files**   | Single file         | Multiple files         |
+| **Environment Switching** | CLI `--tags` option | Different config files |
+| **Management Style**      | Centralized         | Distributed            |
+| **Complexity Threshold**  | <10 servers         | 10+ servers            |
+| **Team Collaboration**    | Easier sharing      | More flexibility       |
+| **Override Granularity**  | Server level        | Field level            |
+| **Learning Curve**        | Lower               | Higher                 |
+
+### Hybrid Approach
+
+You can combine both strategies for maximum flexibility:
+
+1. Use inheritance for major environment differences (dev/staging/prod)
+2. Use tags within each environment for feature flags or optional servers
+
+Example:
+
+```json
+// base.config.json
+{
+  "version": 1,
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "tags": ["vcs", "essential"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["essential"]
+    }
+  }
+}
+
+// dev.config.json
+{
+  "extends": "./base.config.json",
+  "mcpServers": {
+    "debug-tools": {
+      "command": "./debug-server",
+      "tags": ["debug", "optional"]
+    }
+  }
+}
+```
+
+Then use: `hatago serve --config dev.config.json --tags essential,debug`
+
 ## Tag-based Filtering
 
-You can assign tags to each server and filter which servers the Hub loads by specifying tags at startup. Tags use OR logic: a server is included if it has ANY of the specified tags.
+Tags allow you to group servers and filter which ones the Hub loads at startup.
 
 ### Adding Tags in Configuration
 
@@ -73,14 +168,117 @@ hatago serve --tags dev,api
 
 The above will load servers that contain at least one of the provided tags (`dev` OR `api`). If `--tags` is omitted, all non-disabled servers are loaded.
 
+## Configuration Inheritance
+
+The `extends` field allows you to inherit settings from parent configuration files, enabling DRY (Don't Repeat Yourself) principles and cleaner environment-specific configurations.
+
+### Basic Inheritance
+
+```json
+// parent.config.json
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+
+// child.config.json
+{
+  "extends": "./parent.config.json",
+  "logLevel": "debug",  // Overrides parent's logLevel
+  "mcpServers": {
+    "filesystem": {  // Adds new server
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+### Multiple Parent Inheritance
+
+Configurations are merged in order, with later parents overriding earlier ones:
+
+```json
+{
+  "extends": ["./base.config.json", "./team.config.json", "./local.config.json"]
+}
+```
+
+### Path Resolution
+
+The `extends` field supports various path formats:
+
+- **Relative paths**: `"./config.json"`, `"../shared/base.json"`
+- **Absolute paths**: `"/etc/hatago/base.config.json"`
+- **Home directory**: `"~/hatago/configs/base.json"`
+
+### Deep Merging Rules
+
+1. **Objects are deeply merged**: Child properties override parent properties at each level
+2. **Arrays are replaced**: Child arrays completely replace parent arrays
+3. **Primitives are overridden**: Strings, numbers, booleans are replaced
+4. **Null values delete fields**: Use `null` to remove inherited values
+
+Example of field deletion:
+
+```json
+// parent.config.json
+{
+  "mcpServers": {
+    "github": {
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "DEBUG": "true"
+      }
+    }
+  }
+}
+
+// child.config.json
+{
+  "extends": "./parent.config.json",
+  "mcpServers": {
+    "github": {
+      "env": {
+        "DEBUG": null  // Removes DEBUG from environment
+      }
+    }
+  }
+}
+```
+
+### Circular Reference Protection
+
+Hatago automatically detects and prevents circular references in configuration inheritance:
+
+```json
+// ❌ This will cause an error:
+// a.json: { "extends": "./b.json" }
+// b.json: { "extends": "./a.json" }
+```
+
+### Inheritance Depth Limit
+
+To prevent excessive nesting, inheritance is limited to 10 levels deep by default.
+
 ### Root Fields
 
-| Field        | Type   | Description                                     | Default | Required |
-| ------------ | ------ | ----------------------------------------------- | ------- | -------- |
-| `$schema`    | string | JSON Schema URL for validation                  | -       | No       |
-| `version`    | number | Configuration schema version                    | 1       | Yes      |
-| `logLevel`   | string | Logging level: "debug", "info", "warn", "error" | "info"  | No       |
-| `mcpServers` | object | MCP server configurations                       | {}      | No       |
+| Field        | Type               | Description                                     | Default | Required |
+| ------------ | ------------------ | ----------------------------------------------- | ------- | -------- |
+| `$schema`    | string             | JSON Schema URL for validation                  | -       | No       |
+| `version`    | number             | Configuration schema version                    | 1       | Yes      |
+| `extends`    | string \| string[] | Parent configuration file(s) to inherit from    | -       | No       |
+| `logLevel`   | string             | Logging level: "debug", "info", "warn", "error" | "info"  | No       |
+| `mcpServers` | object             | MCP server configurations                       | {}      | No       |
 
 ## Server Configuration
 
@@ -506,6 +704,30 @@ Always include the schema URL:
 {
   "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1
+}
+```
+
+### 6. Leverage Configuration Inheritance
+
+For complex setups, use inheritance to avoid duplication:
+
+```json
+// Base config for shared settings
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "common-tools": { /* ... */ }
+  }
+}
+
+// Environment-specific overrides
+{
+  "extends": "./base.config.json",
+  "logLevel": "debug",  // Override log level
+  "mcpServers": {
+    "env-specific": { /* ... */ }
+  }
 }
 ```
 

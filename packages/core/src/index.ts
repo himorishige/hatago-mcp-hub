@@ -21,3 +21,6 @@ export * from './types/index.js';
 export * from './types/server-config.js';
 // Utilities
 export * from './utils/env-expander.js';
+export * from './utils/deep-merge.js';
+// Note: path-resolver is Node-specific. Keep it as subpath export only to avoid
+// leaking Node types into the default entry for Deno/Bun/Workers consumers.

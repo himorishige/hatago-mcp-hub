@@ -49,6 +49,7 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 - **環境変数展開** - Claude Code互換の`${VAR}`と`${VAR:-default}`構文
 - **設定検証** - Zodスキーマによる型安全な設定
 - **タグベースフィルタリング** - タグによるサーバーのグループ化とフィルタリング
+- **設定ファイル継承** - `extends`フィールドによる設定の継承とDRY原則の実現
 
 ## 📦 インストール
 
@@ -166,9 +167,11 @@ hatago serve --tags dev,test      # dev または test タグを持つサーバ�
 hatago serve --tags 開発,テスト    # 日本語タグもサポート
 ```
 
-### 設定ファイル例
+### 設定戦略
 
-`hatago.config.json`:
+#### 戦略1: タグベースフィルタリング
+
+単一の設定ファイルでタグを使ってサーバーをグループ化：
 
 ```json
 {
@@ -205,6 +208,72 @@ hatago serve --tags 開発,テスト    # 日本語タグもサポート
 
 - `${VAR}` - 環境変数VARの値に展開（未定義の場合はエラー）
 - `${VAR:-default}` - VARが未定義の場合はdefaultを使用
+
+#### 戦略2: 設定継承
+
+`extends`フィールドを使用して環境ごとに設定を分割：
+
+**ベース設定** (`~/.hatago/base.config.json`)：
+
+```json
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+**仕事用設定** (`./work.config.json`)：
+
+```json
+{
+  "extends": "~/.hatago/base.config.json",
+  "logLevel": "debug",
+  "mcpServers": {
+    "github": {
+      "env": {
+        "GITHUB_TOKEN": "${WORK_GITHUB_TOKEN}",
+        "DEBUG": null
+      }
+    },
+    "internal-tools": {
+      "url": "https://internal.company.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${INTERNAL_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+機能：
+
+- **継承**: 子設定が親の値を上書き
+- **複数の親**: `"extends": ["./base1.json", "./base2.json"]`
+- **パス解決**: `~`、相対パス、絶対パスをサポート
+- **環境変数削除**: `null`を使用して継承された環境変数を削除
+
+#### 戦略の選択
+
+| 戦略           | タグベース                 | 継承ベース                   |
+| -------------- | -------------------------- | ---------------------------- |
+| **ファイル数** | 単一設定                   | 複数設定                     |
+| **切り替え**   | `--tags`オプション         | `--config`オプション         |
+| **管理**       | 中央集権的                 | 分散的                       |
+| **最適な用途** | チーム共有、シンプルな設定 | 複雑な環境、個人カスタマイズ |
 
 ### タグベースのサーバーフィルタリング
 

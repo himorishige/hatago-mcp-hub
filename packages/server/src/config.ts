@@ -16,6 +16,8 @@ import {
   safeParseConfig,
   validateEnvironmentVariables
 } from '@himorishige/hatago-core';
+import { deepMerge } from '@himorishige/hatago-core/utils/deep-merge';
+import { resolveConfigPath } from '@himorishige/hatago-core/utils/path-resolver';
 import type { Logger } from './logger.js';
 
 /**
@@ -52,12 +54,8 @@ export async function loadConfig(
   }
 
   try {
-    // Read file
-    const content = await readFile(absolutePath, 'utf-8');
-
-    // Parse JSON/JSONC (strip comments)
-    const jsonContent = stripJsonComments(content);
-    const rawData = JSON.parse(jsonContent) as unknown;
+    // Load configuration with inheritance support
+    const rawData = await loadConfigWithExtends(absolutePath, logger);
 
     // First validate that all required environment variables are present
     try {
@@ -114,4 +112,84 @@ function stripJsonComments(content: string): string {
   content = content.replace(/,(\s*[}\]])/g, '$1');
 
   return content;
+}
+
+/**
+ * Load configuration with inheritance support
+ *
+ * @param configPath Path to configuration file
+ * @param logger Logger instance
+ * @param visited Set of visited paths for circular reference detection
+ * @param depth Current inheritance depth
+ * @returns Loaded and merged configuration
+ */
+async function loadConfigWithExtends(
+  configPath: string,
+  logger: Logger,
+  visited: Set<string> = new Set(),
+  depth = 0
+): Promise<unknown> {
+  const MAX_DEPTH = 10;
+
+  // Resolve path (expand ~, resolve relative paths, get realpath)
+  const resolvedPath = resolveConfigPath(configPath, Array.from(visited).pop());
+
+  // Check for circular references
+  if (visited.has(resolvedPath)) {
+    const chain = Array.from(visited).concat(resolvedPath).join(' → ');
+    throw new Error(`Circular reference detected in configuration inheritance: ${chain}`);
+  }
+
+  // Check maximum depth
+  if (depth > MAX_DEPTH) {
+    throw new Error(`Maximum configuration inheritance depth (${MAX_DEPTH}) exceeded`);
+  }
+
+  // Check if file exists
+  if (!existsSync(resolvedPath)) {
+    throw new Error(`Configuration file not found: ${resolvedPath}`);
+  }
+
+  // Read and parse file
+  const content = await readFile(resolvedPath, 'utf-8');
+  const jsonContent = stripJsonComments(content);
+  let rawConfig: Record<string, unknown>;
+
+  try {
+    rawConfig = JSON.parse(jsonContent) as Record<string, unknown>;
+  } catch (error) {
+    throw new Error(
+      `Invalid JSON in configuration file ${resolvedPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+
+  // Process extends field if present
+  let baseConfig: unknown = {};
+  const extendsField = rawConfig.extends;
+
+  if (extendsField) {
+    const parentPaths = Array.isArray(extendsField) ? extendsField : [extendsField];
+    const newVisited = new Set(visited).add(resolvedPath);
+
+    for (const parentPath of parentPaths) {
+      if (typeof parentPath !== 'string') {
+        throw new Error(
+          `Invalid extends value in ${resolvedPath}: must be a string or array of strings`
+        );
+      }
+
+      logger.debug(`Loading parent configuration from ${parentPath}`);
+
+      const parentConfig = await loadConfigWithExtends(parentPath, logger, newVisited, depth + 1);
+
+      baseConfig = deepMerge(baseConfig, parentConfig);
+    }
+  }
+
+  // Remove extends field from current config and merge（不要な変数束縛を避ける）
+  const currentConfig: Record<string, unknown> = { ...rawConfig };
+  delete currentConfig.extends;
+  const merged = deepMerge(baseConfig, currentConfig);
+
+  return merged;
 }
