@@ -7,11 +7,7 @@
  * - ${VAR:-default} - expands to VAR if set, otherwise uses default
  */
 
-declare const process:
-  | {
-      env: Record<string, string | undefined>;
-    }
-  | undefined;
+// Access process via globalThis to avoid bundler static replacements and undefined references
 
 /**
  * Type for environment variable getter function
@@ -23,10 +19,9 @@ export type GetEnv = (key: string) => string | undefined;
  * Uses dynamic check to prevent bundler static replacement
  */
 const defaultGetEnv: GetEnv = (key) => {
-  if (typeof process !== 'undefined' && process?.env) {
-    return process.env[key];
-  }
-  return undefined;
+  const env = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })
+    ?.process?.env;
+  return env?.[key];
 };
 
 /**

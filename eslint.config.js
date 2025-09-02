@@ -10,6 +10,7 @@ export default tseslint.config(
       '**/coverage/**',
       'node_modules/**',
       'pnpm-lock.yaml',
+      'packages/test-fixtures/**',
       '**/*.test.ts',
       '**/*.test.tsx',
       '**/*.spec.ts',
@@ -64,7 +65,7 @@ export default tseslint.config(
       '@typescript-eslint/explicit-module-boundary-types': 'off', // Still off - too restrictive
       '@typescript-eslint/require-await': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'warn', // Start with warn
-      '@typescript-eslint/prefer-nullish-coalescing': 'warn', // Start with warn
+      '@typescript-eslint/prefer-nullish-coalescing': 'off', // Start with warn
       '@typescript-eslint/prefer-optional-chain': 'warn' // Start with warn
     }
   },
