@@ -50,15 +50,15 @@ function mergeEnv(
  * @param source Configuration to merge in
  * @returns Merged configuration
  */
-export function deepMerge(target: unknown, source: unknown): unknown {
+export function deepMerge<T = unknown>(target: unknown, source: unknown): T {
   // Handle null source (special case for env deletion)
   if (source === null) {
-    return null;
+    return null as T;
   }
 
   // Arrays are replaced, not concatenated (MVP behavior)
   if (Array.isArray(source)) {
-    return source;
+    return source as T;
   }
 
   // Deep merge objects
@@ -86,11 +86,11 @@ export function deepMerge(target: unknown, source: unknown): unknown {
       }
     }
 
-    return result;
+    return result as T;
   }
 
   // Primitives and other types: source overwrites target
-  return source;
+  return source as T;
 }
 
 /**
@@ -99,10 +99,10 @@ export function deepMerge(target: unknown, source: unknown): unknown {
  * @param configs Array of configurations to merge
  * @returns Merged configuration
  */
-export function mergeConfigs(configs: unknown[]): unknown {
+export function mergeConfigs<T = unknown>(configs: unknown[]): T {
   if (configs.length === 0) {
-    return {};
+    return {} as T;
   }
 
-  return configs.reduce((acc, config) => deepMerge(acc, config), {});
+  return configs.reduce((acc, config) => deepMerge<T>(acc, config), {} as T);
 }

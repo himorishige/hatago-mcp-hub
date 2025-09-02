@@ -16,8 +16,8 @@ import {
   safeParseConfig,
   validateEnvironmentVariables
 } from '@himorishige/hatago-core';
-import { deepMerge } from '@himorishige/hatago-core/utils/deep-merge';
-import { resolveConfigPath } from '@himorishige/hatago-core/utils/path-resolver';
+import { deepMerge } from './utils/deep-merge.js';
+import { resolveConfigPath } from './utils/path-resolver.js';
 import type { Logger } from './logger.js';
 
 /**
@@ -169,7 +169,9 @@ async function loadConfigWithExtends(
 
   if (extendsField) {
     const parentPaths = Array.isArray(extendsField) ? extendsField : [extendsField];
-    const newVisited = new Set(visited).add(resolvedPath);
+
+    // Add current path to visited set for child recursions
+    visited.add(resolvedPath);
 
     for (const parentPath of parentPaths) {
       if (typeof parentPath !== 'string') {
@@ -180,13 +182,17 @@ async function loadConfigWithExtends(
 
       logger.debug(`Loading parent configuration from ${parentPath}`);
 
-      const parentConfig = await loadConfigWithExtends(parentPath, logger, newVisited, depth + 1);
+      // Pass the same visited set (already contains current path)
+      const parentConfig = await loadConfigWithExtends(parentPath, logger, visited, depth + 1);
 
       baseConfig = deepMerge(baseConfig, parentConfig);
     }
+
+    // Remove current path after processing all parents
+    visited.delete(resolvedPath);
   }
 
-  // Remove extends field from current config and merge（不要な変数束縛を避ける）
+  // Remove extends field from current config and merge
   const currentConfig: Record<string, unknown> = { ...rawConfig };
   delete currentConfig.extends;
   const merged = deepMerge(baseConfig, currentConfig);

@@ -1,12 +1,7 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: [
-    'src/index.ts',
-    'src/schemas.ts',
-    'src/utils/deep-merge.ts',
-    'src/utils/path-resolver.ts'
-  ],
+  entry: ['src/index.ts', 'src/schemas.ts'],
   format: ['esm'],
   clean: true,
   platform: 'node'

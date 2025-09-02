@@ -14,14 +14,6 @@
     "./schemas": {
       "types": "./dist/schemas.d.ts",
       "import": "./dist/schemas.js"
-    },
-    "./utils/deep-merge": {
-      "types": "./dist/utils/deep-merge.d.ts",
-      "import": "./dist/utils/deep-merge.js"
-    },
-    "./utils/path-resolver": {
-      "types": "./dist/utils/path-resolver.d.ts",
-      "import": "./dist/utils/path-resolver.js"
     }
   },
   "files": [

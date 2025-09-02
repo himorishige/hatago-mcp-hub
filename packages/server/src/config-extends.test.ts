@@ -3,18 +3,24 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { vol } from 'memfs';
+import { vol, fs } from 'memfs';
 import { homedir } from 'node:os';
 import { loadConfig } from './config.js';
-import { createLogger } from './logger.js';
+import { Logger } from './logger.js';
 
-// Mock file system
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
+// Mock file system with memfs
+vi.mock('node:fs', () => ({
+  ...fs,
+  default: fs
+}));
+vi.mock('node:fs/promises', () => ({
+  ...fs.promises,
+  default: fs.promises
+}));
 vi.mock('node:os');
 
 describe('Configuration Inheritance', () => {
-  const mockLogger = createLogger({ level: 'error' });
+  const mockLogger = new Logger('error');
   const mockHomedir = '/home/user';
 
   beforeEach(() => {

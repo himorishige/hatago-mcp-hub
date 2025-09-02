@@ -22,7 +22,9 @@ import { realpathSync } from 'node:fs';
 export function resolveConfigPath(filePath: string, basePath?: string): string {
   // Handle empty path
   if (!filePath) {
-    throw new Error('Configuration path cannot be empty');
+    throw new Error(
+      'Configuration path cannot be empty. Expected: string path to configuration file'
+    );
   }
 
   // Expand ~ to home directory (only at the beginning)
@@ -94,15 +96,15 @@ export function isSafePath(filePath: string, baseDir?: string): boolean {
 export function getDisplayPath(filePath: string, baseDir?: string): string {
   const home = homedir();
 
-  // Replace home directory with ~
-  if (filePath.startsWith(home)) {
-    return '~' + filePath.slice(home.length);
-  }
-
-  // Make relative to base directory if provided
+  // Make relative to base directory if provided (check this first)
   if (baseDir && filePath.startsWith(baseDir)) {
     const relativePath = filePath.slice(baseDir.length);
     return relativePath.startsWith('/') ? '.' + relativePath : './' + relativePath;
+  }
+
+  // Replace home directory with ~
+  if (filePath.startsWith(home)) {
+    return '~' + filePath.slice(home.length);
   }
 
   return filePath;
