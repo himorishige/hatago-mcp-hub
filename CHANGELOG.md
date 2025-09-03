@@ -5,6 +5,48 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4] - 2025-09-03
+
+### Added
+
+- Configuration inheritance via `extends` (single or multiple parents, deep merge with child override)
+- Support for preloaded configuration data during hub initialization
+- Timeout configuration schema with global defaults and per-server overrides
+
+### Changed
+
+- Moved Node-specific utilities from `@himorishige/hatago-core` to `@himorishige/hatago-server`
+- Updated development guidelines to emphasize ESLint usage and environment-specific utility policies
+
+### Fixed
+
+- Correct type casting in `mergeConfigs` to properly handle `unknown`
+- Correct MCP server configuration examples (URL path and `npx` args)
+
+### Security
+
+- Enhanced path validation and protection against prototype pollution
+
+### Docs
+
+- Added team development use cases
+- Clarified configuration loading priority and type definition for `preloadedConfig`
+- Updated credits to include Hono framework
+- Refreshed configuration examples and server endpoint usage
+
+### Tests
+
+- Added E2E tests covering handshake, streaming, and tool flows
+- Additional unit tests and fixtures
+
+### Chore
+
+- Added `.serena` cache directory to `.gitignore`
+
+### Notes
+
+- Backward compatible. Existing configurations continue to work without changes.
+
 ## [0.0.3] - 2025-09-01
 
 ### Added
