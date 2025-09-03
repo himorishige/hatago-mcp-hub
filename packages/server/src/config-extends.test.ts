@@ -313,4 +313,77 @@ describe('Configuration Inheritance', () => {
       expect(args).not.toContain('arg1');
     });
   });
+
+  describe('issue #26: tags inheritance', () => {
+    it('should preserve parent tags when child only modifies other properties', async () => {
+      vol.fromJSON({
+        '/parent.json': JSON.stringify({
+          mcpServers: {
+            taskflow: {
+              command: 'npx',
+              args: ['-y', '@pinkpixel/taskflow-mcp'],
+              env: {
+                TASK_MANAGER_FILE_PATH: '.tasks.yaml'
+              },
+              tags: ['always', 'tasks']
+            }
+          }
+        }),
+        '/child.json': JSON.stringify({
+          extends: './parent.json',
+          mcpServers: {
+            taskflow: {
+              env: {
+                TASK_MANAGER_FILE_PATH: 'memory-bank/tasks/tasks.yaml',
+                ARCHIVE_FILE_PATH: 'memory-bank/tasks/tasks-archive.yaml',
+                ARCHIVE_MODE: 'auto'
+              }
+            }
+          }
+        })
+      });
+
+      const result = await loadConfig('/child.json', mockLogger);
+      const taskflow = result.data.mcpServers.taskflow;
+
+      // Should preserve parent tags
+      expect(taskflow.tags).toEqual(['always', 'tasks']);
+
+      // Should preserve parent command and args
+      expect(taskflow.command).toBe('npx');
+      expect(taskflow.args).toEqual(['-y', '@pinkpixel/taskflow-mcp']);
+
+      // Should merge env fields
+      expect(taskflow.env?.TASK_MANAGER_FILE_PATH).toBe('memory-bank/tasks/tasks.yaml');
+      expect(taskflow.env?.ARCHIVE_FILE_PATH).toBe('memory-bank/tasks/tasks-archive.yaml');
+      expect(taskflow.env?.ARCHIVE_MODE).toBe('auto');
+    });
+
+    it('should allow child to override parent tags when explicitly set', async () => {
+      vol.fromJSON({
+        '/parent.json': JSON.stringify({
+          mcpServers: {
+            server1: {
+              command: 'cmd',
+              tags: ['parent-tag1', 'parent-tag2']
+            }
+          }
+        }),
+        '/child.json': JSON.stringify({
+          extends: './parent.json',
+          mcpServers: {
+            server1: {
+              tags: ['child-tag1', 'child-tag2']
+            }
+          }
+        })
+      });
+
+      const result = await loadConfig('/child.json', mockLogger);
+      const tags = result.data.mcpServers.server1.tags;
+
+      expect(tags).toEqual(['child-tag1', 'child-tag2']);
+      expect(tags).not.toContain('parent-tag1');
+    });
+  });
 });
