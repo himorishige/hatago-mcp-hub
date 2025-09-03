@@ -766,19 +766,23 @@ export class HatagoHub {
           };
         };
 
-        // Use preloaded config if available, otherwise read from file
+        // Determine config source: preloaded (with extends processed) > direct file > empty
         if (this.options.preloadedConfig?.data) {
+          // Use preloaded config which has already processed extends/inheritance
           config = this.options.preloadedConfig.data as typeof config;
+          this.logger.debug('Using preloaded config with extends processed');
         } else if (this.options.configFile) {
-          // Read config file
+          // Fallback: Read config file directly (no extends processing)
           const { readFileSync } = await import('node:fs');
           const { resolve } = await import('node:path');
 
           const configPath = resolve(this.options.configFile);
           const configContent = readFileSync(configPath, 'utf-8');
           config = JSON.parse(configContent) as typeof config;
+          this.logger.debug('Reading config file directly (no extends processing)');
         } else {
-          // Should not happen, but handle gracefully
+          // Edge case: Neither preloaded nor file config available
+          this.logger.warn('No configuration source available, using empty config');
           config = {};
         }
 
