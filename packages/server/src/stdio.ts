@@ -1,7 +1,7 @@
 /**
  * STDIO Mode Implementation
  *
- * Implements MCP protocol over STDIO with LSP-style framing.
+ * Implements MCP protocol over STDIO with newline-delimited JSON messages.
  * This is the preferred mode for Claude Code integration.
  */
 
@@ -58,10 +58,6 @@ export async function startStdio(
     await sendMessage(notificationWithoutId, logger, isShuttingDown);
   };
 
-  await hub.start();
-
-  logger.info('Hatago MCP Hub started in STDIO mode');
-
   // Setup graceful shutdown
   const shutdown = async (signal: string) => {
     if (isShuttingDown) {
@@ -100,6 +96,8 @@ export async function startStdio(
     clearInterval(timeoutCheck);
   });
 
+  // IMPORTANT: Set up STDIO message handler BEFORE starting hub
+  // This ensures we don't miss any messages that arrive immediately after startup
   process.stdin.on('data', async (chunk: Buffer) => {
     // Don't process new data during shutdown
     if (isShuttingDown) {
@@ -205,10 +203,16 @@ export async function startStdio(
 
   // Start reading
   process.stdin.resume();
+
+  // Start hub AFTER setting up all listeners
+  // This prevents missing any messages that arrive immediately after startup
+  await hub.start();
+
+  logger.info('Hatago MCP Hub started in STDIO mode');
 }
 
 /**
- * Send a message over STDIO with LSP framing
+ * Send a message over STDIO with newline delimiter
  */
 async function sendMessage(
   message: unknown,
