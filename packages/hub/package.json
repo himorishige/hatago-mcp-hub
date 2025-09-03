@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-hub",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "User-friendly facade for Hatago MCP Hub",
   "type": "module",
   "main": "./dist/index.js",
