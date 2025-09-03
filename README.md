@@ -16,7 +16,7 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 
 ### 🎯 Simple & Lightweight
 
-- **Zero Configuration Start** - `npx @himorishige/hatago-mcp-hub`
+- **Zero Configuration Start (HTTP mode)** - `npx @himorishige/hatago-mcp-hub serve --http`
 - **Non-invasive to Existing Projects** - Doesn't pollute your project directory
 
 ### 🔌 Rich Connectivity
@@ -60,7 +60,11 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 npx @himorishige/hatago-mcp-hub init
 
 # Start in STDIO mode (for Claude Code)
-npx @himorishige/hatago-mcp-hub serve
+# NOTE: STDIO requires a config file path
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+
+# Or start in HTTP mode without a config (demo/dev)
+npx @himorishige/hatago-mcp-hub serve --http
 ```
 
 ### Global Installation
@@ -343,8 +347,8 @@ hatago init --force            # Overwrite existing
 Start MCP Hub server:
 
 ```bash
-hatago serve                   # STDIO mode (default)
-hatago serve --http            # HTTP mode
+hatago serve --stdio --config ./hatago.config.json  # STDIO mode (default, requires config)
+hatago serve --http                                     # HTTP mode (config optional)
 hatago serve --watch           # Watch config changes
 hatago serve --config custom.json  # Custom config
 hatago serve --verbose         # Debug logging

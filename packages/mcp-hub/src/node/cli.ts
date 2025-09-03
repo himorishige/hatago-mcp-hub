@@ -10,7 +10,7 @@ import { startServer, generateDefaultConfig } from '../../../server/src/index.js
 import { Command } from 'commander';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, isAbsolute, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 
 // Get package version
@@ -157,6 +157,23 @@ program
 
       // Parse tags if provided
       const tags = opts.tags ? opts.tags.split(',').map((t) => t.trim()) : undefined;
+
+      // Preflight: STDIO requires a config file. Check existence and fail immediately.
+      if (mode === 'stdio') {
+        const pathToCheck = opts.config || './hatago.config.json';
+        const abs = isAbsolute(pathToCheck) ? pathToCheck : resolve(process.cwd(), pathToCheck);
+        if (!existsSync(abs)) {
+          console.error('\n❌ Configuration file not found');
+          console.error('');
+          console.error('   Create a configuration file with:');
+          console.error('     hatago init');
+          console.error('');
+          console.error('   Or specify a different config file:');
+          console.error('     hatago serve --config path/to/config.json');
+          console.error('');
+          process.exit(1);
+        }
+      }
 
       // Start server
       await startServer({

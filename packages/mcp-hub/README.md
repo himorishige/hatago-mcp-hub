@@ -12,7 +12,8 @@ Unified MCP (Model Context Protocol) Hub for managing multiple MCP servers. Work
 npx @himorishige/hatago-mcp-hub init
 
 # Start server in STDIO mode (for Claude Code)
-npx @himorishige/hatago-mcp-hub serve --stdio
+# NOTE: STDIO mode requires a config file path
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
 
 # Start server in HTTP mode (for development/debugging)
 npx @himorishige/hatago-mcp-hub serve --http --port 3535
@@ -25,7 +26,10 @@ npx @himorishige/hatago-mcp-hub serve --http --port 3535
 ```bash
 # Use directly with npx (no installation needed)
 npx @himorishige/hatago-mcp-hub init
-npx @himorishige/hatago-mcp-hub serve
+# STDIO requires config
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+# Or HTTP without config (for demo/dev)
+npx @himorishige/hatago-mcp-hub serve --http
 
 # Or install globally
 npm install -g @himorishige/hatago-mcp-hub
@@ -57,8 +61,8 @@ hatago init --force            # Overwrite existing config
 Start the MCP Hub server:
 
 ```bash
-hatago serve --stdio           # STDIO mode (default)
-hatago serve --http            # HTTP mode
+hatago serve --stdio --config ./hatago.config.json  # STDIO mode (default, requires config)
+hatago serve --http                                 # HTTP mode (config optional)
 hatago serve --watch           # Watch config for changes
 hatago serve --config custom.json  # Use custom config file
 hatago serve --verbose         # Enable debug logging
@@ -272,7 +276,7 @@ Built-in internal tools for server management:
 
 ### 🚀 Developer Experience
 
-- **Zero Configuration**: Works out of the box with sensible defaults
+- **Zero Configuration (HTTP mode)**: Works out of the box without a config file
 - **Interactive Setup**: Guided configuration with `hatago init`
 - **NPX Ready**: No installation required for basic usage
 - **Multi-Runtime**: Supports Node.js and Cloudflare Workers (Bun/Deno: WIP)

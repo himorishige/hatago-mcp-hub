@@ -54,6 +54,15 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   // Load configuration
   const config = await loadConfig(configPath, logger);
 
+  // Simple policy: STDIO requires a config file. If it doesn't exist, fail fast.
+  if (mode === 'stdio' && (config as { exists?: boolean }).exists === false) {
+    const err: NodeJS.ErrnoException = new Error(
+      `ENOENT: no such file or directory, open '${config.path}'`
+    );
+    err.code = 'ENOENT';
+    throw err;
+  }
+
   // Start server based on mode
   if (mode === 'stdio') {
     logger.debug('Starting in STDIO mode');

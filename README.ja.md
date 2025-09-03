@@ -56,7 +56,10 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 ```bash
 # npxで直接実行（推奨）
 npx @himorishige/hatago-mcp-hub init    # 設定ファイル生成
-npx @himorishige/hatago-mcp-hub serve   # サーバー起動
+# STDIO は設定ファイル指定が必須
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+# または設定なしで HTTP を起動（デモ/開発）
+npx @himorishige/hatago-mcp-hub serve --http   # サーバー起動
 
 # グローバルインストール
 npm install -g @himorishige/hatago-mcp-hub
@@ -150,14 +153,14 @@ args = ["-y", "mcp-remote", "http://localhost:3535/mcp"]
 ### サーバー起動
 
 ```bash
-# STDIOモード
-hatago serve --stdio
+# STDIOモード（設定ファイルが必須）
+hatago serve --stdio --config ./hatago.config.json
 
 # HTTPモード
 hatago serve --http
 
 # 設定ファイル監視モード
-hatago serve --stdio --watch
+hatago serve --stdio --config ./hatago.config.json --watch
 
 # カスタム設定ファイル
 hatago serve --config ./my-config.json
