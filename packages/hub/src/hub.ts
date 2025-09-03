@@ -725,15 +725,10 @@ export class HatagoHub {
     await this.registerInternalTools();
 
     // Load config if provided
-    if (this.options.configFile) {
+    if (this.options.configFile || this.options.preloadedConfig) {
       try {
-        // Read config file
-        const { readFileSync } = await import('node:fs');
-        const { resolve } = await import('node:path');
-
-        const configPath = resolve(this.options.configFile);
-        const configContent = readFileSync(configPath, 'utf-8');
-        const config = JSON.parse(configContent) as {
+        // Use preloaded config if available, otherwise read from file
+        let config: {
           notifications?: {
             enabled?: boolean;
             rateLimitSec?: number;
@@ -770,6 +765,22 @@ export class HatagoHub {
             keepAliveMs?: number;
           };
         };
+
+        // Use preloaded config if available, otherwise read from file
+        if (this.options.preloadedConfig?.data) {
+          config = this.options.preloadedConfig.data as typeof config;
+        } else if (this.options.configFile) {
+          // Read config file
+          const { readFileSync } = await import('node:fs');
+          const { resolve } = await import('node:path');
+
+          const configPath = resolve(this.options.configFile);
+          const configContent = readFileSync(configPath, 'utf-8');
+          config = JSON.parse(configContent) as typeof config;
+        } else {
+          // Should not happen, but handle gracefully
+          config = {};
+        }
 
         // Initialize notification manager if configured
         if (config.notifications) {
