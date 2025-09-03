@@ -1,6 +1,6 @@
 import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
@@ -8,7 +8,9 @@ export default tseslint.config(
       '**/dist/**',
       '**/build/**',
       '**/coverage/**',
+      'examples/**',
       'node_modules/**',
+      '**/.wrangler/**',
       'pnpm-lock.yaml',
       'packages/test-fixtures/**',
       '**/*.test.ts',
