@@ -131,6 +131,10 @@ export const HttpConfigSchema = z.object({
 export const HatagoConfigSchema = z.object({
   version: z.number().default(1).describe('Configuration version'),
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info').describe('Logging level'),
+  extends: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .describe('Path(s) to parent configuration file(s) to inherit from'),
   http: HttpConfigSchema.optional().describe('HTTP server configuration'),
   mcpServers: z.record(ServerConfigSchema).default({}).describe('MCP server configurations'),
   toolNaming: ToolNamingConfigSchema.optional().describe('Tool naming configuration'),

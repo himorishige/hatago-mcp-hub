@@ -49,6 +49,7 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 - **Environment Variable Expansion** - Claude Code compatible `${VAR}` and `${VAR:-default}` syntax
 - **Configuration Validation** - Type-safe configuration with Zod schemas
 - **Tag-based Server Filtering** - Group and filter servers using tags
+- **Configuration Inheritance** - Extend base configurations with `extends` field for DRY principle
 
 ## 📦 Installation
 
@@ -211,9 +212,11 @@ Create `hatago.config.json`:
 }
 ```
 
-### Tag-based Server Filtering
+### Configuration Strategies
 
-Group servers with tags for different environments or use cases:
+#### Strategy 1: Tag-based Filtering
+
+Group servers with tags in a single configuration file:
 
 ```json
 {
@@ -248,6 +251,72 @@ hatago serve --tags dev,test
 # Japanese tags are supported
 hatago serve --tags 開発,テスト
 ```
+
+#### Strategy 2: Configuration Inheritance
+
+Split configurations by environment using the `extends` field:
+
+**Base configuration** (`~/.hatago/base.config.json`):
+
+```json
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+**Work configuration** (`./work.config.json`):
+
+```json
+{
+  "extends": "~/.hatago/base.config.json",
+  "logLevel": "debug",
+  "mcpServers": {
+    "github": {
+      "env": {
+        "GITHUB_TOKEN": "${WORK_GITHUB_TOKEN}",
+        "DEBUG": null
+      }
+    },
+    "internal-tools": {
+      "url": "https://internal.company.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${INTERNAL_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Features:
+
+- **Inheritance**: Child configs override parent values
+- **Multiple parents**: `"extends": ["./base1.json", "./base2.json"]`
+- **Path resolution**: Supports `~`, relative, and absolute paths
+- **Environment deletion**: Use `null` to remove inherited env vars
+
+#### Choosing a Strategy
+
+| Strategy       | Tag-based                   | Inheritance-based                            |
+| -------------- | --------------------------- | -------------------------------------------- |
+| **Files**      | Single config               | Multiple configs                             |
+| **Switch**     | `--tags` option             | `--config` option                            |
+| **Management** | Centralized                 | Distributed                                  |
+| **Best for**   | Team sharing, Simple setups | Complex environments, Personal customization |
 
 ### Environment Variable Expansion
 
@@ -379,6 +448,7 @@ hatago status
 - [Configuration Guide](./docs/configuration.md)
 - [Architecture Overview](./docs/architecture.md)
 - [API Reference](./docs/api.md)
+- [Team Development Use Cases](./docs/use-cases/team-development.md)
 
 ## 🤝 Contributing
 

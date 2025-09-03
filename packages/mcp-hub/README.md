@@ -185,6 +185,45 @@ Create a `hatago.config.json`:
 }
 ```
 
+### Configuration Inheritance
+
+Hatago supports configuration inheritance through the `extends` field:
+
+```json
+{
+  "extends": "~/.hatago/base.config.json",
+  "mcpServers": {
+    "local-server": {
+      "command": "node",
+      "args": ["./server.js"]
+    }
+  }
+}
+```
+
+Features:
+
+- Single or multiple parent configs: `"extends": ["./base1.json", "./base2.json"]`
+- Path resolution: Supports `~` for home directory, relative and absolute paths
+- Deep merging: Child values override parent values
+- Environment variable deletion: Use `null` to remove inherited env vars
+
+Example with env override:
+
+```json
+{
+  "extends": "~/.hatago/global.json",
+  "mcpServers": {
+    "github": {
+      "env": {
+        "GITHUB_TOKEN": "${WORK_GITHUB_TOKEN}",
+        "DEBUG": null
+      }
+    }
+  }
+}
+```
+
 ### Environment Variables
 
 Hatago supports Claude Code-compatible environment variable expansion:

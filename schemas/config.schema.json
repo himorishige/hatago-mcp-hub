@@ -39,31 +39,30 @@
     },
     "timeouts": {
       "type": "object",
-      "description": "Global timeout defaults (milliseconds)",
+      "description": "Global timeout defaults",
       "properties": {
         "connectMs": {
           "type": "number",
           "minimum": 1000,
           "maximum": 300000,
-          "description": "Connection timeout in milliseconds",
-          "default": 5000
+          "default": 5000,
+          "description": "Connection timeout in milliseconds"
         },
         "requestMs": {
           "type": "number",
           "minimum": 1000,
           "maximum": 300000,
-          "description": "Request timeout in milliseconds",
-          "default": 30000
+          "default": 30000,
+          "description": "Request timeout in milliseconds"
         },
         "keepAliveMs": {
           "type": "number",
           "minimum": 1000,
           "maximum": 300000,
-          "description": "Keep-alive timeout in milliseconds",
-          "default": 20000
+          "default": 20000,
+          "description": "Keep-alive timeout in milliseconds"
         }
-      },
-      "additionalProperties": false
+      }
     },
     "mcpServers": {
       "type": "object",
@@ -112,6 +111,33 @@
             },
             "description": "Environment variables"
           },
+          "timeouts": {
+            "type": "object",
+            "description": "Server-specific timeout overrides",
+            "properties": {
+              "connectMs": {
+                "type": "number",
+                "minimum": 1000,
+                "maximum": 300000,
+                "default": 5000,
+                "description": "Connection timeout in milliseconds"
+              },
+              "requestMs": {
+                "type": "number",
+                "minimum": 1000,
+                "maximum": 300000,
+                "default": 30000,
+                "description": "Request timeout in milliseconds"
+              },
+              "keepAliveMs": {
+                "type": "number",
+                "minimum": 1000,
+                "maximum": 300000,
+                "default": 20000,
+                "description": "Keep-alive timeout in milliseconds"
+              }
+            }
+          },
           "disabled": {
             "type": "boolean",
             "description": "Whether this server is disabled",
@@ -123,35 +149,26 @@
               "type": "string"
             },
             "description": "Tags for grouping servers (e.g., \"dev\", \"production\", \"開発\")"
-          },
-          "timeouts": {
-            "type": "object",
-            "description": "Per-server timeout overrides (milliseconds)",
-            "properties": {
-              "connectMs": {
-                "type": "number",
-                "minimum": 1000,
-                "maximum": 300000,
-                "description": "Connection timeout in milliseconds"
-              },
-              "requestMs": {
-                "type": "number",
-                "minimum": 1000,
-                "maximum": 300000,
-                "description": "Request timeout in milliseconds"
-              },
-              "keepAliveMs": {
-                "type": "number",
-                "minimum": 1000,
-                "maximum": 300000,
-                "description": "Keep-alive timeout in milliseconds"
-              }
-            },
-            "additionalProperties": false
           }
         }
       }
     }
+  },
+  "extends": {
+    "oneOf": [
+      {
+        "type": "string",
+        "description": "Single parent configuration file path"
+      },
+      {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Multiple parent configuration file paths (merged in order)"
+      }
+    ],
+    "description": "Parent configuration files to inherit from"
   },
   "required": [
     "version"
