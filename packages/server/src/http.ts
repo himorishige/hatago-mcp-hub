@@ -29,8 +29,10 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   const { config, host, port, logger, watchConfig = false, tags } = options;
 
   // Create hub instance
+  // If the config file does not exist, do not pass `configFile`.
+  const maybeExists = (config as unknown as { exists?: boolean }).exists;
   const hub = createHub({
-    configFile: config.path,
+    configFile: maybeExists ? config.path : undefined,
     preloadedConfig: { path: config.path, data: config.data },
     watchConfig,
     tags

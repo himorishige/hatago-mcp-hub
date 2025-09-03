@@ -31,8 +31,11 @@ export async function startStdio(
     configFile: config.path,
     watchConfig
   });
+  // If the config file does not exist, do not pass `configFile`.
+  // Otherwise Hub.start() will try to reload from disk and cause ENOENT.
+  const maybeExists = (config as unknown as { exists?: boolean }).exists;
   const hub = createHub({
-    configFile: config.path,
+    configFile: maybeExists ? config.path : undefined,
     preloadedConfig: { path: config.path, data: config.data },
     watchConfig,
     tags
