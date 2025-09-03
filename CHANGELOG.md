@@ -5,6 +5,25 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2025-09-03
+
+### Fixed
+
+- Configuration inheritance (`extends`) now properly preserves parent properties (#26, #29)
+- Hub prioritizes preloaded config to ensure extends processing is applied
+- STDIO mode now requires config file and provides clear error message (#28)
+- Prevented potential message loss in STDIO mode by setting up listeners before hub initialization (#27)
+
+### Added
+
+- Unit tests for config loading priorities
+- Debug/warn logging for config source selection
+
+### Improved
+
+- Code comments and error handling in Hub.start() method
+- Enhanced logging for better debugging of configuration loading
+
 ## [0.0.4] - 2025-09-03
 
 ### Added
