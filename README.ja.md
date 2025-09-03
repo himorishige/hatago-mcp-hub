@@ -333,6 +333,7 @@ hatago serve --http --port 3535
 ### 🔧 開発者向け
 
 - [**アーキテクチャガイド**](docs/architecture.md) - システム設計とプラットフォーム抽象化
+- [**チーム開発ユースケース**](docs/use-cases/team-development.md) - 継承機能を使ったチーム開発環境の構築
 
 ## 🏗️ アーキテクチャ
 

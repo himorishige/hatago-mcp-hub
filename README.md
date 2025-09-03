@@ -448,6 +448,7 @@ hatago status
 - [Configuration Guide](./docs/configuration.md)
 - [Architecture Overview](./docs/architecture.md)
 - [API Reference](./docs/api.md)
+- [Team Development Use Cases](./docs/use-cases/team-development.md)
 
 ## 🤝 Contributing
 
