@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-test-utils",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "exports": {
     ".": {

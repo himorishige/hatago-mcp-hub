@@ -371,6 +371,7 @@ hatago serve --verbose
 
 ## Version History
 
+- **v0.0.4** - Config inheritance, timeouts schema, security hardening, docs/tests updates
 - **v0.0.3** - Docs and examples update
 - **v0.0.2** - Tag-based server filtering with multi-language support
 - **v0.0.1** - Initial lightweight release with full MCP support
