@@ -64,4 +64,3 @@ export const metrics = {
   counters,
   gauges
 };
-
