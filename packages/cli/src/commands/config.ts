@@ -7,7 +7,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Command } from 'commander';
 
-interface HatagoConfig {
+type HatagoConfig = {
   port?: number;
   host?: string;
   servers?: unknown[];
@@ -15,7 +15,7 @@ interface HatagoConfig {
     timeout?: number;
     maxSessions?: number;
   };
-}
+};
 
 export function setupConfigCommand(program: Command): void {
   const config = program.command('config').description('Manage Hatago configuration');

@@ -8,29 +8,29 @@ import type { Prompt, Resource, Tool } from '@modelcontextprotocol/sdk/types.js'
 /**
  * Tool metadata for registry
  */
-export interface ToolMetadata {
+export type ToolMetadata = {
   serverId: string;
   originalName: string;
   publicName: string;
   tool: Tool;
-}
+};
 
 /**
  * Resource metadata for registry
  */
-export interface ResourceMetadata {
+export type ResourceMetadata = {
   serverId: string;
   originalUri: string;
   publicUri: string;
   resource: Resource;
-}
+};
 
 /**
  * Prompt metadata for registry
  */
-export interface PromptMetadata {
+export type PromptMetadata = {
   serverId: string;
   originalName: string;
   publicName: string;
   prompt: Prompt;
-}
+};

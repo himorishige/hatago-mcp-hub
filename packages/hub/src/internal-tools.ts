@@ -5,12 +5,12 @@
 import { z } from 'zod';
 import type { HatagoHub } from './hub.js';
 
-export interface InternalTool<T = unknown> {
+export type InternalTool<T = unknown> = {
   name: string;
   description: string;
   inputSchema: z.ZodObject<z.ZodRawShape>;
   handler: (args: T, hub: HatagoHub) => Promise<unknown> | unknown;
-}
+};
 
 /**
  * Get internal management tools

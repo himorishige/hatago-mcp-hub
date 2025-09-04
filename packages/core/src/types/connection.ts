@@ -11,7 +11,7 @@ export type ConnectionType = 'local' | 'npx' | 'remote';
 /**
  * MCP Connection information
  */
-export interface McpConnection {
+export type McpConnection = {
   serverId: string;
   type: ConnectionType;
   connected: boolean;
@@ -20,4 +20,4 @@ export interface McpConnection {
   transport?: unknown;
   npxServer?: unknown; // NPX server instance
   remoteServer?: unknown; // Remote server instance
-}
+};

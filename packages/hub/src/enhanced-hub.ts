@@ -32,7 +32,7 @@ type ExtendedServerConfig = CoreServerConfig & {
   };
 };
 
-interface ExtendedHatagoConfig {
+type ExtendedHatagoConfig = {
   version?: number;
   logLevel?: string;
   mcpServers?: Record<string, ExtendedServerConfig>;
@@ -42,7 +42,7 @@ interface ExtendedHatagoConfig {
     rateLimitSec?: number;
     severity?: string[];
   };
-}
+};
 
 // Re-export as our working types
 type ServerConfig = ExtendedServerConfig;
@@ -51,7 +51,7 @@ type HatagoConfig = ExtendedHatagoConfig;
 /**
  * Enhanced Hub options
  */
-export interface EnhancedHubOptions extends HubOptions {
+export type EnhancedHubOptions = HubOptions & {
   /** Enable management features */
   enableManagement?: boolean;
 
@@ -63,7 +63,7 @@ export interface EnhancedHubOptions extends HubOptions {
 
   /** Auto-start 'always' servers */
   autoStartAlways?: boolean;
-}
+};
 
 /**
  * Enhanced Hatago Hub with full management capabilities

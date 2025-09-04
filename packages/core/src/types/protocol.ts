@@ -18,17 +18,17 @@ export const SUPPORTED_PROTOCOL_VERSION = '2025-06-18' as const;
 /**
  * Protocol features (simplified)
  */
-export interface ProtocolFeatures {
+export type ProtocolFeatures = {
   notifications: boolean;
   resources: boolean;
   prompts: boolean;
   tools: boolean;
-}
+};
 
 /**
  * Simplified protocol negotiation result
  */
-export interface NegotiatedProtocol {
+export type NegotiatedProtocol = {
   // Protocol version (always '2025-06-18' for now)
   protocol: string;
 
@@ -43,4 +43,4 @@ export interface NegotiatedProtocol {
 
   // Server capabilities (optional)
   capabilities?: Record<string, unknown>;
-}
+};

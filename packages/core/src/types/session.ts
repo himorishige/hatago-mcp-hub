@@ -6,9 +6,9 @@
 /**
  * Session data
  */
-export interface Session {
+export type Session = {
   id: string;
   createdAt: Date;
   lastAccessedAt: Date;
   ttlSeconds: number;
-}
+};

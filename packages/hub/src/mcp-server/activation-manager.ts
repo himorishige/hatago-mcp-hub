@@ -30,7 +30,7 @@ import type { ServerStateMachine } from './state-machine.js';
 /**
  * Activation request
  */
-export interface ActivationRequest {
+export type ActivationRequest = {
   serverId: string;
   reason: string;
   source: {
@@ -39,18 +39,18 @@ export interface ActivationRequest {
     sessionId?: string;
   };
   timestamp: string;
-}
+};
 
 /**
  * Activation result
  */
-export interface ActivationResult {
+export type ActivationResult = {
   success: boolean;
   serverId: string;
   state: ServerState;
   error?: string;
   duration?: number;
-}
+};
 
 /**
  * Server activation manager
