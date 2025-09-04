@@ -9,9 +9,7 @@ export default tseslint.config(
       '**/build/**',
       '**/coverage/**',
       'examples/**',
-      'node_modules/**',
       '**/.wrangler/**',
-      'pnpm-lock.yaml',
       'packages/test-fixtures/**',
       '**/*.test.ts',
       '**/*.test.tsx',
@@ -63,8 +61,6 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'error',
 
       // Additional strict rules now enabled
-      '@typescript-eslint/explicit-function-return-type': 'off', // Still off - too restrictive
-      '@typescript-eslint/explicit-module-boundary-types': 'off', // Still off - too restrictive
       '@typescript-eslint/require-await': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       '@typescript-eslint/prefer-nullish-coalescing': 'warn',
