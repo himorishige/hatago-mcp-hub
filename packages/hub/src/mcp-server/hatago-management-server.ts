@@ -568,7 +568,7 @@ export class HatagoManagementServer {
     const result = [];
 
     for (const [id, config] of Object.entries(servers)) {
-      const state = this.stateMachine?.getState(id) || 'unknown';
+      const state = this.stateMachine?.getState(id) ?? 'unknown';
 
       if (filter && filter !== 'all') {
         if (filter === 'active' && state !== ServerState.ACTIVE) continue;
@@ -579,7 +579,7 @@ export class HatagoManagementServer {
       result.push({
         id,
         state,
-        policy: config.activationPolicy || 'manual',
+        policy: config.activationPolicy ?? 'manual',
         type: config.url ? 'remote' : 'local'
       });
     }
@@ -694,12 +694,12 @@ export class HatagoManagementServer {
     const updates = isInMcpServers
       ? {
           mcpServers: Object.fromEntries(
-            Object.entries(this.config.mcpServers || {}).filter(([id]) => id !== serverId)
+            Object.entries(this.config.mcpServers ?? {}).filter(([id]) => id !== serverId)
           )
         }
       : {
           servers: Object.fromEntries(
-            Object.entries(this.config.servers || {}).filter(([id]) => id !== serverId)
+            Object.entries(this.config.servers ?? {}).filter(([id]) => id !== serverId)
           )
         };
 
@@ -780,7 +780,7 @@ export class HatagoManagementServer {
 
   private async getStatistics(): Promise<Record<string, unknown>> {
     const auditStats = await this.auditLogger.getStatistics();
-    const activities = this.idleManager?.getAllActivities() || new Map();
+    const activities = this.idleManager?.getAllActivities() ?? new Map();
 
     return {
       audit: auditStats,
@@ -834,7 +834,7 @@ export class HatagoManagementServer {
     return `Server ${serverId} diagnostic:
 State: ${info.state}
 Policy: ${(info.config as Record<string, unknown>).activationPolicy}
-Last Error: ${((info.config as Record<string, unknown>)._lastError as { message?: string } | undefined)?.message || 'None'}
+Last Error: ${((info.config as Record<string, unknown>)._lastError as { message?: string } | undefined)?.message ?? 'None'}
 
 Suggested actions:
 1. Check server logs
@@ -848,10 +848,10 @@ Suggested actions:
     const suggestions = [];
 
     for (const [id, data] of activities) {
-      const config = this.config.mcpServers?.[id] || this.config.servers?.[id];
+      const config = this.config.mcpServers?.[id] ?? this.config.servers?.[id];
       if (!config) continue;
 
-      const currentPolicy = config.activationPolicy || 'manual';
+      const currentPolicy = config.activationPolicy ?? 'manual';
 
       // Suggest based on usage
       if (data.totalCalls > 100 && currentPolicy !== 'always') {

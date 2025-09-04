@@ -34,7 +34,7 @@ export function setupMcpCommand(program: Command): void {
       servers.forEach((server) => {
         console.log(`  ${server.id} (${server.type})`);
         if (server.command) {
-          console.log(`    Command: ${server.command} ${server.args?.join(' ') || ''}`);
+          console.log(`    Command: ${server.command} ${server.args?.join(' ') ?? ''}`);
         }
         if (server.url) {
           console.log(`    URL: ${server.url}`);

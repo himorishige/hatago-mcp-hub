@@ -67,9 +67,9 @@ export class IdleManager extends EventEmitter {
   registerPolicy(serverId: string, policy?: IdlePolicy): void {
     if (policy) {
       this.idlePolicies.set(serverId, {
-        idleTimeoutMs: policy.idleTimeoutMs || 300000, // 5 min default
-        minLingerMs: policy.minLingerMs || 30000, // 30 sec default
-        activityReset: policy.activityReset || 'onCallEnd'
+        idleTimeoutMs: policy.idleTimeoutMs ?? 300000, // 5 min default
+        minLingerMs: policy.minLingerMs ?? 30000, // 30 sec default
+        activityReset: policy.activityReset ?? 'onCallEnd'
       });
     }
   }
@@ -113,14 +113,14 @@ export class IdleManager extends EventEmitter {
     if (!activity) return;
 
     const policy = this.idlePolicies.get(serverId);
-    const resetTiming = policy?.activityReset || 'onCallEnd';
+    const resetTiming = policy?.activityReset ?? 'onCallEnd';
 
     // Update reference count
     activity.referenceCount++;
     activity.activeSessions.add(sessionId);
 
     if (toolName) {
-      const count = activity.activeTools.get(toolName) || 0;
+      const count = activity.activeTools.get(toolName) ?? 0;
       activity.activeTools.set(toolName, count + 1);
     }
 
@@ -148,13 +148,13 @@ export class IdleManager extends EventEmitter {
     if (!activity) return;
 
     const policy = this.idlePolicies.get(serverId);
-    const resetTiming = policy?.activityReset || 'onCallEnd';
+    const resetTiming = policy?.activityReset ?? 'onCallEnd';
 
     // Update reference count
     activity.referenceCount = Math.max(0, activity.referenceCount - 1);
 
     if (toolName) {
-      const count = activity.activeTools.get(toolName) || 0;
+      const count = activity.activeTools.get(toolName) ?? 0;
       if (count <= 1) {
         activity.activeTools.delete(toolName);
       } else {
@@ -259,7 +259,7 @@ export class IdleManager extends EventEmitter {
     const runTimeMs = now - activity.startTime;
 
     // Check minimum linger time
-    if (runTimeMs < (policy.minLingerMs || 30000)) {
+    if (runTimeMs < (policy.minLingerMs ?? 30000)) {
       return {
         serverId,
         isIdle: true,
@@ -271,7 +271,7 @@ export class IdleManager extends EventEmitter {
     }
 
     // Check idle timeout
-    const shouldStop = idleTimeMs >= (policy.idleTimeoutMs || 300000);
+    const shouldStop = idleTimeMs >= (policy.idleTimeoutMs ?? 300000);
 
     return {
       serverId,

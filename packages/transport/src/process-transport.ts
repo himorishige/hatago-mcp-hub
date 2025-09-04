@@ -52,7 +52,7 @@ export class ProcessTransport implements ITransport {
       throw new Error('Transport already started');
     }
 
-    this.process = spawn(this.options.command, this.options.args || [], {
+    this.process = spawn(this.options.command, this.options.args ?? [], {
       env: { ...process.env, ...this.options.env },
       cwd: this.options.cwd,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -102,7 +102,7 @@ export class ProcessTransport implements ITransport {
   private processReadBuffer(): void {
     // Process all complete messages (newline-delimited)
     const lines = this.readBuffer.split('\n');
-    this.readBuffer = lines.pop() || ''; // Keep incomplete line in buffer
+    this.readBuffer = lines.pop() ?? ''; // Keep incomplete line in buffer
 
     for (const line of lines) {
       if (!line.trim()) continue; // Skip empty lines

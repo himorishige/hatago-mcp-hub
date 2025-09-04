@@ -84,7 +84,7 @@ export class ActivationManager extends EventEmitter {
     this.serverConfigs.set(serverId, config);
 
     // Initialize state based on activation policy
-    const policy = config.activationPolicy || 'manual';
+    const policy = config.activationPolicy ?? 'manual';
     if (policy === 'manual') {
       this.stateMachine.setState(serverId, ServerState.MANUAL);
     } else {
@@ -110,7 +110,7 @@ export class ActivationManager extends EventEmitter {
     const config = this.serverConfigs.get(serverId);
     if (!config) return false;
 
-    const policy = config.activationPolicy || 'manual';
+    const policy = config.activationPolicy ?? 'manual';
 
     switch (policy) {
       case 'always':
@@ -170,7 +170,7 @@ export class ActivationManager extends EventEmitter {
     // Create activation request
     const request: ActivationRequest = {
       serverId,
-      reason: reason || `Activated by ${source.type}`,
+      reason: reason ?? `Activated by ${source.type}`,
       source,
       timestamp: new Date().toISOString()
     };
@@ -294,7 +294,7 @@ export class ActivationManager extends EventEmitter {
       await this.stateMachine.transition(
         serverId,
         ServerState.STOPPING,
-        reason || 'Manual deactivation'
+        reason ?? 'Manual deactivation'
       );
 
       // Disconnect from server
@@ -386,7 +386,7 @@ export class ActivationManager extends EventEmitter {
    * Get activation history
    */
   getActivationHistory(serverId: string): ActivationRequest[] {
-    return this.activationHistory.get(serverId) || [];
+    return this.activationHistory.get(serverId) ?? [];
   }
 
   /**
@@ -394,7 +394,7 @@ export class ActivationManager extends EventEmitter {
    */
   private async waitForCooldown(serverId: string): Promise<void> {
     const config = this.serverConfigs.get(serverId);
-    const cooldownMs = config?._lastError?.retryAfterMs || 5000;
+    const cooldownMs = config?._lastError?.retryAfterMs ?? 5000;
 
     await new Promise((resolve) => setTimeout(resolve, cooldownMs));
 
@@ -406,7 +406,7 @@ export class ActivationManager extends EventEmitter {
    * Record activation in history
    */
   private recordActivation(request: ActivationRequest): void {
-    const history = this.activationHistory.get(request.serverId) || [];
+    const history = this.activationHistory.get(request.serverId) ?? [];
     history.push(request);
 
     // Keep only recent history
@@ -426,7 +426,7 @@ export class ActivationManager extends EventEmitter {
       config._lastError = {
         message: error.message,
         timestamp: new Date().toISOString(),
-        retryAfterMs: retryAfterMs || 5000
+        retryAfterMs: retryAfterMs ?? 5000
       };
     }
 

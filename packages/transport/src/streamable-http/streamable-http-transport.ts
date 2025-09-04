@@ -264,7 +264,7 @@ export class StreamableHTTPTransport implements Transport {
 
     // Generate or get session ID
     const sessionId =
-      headers['mcp-session-id'] || this.sessionIdGenerator?.() || crypto.randomUUID();
+      headers['mcp-session-id'] ?? this.sessionIdGenerator?.() ?? crypto.randomUUID();
 
     this.sessionId = sessionId;
 
@@ -356,7 +356,7 @@ export class StreamableHTTPTransport implements Transport {
     const isInitialization = messages.some(isInitializeRequest);
     if (isInitialization) {
       const sessionId =
-        headers['mcp-session-id'] || this.sessionIdGenerator?.() || crypto.randomUUID();
+        headers['mcp-session-id'] ?? this.sessionIdGenerator?.() ?? crypto.randomUUID();
 
       this.sessionId = sessionId;
       this.initializedSessions.set(sessionId, true);
@@ -379,7 +379,7 @@ export class StreamableHTTPTransport implements Transport {
         }
       } else if (!this.sessionId) {
         // Generate new session ID if none exists
-        const newSessionId = this.sessionIdGenerator?.() || crypto.randomUUID();
+        const newSessionId = this.sessionIdGenerator?.() ?? crypto.randomUUID();
         this.sessionId = newSessionId;
         this.initializedSessions.set(newSessionId, true);
         if (this.onsessioninitialized) {
@@ -436,7 +436,7 @@ export class StreamableHTTPTransport implements Transport {
           // Map progressToken to stream if present
           if (message.params?._meta?.progressToken) {
             // If there's an existing GET SSE stream for this session, map to that instead
-            const streamIdToUse = existingStreamId || streamId;
+            const streamIdToUse = existingStreamId ?? streamId;
             this.progressTokenToStream.set(message.params._meta.progressToken, streamIdToUse);
           }
         }
@@ -460,7 +460,7 @@ export class StreamableHTTPTransport implements Transport {
           `data: ${JSON.stringify({
             jsonrpc: '2.0',
             error: { code: -32001, message: 'Request timed out' },
-            id: messages.find(isJSONRPCRequest)?.id || null
+            id: messages.find(isJSONRPCRequest)?.id ?? null
           })}\n\n`
         );
       } finally {

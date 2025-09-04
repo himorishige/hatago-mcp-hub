@@ -27,9 +27,9 @@ export class ToolInvoker {
     this.toolRegistry = toolRegistry;
     this.sseManager = sseManager;
     this.options = {
-      timeout: options.timeout || 30000,
-      retryCount: options.retryCount || 0,
-      retryDelay: options.retryDelay || 1000
+      timeout: options.timeout ?? 30000,
+      retryCount: options.retryCount ?? 0,
+      retryDelay: options.retryDelay ?? 1000
     };
   }
 

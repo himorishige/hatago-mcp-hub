@@ -5,6 +5,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:strict": "eslint . --max-warnings 0",
     "check": "pnpm format:check && pnpm lint && pnpm -r run typecheck",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",

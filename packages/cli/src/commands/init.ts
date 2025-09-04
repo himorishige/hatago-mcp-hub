@@ -20,8 +20,8 @@ export function setupInitCommand(program: Command): void {
     .option('-f, --force', 'overwrite existing configuration file')
     .option('--verbose', 'verbose output')
     .action((options: InitOptions) => {
-      const configPath = options.config || './hatago.config.json';
-      const force = options.force || false;
+      const configPath = options.config ?? './hatago.config.json';
+      const force = options.force ?? false;
 
       // Check if file already exists
       if (existsSync(configPath) && !force) {

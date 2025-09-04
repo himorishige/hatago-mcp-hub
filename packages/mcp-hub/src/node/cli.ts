@@ -36,8 +36,8 @@ program
   .option('-m, --mode <mode>', 'Integration mode (stdio or http)')
   .action(async (options: unknown) => {
     const opts = options as { config?: string; force?: boolean; mode?: string };
-    const configPath = opts.config || './hatago.config.json';
-    const force = opts.force || false;
+    const configPath = opts.config ?? './hatago.config.json';
+    const force = opts.force ?? false;
 
     // Check if file already exists
     if (existsSync(configPath) && !force) {
@@ -160,7 +160,7 @@ program
 
       // Preflight: STDIO requires a config file. Check existence and fail immediately.
       if (mode === 'stdio') {
-        const pathToCheck = opts.config || './hatago.config.json';
+        const pathToCheck = opts.config ?? './hatago.config.json';
         const abs = isAbsolute(pathToCheck) ? pathToCheck : resolve(process.cwd(), pathToCheck);
         if (!existsSync(abs)) {
           console.error('\n❌ Configuration file not found');
@@ -180,7 +180,7 @@ program
         mode,
         config: opts.config,
         port: opts.port ? parseInt(opts.port, 10) : 3535,
-        host: opts.host || '127.0.0.1',
+        host: opts.host ?? '127.0.0.1',
         logLevel,
         verbose: opts.verbose,
         quiet: opts.quiet,
@@ -201,7 +201,7 @@ program
         console.error('     hatago serve --config path/to/config.json');
         console.error('');
       } else if (errorMessage.includes('ENOENT')) {
-        console.error(`\n❌ File not found: ${errorMessage.split("'")[1] || 'unknown'}`);
+        console.error(`\n❌ File not found: ${errorMessage.split("'")[1] ?? 'unknown'}`);
       } else {
         console.error('Failed to start server:', error);
       }

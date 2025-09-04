@@ -62,7 +62,7 @@ export function handleSSEEndpoint(hub: HatagoHub, c: Context) {
  */
 export function createEventsEndpoint(hub: HatagoHub) {
   return (c: Context) => {
-    const clientId = c.req.query('clientId') || `client-${Date.now()}`;
+    const clientId = c.req.query('clientId') ?? `client-${Date.now()}`;
     const sseManager = hub.getSSEManager();
 
     // SSE client connected: ${clientId}
@@ -182,9 +182,9 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
       // Using 'any' for Hono framework compatibility - status code type mismatch
       return resultBody
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          c.json(resultBody as any, (resultStatus || 200) as any)
+          c.json(resultBody as any, (resultStatus ?? 200) as any)
         : // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          c.body(null, (resultStatus || 200) as any);
+          c.body(null, (resultStatus ?? 200) as any);
     }
   }
 

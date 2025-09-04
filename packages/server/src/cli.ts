@@ -31,7 +31,7 @@ import { startStdio } from './stdio.js';
 import { generateDefaultConfig, type ParsedArgs, parseArgs } from './utils.js';
 
 function handleInitCommand(args: ParsedArgs) {
-  const configPath = (args.flags.config as string) || './hatago.config.json';
+  const configPath = (args.flags.config as string) ?? './hatago.config.json';
   const force = args.flags.force as boolean;
 
   // Check if config file already exists
@@ -196,7 +196,7 @@ async function main() {
       console.error('     hatago serve --config path/to/config.json');
       console.error('');
     } else if (errorMessage.includes('ENOENT')) {
-      console.error(`\n❌ File not found: ${errorMessage.split("'")[1] || 'unknown'}`);
+      console.error(`\n❌ File not found: ${errorMessage.split("'")[1] ?? 'unknown'}`);
     } else {
       logger.error('Failed to start server:', errorMessage);
     }

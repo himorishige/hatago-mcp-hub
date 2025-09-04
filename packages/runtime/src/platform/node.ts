@@ -139,8 +139,8 @@ class MemorySessionStore implements SessionStore {
  * Create Node.js platform implementation
  */
 export function createNodePlatform(options: PlatformOptions = {}): Platform {
-  const configPath = options.storage?.configPath || '.hatago/config';
-  const sessionTTL = options.storage?.sessionTTL || 3600000;
+  const configPath = options.storage?.configPath ?? '.hatago/config';
+  const sessionTTL = options.storage?.sessionTTL ?? 3600000;
 
   return {
     // Core features
@@ -149,7 +149,7 @@ export function createNodePlatform(options: PlatformOptions = {}): Platform {
 
     // Node.js specific capabilities
     spawn: (opts: SpawnOptions): ChildProcess => {
-      return spawn(opts.command, opts.args || [], {
+      return spawn(opts.command, opts.args ?? [], {
         env: { ...process.env, ...opts.env },
         cwd: opts.cwd,
         stdio: 'pipe'

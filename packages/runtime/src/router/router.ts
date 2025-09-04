@@ -38,9 +38,9 @@ export class McpRouter {
     this.resourceRegistry = resourceRegistry;
     this.promptRegistry = promptRegistry;
     this.config = {
-      namingStrategy: config.namingStrategy || 'namespace',
-      separator: config.separator || '_',
-      debug: config.debug || false
+      namingStrategy: config.namingStrategy ?? 'namespace',
+      separator: config.separator ?? '_',
+      debug: config.debug ?? false
     };
   }
 
@@ -172,7 +172,7 @@ export class McpRouter {
       const parsed = this.parsePublicName(tool.name);
       return {
         ...tool,
-        serverId: parsed.serverId || 'unknown'
+        serverId: parsed.serverId ?? 'unknown'
       };
     });
     return groupByServer(toolsWithServer);
@@ -187,7 +187,7 @@ export class McpRouter {
       const parsed = this.parsePublicName(resource.uri);
       return {
         ...resource,
-        serverId: parsed.serverId || 'unknown'
+        serverId: parsed.serverId ?? 'unknown'
       };
     });
     return groupByServer(resourcesWithServer);
@@ -202,7 +202,7 @@ export class McpRouter {
       const parsed = this.parsePublicName(prompt.name);
       return {
         ...prompt,
-        serverId: parsed.serverId || 'unknown'
+        serverId: parsed.serverId ?? 'unknown'
       };
     });
     return groupByServer(promptsWithServer);

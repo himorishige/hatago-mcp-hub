@@ -11,18 +11,26 @@ export async function withHub<T>(
   configOrOptions: Partial<HatagoConfig> | HubTestOptions,
   callback: (hub: HatagoHub) => Promise<T>
 ): Promise<T> {
-  const options: HubTestOptions =
-    'config' in configOrOptions ? configOrOptions : { config: configOrOptions };
+  const isOptions = (v: unknown): v is HubTestOptions =>
+    typeof v === 'object' &&
+    v !== null &&
+    ('config' in (v as Record<string, unknown>) ||
+      'timeout' in (v as Record<string, unknown>) ||
+      'verbose' in (v as Record<string, unknown>));
+
+  const options: HubTestOptions = isOptions(configOrOptions)
+    ? configOrOptions
+    : { config: configOrOptions };
 
   const config: HatagoConfig = {
     version: 1,
+    logLevel: 'info',
     mcpServers: {},
     ...options.config
   };
 
   const hub = createHub({
-    config,
-    logLevel: options.verbose ? 'debug' : 'error'
+    preloadedConfig: { data: config }
   });
 
   try {

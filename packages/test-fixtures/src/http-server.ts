@@ -282,10 +282,6 @@ if (features.resources) {
 // SSE endpoint
 if (features.sse) {
   app.get('/events', (c) => {
-    c.header('Content-Type', 'text/event-stream');
-    c.header('Cache-Control', 'no-cache');
-    c.header('Connection', 'keep-alive');
-
     const stream = new ReadableStream({
       start(controller) {
         // Send initial ping
@@ -305,7 +301,11 @@ if (features.sse) {
     });
 
     return new Response(stream, {
-      headers: c.header()
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive'
+      }
     });
   });
 }

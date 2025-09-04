@@ -89,8 +89,8 @@ export class AuditLogger {
   ) {
     // Audit log is stored alongside config file
     this.logFilePath = configFile ? `${resolve(configFile)}.audit.log` : '';
-    this.maxFileSize = options.maxFileSize || 10 * 1024 * 1024; // 10MB default
-    this.rotationCount = options.rotationCount || 5;
+    this.maxFileSize = options.maxFileSize ?? 10 * 1024 * 1024; // 10MB default
+    this.rotationCount = options.rotationCount ?? 5;
 
     // Load recent entries into cache
     this.loadRecentEntries();
@@ -111,7 +111,7 @@ export class AuditLogger {
       eventType,
       source,
       details,
-      severity: severity || this.getSeverityForEvent(eventType)
+      severity: severity ?? this.getSeverityForEvent(eventType)
     };
 
     // Add to cache
@@ -196,8 +196,8 @@ export class AuditLogger {
 
     // Count by type and severity
     for (const entry of allEntries) {
-      stats.eventsByType[entry.eventType] = (stats.eventsByType[entry.eventType] || 0) + 1;
-      stats.eventsBySeverity[entry.severity] = (stats.eventsBySeverity[entry.severity] || 0) + 1;
+      stats.eventsByType[entry.eventType] = (stats.eventsByType[entry.eventType] ?? 0) + 1;
+      stats.eventsBySeverity[entry.severity] = (stats.eventsBySeverity[entry.severity] ?? 0) + 1;
     }
 
     return stats;
@@ -447,12 +447,12 @@ export class AuditLogger {
         entry.eventType,
         entry.severity,
         entry.source.type,
-        entry.source.sessionId || '',
-        entry.source.userId || '',
-        entry.source.toolName || '',
-        entry.details.serverId || '',
-        entry.details.path || '',
-        entry.details.error || ''
+        entry.source.sessionId ?? '',
+        entry.source.userId ?? '',
+        entry.source.toolName ?? '',
+        entry.details.serverId ?? '',
+        entry.details.path ?? '',
+        entry.details.error ?? ''
       ];
 
       rows.push(row.map((v) => `"${v}"`).join(','));

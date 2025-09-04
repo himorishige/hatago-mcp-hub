@@ -43,7 +43,7 @@ export class ServerStateMachine extends EventEmitter {
    * Get current state of a server
    */
   getState(serverId: string): ServerState {
-    return this.states.get(serverId) || ServerState.INACTIVE;
+    return this.states.get(serverId) ?? ServerState.INACTIVE;
   }
 
   /**
@@ -120,7 +120,7 @@ export class ServerStateMachine extends EventEmitter {
       timestamp: new Date().toISOString()
     };
 
-    const history = this.transitionHistory.get(serverId) || [];
+    const history = this.transitionHistory.get(serverId) ?? [];
     history.push(event);
 
     // Keep only last 100 transitions per server
@@ -141,7 +141,7 @@ export class ServerStateMachine extends EventEmitter {
    * Get transition history for a server
    */
   getHistory(serverId: string): StateTransitionEvent[] {
-    return this.transitionHistory.get(serverId) || [];
+    return this.transitionHistory.get(serverId) ?? [];
   }
 
   /**

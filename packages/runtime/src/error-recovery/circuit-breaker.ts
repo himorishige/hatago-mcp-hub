@@ -43,10 +43,10 @@ export class CircuitBreaker {
 
   constructor(config: Partial<CircuitBreakerConfig> = {}) {
     this.config = {
-      failureThreshold: config.failureThreshold || 5,
-      successThreshold: config.successThreshold || 3,
-      timeWindow: config.timeWindow || 60000, // 1 minute
-      cooldownPeriod: config.cooldownPeriod || 30000, // 30 seconds
+      failureThreshold: config.failureThreshold ?? 5,
+      successThreshold: config.successThreshold ?? 3,
+      timeWindow: config.timeWindow ?? 60000, // 1 minute
+      cooldownPeriod: config.cooldownPeriod ?? 30000, // 30 seconds
       onStateChange: config.onStateChange
     };
   }

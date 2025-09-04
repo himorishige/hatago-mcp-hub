@@ -37,7 +37,7 @@ export class StdioSafeLogger implements Logger {
     const record: Record<string, unknown> = {
       level,
       time: timestamp,
-      msg: msg || (typeof obj === 'string' ? obj : undefined)
+      msg: msg ?? (typeof obj === 'string' ? obj : undefined)
     };
 
     // Add data if obj is an object
@@ -55,7 +55,7 @@ export class StdioSafeLogger implements Logger {
     // Format output
     const line = this.json
       ? JSON.stringify(record)
-      : `[${timestamp}] [${level.toUpperCase()}] ${record.msg || ''}${
+      : `[${timestamp}] [${level.toUpperCase()}] ${record.msg ?? ''}${
           record.data ? ` ${JSON.stringify(record.data)}` : ''
         }`;
 

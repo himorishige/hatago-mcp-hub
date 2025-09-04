@@ -23,7 +23,7 @@ export function createRegistry(namingConfig?: ToolNamingConfig): ToolRegistrySta
   return {
     tools: new Map(),
     serverTools: new Map(),
-    namingConfig: namingConfig || {
+    namingConfig: namingConfig ?? {
       strategy: 'namespace',
       separator: '_',
       format: '{serverId}_{toolName}'
@@ -39,7 +39,7 @@ export function generatePublicName(
   serverId: string,
   toolName: string
 ): string {
-  const strategy = config.strategy || 'namespace';
+  const strategy = config.strategy ?? 'namespace';
 
   // Check if alias is defined
   const aliasKey = `${serverId}_${toolName}`;
@@ -59,8 +59,8 @@ export function generatePublicName(
 
   // Namespace strategy
   if (strategy === 'namespace') {
-    const separator = config.separator || '_';
-    const format = config.format || '{serverId}_{toolName}';
+    const separator = config.separator ?? '_';
+    const format = config.format ?? '{serverId}_{toolName}';
 
     let publicName = format
       .replace('{serverId}', serverId)
@@ -75,14 +75,14 @@ export function generatePublicName(
 
   // Prefix strategy (serverId before tool)
   if (strategy === 'prefix') {
-    const separator = config.separator || '_';
+    const separator = config.separator ?? '_';
     const publicName = `${serverId}${separator}${toolName}`;
     return publicName.replace(/\./g, '_');
   }
 
   // Suffix strategy (serverId after tool)
   if (strategy === 'suffix') {
-    const separator = config.separator || '_';
+    const separator = config.separator ?? '_';
     const publicName = `${toolName}${separator}${serverId}`;
     return publicName.replace(/\./g, '_');
   }
@@ -94,7 +94,7 @@ export function generatePublicName(
   }
 
   // Default fallback: prefix
-  const separator = config.separator || '_';
+  const separator = config.separator ?? '_';
   const publicName = `${serverId}${separator}${toolName}`;
   return publicName.replace(/\./g, '_');
 }
@@ -110,7 +110,7 @@ export function addTool(state: ToolRegistryState, serverId: string, tool: Tool):
     const existing = state.tools.get(publicName);
     if (existing && existing.serverId !== serverId) {
       // Collision detected, fallback to namespace strategy
-      const separator = state.namingConfig.separator || '_';
+      const separator = state.namingConfig.separator ?? '_';
       publicName = `${serverId}${separator}${tool.name}`.replace(/\./g, '_');
     }
   }
@@ -137,7 +137,7 @@ export function addTool(state: ToolRegistryState, serverId: string, tool: Tool):
   const newTools = new Map(state.tools);
   newTools.set(publicName, metadata);
 
-  const serverToolSet = state.serverTools.get(serverId) || new Set<string>();
+  const serverToolSet = state.serverTools.get(serverId) ?? new Set<string>();
   const newServerToolSet = new Set(serverToolSet);
   newServerToolSet.add(publicName);
 
@@ -320,7 +320,7 @@ export function detectCollisions(state: ToolRegistryState): Map<string, string[]
   const nameToServers = new Map<string, string[]>();
 
   for (const metadata of state.tools.values()) {
-    const servers = nameToServers.get(metadata.originalName) || [];
+    const servers = nameToServers.get(metadata.originalName) ?? [];
     servers.push(metadata.serverId);
     nameToServers.set(metadata.originalName, servers);
   }
