@@ -110,7 +110,7 @@ export class SessionManager {
    */
   async create(id?: string): Promise<Session> {
     const platform = getPlatform();
-    const sessionId = id || platform.randomUUID();
+    const sessionId = id ?? platform.randomUUID();
     return this.createSession(sessionId);
   }
 

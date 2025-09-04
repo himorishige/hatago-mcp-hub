@@ -12,8 +12,8 @@ export function generatePublicName(
   originalName: string,
   config: RouterConfig = {}
 ): string {
-  const strategy = config.namingStrategy || 'namespace';
-  const separator = config.separator || '_';
+  const strategy = config.namingStrategy ?? 'namespace';
+  const separator = config.separator ?? '_';
 
   if (strategy === 'none') {
     return originalName;
@@ -38,8 +38,8 @@ export function parsePublicName(
   publicName: string,
   config: RouterConfig = {}
 ): { serverId?: string; originalName: string } {
-  const strategy = config.namingStrategy || 'namespace';
-  const separator = config.separator || '_';
+  const strategy = config.namingStrategy ?? 'namespace';
+  const separator = config.separator ?? '_';
 
   if (strategy === 'none') {
     return { originalName: publicName };
@@ -142,7 +142,7 @@ export function groupByServer<T extends { serverId: string }>(items: T[]): Map<s
   const groups = new Map<string, T[]>();
 
   for (const item of items) {
-    const group = groups.get(item.serverId) || [];
+    const group = groups.get(item.serverId) ?? [];
     group.push(item);
     groups.set(item.serverId, group);
   }

@@ -36,7 +36,7 @@ export function createResourceRegistry(options: ResourceRegistryOptions = {}): R
   // Private state managed through closure
   const resources = new Map<string, ResourceMetadata[]>();
   const serverResources = new Map<string, Set<string>>();
-  const namingConfig: ToolNamingConfig = options.namingConfig || {
+  const namingConfig: ToolNamingConfig = options.namingConfig ?? {
     strategy: 'namespace',
     separator: '_',
     format: '{server}{separator}{tool}'
@@ -90,7 +90,7 @@ export function createResourceRegistry(options: ResourceRegistryOptions = {}): R
       };
 
       // URI-based management - use original URI as key
-      const existing = resources.get(resource.uri) || [];
+      const existing = resources.get(resource.uri) ?? [];
       existing.push(metadata);
       resources.set(resource.uri, existing);
       resourceUris.add(resource.uri);

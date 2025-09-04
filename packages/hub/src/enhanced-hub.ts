@@ -93,7 +93,7 @@ export class EnhancedHatagoHub extends HatagoHub {
     }
 
     // Resolve config path (prefer preloaded)
-    this.configPath = options.preloadedConfig?.path || options.configFile || undefined;
+    this.configPath = options.preloadedConfig?.path ?? options.configFile ?? undefined;
 
     // Initialize management components if enabled
     if (options.enableManagement !== false) {
@@ -133,7 +133,7 @@ export class EnhancedHatagoHub extends HatagoHub {
         // Use callToolWithActivation for on-demand activation support
         // Type assertion needed for ToolCallResult compatibility
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
-        return (await this.callToolWithActivation(name, args, options || {})) as any;
+        return (await this.callToolWithActivation(name, args, options ?? {})) as any;
       }
     };
   }
@@ -142,7 +142,7 @@ export class EnhancedHatagoHub extends HatagoHub {
    * Initialize management components
    */
   private initializeManagement(): void {
-    const configFile = this.configPath || '';
+    const configFile = this.configPath ?? '';
 
     // Initialize state machine
     this.stateMachine = new ServerStateMachine();
@@ -253,7 +253,7 @@ export class EnhancedHatagoHub extends HatagoHub {
         );
 
         if (!result.success) {
-          throw new Error(result.error || 'Activation failed');
+          throw new Error(result.error ?? 'Activation failed');
         }
       } catch (error) {
         this.logger.error(`Failed to auto-start server ${serverId}`, {
@@ -338,7 +338,7 @@ export class EnhancedHatagoHub extends HatagoHub {
     const result = await this.activationManager.activate(serverId, { type: 'manual' }, reason);
 
     if (!result.success) {
-      throw new Error(result.error || 'Activation failed');
+      throw new Error(result.error ?? 'Activation failed');
     }
   }
 
@@ -353,7 +353,7 @@ export class EnhancedHatagoHub extends HatagoHub {
     const result = await this.activationManager.deactivate(serverId, reason);
 
     if (!result.success) {
-      throw new Error(result.error || 'Deactivation failed');
+      throw new Error(result.error ?? 'Deactivation failed');
     }
   }
 
@@ -392,13 +392,13 @@ export class EnhancedHatagoHub extends HatagoHub {
 
       // Track activity for idle management
       if (this.idleManager) {
-        const sessionId = options.sessionId || 'default';
+        const sessionId = options.sessionId ?? 'default';
         this.idleManager.trackActivityStart(serverId, sessionId, name);
 
         try {
           // Call the tool through invoker
           const result = await this.toolInvoker.callTool(serverId, name, args, {
-            timeout: options.timeout || this.options.defaultTimeout
+            timeout: options.timeout ?? this.options.defaultTimeout
           });
 
           // Update statistics
@@ -415,8 +415,8 @@ export class EnhancedHatagoHub extends HatagoHub {
     }
 
     // Fall back to normal tool invocation
-    return this.toolInvoker.callTool('default', name, args, {
-      timeout: options.timeout || this.options.defaultTimeout
+  return this.toolInvoker.callTool('default', name, args, {
+      timeout: options.timeout ?? this.options.defaultTimeout
     });
   }
 

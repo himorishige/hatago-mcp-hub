@@ -46,7 +46,7 @@ export function setupServeCommand(program: Command): void {
           mode,
           config: options.config,
           port: options.port ? parseInt(options.port, 10) : 3929,
-          host: options.host || '127.0.0.1',
+          host: options.host ?? '127.0.0.1',
           logLevel,
           verbose: options.verbose,
           quiet: options.quiet

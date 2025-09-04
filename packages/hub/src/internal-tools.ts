@@ -31,8 +31,8 @@ export function getInternalTools(): Array<InternalTool<unknown>> {
         const serverList = servers.map((s) => ({
           id: s.id,
           status: s.status,
-          toolCount: s.tools?.length || 0,
-          resourceCount: s.resources?.length || 0
+          toolCount: s.tools?.length ?? 0,
+          resourceCount: s.resources?.length ?? 0
         }));
 
         return {
@@ -59,7 +59,7 @@ export function getInternalTools(): Array<InternalTool<unknown>> {
         dry_run: z.boolean().optional().describe('Perform a dry run without applying changes')
       }),
       handler: async (args: unknown, hub) => {
-        const dryRun = (args as { dry_run?: boolean })?.dry_run || false;
+        const dryRun = (args as { dry_run?: boolean })?.dry_run ?? false;
 
         if (dryRun) {
           return {
@@ -105,11 +105,11 @@ export function getInternalTools(): Array<InternalTool<unknown>> {
           server_id: s.id,
           status: s.status,
           type: s.spec?.url ? 'remote' : 'local',
-          url: s.spec?.url || null,
-          command: s.spec?.command || null,
-          tools: s.tools?.map((t) => t.name) || [],
-          resources: s.resources?.map((r) => r.uri) || [],
-          error: s.error?.message || null
+          url: s.spec?.url ?? null,
+          command: s.spec?.command ?? null,
+          tools: s.tools?.map((t) => t.name) ?? [],
+          resources: s.resources?.map((r) => r.uri) ?? [],
+          error: s.error?.message ?? null
         }));
 
         return {

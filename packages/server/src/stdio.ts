@@ -113,7 +113,7 @@ export async function startStdio(
 
     // Process all complete messages (newline-delimited)
     const lines = buffer.split('\n');
-    buffer = lines.pop() || ''; // Keep incomplete line in buffer
+    buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
 
     for (const line of lines) {
       if (!line.trim()) continue; // Skip empty lines
@@ -131,7 +131,7 @@ export async function startStdio(
                 message: 'Invalid Request',
                 data: 'Request must be an object'
               },
-              id: (message as Record<string, unknown>)?.id || null
+              id: (message as Record<string, unknown>)?.id ?? null
             },
             logger,
             isShuttingDown
@@ -150,7 +150,7 @@ export async function startStdio(
                 message: 'Invalid Request',
                 data: 'Missing required fields'
               },
-              id: msg.id || null
+              id: msg.id ?? null
             },
             logger,
             isShuttingDown

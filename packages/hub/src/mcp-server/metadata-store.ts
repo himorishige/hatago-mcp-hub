@@ -55,7 +55,7 @@ export class MetadataStore {
    * Store server metadata
    */
   storeServerMetadata(serverId: string, metadata: Partial<StoredServerMetadata>): void {
-    const existing = this.metadata.get(serverId) || {
+    const existing = this.metadata.get(serverId) ?? {
       serverId,
       serverType: 'local' as const,
       lastUpdated: new Date().toISOString()
@@ -95,13 +95,13 @@ export class MetadataStore {
     await this.storeServerMetadata(serverId, {
       tools: tools.map((t) => ({
         name: t.name,
-        description: t.description || '',
+        description: t.description ?? '',
         inputSchema: t.inputSchema
       })),
       capabilities: {
         tools: tools.length > 0,
-        resources: this.getServerMetadata(serverId)?.capabilities?.resources || false,
-        prompts: this.getServerMetadata(serverId)?.capabilities?.prompts || false
+        resources: this.getServerMetadata(serverId)?.capabilities?.resources ?? false,
+        prompts: this.getServerMetadata(serverId)?.capabilities?.prompts ?? false
       }
     });
   }
@@ -117,9 +117,9 @@ export class MetadataStore {
         mimeType: r.mimeType
       })),
       capabilities: {
-        tools: this.getServerMetadata(serverId)?.capabilities?.tools || false,
+        tools: this.getServerMetadata(serverId)?.capabilities?.tools ?? false,
         resources: resources.length > 0,
-        prompts: this.getServerMetadata(serverId)?.capabilities?.prompts || false
+        prompts: this.getServerMetadata(serverId)?.capabilities?.prompts ?? false
       }
     });
   }
@@ -131,12 +131,12 @@ export class MetadataStore {
     await this.storeServerMetadata(serverId, {
       prompts: prompts.map((p) => ({
         name: p.name,
-        description: p.description || '',
+        description: p.description ?? '',
         arguments: p.arguments
       })),
       capabilities: {
-        tools: this.getServerMetadata(serverId)?.capabilities?.tools || false,
-        resources: this.getServerMetadata(serverId)?.capabilities?.resources || false,
+        tools: this.getServerMetadata(serverId)?.capabilities?.tools ?? false,
+        resources: this.getServerMetadata(serverId)?.capabilities?.resources ?? false,
         prompts: prompts.length > 0
       }
     });
@@ -243,18 +243,13 @@ export class MetadataStore {
     const metadata = this.getServerMetadata(serverId);
     if (!metadata) return;
 
-    if (!metadata.statistics) {
-      metadata.statistics = {
-        totalCalls: 0,
-        totalErrors: 0
-      };
-    }
+    metadata.statistics ??= { totalCalls: 0, totalErrors: 0 };
 
     metadata.statistics.totalCalls++;
     metadata.statistics.lastUsed = new Date().toISOString();
 
     if (callDuration !== undefined) {
-      const current = metadata.statistics.averageResponseTime || 0;
+      const current = metadata.statistics.averageResponseTime ?? 0;
       const total = metadata.statistics.totalCalls;
       metadata.statistics.averageResponseTime = (current * (total - 1) + callDuration) / total;
     }

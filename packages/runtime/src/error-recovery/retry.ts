@@ -79,7 +79,7 @@ export async function withRetry<T>(
       lastError = classifyError(error);
 
       // Determine strategy
-      const strategy = options.strategy || selectStrategy(lastError.type, lastError.severity);
+      const strategy = options.strategy ?? selectStrategy(lastError.type, lastError.severity);
 
       // Check if should retry
       const shouldRetryError = options.shouldRetry
@@ -132,7 +132,7 @@ export async function retry<T>(
   });
 
   if (!result.success) {
-    throw result.error?.originalError || new Error('Retry failed');
+    throw result.error?.originalError ?? new Error('Retry failed');
   }
 
   return result.value!;
@@ -193,7 +193,7 @@ export function makeRetryable<T extends (...args: unknown[]) => Promise<unknown>
     const result = await withRetry(() => fn(...args), options);
 
     if (!result.success) {
-      throw result.error?.originalError || new Error('Operation failed');
+      throw result.error?.originalError ?? new Error('Operation failed');
     }
 
     return result.value as ReturnType<T>;

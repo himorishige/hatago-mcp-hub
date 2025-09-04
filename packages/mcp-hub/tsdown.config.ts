@@ -19,7 +19,7 @@ export default defineConfig({
   minify: false, // Don't minify for easier debugging initially
   // Define environment variables
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production')
   },
   // Make CLI executable
   onSuccess: 'chmod +x dist/node/cli.js',

@@ -1,28 +1,16 @@
 {
-  "$schema": "./schemas/config.schema.json",
-  "version": 1,
   "mcpServers": {
-    "everything": {
-      "type": "local",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-everything"]
-    },
-    "deepwiki": {
-      "type": "remote",
-      "url": "https://mcp.deepwiki.com/mcp",
-      "transport": "streamable-http"
-    },
     "MCP_DOCKER": {
       "command": "docker",
       "args": ["mcp", "gateway", "run"]
     },
     "codex": {
-      "type": "local",
+      "type": "stdio",
       "command": "codex",
       "args": ["mcp"]
     },
     "gemini-cli": {
-      "type": "local",
+      "type": "stdio",
       "command": "npx",
       "args": ["@choplin/mcp-gemini-cli", "--allow-npx"],
       "env": {
@@ -30,7 +18,6 @@
       }
     },
     "gpt5-mcp": {
-      "type": "local",
       "command": "node",
       "args": [
         "/Users/morishige/ghq/github.com/gotalab/gpt5-mcp-server/dist/cli.js"
@@ -40,7 +27,6 @@
       }
     },
     "serena": {
-      "type": "local",
       "command": "/opt/homebrew/bin/uvx",
       "args": [
         "--from",
@@ -50,7 +36,6 @@
       ]
     },
     "cloudflare": {
-      "type": "local",
       "command": "npx",
       "args": [
         "mcp-remote",
@@ -58,6 +43,10 @@
         "https://bindings.mcp.cloudflare.com/sse",
         "https://builds.mcp.cloudflare.com/sse"
       ]
+    },
+    "deepwiki": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://mcp.deepwiki.com/mcp"]
     }
   }
 }

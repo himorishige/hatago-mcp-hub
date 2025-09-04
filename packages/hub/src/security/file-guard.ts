@@ -207,7 +207,7 @@ export class FileAccessGuard {
     // Check required fields
     const mcpServers = config.mcpServers as Record<string, unknown> | undefined;
     const legacyServers = config.servers as Record<string, unknown> | undefined;
-    const servers = { ...(mcpServers || {}), ...(legacyServers || {}) };
+    const servers = { ...(mcpServers ?? {}), ...(legacyServers ?? {}) };
 
     for (const [id, server] of Object.entries(servers)) {
       if (!server || typeof server !== 'object') {
@@ -264,11 +264,11 @@ export class FileAccessGuard {
   ): DiffResult['impacts'] {
     const currentMcp = current.mcpServers as Record<string, unknown> | undefined;
     const currentLegacy = current.servers as Record<string, unknown> | undefined;
-    const currentServers = { ...(currentMcp || {}), ...(currentLegacy || {}) };
+    const currentServers = { ...(currentMcp ?? {}), ...(currentLegacy ?? {}) };
 
     const nextMcp = next.mcpServers as Record<string, unknown> | undefined;
     const nextLegacy = next.servers as Record<string, unknown> | undefined;
-    const nextServers = { ...(nextMcp || {}), ...(nextLegacy || {}) };
+    const nextServers = { ...(nextMcp ?? {}), ...(nextLegacy ?? {}) };
 
     const currentIds = new Set(Object.keys(currentServers));
     const nextIds = new Set(Object.keys(nextServers));

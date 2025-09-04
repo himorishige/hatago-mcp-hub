@@ -67,8 +67,15 @@ export default tseslint.config(
       '@typescript-eslint/explicit-module-boundary-types': 'off', // Still off - too restrictive
       '@typescript-eslint/require-await': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'warn', // Start with warn
-      '@typescript-eslint/prefer-nullish-coalescing': 'off', // Start with warn
-      '@typescript-eslint/prefer-optional-chain': 'warn' // Start with warn
+      '@typescript-eslint/prefer-nullish-coalescing': 'warn', // Phase 1: start with warn
+      '@typescript-eslint/prefer-optional-chain': 'error', // Phase 1: promote to error
+
+      // Phase 1 additions (mostly auto-fixable or low-risk)
+      '@typescript-eslint/no-useless-empty-export': 'error',
+      '@typescript-eslint/no-unused-expressions': [
+        'error',
+        { allowTernary: true }
+      ]
     }
   },
 

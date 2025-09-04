@@ -9,8 +9,8 @@ import type { ToolNamingConfig } from '../registry/types.js';
  */
 export function createNamingFunction(config: ToolNamingConfig) {
   return (serverId: string, name: string) => {
-    const strategy = config.strategy || 'prefix';
-    const separator = config.separator || '__';
+    const strategy = config.strategy ?? 'prefix';
+    const separator = config.separator ?? '__';
 
     if (strategy === 'none') {
       return name;
@@ -41,8 +41,8 @@ export function createNamingFunction(config: ToolNamingConfig) {
  */
 export function createParsingFunction(config: ToolNamingConfig) {
   return (publicName: string): { serverId?: string; name: string } => {
-    const strategy = config.strategy || 'prefix';
-    const separator = config.separator || '__';
+    const strategy = config.strategy ?? 'prefix';
+    const separator = config.separator ?? '__';
 
     if (strategy === 'none') {
       return { name: publicName };

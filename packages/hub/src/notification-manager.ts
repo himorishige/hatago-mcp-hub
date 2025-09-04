@@ -67,7 +67,7 @@ export class NotificationManager {
     // Create unique key for rate limiting
     const key = `${category}:${message}`;
     const now = Date.now();
-    const lastSent = this.lastNotifications.get(key) || 0;
+    const lastSent = this.lastNotifications.get(key) ?? 0;
 
     // Check rate limit
     if (now - lastSent < this.config.rateLimitSec * 1000) {
