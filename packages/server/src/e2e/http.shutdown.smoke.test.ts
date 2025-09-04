@@ -35,10 +35,10 @@ describe('setupGracefulShutdown (smoke)', () => {
     const sock = new FakeSocket() as any;
     (server as unknown as EventEmitter).emit('connection', sock);
 
-    // trigger SIGINT
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('exit');
-    });
+    // trigger SIGINT (do not actually exit the process)
+    const exitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementation(((_code?: number) => {}) as unknown as typeof process.exit);
 
     process.emit('SIGINT');
     // allow timers to run
