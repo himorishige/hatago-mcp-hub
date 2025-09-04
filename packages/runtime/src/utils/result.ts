@@ -8,18 +8,18 @@ import type { HatagoError } from './errors.js';
 /**
  * Success result
  */
-export interface Ok<T> {
+export type Ok<T> = {
   readonly ok: true;
   readonly value: T;
-}
+};
 
 /**
  * Error result
  */
-export interface Err<E = HatagoError> {
+export type Err<E = HatagoError> = {
   readonly ok: false;
   readonly error: E;
-}
+};
 
 /**
  * Result type - Either Ok or Err
@@ -92,7 +92,11 @@ export const unwrap = <T, E>(result: Result<T, E>): T => {
   if (isOk(result)) {
     return result.value;
   }
-  throw result.error;
+  const err = result.error as unknown;
+  if (err instanceof Error) {
+    throw err;
+  }
+  throw new Error(typeof err === 'string' ? err : JSON.stringify(err));
 };
 
 /**

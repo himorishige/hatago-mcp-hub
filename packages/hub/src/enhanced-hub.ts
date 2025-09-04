@@ -239,27 +239,29 @@ export class EnhancedHatagoHub extends HatagoHub {
    */
   private scheduleServerStart(serverId: string): void {
     // Start after a short delay to allow full initialization
-    setTimeout(async () => {
-      try {
-        // Use 'startup' type for always servers
-        if (!this.activationManager) {
-          throw new Error('Management features not enabled');
-        }
+    setTimeout(() => {
+      void (async () => {
+        try {
+          // Use 'startup' type for always servers
+          if (!this.activationManager) {
+            throw new Error('Management features not enabled');
+          }
 
-        const result = await this.activationManager.activate(
-          serverId,
-          { type: 'startup' },
-          'Startup activation for always policy'
-        );
+          const result = await this.activationManager.activate(
+            serverId,
+            { type: 'startup' },
+            'Startup activation for always policy'
+          );
 
-        if (!result.success) {
-          throw new Error(result.error ?? 'Activation failed');
+          if (!result.success) {
+            throw new Error(result.error ?? 'Activation failed');
+          }
+        } catch (error) {
+          this.logger.error(`Failed to auto-start server ${serverId}`, {
+            error: error instanceof Error ? error.message : String(error)
+          });
         }
-      } catch (error) {
-        this.logger.error(`Failed to auto-start server ${serverId}`, {
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
+      })();
     }, 1000);
   }
 

@@ -5,7 +5,7 @@
 /**
  * Retry strategy configuration
  */
-export interface RetryStrategy {
+export type RetryStrategy = {
   /** Maximum number of retry attempts */
   maxAttempts: number;
 
@@ -23,7 +23,7 @@ export interface RetryStrategy {
 
   /** Timeout for each attempt in milliseconds */
   attemptTimeout?: number;
-}
+};
 
 /**
  * Default retry strategies

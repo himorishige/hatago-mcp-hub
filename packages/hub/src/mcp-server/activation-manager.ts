@@ -7,7 +7,7 @@ import type { ActivationPolicy } from '@himorishige/hatago-core';
 import { ServerState } from '@himorishige/hatago-core';
 
 // Extended server config type
-interface ServerConfig {
+type ServerConfig = {
   type?: 'http' | 'sse'; // Optional for HTTP, required for SSE
   command?: string; // For STDIO servers
   args?: string[];
@@ -22,7 +22,7 @@ interface ServerConfig {
     timestamp: string;
     retryAfterMs?: number;
   };
-}
+};
 
 import { EventEmitter } from 'node:events';
 import type { ServerStateMachine } from './state-machine.js';
@@ -434,14 +434,16 @@ export class ActivationManager extends EventEmitter {
     await this.stateMachine.transition(serverId, ServerState.ERROR, error.message);
 
     // Auto-transition to cooldown
-    setTimeout(async () => {
-      if (this.stateMachine.getState(serverId) === ServerState.ERROR) {
-        await this.stateMachine.transition(
-          serverId,
-          ServerState.COOLDOWN,
-          'Entering cooldown after error'
-        );
-      }
+    setTimeout(() => {
+      void (async () => {
+        if (this.stateMachine.getState(serverId) === ServerState.ERROR) {
+          await this.stateMachine.transition(
+            serverId,
+            ServerState.COOLDOWN,
+            'Entering cooldown after error'
+          );
+        }
+      })();
     }, 1000);
   }
 

@@ -17,7 +17,7 @@ import { resolve } from 'node:path';
 /**
  * Audit log entry
  */
-export interface AuditLogEntry {
+export type AuditLogEntry = {
   /** Unique ID for the log entry */
   id: string;
 
@@ -57,18 +57,18 @@ export interface AuditLogEntry {
 
   /** Security impact level */
   severity: 'info' | 'warning' | 'error' | 'critical';
-}
+};
 
 /**
  * Audit statistics
  */
-export interface AuditStats {
+export type AuditStats = {
   totalEvents: number;
   eventsByType: Record<string, number>;
   eventsBySeverity: Record<string, number>;
   recentEvents: AuditLogEntry[];
   lastEventTime?: string;
-}
+};
 
 /**
  * Audit logger for tracking configuration changes
@@ -233,12 +233,14 @@ export class AuditLogger {
       filtered = filtered.filter((e) => e.details.serverId === options.serverId);
     }
 
-    if (options.startTime) {
-      filtered = filtered.filter((e) => e.timestamp >= options.startTime!);
+    if (options.startTime !== undefined) {
+      const start = options.startTime;
+      filtered = filtered.filter((e) => e.timestamp >= start);
     }
 
-    if (options.endTime) {
-      filtered = filtered.filter((e) => e.timestamp <= options.endTime!);
+    if (options.endTime !== undefined) {
+      const end = options.endTime;
+      filtered = filtered.filter((e) => e.timestamp <= end);
     }
 
     // Apply limit

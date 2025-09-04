@@ -18,7 +18,7 @@ export { generateDefaultConfig } from './utils.js';
 /**
  * Server options for starting the MCP Hub
  */
-export interface ServerOptions {
+export type ServerOptions = {
   mode?: 'stdio' | 'http';
   config?: string;
   host?: string;
@@ -28,7 +28,7 @@ export interface ServerOptions {
   quiet?: boolean;
   watchConfig?: boolean;
   tags?: string[];
-}
+};
 
 /**
  * Start the MCP Hub server with the given options

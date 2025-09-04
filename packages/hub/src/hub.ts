@@ -234,9 +234,15 @@ export class HatagoHub {
       await this.connectServer(id, spec);
       this.emit('server:connected', { serverId: id });
     } catch (error) {
-      const server = this.servers.get(id)!;
-      server.status = 'error';
-      server.error = error as Error;
+      const server = this.servers.get(id);
+      if (server) {
+        server.status = 'error';
+        server.error = error as Error;
+      } else {
+        this.logger.error(`Server ${id} missing from registry when marking error`, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
       this.emit('server:error', { serverId: id, error });
       throw error;
     }
@@ -558,8 +564,12 @@ export class HatagoHub {
     };
 
     // Update server status
-    const server = this.servers.get(id)!;
-    server.status = 'connected';
+    const server = this.servers.get(id);
+    if (server) {
+      server.status = 'connected';
+    } else {
+      this.logger.warn(`Server ${id} not found when updating status to connected`);
+    }
 
     // Register tools using high-level API
     try {
@@ -645,7 +655,9 @@ export class HatagoHub {
         const registeredTool = registeredTools[i];
 
         if (registeredTool && tool) {
-          server.tools.push(registeredTool);
+          if (server) {
+            server.tools.push(registeredTool);
+          }
           this.toolInvoker.registerHandler(registeredTool.name, tool.handler);
           this.emit('tool:registered', { serverId: id, tool: registeredTool });
         }
@@ -665,7 +677,9 @@ export class HatagoHub {
       this.capabilityRegistry.markServerCapability(id, 'resources/list', 'supported');
 
       // Store resources in server object
-      server.resources = resourceArray;
+      if (server) {
+        server.resources = resourceArray;
+      }
 
       // Register all resources in the registry
       this.resourceRegistry.registerServerResources(id, resourceArray);
@@ -695,7 +709,9 @@ export class HatagoHub {
       this.capabilityRegistry.markServerCapability(id, 'prompts/list', 'supported');
 
       // Store prompts in server object
-      server.prompts = promptArray;
+      if (server) {
+        server.prompts = promptArray;
+      }
 
       // Register all prompts in the registry
       this.promptRegistry.registerServerPrompts(id, promptArray);
@@ -1146,10 +1162,12 @@ export class HatagoHub {
           }
 
           // Set a new timeout to debounce rapid changes
-          reloadTimeout = setTimeout(async () => {
-            this.logger.info('[ConfigWatcher] Config file changed, starting reload...');
-            await this.reloadConfig();
-            this.logger.info('[ConfigWatcher] Config reload completed');
+          reloadTimeout = setTimeout(() => {
+            void (async () => {
+              this.logger.info('[ConfigWatcher] Config file changed, starting reload...');
+              await this.reloadConfig();
+              this.logger.info('[ConfigWatcher] Config reload completed');
+            })();
           }, 1000); // Wait 1 second after last change
         }
       });

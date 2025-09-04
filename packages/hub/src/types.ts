@@ -7,7 +7,7 @@ import type { Prompt, Resource, Tool, HatagoConfig } from '@himorishige/hatago-c
 /**
  * Server specification
  */
-export interface ServerSpec {
+export type ServerSpec = {
   // Local server
   command?: string;
   args?: string[];
@@ -25,12 +25,12 @@ export interface ServerSpec {
   keepAliveTimeout?: number; // Keep-alive timeout
   reconnect?: boolean;
   reconnectDelay?: number;
-}
+};
 
 /**
  * Hub options
  */
-export interface HubOptions {
+export type HubOptions = {
   configFile?: string;
   /** Preloaded configuration data. Takes precedence over configFile when provided. */
   preloadedConfig?: { path?: string; data: HatagoConfig } | undefined;
@@ -40,38 +40,38 @@ export interface HubOptions {
   namingStrategy?: 'none' | 'namespace' | 'prefix';
   separator?: string;
   tags?: string[]; // Filter servers by tags
-}
+};
 
 /**
  * Tool call options
  */
-export interface CallOptions {
+export type CallOptions = {
   timeout?: number;
   /** Session ID for multi-client support */
   sessionId?: string;
   /** @deprecated Use appropriate server routing instead */
   serverId?: string;
   signal?: AbortSignal;
-}
+};
 
 /**
  * Resource read options
  */
-export interface ReadOptions {
+export type ReadOptions = {
   timeout?: number;
   /** Session ID for multi-client support */
   sessionId?: string;
   /** @deprecated Use appropriate server routing instead */
   serverId?: string;
   signal?: AbortSignal;
-}
+};
 
 /**
  * List options
  */
-export interface ListOptions {
+export type ListOptions = {
   serverId?: string;
-}
+};
 
 /**
  * Hub event types
@@ -91,13 +91,13 @@ export type HubEvent =
 /**
  * Hub event data
  */
-export interface HubEventData {
+export type HubEventData = {
   type: HubEvent;
   serverId?: string;
   data?: unknown;
   error?: Error;
   [key: string]: unknown;
-}
+};
 
 /**
  * Hub event handler
@@ -107,7 +107,7 @@ export type HubEventHandler = (event: HubEventData) => void;
 /**
  * Connected server info
  */
-export interface ConnectedServer {
+export type ConnectedServer = {
   id: string;
   spec: ServerSpec;
   status: 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -115,4 +115,4 @@ export interface ConnectedServer {
   tools: Tool[];
   resources: Resource[];
   prompts: Prompt[];
-}
+};

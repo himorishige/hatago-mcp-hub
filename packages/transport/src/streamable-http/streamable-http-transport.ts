@@ -17,28 +17,28 @@ import {
   isJSONRPCResponse
 } from '@modelcontextprotocol/sdk/types.js';
 
-export interface StreamableHTTPTransportOptions {
+export type StreamableHTTPTransportOptions = {
   sessionIdGenerator?: () => string;
   enableJsonResponse?: boolean;
   onsessioninitialized?: (sessionId: string) => void;
   onsessionclosed?: (sessionId: string) => void;
   // Heartbeat interval (milliseconds) for SSE keepalive. Default: 30000ms
   keepAliveMs?: number;
-}
+};
 
-export interface SSEStream {
+export type SSEStream = {
   closed: boolean;
   close: () => Promise<void>;
   write: (data: string) => Promise<void>;
   onAbort?: (callback: () => void) => void;
-}
+};
 
-interface StreamData {
+type StreamData = {
   stream: SSEStream;
   createdAt: number;
   resolveResponse?: () => void;
   keepaliveInterval?: ReturnType<typeof setInterval>;
-}
+};
 
 export class StreamableHTTPTransport implements Transport {
   private started = false;
@@ -274,12 +274,14 @@ export class StreamableHTTPTransport implements Transport {
     }
 
     // Set up keepalive
-    const keepaliveInterval = setInterval(async () => {
-      try {
-        await sseStream.write(':heartbeat\n\n');
-      } catch {
-        clearInterval(keepaliveInterval);
-      }
+    const keepaliveInterval = setInterval(() => {
+      void (async () => {
+        try {
+          await sseStream.write(':heartbeat\n\n');
+        } catch {
+          clearInterval(keepaliveInterval);
+        }
+      })();
     }, this.keepAliveMs);
 
     // Store stream data

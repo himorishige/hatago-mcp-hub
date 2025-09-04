@@ -10,7 +10,7 @@ import type { Prompt, Resource, ServerMetadata, Tool } from '@himorishige/hatago
 /**
  * Server metadata with MCP capabilities
  */
-export interface StoredServerMetadata extends Partial<ServerMetadata> {
+export type StoredServerMetadata = Partial<ServerMetadata> & {
   /** Server identifier */
   serverId: string;
 
@@ -31,7 +31,7 @@ export interface StoredServerMetadata extends Partial<ServerMetadata> {
 
   /** Hash of prompt definitions for change detection */
   promptsHash?: string;
-}
+};
 
 /**
  * Metadata store for persistent server information

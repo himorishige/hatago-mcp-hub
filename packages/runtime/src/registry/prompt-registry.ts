@@ -8,18 +8,18 @@ import { logger } from '../utils/logger.js';
 /**
  * Prompt info with server association
  */
-export interface PromptInfo extends Prompt {
+export type PromptInfo = Prompt & {
   serverId: string;
   originalName: string;
-}
+};
 
 /**
  * Prompt metadata stored in registry
  */
-interface PromptMetadata extends Prompt {
+type PromptMetadata = Prompt & {
   serverId: string;
   originalName: string;
-}
+};
 
 /**
  * Registry for managing prompts from multiple servers
@@ -98,11 +98,13 @@ export class PromptRegistry {
    */
   getServerPrompts(serverId: string): Prompt[] {
     const promptNames = this.serverPrompts.get(serverId);
-    return promptNames
-      ? Array.from(promptNames)
-          .map((name) => this.prompts.get(name)!)
-          .filter(Boolean)
-      : [];
+    if (!promptNames) return [];
+    const result: Prompt[] = [];
+    for (const name of Array.from(promptNames)) {
+      const prompt = this.prompts.get(name);
+      if (prompt) result.push(prompt);
+    }
+    return result;
   }
 
   /**

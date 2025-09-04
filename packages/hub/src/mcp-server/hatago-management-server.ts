@@ -13,7 +13,7 @@ import type {
 import { ServerState } from '@himorishige/hatago-core';
 
 // Extended types for management features
-interface ServerConfig {
+type ServerConfig = {
   type?: 'http' | 'sse'; // Optional for HTTP, required for SSE
   command?: string; // For STDIO servers
   args?: string[];
@@ -29,9 +29,9 @@ interface ServerConfig {
     requestMs?: number;
     keepAliveMs?: number;
   };
-}
+};
 
-interface HatagoConfig {
+type HatagoConfig = {
   version?: number;
   logLevel?: string;
   mcpServers?: Record<string, ServerConfig>;
@@ -46,7 +46,7 @@ interface HatagoConfig {
     activationPolicy?: ActivationPolicy;
     idlePolicy?: IdlePolicy;
   };
-}
+};
 
 import { existsSync, readFileSync } from 'node:fs';
 import { AuditLogger } from '../security/audit-logger.js';
@@ -59,13 +59,13 @@ import type { ServerStateMachine } from './state-machine.js';
 /**
  * Management server options
  */
-export interface ManagementServerOptions {
+export type ManagementServerOptions = {
   configFilePath: string;
   stateMachine: ServerStateMachine;
   activationManager: ActivationManager;
   idleManager: IdleManager;
   enableAudit?: boolean;
-}
+};
 
 /**
  * Hatago Management MCP Server

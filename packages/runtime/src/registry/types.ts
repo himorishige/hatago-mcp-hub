@@ -10,13 +10,13 @@ export type ToolNamingStrategy = 'prefix' | 'suffix' | 'none' | 'namespace' | 'e
 /**
  * Tool naming configuration
  */
-export interface ToolNamingConfig {
+export type ToolNamingConfig = {
   strategy: ToolNamingStrategy;
   separator?: string;
   serverIdInName?: boolean;
   format?: string;
   aliases?: Record<string, string>;
-}
+};
 
 /**
  * Default tool naming configuration
@@ -40,8 +40,8 @@ export type PromptNamingConfig = ToolNamingConfig;
 /**
  * Combined naming configuration
  */
-export interface NamingConfig {
+export type NamingConfig = {
   toolNaming?: ToolNamingConfig;
   resourceNaming?: ResourceNamingConfig;
   promptNaming?: PromptNamingConfig;
-}
+};

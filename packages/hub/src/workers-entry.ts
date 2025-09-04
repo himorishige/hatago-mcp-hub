@@ -17,14 +17,10 @@ export function createHub(options?: HubOptions): HatagoHub {
   // In simple example, we use memory storage instead
   const minimalEnv = {
     CONFIG_KV: {
-      get: async () => await Promise.resolve(null),
-      put: async () => {
-        await Promise.resolve();
-      },
-      delete: async () => {
-        await Promise.resolve();
-      },
-      list: async () => await Promise.resolve({ keys: [] })
+      get: () => null,
+      put: () => {},
+      delete: () => {},
+      list: () => ({ keys: [] })
     } as unknown
   };
 

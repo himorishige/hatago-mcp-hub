@@ -8,10 +8,10 @@ import type { Session } from '@himorishige/hatago-core';
 /**
  * Immutable session store type
  */
-export interface SessionState {
+export type SessionState = {
   readonly sessions: ReadonlyMap<string, Session>;
   readonly ttlSeconds: number;
-}
+};
 
 /**
  * Create an empty session state
@@ -208,10 +208,10 @@ export function clearSessions(state: SessionState): SessionState {
 /**
  * Batch operations for efficiency
  */
-export interface SessionOperation {
+export type SessionOperation = {
   type: 'create' | 'touch' | 'delete';
   sessionId: string;
-}
+};
 
 /**
  * Apply multiple operations in a single pass
@@ -243,12 +243,12 @@ export function applyOperations(
 /**
  * Session statistics
  */
-export interface SessionStats {
+export type SessionStats = {
   total: number;
   active: number;
   expired: number;
   averageAgeSeconds: number;
-}
+};
 
 /**
  * Get session statistics

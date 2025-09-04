@@ -5,7 +5,7 @@
 /**
  * Base transport interface for MCP communication
  */
-export interface ITransport {
+export type ITransport = {
   /**
    * Send a message through the transport
    */
@@ -35,49 +35,49 @@ export interface ITransport {
    * Check if transport is ready
    */
   ready(): Promise<boolean>;
-}
+};
 
 /**
  * Transport options
  */
-export interface TransportOptions {
+export type TransportOptions = {
   timeout?: number;
   reconnect?: boolean;
   reconnectDelay?: number;
   maxReconnectAttempts?: number;
-}
+};
 
 /**
  * Process transport options (Node.js)
  */
-export interface ProcessTransportOptions extends TransportOptions {
+export type ProcessTransportOptions = TransportOptions & {
   command: string;
   args?: string[];
   env?: Record<string, string>;
   cwd?: string;
-}
+};
 
 /**
  * HTTP transport options
  */
-export interface HttpTransportOptions extends TransportOptions {
+export type HttpTransportOptions = TransportOptions & {
   url: string;
   headers?: Record<string, string>;
   method?: 'GET' | 'POST';
-}
+};
 
 /**
  * WebSocket transport options
  */
-export interface WebSocketTransportOptions extends TransportOptions {
+export type WebSocketTransportOptions = TransportOptions & {
   url: string;
   protocols?: string[];
   headers?: Record<string, string>;
-}
+};
 
 /**
  * Transport factory for creating transports based on configuration
  */
-export interface ITransportFactory {
-  createTransport(type: string, options: unknown): ITransport;
-}
+export type ITransportFactory = {
+  createTransport: (type: string, options: unknown) => ITransport;
+};

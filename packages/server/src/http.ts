@@ -13,14 +13,14 @@ import { cors } from 'hono/cors';
 import type { Logger } from './logger.js';
 import type { HatagoConfig } from '@himorishige/hatago-core';
 
-interface HttpOptions {
+type HttpOptions = {
   config: { path?: string; data: HatagoConfig };
   host: string;
   port: number;
   logger: Logger;
   watchConfig?: boolean;
   tags?: string[];
-}
+};
 
 /**
  * Start the MCP server in HTTP mode
@@ -97,6 +97,10 @@ export async function startHttp(options: HttpOptions): Promise<void> {
     }
   };
 
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
+  process.on('SIGTERM', () => {
+    void shutdown('SIGTERM');
+  });
 }

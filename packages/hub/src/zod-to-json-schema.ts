@@ -4,28 +4,28 @@
 
 import type { z } from 'zod';
 
-interface ZodDefWithShape {
+type ZodDefWithShape = {
   shape: () => Record<string, unknown>;
-}
+};
 
-interface ZodDefWithTypeName {
+type ZodDefWithTypeName = {
   typeName: string;
   description?: string;
   innerType?: {
     _def: ZodDefWithTypeName;
   };
-}
+};
 
-interface JsonSchemaProperty {
+type JsonSchemaProperty = {
   type: string;
   description?: string;
-}
+};
 
-interface JsonSchema {
+type JsonSchema = {
   type: string;
   properties: Record<string, JsonSchemaProperty>;
   required?: string[];
-}
+};
 
 /**
  * Convert Zod schema to JSON Schema (simplified)

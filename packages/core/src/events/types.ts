@@ -6,49 +6,49 @@
 /**
  * Server lifecycle events
  */
-export interface ServerEvents {
+export type ServerEvents = {
   'server:started': { serverId: string; timestamp: Date };
   'server:stopped': { serverId: string; timestamp: Date };
   'server:error': { serverId: string; error: Error; timestamp: Date };
   'server:reconnecting': { serverId: string; attempt: number; timestamp: Date };
   'server:reconnected': { serverId: string; timestamp: Date };
-}
+};
 
 /**
  * Tool discovery events
  */
-export interface ToolEvents {
+export type ToolEvents = {
   'tools:discovered': { serverId: string; count: number; timestamp: Date };
   'tools:registered': { serverId: string; tools: string[]; timestamp: Date };
   'tools:removed': { serverId: string; tools: string[]; timestamp: Date };
-}
+};
 
 /**
  * Resource discovery events
  */
-export interface ResourceEvents {
+export type ResourceEvents = {
   'resources:discovered': { serverId: string; count: number; timestamp: Date };
   'resources:registered': { serverId: string; uris: string[]; timestamp: Date };
   'resources:removed': { serverId: string; uris: string[]; timestamp: Date };
-}
+};
 
 /**
  * Prompt discovery events
  */
-export interface PromptEvents {
+export type PromptEvents = {
   'prompts:discovered': { serverId: string; count: number; timestamp: Date };
   'prompts:registered': { serverId: string; names: string[]; timestamp: Date };
   'prompts:removed': { serverId: string; names: string[]; timestamp: Date };
-}
+};
 
 /**
  * Session lifecycle events
  */
-export interface SessionEvents {
+export type SessionEvents = {
   'session:created': { sessionId: string; timestamp: Date };
   'session:expired': { sessionId: string; timestamp: Date };
   'session:deleted': { sessionId: string; timestamp: Date };
-}
+};
 
 /**
  * All event types

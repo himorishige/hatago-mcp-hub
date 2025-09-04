@@ -12,12 +12,12 @@ import type { ConfigStore, Platform, PlatformOptions, SessionStore } from './typ
 /**
  * Cloudflare Workers environment bindings
  */
-export interface WorkersEnv {
+export type WorkersEnv = {
   CONFIG_KV: KVNamespace;
   CACHE_KV?: KVNamespace;
   SESSION_DO?: DurableObjectNamespace;
   [key: string]: unknown;
-}
+};
 
 /**
  * KV-based configuration storage for Workers
@@ -123,7 +123,7 @@ class DOSessionStore implements SessionStore {
     const stub = this.getStub(id);
     const response = await stub.fetch('https://session/get');
     if (response.ok) {
-      return await response.json();
+      return response.json();
     }
     return null;
   }
@@ -194,7 +194,7 @@ class KVSessionStore implements SessionStore {
   }
 
   async get(id: string): Promise<unknown> {
-    return await this.kv.get(`session:${id}`, { type: 'json' });
+    return this.kv.get(`session:${id}`, { type: 'json' });
   }
 
   async update(id: string, data: unknown): Promise<void> {

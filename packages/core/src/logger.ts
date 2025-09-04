@@ -7,9 +7,9 @@
 
 export type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
 
-export interface LogData {
+export type LogData = {
   [key: string]: unknown;
-}
+};
 
 export type Logger = {
   level: LogLevel;

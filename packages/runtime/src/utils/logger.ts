@@ -4,12 +4,12 @@
 
 import { getPlatform, isPlatformInitialized } from '../platform/index.js';
 
-export interface Logger {
+export type Logger = {
   debug: (message: string, ...args: unknown[]) => void;
   info: (message: string, ...args: unknown[]) => void;
   warn: (message: string, ...args: unknown[]) => void;
   error: (message: string, ...args: unknown[]) => void;
-}
+};
 
 /**
  * Check if debug mode is enabled
