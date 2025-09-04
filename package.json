@@ -9,6 +9,7 @@
     "check": "pnpm format:check && pnpm lint && pnpm -r run typecheck",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
+    "test:forks": "pnpm -r --filter @himorishige/hatago-* run test:forks",
     "serve:http": "pnpm -C packages/mcp-hub serve:http",
     "serve:stdio": "pnpm -C packages/mcp-hub serve:stdio"
   },
