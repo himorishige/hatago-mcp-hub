@@ -1,13 +1,13 @@
 import type { HatagoConfig } from '@himorishige/hatago-core/schemas';
 import type { HatagoHub } from '@himorishige/hatago-hub';
 
-export interface HubTestOptions {
+export type HubTestOptions = {
   config?: Partial<HatagoConfig>;
   timeout?: number;
   verbose?: boolean;
-}
+};
 
-export interface FixtureOptions {
+export type FixtureOptions = {
   type: 'stdio' | 'http' | 'sse';
   port?: number;
   features?: {
@@ -17,24 +17,24 @@ export interface FixtureOptions {
     fail?: boolean;
     resources?: boolean;
   };
-}
+};
 
-export interface WaitForOptions {
+export type WaitForOptions = {
   timeout?: number;
   interval?: number;
   errorMessage?: string;
-}
+};
 
-export interface TestFixture {
+export type TestFixture = {
   type: 'stdio' | 'http' | 'sse';
   port?: number;
   command?: string;
   args?: string[];
   url?: string;
   cleanup: () => Promise<void>;
-}
+};
 
-export interface TestContext {
+export type TestContext = {
   hub: HatagoHub;
   fixture: TestFixture;
-}
+};

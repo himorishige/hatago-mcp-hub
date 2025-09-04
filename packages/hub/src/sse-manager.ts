@@ -4,21 +4,21 @@
 
 import type { Logger } from './logger.js';
 
-export interface SSEClient {
+export type SSEClient = {
   id: string;
   writer: WritableStreamDefaultWriter;
   closed: boolean;
   keepAliveInterval?: ReturnType<typeof setInterval>;
   stream?: unknown; // For framework-specific streams
-}
+};
 
-export interface ProgressNotification {
+export type ProgressNotification = {
   progressToken: string;
   progress: number;
   total?: number;
   message?: string;
   serverId?: string;
-}
+};
 
 /**
  * SSE Manager for handling progress notifications

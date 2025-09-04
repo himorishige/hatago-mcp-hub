@@ -31,13 +31,13 @@ export enum ErrorSeverity {
 /**
  * Classified error information
  */
-export interface ClassifiedError {
+export type ClassifiedError = {
   type: ErrorType;
   severity: ErrorSeverity;
   retryable: boolean;
   message: string;
   originalError?: unknown;
-}
+};
 
 /**
  * Classify an error

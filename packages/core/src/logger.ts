@@ -7,11 +7,11 @@
 
 export type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
 
-export interface LogData {
+export type LogData = {
   [key: string]: unknown;
-}
+};
 
-export interface Logger {
+export type Logger = {
   level: LogLevel;
   error(obj: unknown, msg?: string): void;
   warn(obj: unknown, msg?: string): void;
@@ -19,7 +19,7 @@ export interface Logger {
   debug(obj: unknown, msg?: string): void;
   trace(obj: unknown, msg?: string): void;
   child?(prefix: string): Logger;
-}
+};
 
 /**
  * Log levels with numeric values for comparison

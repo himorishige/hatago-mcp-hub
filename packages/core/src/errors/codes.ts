@@ -73,7 +73,7 @@ export enum ErrorSeverity {
 /**
  * Extended error information
  */
-export interface ErrorContext {
+export type ErrorContext = {
   serverId?: string;
   sessionId?: string;
   toolName?: string;
@@ -81,4 +81,4 @@ export interface ErrorContext {
   timestamp?: Date;
   stack?: string;
   [key: string]: unknown;
-}
+};

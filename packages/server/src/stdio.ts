@@ -78,8 +78,12 @@ export async function startStdio(
     process.exit(0);
   };
 
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
+  process.on('SIGTERM', () => {
+    void shutdown('SIGTERM');
+  });
 
   // Handle STDIO input with proper buffering
   let buffer = '';
@@ -101,90 +105,92 @@ export async function startStdio(
 
   // IMPORTANT: Set up STDIO message handler BEFORE starting hub
   // This ensures we don't miss any messages that arrive immediately after startup
-  process.stdin.on('data', async (chunk: Buffer) => {
-    // Don't process new data during shutdown
-    if (isShuttingDown) {
-      return;
-    }
-
-    lastMessageTime = Date.now();
-    // Append new data to buffer
-    buffer += chunk.toString();
-
-    // Process all complete messages (newline-delimited)
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
-
-    for (const line of lines) {
-      if (!line.trim()) continue; // Skip empty lines
-
-      try {
-        const message = JSON.parse(line) as unknown;
-
-        // Validate JSON-RPC structure
-        if (!message || typeof message !== 'object') {
-          await sendMessage(
-            {
-              jsonrpc: '2.0',
-              error: {
-                code: -32600,
-                message: 'Invalid Request',
-                data: 'Request must be an object'
-              },
-              id: (message as Record<string, unknown>)?.id ?? null
-            },
-            logger,
-            isShuttingDown
-          );
-          continue;
-        }
-
-        // Check for required fields
-        const msg = message as Record<string, unknown>;
-        if (!msg.method && !msg.result && !msg.error) {
-          await sendMessage(
-            {
-              jsonrpc: '2.0',
-              error: {
-                code: -32600,
-                message: 'Invalid Request',
-                data: 'Missing required fields'
-              },
-              id: msg.id ?? null
-            },
-            logger,
-            isShuttingDown
-          );
-          continue;
-        }
-
-        logger.debug('Received:', message);
-
-        // Process message through hub
-        const response = await processMessage(hub, msg, logger);
-
-        if (response) {
-          await sendMessage(response, logger, isShuttingDown);
-        }
-      } catch (error) {
-        logger.error('Failed to parse message:', error, 'Line:', line);
-
-        // Send parse error response
-        await sendMessage(
-          {
-            jsonrpc: '2.0',
-            error: {
-              code: -32700,
-              message: 'Parse error',
-              data: error instanceof Error ? error.message : 'Invalid JSON'
-            },
-            id: null
-          },
-          logger,
-          isShuttingDown
-        );
+  process.stdin.on('data', (chunk: Buffer) => {
+    void (async () => {
+      // Don't process new data during shutdown
+      if (isShuttingDown) {
+        return;
       }
-    }
+
+      lastMessageTime = Date.now();
+      // Append new data to buffer
+      buffer += chunk.toString();
+
+      // Process all complete messages (newline-delimited)
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (!line.trim()) continue; // Skip empty lines
+
+        try {
+          const message = JSON.parse(line) as unknown;
+
+          // Validate JSON-RPC structure
+          if (!message || typeof message !== 'object') {
+            await sendMessage(
+              {
+                jsonrpc: '2.0',
+                error: {
+                  code: -32600,
+                  message: 'Invalid Request',
+                  data: 'Request must be an object'
+                },
+                id: (message as Record<string, unknown>)?.id ?? null
+              },
+              logger,
+              isShuttingDown
+            );
+            continue;
+          }
+
+          // Check for required fields
+          const msg = message as Record<string, unknown>;
+          if (!msg.method && !msg.result && !msg.error) {
+            await sendMessage(
+              {
+                jsonrpc: '2.0',
+                error: {
+                  code: -32600,
+                  message: 'Invalid Request',
+                  data: 'Missing required fields'
+                },
+                id: msg.id ?? null
+              },
+              logger,
+              isShuttingDown
+            );
+            continue;
+          }
+
+          logger.debug('Received:', message);
+
+          // Process message through hub
+          const response = await processMessage(hub, msg, logger);
+
+          if (response) {
+            await sendMessage(response, logger, isShuttingDown);
+          }
+        } catch (error) {
+          logger.error('Failed to parse message:', error, 'Line:', line);
+
+          // Send parse error response
+          await sendMessage(
+            {
+              jsonrpc: '2.0',
+              error: {
+                code: -32700,
+                message: 'Parse error',
+                data: error instanceof Error ? error.message : 'Invalid JSON'
+              },
+              id: null
+            },
+            logger,
+            isShuttingDown
+          );
+        }
+      }
+    })();
   });
 
   // Handle stdin errors
@@ -293,7 +299,7 @@ async function processMessage(
       case 'prompts/list':
       case 'prompts/get':
         // Forward to hub's JSON-RPC handler
-        return hub.handleJsonRpcRequest(message);
+        return await hub.handleJsonRpcRequest(message);
 
       default:
         // If it's a notification (no id), don't return an error

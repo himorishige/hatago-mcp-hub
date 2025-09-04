@@ -5,7 +5,7 @@
 import { startServer } from '@himorishige/hatago-server';
 import type { Command } from 'commander';
 
-interface ServeOptions {
+type ServeOptions = {
   mode?: 'stdio' | 'http';
   config?: string;
   port?: string;
@@ -14,7 +14,7 @@ interface ServeOptions {
   quiet?: boolean;
   stdio?: boolean;
   http?: boolean;
-}
+};
 
 export function setupServeCommand(program: Command): void {
   program

@@ -7,14 +7,14 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Command } from 'commander';
 
-interface McpServer {
+type McpServer = {
   id: string;
   type: 'local' | 'npx' | 'remote';
   command?: string;
   args?: string[];
   url?: string;
   transport?: 'stdio' | 'http' | 'sse';
-}
+};
 
 export function setupMcpCommand(program: Command): void {
   const mcp = program.command('mcp').description('Manage MCP servers');

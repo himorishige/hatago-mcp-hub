@@ -2,22 +2,22 @@ import type { Resource } from '@modelcontextprotocol/sdk/types.js';
 import { createNamingFunction, createParsingFunction } from '../utils/naming-strategy.js';
 import type { ToolNamingConfig } from './types.js';
 
-export interface ResourceMetadata extends Resource {
+export type ResourceMetadata = Resource & {
   serverId: string;
   originalUri: string;
-}
+};
 
-export interface ResourceResolveResult {
+export type ResourceResolveResult = {
   serverId: string;
   originalUri: string;
   publicUri: string;
-}
+};
 
-export interface ResourceRegistryOptions {
+export type ResourceRegistryOptions = {
   namingConfig?: ToolNamingConfig;
-}
+};
 
-export interface ResourceRegistry {
+export type ResourceRegistry = {
   registerServerResources: (serverId: string, resources: Resource[]) => void;
   clearServerResources: (serverId: string) => void;
   resolveResource: (publicUri: string) => ResourceResolveResult | null;
@@ -26,7 +26,7 @@ export interface ResourceRegistry {
   getResourceCollisions: () => Map<string, string[]>;
   getResourceCount: () => number;
   clear: () => void;
-}
+};
 
 /**
  * Create a resource registry for managing resources from multiple MCP servers

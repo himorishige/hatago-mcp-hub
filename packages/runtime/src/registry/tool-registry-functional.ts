@@ -10,11 +10,11 @@ import type { ToolNamingConfig } from './types.js';
 /**
  * Immutable registry type
  */
-export interface ToolRegistryState {
+export type ToolRegistryState = {
   readonly tools: ReadonlyMap<string, ToolMetadata>;
   readonly serverTools: ReadonlyMap<string, ReadonlySet<string>>;
   readonly namingConfig: ToolNamingConfig;
-}
+};
 
 /**
  * Create an empty registry

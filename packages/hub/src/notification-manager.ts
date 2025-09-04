@@ -10,19 +10,19 @@ import type { Logger } from './logger.js';
 export type NotificationSeverity = 'info' | 'warn' | 'error';
 export type NotificationCategory = 'config' | 'server' | 'tool';
 
-export interface NotificationEvent {
+export type NotificationEvent = {
   severity: NotificationSeverity;
   category: NotificationCategory;
   message: string;
   data?: unknown;
   timestamp: number;
-}
+};
 
-export interface NotificationConfig {
+export type NotificationConfig = {
   enabled: boolean;
   rateLimitSec: number;
   severity: NotificationSeverity[];
-}
+};
 
 /**
  * Simple notification manager with rate limiting

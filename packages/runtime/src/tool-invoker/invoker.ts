@@ -6,9 +6,9 @@ import type { ToolRegistry } from '../registry/tool-registry.js';
 import type { ToolCallResult, ToolHandler, ToolInvokerOptions, ToolWithHandler } from './types.js';
 
 // SSE Manager interface for progress notifications
-interface SSEManager {
+type SSEManager = {
   sendProgress(progressToken: string, progress: unknown): void;
-}
+};
 
 /**
  * Tool Invoker - Executes tools registered in the registry
@@ -90,23 +90,24 @@ export class ToolInvoker {
 
     try {
       // Create progress handler if progress token provided
+      const token = options?.progressToken;
       const progressHandler =
-        options?.progressToken && this.sseManager
+        token && this.sseManager
           ? (progress: number, total?: number, message?: string) => {
-              this.sseManager?.sendProgress(options.progressToken!, {
-                progressToken: options.progressToken,
-                progress,
-                total,
-                message
-              });
+              if (token) {
+                this.sseManager?.sendProgress(token, {
+                  progressToken: token,
+                  progress,
+                  total,
+                  message
+                });
+              }
             }
           : undefined;
 
       // Execute with timeout and progress support
-      const result = await this.executeWithTimeout(
-        () => handler(args, progressHandler),
-        opts.timeout!
-      );
+      const timeout = opts.timeout ?? 30000;
+      const result = await this.executeWithTimeout(() => handler(args, progressHandler), timeout);
 
       // Format result
       if (typeof result === 'string') {

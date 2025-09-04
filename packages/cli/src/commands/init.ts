@@ -6,11 +6,11 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { generateDefaultConfig } from '@himorishige/hatago-server';
 import type { Command } from 'commander';
 
-interface InitOptions {
+type InitOptions = {
   config?: string;
   force?: boolean;
   verbose?: boolean;
-}
+};
 
 export function setupInitCommand(program: Command): void {
   program

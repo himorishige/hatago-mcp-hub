@@ -5,11 +5,11 @@
 /**
  * Parsed command-line arguments
  */
-export interface ParsedArgs {
+export type ParsedArgs = {
   command?: string;
   flags: Record<string, string | boolean>;
   positional: string[];
-}
+};
 
 /**
  * Simple command-line argument parser with command support

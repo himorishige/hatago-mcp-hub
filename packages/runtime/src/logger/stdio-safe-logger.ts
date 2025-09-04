@@ -8,12 +8,12 @@
 import type { Logger, LogLevel } from '@himorishige/hatago-core';
 import { shouldLog } from '@himorishige/hatago-core';
 
-export interface StdioSafeLoggerOptions {
+export type StdioSafeLoggerOptions = {
   level?: LogLevel;
   json?: boolean;
   prefix?: string;
   file?: string | null; // For future file logging support
-}
+};
 
 export class StdioSafeLogger implements Logger {
   level: LogLevel;

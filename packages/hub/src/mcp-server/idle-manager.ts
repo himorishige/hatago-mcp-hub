@@ -12,7 +12,7 @@ import type { ServerStateMachine } from './state-machine.js';
 /**
  * Activity tracking data
  */
-export interface ActivityData {
+export type ActivityData = {
   serverId: string;
   lastActivity: number;
   referenceCount: number;
@@ -20,19 +20,19 @@ export interface ActivityData {
   activeTools: Map<string, number>;
   startTime: number;
   totalCalls: number;
-}
+};
 
 /**
  * Idle check result
  */
-export interface IdleCheckResult {
+export type IdleCheckResult = {
   serverId: string;
   isIdle: boolean;
   idleTimeMs: number;
   referenceCount: number;
   shouldStop: boolean;
   reason?: string;
-}
+};
 
 /**
  * Idle manager for automatic server shutdown
@@ -342,18 +342,20 @@ export class IdleManager extends EventEmitter {
     this.cancelIdleTimer(serverId);
 
     // Schedule new check
-    const timer = setTimeout(async () => {
-      const result = this.checkIdle(serverId);
+    const timer = setTimeout(() => {
+      void (async () => {
+        const result = this.checkIdle(serverId);
 
-      if (result.shouldStop) {
-        await this.handleIdleStop(serverId, result);
-      } else if (result.isIdle) {
-        // Transition to idling state
-        const state = this.stateMachine.getState(serverId);
-        if (state === ServerState.ACTIVE) {
-          await this.stateMachine.transition(serverId, ServerState.IDLING, 'Server is idle');
+        if (result.shouldStop) {
+          await this.handleIdleStop(serverId, result);
+        } else if (result.isIdle) {
+          // Transition to idling state
+          const state = this.stateMachine.getState(serverId);
+          if (state === ServerState.ACTIVE) {
+            await this.stateMachine.transition(serverId, ServerState.IDLING, 'Server is idle');
+          }
         }
-      }
+      })();
     }, policy.idleTimeoutMs);
 
     this.idleTimers.set(serverId, timer);

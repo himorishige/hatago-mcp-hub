@@ -14,15 +14,15 @@ import {
 import type { ToolNamingConfig, ToolNamingStrategy } from './types.js';
 
 // Tool name collision information
-export interface ToolCollision {
+export type ToolCollision = {
   toolName: string;
   serverIds: string[];
-}
+};
 
 // Tool registry options
-export interface ToolRegistryOptions {
+export type ToolRegistryOptions = {
   namingConfig: ToolNamingConfig;
-}
+};
 
 /**
  * Tool Registry - Tool name management and collision avoidance

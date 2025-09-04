@@ -14,56 +14,56 @@ export type { Session } from './session.js';
 // Additional types that were missing
 export type ToolNamingStrategy = 'prefix' | 'suffix' | 'none' | 'namespace' | 'error' | 'alias';
 
-export interface ToolCallResult {
+export type ToolCallResult = {
   success: boolean;
   result?: unknown;
   error?: Error;
-}
+};
 
-export interface ResourceTemplate {
+export type ResourceTemplate = {
   uriTemplate: string;
   name: string;
   description?: string;
   mimeType?: string;
-}
+};
 
-export interface PromptArgument {
+export type PromptArgument = {
   name: string;
   description?: string;
   required?: boolean;
-}
+};
 
-export interface SessionData {
+export type SessionData = {
   id: string;
   createdAt: number;
   expiresAt: number;
   data?: Record<string, unknown>;
-}
+};
 
-export interface SessionOptions {
+export type SessionOptions = {
   ttl?: number;
   data?: Record<string, unknown>;
-}
+};
 
-export interface HatagoError extends Error {
+export type HatagoError = Error & {
   code: string;
   details?: unknown;
-}
+};
 
 export type ServerType = 'stdio' | 'http' | 'sse' | 'ws';
 
 export type ServerStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
-export interface ServerInfo {
+export type ServerInfo = {
   id: string;
   name: string;
   version?: string;
   type: ServerType;
   status: ServerStatus;
-}
+};
 
-export interface ConnectionResult {
+export type ConnectionResult = {
   success: boolean;
   serverId: string;
   error?: Error;
-}
+};

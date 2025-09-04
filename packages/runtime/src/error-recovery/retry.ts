@@ -8,7 +8,7 @@ import { calculateDelay, type RetryStrategy, selectStrategy, shouldRetry } from 
 /**
  * Retry options
  */
-export interface RetryOptions {
+export type RetryOptions = {
   /** Retry strategy to use */
   strategy?: RetryStrategy;
 
@@ -23,18 +23,18 @@ export interface RetryOptions {
 
   /** Abort signal for cancellation */
   signal?: AbortSignal;
-}
+};
 
 /**
  * Retry result
  */
-export interface RetryResult<T> {
+export type RetryResult<T> = {
   success: boolean;
   value?: T;
   error?: ClassifiedError;
   attempts: number;
   totalTime: number;
-}
+};
 
 /**
  * Sleep for specified milliseconds
@@ -132,10 +132,13 @@ export async function retry<T>(
   });
 
   if (!result.success) {
-    throw result.error?.originalError ?? new Error('Retry failed');
+    const original = result.error?.originalError;
+    throw original instanceof Error ? original : new Error('Retry failed');
   }
-
-  return result.value!;
+  if (result.value === undefined) {
+    throw new Error('Retry succeeded without a value');
+  }
+  return result.value;
 }
 
 /**
@@ -193,7 +196,8 @@ export function makeRetryable<T extends (...args: unknown[]) => Promise<unknown>
     const result = await withRetry(() => fn(...args), options);
 
     if (!result.success) {
-      throw result.error?.originalError ?? new Error('Operation failed');
+      const original = result.error?.originalError;
+      throw original instanceof Error ? original : new Error('Operation failed');
     }
 
     return result.value as ReturnType<T>;

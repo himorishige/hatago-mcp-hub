@@ -34,7 +34,7 @@ export enum ServerState {
 /**
  * Idle policy configuration
  */
-export interface IdlePolicy {
+export type IdlePolicy = {
   /** Time in ms before stopping idle server (default: 300000 = 5min) */
   idleTimeoutMs?: number;
 
@@ -43,12 +43,12 @@ export interface IdlePolicy {
 
   /** When to reset activity counter */
   activityReset?: ActivityReset;
-}
+};
 
 /**
  * Timeout configuration for server operations
  */
-export interface ServerTimeouts {
+export type ServerTimeouts = {
   /** Process spawn/connection timeout in ms (default: 20000) */
   spawnTimeout?: number;
 
@@ -57,12 +57,12 @@ export interface ServerTimeouts {
 
   /** Ready state timeout in ms (default: 20000) */
   readyTimeout?: number;
-}
+};
 
 /**
  * Security configuration
  */
-export interface ServerSecurity {
+export type ServerSecurity = {
   /** Require authentication for this server */
   requireAuth?: boolean;
 
@@ -74,12 +74,12 @@ export interface ServerSecurity {
 
   /** Checksum for integrity verification */
   checksum?: string;
-}
+};
 
 /**
  * Server metadata (auto-generated, not user-editable)
  */
-export interface ServerMetadata {
+export type ServerMetadata = {
   /** Server identifier */
   serverId: string;
 
@@ -134,12 +134,12 @@ export interface ServerMetadata {
     headers?: Record<string, string>;
     lastSuccessfulPing?: string;
   };
-}
+};
 
 /**
  * Complete server configuration
  */
-export interface ServerConfigInterface {
+export type ServerConfigInterface = {
   // === Connection Configuration ===
 
   /** Local server command */
@@ -192,12 +192,12 @@ export interface ServerConfigInterface {
     timestamp: string;
     retryAfterMs?: number;
   };
-}
+};
 
 /**
  * Hatago configuration with servers
  */
-export interface ServerHatagoConfig {
+export type ServerHatagoConfig = {
   /** MCP servers configuration */
   mcpServers?: Record<string, ServerConfigInterface>;
 
@@ -220,4 +220,4 @@ export interface ServerHatagoConfig {
 
   /** Admin mode for showing manual servers */
   adminMode?: boolean;
-}
+};

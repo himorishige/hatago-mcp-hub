@@ -2,9 +2,9 @@
  * Simple logger for Hatago Hub
  */
 
-export interface LogData {
+export type LogData = {
   [key: string]: unknown;
-}
+};
 
 export class Logger {
   private debugMode: boolean;

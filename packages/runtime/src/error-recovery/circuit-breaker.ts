@@ -14,7 +14,7 @@ export enum CircuitState {
 /**
  * Circuit breaker configuration
  */
-export interface CircuitBreakerConfig {
+export type CircuitBreakerConfig = {
   /** Failure threshold to open circuit */
   failureThreshold: number;
 
@@ -29,7 +29,7 @@ export interface CircuitBreakerConfig {
 
   /** Optional callback when state changes */
   onStateChange?: (oldState: CircuitState, newState: CircuitState) => void;
-}
+};
 
 /**
  * Circuit breaker for protecting against cascading failures

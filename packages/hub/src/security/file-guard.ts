@@ -10,7 +10,7 @@ import { diffLines } from 'diff';
 /**
  * Diff result for configuration changes
  */
-export interface DiffResult {
+export type DiffResult = {
   /** Text diff of changes */
   diff: string;
 
@@ -31,7 +31,7 @@ export interface DiffResult {
       to: string;
     }>;
   };
-}
+};
 
 /**
  * File access guard

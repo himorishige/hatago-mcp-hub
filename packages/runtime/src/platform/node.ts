@@ -157,7 +157,7 @@ export function createNodePlatform(options: PlatformOptions = {}): Platform {
     },
 
     readFile: async (filePath: string): Promise<string> => {
-      return await fs.readFile(filePath, 'utf-8');
+      return fs.readFile(filePath, 'utf-8');
     },
 
     writeFile: async (filePath: string, content: string): Promise<void> => {

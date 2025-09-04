@@ -8,13 +8,13 @@ import { ServerState } from '@himorishige/hatago-core';
 /**
  * State transition event
  */
-export interface StateTransitionEvent {
+export type StateTransitionEvent = {
   serverId: string;
   from: ServerState;
   to: ServerState;
   reason?: string;
   timestamp: string;
-}
+};
 
 /**
  * Valid state transitions

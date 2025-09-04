@@ -17,7 +17,7 @@ export type ToolHandler = (args: unknown, progressCallback?: ProgressCallback) =
 /**
  * Tool call result
  */
-export interface ToolCallResult {
+export type ToolCallResult = {
   content?: Array<{
     type: 'text' | 'image' | 'resource';
     text?: string;
@@ -25,21 +25,21 @@ export interface ToolCallResult {
     mimeType?: string;
   }>;
   isError?: boolean;
-}
+};
 
 /**
  * Tool with handler
  */
-export interface ToolWithHandler extends Tool {
+export type ToolWithHandler = Tool & {
   handler: ToolHandler;
-}
+};
 
 /**
  * Tool Invoker options
  */
-export interface ToolInvokerOptions {
+export type ToolInvokerOptions = {
   timeout?: number;
   retryCount?: number;
   retryDelay?: number;
   progressToken?: string;
-}
+};
