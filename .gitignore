@@ -25,3 +25,5 @@ pnpm-debug.log*
 
 # Monorepo
 **/.pnpm-store/
+/.mc2.json
+/.mcp.json
