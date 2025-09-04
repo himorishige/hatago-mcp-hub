@@ -9,6 +9,7 @@ import { createEventsEndpoint } from '@himorishige/hatago-hub';
 import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/node';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
+import { maybeRegisterMetricsEndpoint, registerHubMetrics } from './metrics.js';
 import { cors } from 'hono/cors';
 import type { Logger } from './logger.js';
 import type { HatagoConfig } from '@himorishige/hatago-core';
@@ -38,6 +39,8 @@ export async function startHttp(options: HttpOptions): Promise<void> {
     tags
   });
   await hub.start();
+  // Register metrics via hub events (opt-in)
+  registerHubMetrics(hub);
 
   // Create Hono app
   const app = new Hono();
@@ -60,6 +63,9 @@ export async function startHttp(options: HttpOptions): Promise<void> {
       uptime: process.uptime()
     })
   );
+
+  // Metrics endpoint (opt-in)
+  maybeRegisterMetricsEndpoint(app);
 
   // MCP protocol endpoint
   app.all('/mcp', async (c) => {

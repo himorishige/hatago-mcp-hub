@@ -10,6 +10,7 @@ import type { HatagoHub } from '@himorishige/hatago-hub';
 import type { HatagoConfig } from '@himorishige/hatago-core';
 import { createHub } from '@himorishige/hatago-hub/node';
 import type { Logger } from './logger.js';
+import { registerHubMetrics } from './metrics.js';
 
 /**
  * Start the MCP server in STDIO mode
@@ -40,6 +41,8 @@ export async function startStdio(
     watchConfig,
     tags
   });
+  // Metrics via hub event (opt-in); no HTTP endpoint in STDIO
+  registerHubMetrics(hub);
 
   // Set up notification handler to forward to Claude Code
   hub.onNotification = async (notification: unknown) => {

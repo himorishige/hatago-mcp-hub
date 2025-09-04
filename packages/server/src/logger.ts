@@ -17,17 +17,36 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 
 export class Logger {
   private level: number;
+  private json: boolean;
 
   constructor(level: string = 'info') {
-    this.level = LOG_LEVELS[level as LogLevel] ?? LOG_LEVELS.info;
+    const envLevel = process.env.HATAGO_LOG_LEVEL;
+    const finalLevel = (envLevel ?? level) as LogLevel;
+    this.level = LOG_LEVELS[finalLevel] ?? LOG_LEVELS.info;
+    this.json = process.env.HATAGO_LOG === 'json';
   }
 
   private log(level: LogLevel, ...args: unknown[]): void {
-    if (LOG_LEVELS[level] <= this.level) {
+    if (LOG_LEVELS[level] > this.level) return;
+
+    // Cheap early return: avoid string building when suppressed
+    if (!this.json) {
       const timestamp = new Date().toISOString();
       const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
       console.error(prefix, ...args);
+      return;
     }
+
+    // JSON mode (opt-in)
+    const record: Record<string, unknown> = {
+      time: new Date().toISOString(),
+      level,
+      msg: typeof args[0] === 'string' ? args[0] : undefined
+    };
+    if (args.length > 1 || typeof args[0] !== 'string') {
+      record.data = args.length === 1 ? args[0] : args;
+    }
+    console.error(JSON.stringify(record));
   }
 
   error(...args: unknown[]): void {
