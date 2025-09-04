@@ -1986,10 +1986,10 @@ export class HatagoHub {
           }
 
           // Fallback to normal tool call without progress
-      const result = await this.tools.call(params?.name as string, params?.arguments, {
-        progressToken: progressToken as string | undefined,
-        sessionId
-      });
+          const result = await this.tools.call(params?.name as string, params?.arguments, {
+            progressToken: progressToken as string | undefined,
+            sessionId
+          });
 
           // Unregister progress token after completion
           if (progressToken && this.sseManager) {

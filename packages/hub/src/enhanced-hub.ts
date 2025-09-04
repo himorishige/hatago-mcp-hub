@@ -415,7 +415,7 @@ export class EnhancedHatagoHub extends HatagoHub {
     }
 
     // Fall back to normal tool invocation
-  return this.toolInvoker.callTool('default', name, args, {
+    return this.toolInvoker.callTool('default', name, args, {
       timeout: options.timeout ?? this.options.defaultTimeout
     });
   }

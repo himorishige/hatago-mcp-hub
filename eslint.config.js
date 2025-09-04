@@ -72,10 +72,7 @@ export default tseslint.config(
 
       // Phase 1 additions (mostly auto-fixable or low-risk)
       '@typescript-eslint/no-useless-empty-export': 'error',
-      '@typescript-eslint/no-unused-expressions': [
-        'error',
-        { allowTernary: true }
-      ]
+      '@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }]
     }
   },
 
