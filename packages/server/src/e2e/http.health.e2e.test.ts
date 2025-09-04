@@ -19,18 +19,21 @@ vi.mock('@hono/node-server', async () => {
       hostname: string;
     }) => {
       capturedFetch = opts.fetch;
-      // Minimal server-like object with address() and close()
+      // Fake Node server (minimal)
+      const fakeServer = {
+        on: (_ev: string, _fn: (..._a: unknown[]) => void) => {},
+        close: (cb: () => void) => cb()
+      };
+      // Return with `.server` for normalization
       return {
+        server: fakeServer,
         address() {
           return {
             port: opts.port,
             address: opts.hostname
           } as unknown as import('node:net').AddressInfo;
-        },
-        close(cb?: (err?: Error) => void) {
-          if (cb) cb();
         }
-      };
+      } as unknown as { server: { on: Function; close: Function } };
     }
   };
 });

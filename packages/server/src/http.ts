@@ -8,6 +8,7 @@
 import { createEventsEndpoint } from '@himorishige/hatago-hub';
 import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/node';
 import { serve } from '@hono/node-server';
+// Intentionally avoid importing concrete server/socket types to keep compatibility
 import { Hono } from 'hono';
 import { maybeRegisterMetricsEndpoint, registerHubMetrics } from './metrics.js';
 import { cors } from 'hono/cors';
@@ -76,11 +77,14 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   app.get('/sse', createEventsEndpoint(hub));
 
   // Start HTTP server
-  const server = serve({
+  const srv = serve({
     fetch: app.fetch,
     port,
     hostname: host
   });
+  // Normalize Hono server: some versions expose `{ server }`, others return the Node server directly
+  const server =
+    (srv as unknown as { server?: MinimalServer }).server ?? (srv as unknown as MinimalServer);
 
   logger.info(`Hatago MCP Hub started in HTTP mode`);
   logger.info(`Server: http://${host}:${port}`);
@@ -88,13 +92,50 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   logger.info(`SSE endpoint: http://${host}:${port}/sse`);
   logger.info(`Health check: http://${host}:${port}/health`);
 
-  // Graceful shutdown
+  setupGracefulShutdown({ server, hub, logger });
+}
+
+/**
+ * Graceful shutdown helper for HTTP server
+ */
+type MinimalSocket = { on: (ev: 'close', fn: () => void) => void; destroy?: () => void };
+type MinimalServer = {
+  close: (cb: () => void) => void;
+  on: (ev: 'connection', fn: (s: MinimalSocket) => void) => void;
+};
+
+export function setupGracefulShutdown(args: {
+  server: MinimalServer;
+  hub: { stop: () => Promise<void> };
+  logger: { info: (...a: unknown[]) => void; error: (...a: unknown[]) => void };
+  timeoutMs?: number;
+}): void {
+  const { server, hub, logger, timeoutMs } = args;
+  const sockets = new Set<MinimalSocket>();
+
+  server.on('connection', (socket: MinimalSocket) => {
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+  });
+
   const shutdown = async (signal: string) => {
-    logger.info(`Received ${signal}, shutting down gracefully...`);
+    const to = Number(timeoutMs ?? process.env.HATAGO_SHUTDOWN_TIMEOUT_MS ?? 5000);
+    logger.info(`Received ${signal}, starting graceful shutdown (timeout=${to}ms)...`);
 
     try {
+      const closePromise = new Promise<void>((resolve) => server.close(() => resolve()));
       await hub.stop();
-      server.close();
+      await Promise.race([closePromise, new Promise<void>((r) => setTimeout(r, to))]);
+
+      if (sockets.size > 0) {
+        logger.info(`Forcing close of ${sockets.size} sockets`);
+        for (const s of sockets) {
+          if (typeof s.destroy === 'function') {
+            s.destroy();
+          }
+        }
+      }
+
       logger.info('Shutdown complete');
       process.exit(0);
     } catch (error) {
