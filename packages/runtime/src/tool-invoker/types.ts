@@ -42,4 +42,5 @@ export type ToolInvokerOptions = {
   retryCount?: number;
   retryDelay?: number;
   progressToken?: string;
+  maxConcurrency?: number;
 };

@@ -4,6 +4,7 @@
 
 import type { ToolRegistry } from '../registry/tool-registry.js';
 import type { ToolCallResult, ToolHandler, ToolInvokerOptions, ToolWithHandler } from './types.js';
+import { getPlatform, isPlatformInitialized } from '../platform/index.js';
 
 // SSE Manager interface for progress notifications
 type SSEManager = {
@@ -18,6 +19,9 @@ export class ToolInvoker {
   private toolRegistry: ToolRegistry;
   private options: ToolInvokerOptions;
   private sseManager?: SSEManager;
+  private maxConcurrency: number;
+  private inFlight = 0;
+  private waiters: Array<() => void> = [];
 
   constructor(
     toolRegistry: ToolRegistry,
@@ -31,6 +35,11 @@ export class ToolInvoker {
       retryCount: options.retryCount ?? 0,
       retryDelay: options.retryDelay ?? 1000
     };
+    const envVal = isPlatformInitialized()
+      ? getPlatform().getEnv('HATAGO_MAX_CONCURRENCY')
+      : (typeof process !== 'undefined' ? process.env?.HATAGO_MAX_CONCURRENCY : undefined);
+    const envParsed = envVal ? Number(envVal) : undefined;
+    this.maxConcurrency = options.maxConcurrency ?? (Number.isFinite(envParsed) && (envParsed as number) > 0 ? (envParsed as number) : 8);
   }
 
   /**
@@ -107,7 +116,13 @@ export class ToolInvoker {
 
       // Execute with timeout and progress support
       const timeout = opts.timeout ?? 30000;
-      const result = await this.executeWithTimeout(() => handler(args, progressHandler), timeout);
+      await this.acquire();
+      let result: unknown;
+      try {
+        result = await this.executeWithTimeout(() => handler(args, progressHandler), timeout);
+      } finally {
+        this.release();
+      }
 
       // Format result
       if (typeof result === 'string') {
@@ -146,6 +161,28 @@ export class ToolInvoker {
         isError: true
       };
     }
+  }
+
+  private async acquire(): Promise<void> {
+    if (this.inFlight < this.maxConcurrency) {
+      this.inFlight++;
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      this.waiters.push(() => {
+        this.inFlight++;
+        resolve();
+      });
+    });
+  }
+
+  private release(): void {
+    const next = this.waiters.shift();
+    if (next) {
+      next();
+      return;
+    }
+    this.inFlight = Math.max(0, this.inFlight - 1);
   }
 
   /**
