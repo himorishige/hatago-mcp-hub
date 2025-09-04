@@ -42,6 +42,7 @@ Add to your `.mcp.json`:
 
 - For development and debugging
 - Provides `/mcp`, `/sse`, and `/health` endpoints
+- Provides `/metrics` when metrics are enabled (`HATAGO_METRICS=1`)
 - Enable with `--http` flag
 
 ## Options
@@ -96,6 +97,8 @@ Supports JSON with comments (JSONC):
 - `HATAGO_HOST` - HTTP server host
 - `HATAGO_PORT` - HTTP server port
 - `HATAGO_LOG_LEVEL` - Log level
+- `HATAGO_LOG` - Set to `json` to enable JSON logs (stderr)
+- `HATAGO_METRICS` - Set to `1` to enable in-memory metrics and expose `/metrics` (HTTP mode only)
 
 ## Priority Order
 

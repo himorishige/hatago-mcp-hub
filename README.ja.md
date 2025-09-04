@@ -326,6 +326,19 @@ hatago serve --http --port 3535
 # URL: http://localhost:3535/mcp
 ```
 
+### メトリクス（オプトイン）
+
+軽量なインメモリメトリクスを有効化し、HTTP エンドポイントを公開できます：
+
+```bash
+HATAGO_METRICS=1 hatago serve --http --port 3535
+# 表示: http://localhost:3535/metrics
+```
+
+補足:
+- 既定では無効で、無効時のオーバーヘッドはほぼゼロです。
+- JSON ログは `HATAGO_LOG=json`（`HATAGO_LOG_LEVEL` に準拠）で有効化できます。
+
 ## 📚 ドキュメント
 
 ### 🎯 ユーザー向け

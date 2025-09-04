@@ -169,6 +169,19 @@ hatago serve --http --port 3535
 
 Visit [MCP Inspector](https://inspector.mcphub.com/)
 
+### Metrics (opt-in)
+
+Enable lightweight in-memory metrics and expose an HTTP endpoint:
+
+```bash
+HATAGO_METRICS=1 hatago serve --http --port 3535
+# Then visit: http://localhost:3535/metrics
+```
+
+Notes:
+- Metrics are disabled by default and add near-zero overhead when off.
+- JSON logs are available when `HATAGO_LOG=json` (respecting `HATAGO_LOG_LEVEL`).
+
 ## ⚙️ Configuration
 
 ### Basic Configuration

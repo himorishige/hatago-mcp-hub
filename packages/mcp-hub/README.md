@@ -140,6 +140,17 @@ hatago serve --http --port 3535
 
 # Connect MCP Inspector to:
 # - Endpoint: http://localhost:3535/mcp
+
+### Metrics (opt-in)
+
+Enable lightweight metrics and expose an endpoint (HTTP mode only):
+
+```bash
+HATAGO_METRICS=1 hatago serve --http --port 3535
+# Then visit: http://localhost:3535/metrics
+```
+
+JSON logs can be enabled with `HATAGO_LOG=json` (respects `HATAGO_LOG_LEVEL`).
 ```
 
 ## Configuration
