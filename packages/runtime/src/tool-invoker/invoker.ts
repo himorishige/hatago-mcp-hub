@@ -37,9 +37,13 @@ export class ToolInvoker {
     };
     const envVal = isPlatformInitialized()
       ? getPlatform().getEnv('HATAGO_MAX_CONCURRENCY')
-      : (typeof process !== 'undefined' ? process.env?.HATAGO_MAX_CONCURRENCY : undefined);
+      : typeof process !== 'undefined'
+        ? process.env?.HATAGO_MAX_CONCURRENCY
+        : undefined;
     const envParsed = envVal ? Number(envVal) : undefined;
-    this.maxConcurrency = options.maxConcurrency ?? (Number.isFinite(envParsed) && (envParsed as number) > 0 ? (envParsed as number) : 8);
+    this.maxConcurrency =
+      options.maxConcurrency ??
+      (Number.isFinite(envParsed) && (envParsed as number) > 0 ? (envParsed as number) : 8);
   }
 
   /**
