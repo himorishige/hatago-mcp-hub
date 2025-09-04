@@ -27,3 +27,4 @@ pnpm-debug.log*
 **/.pnpm-store/
 /.mc2.json
 /.mcp.json
+/claude-with-everything.config.json
