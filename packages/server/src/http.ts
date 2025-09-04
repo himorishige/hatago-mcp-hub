@@ -77,11 +77,13 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   app.get('/sse', createEventsEndpoint(hub));
 
   // Start HTTP server
-  const server = serve({
+  const srv = serve({
     fetch: app.fetch,
     port,
     hostname: host
   });
+  // Normalize Hono server: some versions expose `{ server }`, others return the Node server directly
+  const server = (srv as unknown as { server?: MinimalServer }).server ?? (srv as unknown as MinimalServer);
 
   logger.info(`Hatago MCP Hub started in HTTP mode`);
   logger.info(`Server: http://${host}:${port}`);

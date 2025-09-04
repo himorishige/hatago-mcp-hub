@@ -40,14 +40,12 @@ describe('setupGracefulShutdown (smoke)', () => {
       throw new Error('exit');
     });
 
-    await expect(async () => {
-      process.emit('SIGINT');
-      // allow timers to run
-      await new Promise((r) => setTimeout(r, 30));
-      // close callback might be pending; force destroy path
-    }).rejects.toThrowError('exit');
+    process.emit('SIGINT');
+    // allow timers to run
+    await new Promise((r) => setTimeout(r, 30));
 
     expect(hub.stop).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalled();
     // socket should be destroyed by timeout path
     expect((sock as any).destroyed).toBe(true);
 
