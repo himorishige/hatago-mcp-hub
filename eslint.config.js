@@ -45,7 +45,7 @@ export default tseslint.config(
         'error',
         {
           checksVoidReturn: {
-            arguments: false
+            arguments: true
           }
         }
       ],
@@ -66,9 +66,13 @@ export default tseslint.config(
       '@typescript-eslint/explicit-function-return-type': 'off', // Still off - too restrictive
       '@typescript-eslint/explicit-module-boundary-types': 'off', // Still off - too restrictive
       '@typescript-eslint/require-await': 'error',
-      '@typescript-eslint/no-unnecessary-type-assertion': 'warn', // Start with warn
-      '@typescript-eslint/prefer-nullish-coalescing': 'warn', // Phase 1: start with warn
-      '@typescript-eslint/prefer-optional-chain': 'error', // Phase 1: promote to error
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/prefer-nullish-coalescing': 'warn',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      '@typescript-eslint/only-throw-error': 'error',
+      '@typescript-eslint/return-await': ['error', 'in-try-catch'],
+      '@typescript-eslint/no-non-null-assertion': 'warn',
 
       // Phase 1 additions (mostly auto-fixable or low-risk)
       '@typescript-eslint/no-useless-empty-export': 'error',
