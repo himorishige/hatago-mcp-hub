@@ -336,6 +336,7 @@ HATAGO_METRICS=1 hatago serve --http --port 3535
 ```
 
 補足:
+
 - 既定では無効で、無効時のオーバーヘッドはほぼゼロです。
 - JSON ログは `HATAGO_LOG=json`（`HATAGO_LOG_LEVEL` に準拠）で有効化できます。
 

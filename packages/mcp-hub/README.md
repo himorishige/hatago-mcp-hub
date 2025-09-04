@@ -135,7 +135,7 @@ Note: Codex CLI connects via STDIO; use `mcp-remote` to bridge HTTP endpoints.
 
 Start in HTTP mode and connect:
 
-```bash
+````bash
 hatago serve --http --port 3535
 
 # Connect MCP Inspector to:
@@ -148,10 +148,11 @@ Enable lightweight metrics and expose an endpoint (HTTP mode only):
 ```bash
 HATAGO_METRICS=1 hatago serve --http --port 3535
 # Then visit: http://localhost:3535/metrics
-```
+````
 
 JSON logs can be enabled with `HATAGO_LOG=json` (respects `HATAGO_LOG_LEVEL`).
-```
+
+````
 
 ## Configuration
 
@@ -178,7 +179,7 @@ Create a `hatago.config.json`:
     }
   }
 }
-```
+````
 
 ### Remote Server Configuration
 

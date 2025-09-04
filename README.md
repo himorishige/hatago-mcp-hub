@@ -179,6 +179,7 @@ HATAGO_METRICS=1 hatago serve --http --port 3535
 ```
 
 Notes:
+
 - Metrics are disabled by default and add near-zero overhead when off.
 - JSON logs are available when `HATAGO_LOG=json` (respecting `HATAGO_LOG_LEVEL`).
 
