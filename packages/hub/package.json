@@ -32,6 +32,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "vitest run",
+    "test:forks": "vitest run --pool=forks",
     "test:watch": "vitest",
     "test:node": "vitest run --config vitest.config.ts",
     "test:workers": "vitest run --config vitest.config.workers.ts",

@@ -47,6 +47,7 @@
     "postpack": "node scripts/restore-package.js",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",
+    "test:forks": "vitest run --pool=forks",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write ./src",
     "lint": "eslint ./src"

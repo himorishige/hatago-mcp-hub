@@ -72,7 +72,7 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
       '@typescript-eslint/only-throw-error': 'error',
       '@typescript-eslint/return-await': ['error', 'in-try-catch'],
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'error',
 
       // Phase 1 additions (mostly auto-fixable or low-risk)
       '@typescript-eslint/no-useless-empty-export': 'error',
