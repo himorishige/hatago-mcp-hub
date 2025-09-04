@@ -62,7 +62,7 @@ describe('server/http /health (smoke)', () => {
 
     expect(capturedFetch).toBeTypeOf('function');
 
-    const res = await capturedFetch!(new Request('http://local/health'));
+    const res = await capturedFetch!(new Request('http://localhost/health'));
     expect(res.ok).toBe(true);
     const json = (await res.json()) as any;
     expect(json.status).toBe('healthy');
