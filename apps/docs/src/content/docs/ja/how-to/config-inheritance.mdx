@@ -1,0 +1,370 @@
+---
+title: 設定の継承
+description: extendsを使った設定ファイルの継承と再利用方法
+sidebar:
+  order: 4
+manual: true
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Aside, Code } from '@astrojs/starlight/components';
+
+Hatago Hub v0.0.4から、`extends`フィールドを使った設定の継承がサポートされました。これにより、共通設定を再利用し、環境別・プロジェクト別の設定を効率的に管理できます。
+
+## 継承の仕組み
+
+### 基本的な継承
+
+ベース設定を作成し、それを他の設定で継承：
+
+```json title="~/.hatago/base.config.json"
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["essential"]
+    }
+  }
+}
+```
+
+子設定でベースを継承：
+
+```json title="hatago.config.json"
+{
+  "extends": "~/.hatago/base.config.json",
+  "logLevel": "debug", // 上書き
+  "mcpServers": {
+    "github": {
+      // 追加
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+結果的な設定：
+
+- `logLevel`: "debug" （子が上書き）
+- `mcpServers`: filesystemとgithubの両方が含まれる
+
+### 複数ファイルの継承
+
+複数の設定ファイルを継承することも可能：
+
+```json
+{
+  "extends": ["~/.hatago/global.json", "./team-settings.json", "./project-settings.json"],
+  "mcpServers": {
+    // プロジェクト固有の設定
+  }
+}
+```
+
+<Aside type="note">
+  配列で指定した場合、後のファイルが前のファイルの設定を上書きします。
+  最後に現在のファイルの設定が適用されます。
+</Aside>
+
+## パスの解決
+
+### サポートされるパス形式
+
+<CardGrid>
+  <Card title="ホームディレクトリ" icon="home">
+    ```json "extends": "~/.hatago/global.json" ``` ユーザーのホームディレクトリから解決
+  </Card>
+  <Card title="相対パス" icon="folder">
+    ```json "extends": "./base.config.json" ``` 現在のファイルからの相対パス
+  </Card>
+  <Card title="絶対パス" icon="document">
+    ```json "extends": "/etc/hatago/system.json" ``` システムの絶対パス
+  </Card>
+  <Card title="親ディレクトリ" icon="arrow-up">
+    ```json "extends": "../shared/common.json" ``` 親ディレクトリへの参照も可能
+  </Card>
+</CardGrid>
+
+## マージのルール
+
+### ディープマージ
+
+設定は深くマージされ、子の値が親の値を上書きします：
+
+```json title="parent.json"
+{
+  "mcpServers": {
+    "api": {
+      "url": "https://api.example.com",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Version": "v1"
+      }
+    }
+  }
+}
+```
+
+```json title="child.json"
+{
+  "extends": "./parent.json",
+  "mcpServers": {
+    "api": {
+      "headers": {
+        "X-API-Version": "v2",
+        "Authorization": "Bearer ${TOKEN}"
+      }
+    }
+  }
+}
+```
+
+結果：
+
+```json
+{
+  "mcpServers": {
+    "api": {
+      "url": "https://api.example.com", // 親から継承
+      "headers": {
+        "Content-Type": "application/json", // 親から継承
+        "X-API-Version": "v2", // 子が上書き
+        "Authorization": "Bearer ${TOKEN}" // 子が追加
+      }
+    }
+  }
+}
+```
+
+### サーバー設定の無効化
+
+親で定義されたサーバーを子で無効化：
+
+```json
+{
+  "extends": "./parent.json",
+  "mcpServers": {
+    "unwanted-server": {
+      "disabled": true
+    }
+  }
+}
+```
+
+## 実践的な使用例
+
+### 環境別設定
+
+<Tabs>
+<TabItem label="ベース設定">
+```json title="base.config.json"
+{
+  "version": 1,
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "tags": ["common"]
+    }
+  }
+}
+```
+</TabItem>
+
+<TabItem label="開発環境">
+```json title="dev.config.json"
+{
+  "extends": "./base.config.json",
+  "logLevel": "debug",
+  "mcpServers": {
+    "filesystem": {
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./dev"],
+      "tags": ["common", "development"]
+    },
+    "mock-api": {
+      "command": "mock-server",
+      "tags": ["development"]
+    }
+  }
+}
+```
+</TabItem>
+
+<TabItem label="本番環境">
+```json title="prod.config.json"
+{
+  "extends": "./base.config.json",
+  "logLevel": "error",
+  "mcpServers": {
+    "filesystem": {
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/data"],
+      "tags": ["common", "production"]
+    },
+    "api": {
+      "url": "https://api.production.com",
+      "headers": {
+        "Authorization": "Bearer ${PROD_TOKEN}"
+      },
+      "tags": ["production"]
+    }
+  }
+}
+```
+</TabItem>
+</Tabs>
+
+### チーム共有設定
+
+組織全体の設定を共有：
+
+```json title="~/.hatago/company.json"
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "company-wiki": {
+      "url": "https://wiki.company.com/mcp",
+      "headers": {
+        "X-Company-ID": "${COMPANY_ID}"
+      },
+      "tags": ["company", "documentation"]
+    },
+    "company-auth": {
+      "url": "https://auth.company.com/mcp",
+      "tags": ["company", "security"]
+    }
+  }
+}
+```
+
+個人の設定で会社設定を継承：
+
+```json title="hatago.config.json"
+{
+  "extends": "~/.hatago/company.json",
+  "mcpServers": {
+    "personal-tools": {
+      "command": "personal-mcp-server",
+      "env": {
+        "USER_ID": "${USER}"
+      }
+    }
+  }
+}
+```
+
+### プロジェクトテンプレート
+
+プロジェクトタイプ別のテンプレート：
+
+```json title="templates/react-app.json"
+{
+  "mcpServers": {
+    "vite": {
+      "command": "vite-mcp-server",
+      "tags": ["frontend", "build"]
+    },
+    "eslint": {
+      "command": "eslint-mcp-server",
+      "tags": ["frontend", "linting"]
+    },
+    "react-devtools": {
+      "command": "react-devtools-mcp",
+      "tags": ["frontend", "debugging"]
+    }
+  }
+}
+```
+
+```json title="templates/node-api.json"
+{
+  "mcpServers": {
+    "nodemon": {
+      "command": "nodemon-mcp-server",
+      "tags": ["backend", "development"]
+    },
+    "swagger": {
+      "command": "swagger-mcp-server",
+      "tags": ["backend", "documentation"]
+    }
+  }
+}
+```
+
+## 設定の優先順位
+
+<Steps>
+1. **最下層の子設定**
+   現在のファイルの設定が最優先
+
+2. **extends配列の後方**
+   配列で複数指定した場合、後のファイルが優先
+
+3. **extends配列の前方**
+   配列の最初のファイルは最も低い優先度
+
+4. **デフォルト値**
+   どこにも定義されていない場合のシステムデフォルト
+   </Steps>
+
+## ベストプラクティス
+
+<CardGrid>
+  <Card title="階層的な構成" icon="list">
+    グローバル → チーム → プロジェクト → 個人の順で階層化
+  </Card>
+  <Card title="環境変数の活用" icon="setting">
+    機密情報は環境変数で管理し、設定には`${VAR}`形式で参照
+  </Card>
+  <Card title="タグの継承" icon="tag">
+    共通タグは親で定義し、環境固有タグは子で追加
+  </Card>
+  <Card title="無効化より除外" icon="warning">
+    不要なサーバーは`disabled: true`より、別の親設定を選ぶ
+  </Card>
+</CardGrid>
+
+## トラブルシューティング
+
+### 循環参照エラー
+
+```bash
+Error: Circular reference detected: a.json -> b.json -> a.json
+```
+
+**解決方法**: 継承チェーンを確認し、循環を解消
+
+### ファイルが見つからない
+
+```bash
+Error: Cannot find extended config: ./missing.json
+```
+
+**解決方法**:
+
+- パスが正しいか確認
+- `~`はホームディレクトリに展開されているか確認
+- 相対パスは現在のファイルからの相対か確認
+
+### 予期しないマージ結果
+
+設定が期待通りにマージされない場合：
+
+```bash
+# 最終的な設定を確認
+hatago serve --dry-run --verbose
+```
+
+デバッグ用に設定の展開過程を確認できます。
+
+## 次のステップ
+
+- [環境別管理](/ja/how-to/environment-management/) - 継承を使った環境管理
+- [チーム設定](/ja/how-to/team-setup/) - チームでの設定共有方法
+- [設定リファレンス](/ja/reference/config/) - 全設定オプションの詳細

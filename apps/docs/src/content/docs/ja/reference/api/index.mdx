@@ -1,0 +1,59 @@
+---
+title: APIリファレンス
+description: Hatago MCP HubのAPI仕様
+manual: true
+---
+
+# APIリファレンス
+
+Hatago MCP HubのAPIリファレンスです。
+
+## Hub API
+
+### createHub
+
+```typescript
+function createHub(config: HubConfig): Hub;
+```
+
+Hubインスタンスを作成します。
+
+### Hub.start()
+
+```typescript
+async start(): Promise<void>
+```
+
+Hubを起動します。
+
+### Hub.listTools()
+
+```typescript
+async listTools(): Promise<Tool[]>
+```
+
+利用可能なツール一覧を取得します。
+
+## Server API
+
+### startServer
+
+```typescript
+async function startServer(options: ServerOptions): Promise<void>;
+```
+
+サーバーを起動します。
+
+## 内部管理ツール
+
+### \_internal_hatago_status
+
+すべてのサーバーの接続状態を確認します。
+
+### \_internal_hatago_reload
+
+設定を再読み込みします。
+
+### \_internal_hatago_list_servers
+
+設定されているサーバー一覧を表示します。

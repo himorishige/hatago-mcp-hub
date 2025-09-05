@@ -1,0 +1,80 @@
+---
+# CLIコマンドの共通コンポーネント
+# 他のドキュメントからimportして使用
+---
+
+export const InstallCommand = {
+  npm: 'npm install -g @himorishige/hatago-mcp-hub',
+  yarn: 'yarn global add @himorishige/hatago-mcp-hub',
+  pnpm: 'pnpm add -g @himorishige/hatago-mcp-hub',
+  npx: 'npx @himorishige/hatago-mcp-hub'
+};
+
+export const InitCommands = {
+  basic: 'hatago init',
+  stdio: 'hatago init --mode stdio',
+  http: 'hatago init --mode http',
+  custom: 'hatago init --config my-config.json'
+};
+
+export const ServeCommands = {
+  basic: 'hatago serve',
+  stdio: 'hatago serve --stdio',
+  http: 'hatago serve --http',
+  watch: 'hatago serve --watch',
+  verbose: 'hatago serve --verbose',
+  tags: 'hatago serve --tags development,test',
+  all: 'hatago serve --http --watch --verbose'
+};
+
+export const EnvironmentSetup = `# 環境変数の設定
+export GITHUB_TOKEN="your-github-token"
+export OPENAI_API_KEY="your-openai-key"
+export API_TOKEN="your-api-token"
+
+# または.envファイルを使用
+
+echo "GITHUB_TOKEN=your-github-token" >> .env
+echo "OPENAI_API_KEY=your-openai-key" >> .env
+echo "API_TOKEN=your-api-token" >> .env`;
+
+export const DockerCommands = `# Dockerイメージのビルド
+docker build -t hatago-hub .
+
+# コンテナの起動
+
+docker run -it \\
+-v $(pwd)/hatago-config.json:/app/hatago-config.json \\
+  -e GITHUB_TOKEN=$GITHUB_TOKEN \\
+hatago-hub
+
+# docker-composeを使用
+
+docker-compose up`;
+
+export const DebugCommands = `# デバッグモードで起動
+hatago serve --verbose
+
+# ログレベルを設定
+
+export LOG_LEVEL=debug
+hatago serve
+
+# 特定のサーバーのみデバッグ
+
+hatago serve --tags debug --verbose`;
+
+export const TestCommands = `# すべてのテストを実行
+pnpm test
+
+# 特定のパッケージのテスト
+
+pnpm -F @himorishige/hatago-hub test
+
+# ウォッチモードでテスト
+
+pnpm test:watch
+
+# カバレッジ付きテスト
+
+pnpm test:coverage`;

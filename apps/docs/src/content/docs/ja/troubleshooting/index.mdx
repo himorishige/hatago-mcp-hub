@@ -1,0 +1,508 @@
+---
+title: トラブルシューティング
+description: Hatago MCP Hubでよくある問題と解決方法
+sidebar:
+  order: 1
+manual: true
+---
+
+import { Card, CardGrid, Aside, Steps } from '@astrojs/starlight/components';
+
+Hatago MCP Hubを使用中に発生する可能性がある問題と、その解決方法をまとめています。
+
+<CardGrid>
+  <Card title="🔝 よくある問題Top10" icon="warning">
+    最も頻繁に報告される問題から確認してください
+  </Card>
+  <Card title="🔍 症状から探す" icon="magnifier">
+    エラーメッセージや症状から問題を特定
+  </Card>
+</CardGrid>
+
+## よくある問題 Top 10
+
+### 1. サーバーが起動しない
+
+<details>
+<summary>**症状**: `hatago serve`を実行してもサーバーが起動しない</summary>
+
+#### 考えられる原因
+
+1. **Node.jsのバージョンが古い**
+2. **設定ファイルが見つからない**
+3. **設定ファイルの構文エラー**
+
+#### 解決方法
+
+<Steps>
+1. **Node.jsバージョンを確認**
+   ```bash
+   node --version
+   # v20.0.0以上が必要
+   ```
+   
+   古い場合は更新：
+   ```bash
+   # nvmを使用している場合
+   nvm install 20
+   nvm use 20
+   ```
+
+2. **設定ファイルの存在確認**
+
+   ```bash
+   ls -la hatago.config.json
+   ```
+
+   ない場合は作成：
+
+   ```bash
+   npx @himorishige/hatago-mcp-hub init
+   ```
+
+3. **設定ファイルの検証**
+   ```bash
+   # JSONの構文チェック
+   cat hatago.config.json | jq .
+   ```
+   エラーが表示される場合は構文を修正
+   </Steps>
+
+#### 再発防止
+
+- Node.jsのバージョン管理に`.nvmrc`を使用
+- 設定ファイルをGitで管理
+- VS Codeの拡張機能でJSON検証を有効化
+  </details>
+
+### 2. 環境変数が展開されない
+
+<details>
+<summary>**症状**: `${GITHUB_TOKEN}`などの環境変数がエラーになる</summary>
+
+#### 考えられる原因
+
+- 環境変数が設定されていない
+- シェルの設定ファイルに記載されていない
+- Claude Codeが環境変数を読み込めていない
+
+#### 解決方法
+
+<Steps>
+1. **環境変数の確認**
+   ```bash
+   echo $GITHUB_TOKEN
+   ```
+
+2. **環境変数の設定**
+
+   ```bash
+   # 一時的に設定
+   export GITHUB_TOKEN="your-token-here"
+
+   # 永続的に設定（~/.zshrc または ~/.bashrc）
+   echo 'export GITHUB_TOKEN="your-token-here"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+3. **デフォルト値を使用**
+   ```json
+   {
+     "env": {
+       "GITHUB_TOKEN": "${GITHUB_TOKEN:-default-value}"
+     }
+   }
+   ```
+   </Steps>
+
+#### 再発防止
+
+- `.env.example`ファイルで必要な環境変数を文書化
+- デフォルト値を設定して開発を容易に
+  </details>
+
+### 3. Claude Codeでツールが表示されない
+
+<details>
+<summary>**症状**: Claude Codeで`/tools`を実行してもHatagoのツールが出ない</summary>
+
+#### 考えられる原因
+
+- `.mcp.json`が正しく設定されていない
+- Claude Codeが再起動されていない
+- Hatagoサーバーが起動に失敗している
+
+#### 解決方法
+
+<Steps>
+1. **`.mcp.json`の確認**
+   ```bash
+   cat .mcp.json
+   ```
+   
+   正しい設定例：
+   ```json
+   {
+     "mcpServers": {
+       "hatago": {
+         "command": "npx",
+         "args": ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+       }
+     }
+   }
+   ```
+
+2. **Claude Codeの再起動**
+   - VS Codeメニュー → 「Developer: Reload Window」
+   - または `Cmd+R` (Mac) / `Ctrl+R` (Windows/Linux)
+
+3. **ログの確認**
+   - VS Code出力パネル → 「MCP」チャンネルを選択
+   - エラーメッセージを確認
+     </Steps>
+
+#### 再発防止
+
+- `.mcp.json`をプロジェクトテンプレートに含める
+- READMEに再起動手順を明記
+  </details>
+
+### 4. ツール名が重複している
+
+<details>
+<summary>**症状**: `Tool 'read_file' already exists`のようなエラー</summary>
+
+#### 考えられる原因
+
+- 複数のMCPサーバーが同じツール名を提供
+- Hatagoの自動プレフィックス機能が無効
+
+#### 解決方法
+
+Hatagoは自動的にサーバーIDをプレフィックスとして追加します：
+
+```json
+{
+  "mcpServers": {
+    "fs1": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./dir1"]
+    },
+    "fs2": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./dir2"]
+    }
+  }
+}
+```
+
+ツールは以下のように区別されます：
+
+- `fs1_read_file`
+- `fs2_read_file`
+
+#### 再発防止
+
+- サーバーIDを明確に命名
+- 同じタイプのサーバーには番号や用途を付ける
+  </details>
+
+### 5. リモートサーバーに接続できない
+
+<details>
+<summary>**症状**: HTTPまたはSSEサーバーへの接続がタイムアウト</summary>
+
+#### 考えられる原因
+
+- ネットワーク接続の問題
+- URLが間違っている
+- 認証情報が不正
+- CORSの問題
+
+#### 解決方法
+
+<Steps>
+1. **URLの確認**
+   ```bash
+   # curlでテスト
+   curl -I https://api.example.com/mcp
+   ```
+
+2. **認証ヘッダーの設定**
+
+   ```json
+   {
+     "mcpServers": {
+       "remote-api": {
+         "url": "https://api.example.com/mcp",
+         "type": "http",
+         "headers": {
+           "Authorization": "Bearer ${API_TOKEN}"
+         }
+       }
+     }
+   }
+   ```
+
+3. **タイムアウトの延長**
+   ```json
+   {
+     "timeout": 30000 // 30秒
+   }
+   ```
+   </Steps>
+
+#### 再発防止
+
+- ヘルスチェックエンドポイントを用意
+- 接続テストスクリプトを提供
+  </details>
+
+### 6. メモリ不足エラー
+
+<details>
+<summary>**症状**: `JavaScript heap out of memory`エラー</summary>
+
+#### 考えられる原因
+
+- 大量のMCPサーバーを同時起動
+- メモリリークのあるサーバー
+- Node.jsのメモリ制限
+
+#### 解決方法
+
+<Steps>
+1. **Node.jsのメモリ制限を増やす**
+   ```bash
+   NODE_OPTIONS="--max-old-space-size=4096" npx @himorishige/hatago-mcp-hub serve
+   ```
+
+2. **不要なサーバーを無効化**
+
+   ```json
+   {
+     "mcpServers": {
+       "heavy-server": {
+         "disabled": true,
+         "command": "..."
+       }
+     }
+   }
+   ```
+
+3. **タグを使って必要なサーバーのみ起動**
+   ```bash
+   hatago serve --tags essential
+   ```
+   </Steps>
+
+#### 再発防止
+
+- メモリ使用量の監視
+- 開発と本番でサーバー構成を分ける
+  </details>
+
+### 7. 設定の変更が反映されない
+
+<details>
+<summary>**症状**: `hatago.config.json`を変更しても動作が変わらない</summary>
+
+#### 考えられる原因
+
+- ホットリロードが無効
+- キャッシュの問題
+- 設定ファイルのパスが異なる
+
+#### 解決方法
+
+<Steps>
+1. **ホットリロードを有効化**
+   ```bash
+   hatago serve --watch
+   ```
+
+2. **手動でリロード**
+   Claude Codeで実行：
+
+   ```
+   _internal_hatago_reload を実行
+   ```
+
+3. **サーバーを再起動**
+   ```bash
+   # Ctrl+C で停止してから
+   hatago serve
+   ```
+   </Steps>
+
+#### 再発防止
+
+- `--watch`フラグをデフォルトで使用
+- package.jsonのスクリプトに追加
+  </details>
+
+### 8. ポートが使用中
+
+<details>
+<summary>**症状**: `Error: listen EADDRINUSE: address already in use`</summary>
+
+#### 考えられる原因
+
+- 前回のプロセスが終了していない
+- 他のアプリケーションが同じポートを使用
+
+#### 解決方法
+
+<Steps>
+1. **使用中のプロセスを確認**
+   ```bash
+   lsof -i :3535  # Mac/Linux
+   netstat -ano | findstr :3535  # Windows
+   ```
+
+2. **プロセスを終了**
+
+   ```bash
+   kill -9 <PID>  # Mac/Linux
+   taskkill /PID <PID> /F  # Windows
+   ```
+
+3. **別のポートを使用**
+   ```bash
+   hatago serve --http --port 3536
+   ```
+   </Steps>
+
+#### 再発防止
+
+- グレースフルシャットダウンの実装
+- ポート番号を設定ファイルで管理
+  </details>
+
+### 9. パフォーマンスが遅い
+
+<details>
+<summary>**症状**: ツールの実行が遅い、レスポンスが返ってこない</summary>
+
+#### 考えられる原因
+
+- 多数のサーバーが同時に起動
+- ネットワーク遅延
+- サーバー側の処理が重い
+
+#### 解決方法
+
+<Steps>
+1. **必要最小限のサーバーのみ起動**
+   ```bash
+   # タグで絞り込み
+   hatago serve --tags essential
+   ```
+
+2. **遅いサーバーを特定**
+
+   ```
+   _internal_hatago_status で各サーバーの応答時間を確認
+   ```
+
+3. **タイムアウトを調整**
+   ```json
+   {
+     "timeout": 60000 // 60秒に延長
+   }
+   ```
+   </Steps>
+
+#### 再発防止
+
+- サーバーの遅延ロード実装
+- キャッシュの活用
+- 非同期処理の最適化
+  </details>
+
+### 10. ログが出力されない
+
+<details>
+<summary>**症状**: デバッグ情報が表示されない</summary>
+
+#### 考えられる原因
+
+- ログレベルが高すぎる
+- 出力先が異なる
+- サイレントモード
+
+#### 解決方法
+
+<Steps>
+1. **ログレベルを下げる**
+   ```bash
+   hatago serve --verbose
+   # または
+   hatago serve --log-level debug
+   ```
+
+2. **設定ファイルで指定**
+
+   ```json
+   {
+     "logLevel": "debug"
+   }
+   ```
+
+3. **VS Code出力パネルを確認**
+   - 出力 → MCPチャンネルを選択
+     </Steps>
+
+#### 再発防止
+
+- 開発時は常に`--verbose`を使用
+- ログファイルへの出力オプション追加
+  </details>
+
+## 🔍 症状から問題を探す
+
+<CardGrid>
+  <Card title="起動時のエラー" href="#起動時のエラー">
+    - Command not found - Module not found - Invalid configuration
+  </Card>
+  <Card title="接続エラー" href="#接続エラー">
+    - Connection refused - Timeout - Authentication failed
+  </Card>
+  <Card title="実行時エラー" href="#実行時エラー">
+    - Tool not found - Permission denied - Out of memory
+  </Card>
+  <Card title="パフォーマンス問題" href="#パフォーマンス問題">
+    - レスポンスが遅い - CPU使用率が高い - メモリリーク
+  </Card>
+</CardGrid>
+
+## 💡 デバッグのヒント
+
+<Aside type="tip" title="デバッグモードの活用">
+詳細なログを確認したい場合は、以下のコマンドでデバッグモードを有効にできます：
+
+```bash
+# 環境変数で設定
+DEBUG=* hatago serve --verbose
+
+# 設定ファイルで指定
+{
+  "logLevel": "debug"
+}
+```
+
+</Aside>
+
+## 📚 さらなるサポート
+
+問題が解決しない場合は：
+
+1. [GitHub Issues](https://github.com/himorishige/hatago-mcp-hub/issues)で既存の問題を検索
+2. 新しいIssueを作成（エラーログを含めてください）
+3. [Discussions](https://github.com/himorishige/hatago-mcp-hub/discussions)で質問
+
+---
+
+<Aside type="note">
+  このページは定期的に更新されています。新しい問題と解決方法が追加されるので、定期的にチェックしてください。
+</Aside>

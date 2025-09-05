@@ -1,0 +1,374 @@
+---
+title: タグフィルタリング
+description: タグを使って環境や用途別にMCPサーバーを管理する方法
+sidebar:
+  order: 3
+manual: true
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Aside, Code } from '@astrojs/starlight/components';
+
+Hatago Hub v0.0.2から、タグベースのフィルタリング機能が追加されました。これにより、開発・ステージング・本番環境でサーバーを切り替えたり、用途別にサーバーをグループ化できます。
+
+## タグとは？
+
+タグは、MCPサーバーをグループ化・分類するためのラベルです。各サーバーに複数のタグを付けることができ、起動時に特定のタグを持つサーバーのみを有効化できます。
+
+<CardGrid>
+  <Card title="環境別管理" icon="setting">
+    開発・ステージング・本番環境で異なるサーバーセットを使用
+  </Card>
+  <Card title="機能別グループ化" icon="package">
+    AI、データベース、通知など機能別にサーバーを分類
+  </Card>
+  <Card title="柔軟な組み合わせ" icon="puzzle">
+    複数タグの組み合わせで細かい制御が可能
+  </Card>
+  <Card title="日本語タグ対応" icon="translate">
+    日本語タグも問題なく使用可能
+  </Card>
+</CardGrid>
+
+## 基本的な使い方
+
+### 1. サーバーにタグを付ける
+
+`hatago-config.json`でサーバーにタグを設定します：
+
+```json
+{
+  "mcpServers": {
+    "filesystem-dev": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./dev"],
+      "tags": ["development", "開発", "filesystem"]
+    },
+    "filesystem-prod": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./prod"],
+      "tags": ["production", "本番", "filesystem"]
+    },
+    "ai-service": {
+      "url": "https://ai.example.com/mcp",
+      "type": "http",
+      "tags": ["ai", "production", "openai"]
+    },
+    "test-db": {
+      "command": "test-db-server",
+      "tags": ["test", "database", "テスト"]
+    }
+  }
+}
+```
+
+### 2. タグでフィルタリングして起動
+
+CLIの`--tags`オプションを使って、特定のタグを持つサーバーのみを起動します：
+
+<Tabs>
+<TabItem label="開発環境">
+```bash
+# developmentタグを持つサーバーのみ起動
+hatago serve --tags development
+```
+</TabItem>
+
+<TabItem label="本番環境">
+  ```bash # productionタグを持つサーバーのみ起動 hatago serve --tags production ```
+</TabItem>
+
+<TabItem label="複数タグ（OR条件）">
+  ```bash # developmentまたはtestタグを持つサーバーを起動 hatago serve --tags development,test ```
+</TabItem>
+
+<TabItem label="日本語タグ">
+```bash
+# 日本語タグも使用可能
+hatago serve --tags 開発,テスト
+```
+</TabItem>
+</Tabs>
+
+## 実践的な使用例
+
+### 環境別設定
+
+開発・ステージング・本番環境で異なるサーバーセットを使用する例：
+
+```json
+{
+  "mcpServers": {
+    // 開発環境用
+    "local-fs": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["dev", "local"]
+    },
+    "mock-api": {
+      "command": "mock-server",
+      "tags": ["dev", "api", "mock"]
+    },
+
+    // ステージング環境用
+    "staging-api": {
+      "url": "https://staging-api.example.com/mcp",
+      "type": "http",
+      "tags": ["staging", "api"]
+    },
+    "staging-db": {
+      "url": "https://staging-db.example.com/mcp",
+      "type": "http",
+      "tags": ["staging", "database"]
+    },
+
+    // 本番環境用
+    "prod-api": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${PROD_API_TOKEN}"
+      },
+      "tags": ["production", "api"]
+    },
+    "prod-db": {
+      "url": "https://db.example.com/mcp",
+      "type": "http",
+      "tags": ["production", "database"]
+    }
+  }
+}
+```
+
+起動コマンド：
+
+```bash
+# 開発環境
+hatago serve --tags dev
+
+# ステージング環境
+hatago serve --tags staging
+
+# 本番環境
+hatago serve --tags production
+```
+
+### 機能別グループ化
+
+機能別にサーバーをグループ化して、必要な機能のみを有効化：
+
+```json
+{
+  "mcpServers": {
+    // AI関連
+    "openai": {
+      "url": "https://api.openai.com/v1/mcp",
+      "tags": ["ai", "llm", "openai"]
+    },
+    "claude": {
+      "url": "https://api.anthropic.com/mcp",
+      "tags": ["ai", "llm", "anthropic"]
+    },
+
+    // データベース関連
+    "postgres": {
+      "command": "postgres-mcp-server",
+      "tags": ["database", "sql", "postgres"]
+    },
+    "redis": {
+      "command": "redis-mcp-server",
+      "tags": ["database", "cache", "redis"]
+    },
+
+    // 通知関連
+    "slack": {
+      "url": "https://slack.com/api/mcp",
+      "tags": ["notification", "slack", "communication"]
+    },
+    "email": {
+      "command": "email-mcp-server",
+      "tags": ["notification", "email", "communication"]
+    }
+  }
+}
+```
+
+使用例：
+
+```bash
+# AI機能のみ
+hatago serve --tags ai
+
+# データベース関連のみ
+hatago serve --tags database
+
+# 通知とAI機能
+hatago serve --tags notification,ai
+
+# SQLデータベースのみ
+hatago serve --tags sql
+```
+
+### プロジェクト別設定
+
+複数プロジェクトで異なるサーバーセットを使用：
+
+```json
+{
+  "mcpServers": {
+    // プロジェクトA用
+    "project-a-api": {
+      "url": "https://project-a.example.com/mcp",
+      "tags": ["project-a", "api", "v1"]
+    },
+    "project-a-db": {
+      "command": "project-a-db",
+      "tags": ["project-a", "database"]
+    },
+
+    // プロジェクトB用
+    "project-b-api": {
+      "url": "https://project-b.example.com/mcp",
+      "tags": ["project-b", "api", "v2"]
+    },
+    "project-b-storage": {
+      "command": "s3-mcp-server",
+      "tags": ["project-b", "storage", "aws"]
+    }
+  }
+}
+```
+
+## タグフィルタリングのロジック
+
+<Aside type="note">
+  タグフィルタリングは**OR条件**で動作します。指定されたタグのいずれか1つでも持っているサーバーが有効化されます。
+</Aside>
+
+### マッチング例
+
+設定：
+
+```json
+{
+  "server1": { "tags": ["dev", "test"] },
+  "server2": { "tags": ["prod", "test"] },
+  "server3": { "tags": ["dev"] },
+  "server4": { "tags": [] } // タグなし
+}
+```
+
+フィルタリング結果：
+
+- `--tags dev` → server1, server3が起動
+- `--tags test` → server1, server2が起動
+- `--tags dev,prod` → server1, server2, server3が起動
+- `--tags unknown` → どのサーバーも起動しない
+- タグ指定なし → すべてのサーバーが起動
+
+## シェルスクリプトとの統合
+
+環境変数を使った自動化：
+
+```bash
+#!/bin/bash
+# deploy.sh
+
+ENVIRONMENT="${1:-development}"
+
+case "$ENVIRONMENT" in
+  "production")
+    export API_TOKEN="${PROD_API_TOKEN}"
+    TAGS="production,本番"
+    ;;
+  "staging")
+    export API_TOKEN="${STAGING_API_TOKEN}"
+    TAGS="staging,ステージング"
+    ;;
+  *)
+    export API_TOKEN="${DEV_API_TOKEN}"
+    TAGS="development,開発"
+    ;;
+esac
+
+echo "Starting Hatago Hub for $ENVIRONMENT environment..."
+hatago serve --tags "$TAGS" --verbose
+```
+
+使用方法：
+
+```bash
+./deploy.sh production
+./deploy.sh staging
+./deploy.sh  # デフォルトは development
+```
+
+## package.jsonスクリプトでの利用
+
+```json
+{
+  "scripts": {
+    "mcp:dev": "hatago serve --tags development,local --watch",
+    "mcp:staging": "hatago serve --tags staging --verbose",
+    "mcp:prod": "hatago serve --tags production",
+    "mcp:test": "hatago serve --tags test,mock",
+    "mcp:ai": "hatago serve --tags ai,llm"
+  }
+}
+```
+
+## ベストプラクティス
+
+<CardGrid>
+  <Card title="一貫性のある命名" icon="pencil">
+    タグ名は一貫性を持たせる（例：dev/staging/prod）
+  </Card>
+  <Card title="複数タグの活用" icon="list">
+    環境タグと機能タグを組み合わせて柔軟に管理
+  </Card>
+  <Card title="ドキュメント化" icon="document">
+    使用しているタグの一覧と用途をREADMEに記載
+  </Card>
+  <Card title="デフォルト設定" icon="rocket">
+    タグなしサーバーは常に起動するので注意
+  </Card>
+</CardGrid>
+
+## トラブルシューティング
+
+### タグフィルタリングが効かない
+
+<Steps>
+1. **設定ファイルの確認**
+   ```bash
+   cat hatago-config.json | jq '.mcpServers | to_entries[] | {name: .key, tags: .value.tags}'
+   ```
+
+2. **タグのタイプミスをチェック**
+   - 大文字小文字は区別される
+   - スペースは含めない
+
+3. **デバッグモードで確認**
+   ```bash
+   hatago serve --tags development --verbose
+   ```
+   起動時のログで、どのサーバーが有効化されたか確認
+   </Steps>
+
+### 予期しないサーバーが起動する
+
+タグが設定されていないサーバーは、タグフィルタリング時には起動しません。意図的に常に起動させたい場合は、全環境で共通のタグ（例：`common`）を付けます。
+
+```json
+{
+  "logger": {
+    "command": "logger-server",
+    "tags": ["common", "logging"] // すべての環境で必要
+  }
+}
+```
+
+## 次のステップ
+
+- [チーム開発の設定](/ja/how-to/team-setup/) - チームでタグ戦略を共有
+- [CI/CD統合](/ja/how-to/ci-cd/) - 自動デプロイでのタグ活用
+- [設定管理のベストプラクティス](/ja/how-to/config-management/) - 大規模プロジェクトでの設定管理

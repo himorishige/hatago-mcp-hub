@@ -1,0 +1,391 @@
+---
+title: 基本設定ガイド
+description: Hatago MCP Hubの設定ファイルを作成・管理する方法
+prerequisites: Hatagoがインストール済み
+time_to_complete: 15分
+sidebar:
+  order: 1
+manual: true
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Aside, Code } from '@astrojs/starlight/components';
+
+Hatago MCP Hubの設定ファイル（`hatago.config.json`）を作成し、カスタマイズする方法を説明します。
+
+## 📝 設定ファイルの作成
+
+<Tabs>
+  <TabItem label="自動生成（推奨）">
+    対話型コマンドで簡単に作成：
+    ```bash
+    npx @himorishige/hatago-mcp-hub init
+    ```
+    
+    プロンプトに従って選択するだけで、適切な設定ファイルが生成されます。
+  </TabItem>
+  <TabItem label="手動作成">
+    `hatago.config.json`を作成：
+    ```json
+    {
+      "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+      "version": 1,
+      "logLevel": "info",
+      "mcpServers": {
+        // サーバー設定をここに追加
+      }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## 🏗️ 基本構造
+
+設定ファイルは以下の要素で構成されています：
+
+```json
+{
+  "$schema": "...", // JSON Schema（自動補完用）
+  "version": 1, // 設定フォーマットバージョン
+  "logLevel": "info", // ログレベル
+  "mcpServers": {
+    // MCPサーバーの定義
+    "server-id": {
+      // サーバーID（任意の名前）
+      // サーバー設定
+    }
+  }
+}
+```
+
+<Aside type="tip">
+  VS Codeを使用している場合、`$schema`フィールドにより自動補完とバリデーションが有効になります。
+</Aside>
+
+## 🚀 サーバータイプ別の設定
+
+### ローカルサーバー
+
+ローカルマシンで実行するMCPサーバー：
+
+```json
+{
+  "mcpServers": {
+    "my-local-server": {
+      "command": "node",
+      "args": ["./my-server.js"],
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "cwd": "./servers"
+    }
+  }
+}
+```
+
+### NPXサーバー
+
+npmパッケージとして公開されているMCPサーバー：
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": {
+        "LOG_LEVEL": "debug"
+      }
+    }
+  }
+}
+```
+
+<Aside type="caution">`-y`フラグは、npmパッケージを自動的にダウンロードするために必要です。</Aside>
+
+### リモートサーバー
+
+HTTPまたはSSE経由で接続するサーバー：
+
+```json
+{
+  "mcpServers": {
+    "remote-api": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}"
+      }
+    },
+    "deepwiki": {
+      "url": "https://mcp.deepwiki.com/sse",
+      "type": "sse"
+    }
+  }
+}
+```
+
+## 🔑 環境変数の使用
+
+### 基本的な展開
+
+環境変数は`${VAR}`形式で参照できます：
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+### デフォルト値の指定
+
+環境変数が未定義の場合のデフォルト値：
+
+```json
+{
+  "env": {
+    "API_URL": "${API_URL:-https://api.example.com}",
+    "LOG_LEVEL": "${LOG_LEVEL:-info}",
+    "TIMEOUT": "${TIMEOUT_MS:-30000}"
+  }
+}
+```
+
+<CardGrid>
+  <Card title="必須変数" icon="warning">
+    ```json
+    "${GITHUB_TOKEN}"
+    ```
+    未定義の場合はエラー
+  </Card>
+  <Card title="オプション変数" icon="check">
+    ```json
+    "${PORT:-3000}"
+    ```
+    未定義なら3000を使用
+  </Card>
+</CardGrid>
+
+## 🏷️ タグベースの管理
+
+サーバーをグループ化して管理：
+
+```json
+{
+  "mcpServers": {
+    "dev-tools": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["development", "local"]
+    },
+    "prod-api": {
+      "url": "https://api.production.com/mcp",
+      "tags": ["production", "remote"]
+    },
+    "shared-db": {
+      "command": "mcp-postgres",
+      "tags": ["development", "production", "database"]
+    }
+  }
+}
+```
+
+起動時にタグで絞り込み：
+
+```bash
+# 開発環境のサーバーのみ起動
+hatago serve --tags development
+
+# 複数タグ（OR条件）
+hatago serve --tags development,local
+```
+
+## 📚 実用的な設定例
+
+### 開発環境の設定
+
+<details>
+<summary>フルスタック開発環境の例</summary>
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "debug",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["essential", "dev"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "tags": ["vcs", "dev"]
+    },
+    "database": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL:-postgresql://localhost/dev}"
+      },
+      "tags": ["database", "dev"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "tags": ["cache", "dev"]
+    }
+  }
+}
+```
+
+</details>
+
+### チーム共有設定
+
+<details>
+<summary>チーム開発用の設定</summary>
+
+```json
+{
+  "version": 1,
+  "logLevel": "${LOG_LEVEL:-info}",
+  "mcpServers": {
+    "shared-docs": {
+      "url": "${TEAM_DOCS_URL}",
+      "type": "http",
+      "headers": {
+        "X-Team-ID": "${TEAM_ID}",
+        "Authorization": "Bearer ${TEAM_TOKEN}"
+      },
+      "tags": ["team", "documentation"]
+    },
+    "project-fs": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${PROJECT_ROOT:-.}"],
+      "tags": ["team", "essential"]
+    },
+    "ci-tools": {
+      "url": "${CI_MCP_ENDPOINT:-https://ci.example.com/mcp}",
+      "type": "sse",
+      "disabled": "${DISABLE_CI:-false}",
+      "tags": ["team", "ci"]
+    }
+  }
+}
+```
+
+</details>
+
+## 🔧 設定のベストプラクティス
+
+<Steps>
+1. **明確なサーバーID**
+   ```json
+   ✅ "github-api", "local-filesystem", "prod-database"
+   ❌ "server1", "srv", "test"
+   ```
+
+2. **環境変数にデフォルト値**
+
+   ```json
+   {
+     "DATABASE_URL": "${DATABASE_URL:-postgresql://localhost/dev}"
+   }
+   ```
+
+3. **タグで整理**
+
+   ```json
+   {
+     "tags": ["環境", "用途", "重要度"]
+   }
+   ```
+
+4. **不要なサーバーは無効化**
+
+   ```json
+   {
+     "disabled": true
+   }
+   ```
+
+5. **ログレベルは環境ごとに**
+   ```json
+   {
+     "logLevel": "${LOG_LEVEL:-info}"
+   }
+   ```
+   </Steps>
+
+## ⚙️ 設定の検証
+
+### 構文チェック
+
+```bash
+# JSONの妥当性確認
+cat hatago.config.json | jq .
+
+# スキーマバリデーション（VS Code）
+# $schemaフィールドで自動的に検証
+```
+
+### 設定のテスト
+
+```bash
+# ドライラン（実際には起動しない）
+hatago serve --dry-run
+
+# 詳細ログで確認
+hatago serve --verbose
+```
+
+## 🔄 ホットリロード
+
+設定ファイルの変更を自動的に反映：
+
+```bash
+hatago serve --watch
+```
+
+変更が検出されると：
+
+1. 新しい設定を読み込み
+2. サーバーを再接続
+3. クライアントに通知
+
+<Aside type="tip">開発中は`--watch`フラグを常に使用することをお勧めします。</Aside>
+
+## 📖 関連ドキュメント
+
+<CardGrid>
+  <Card title="設定の継承" icon="document" href="/ja/how-to/config-inheritance/">
+    複数の設定ファイルを組み合わせる
+  </Card>
+  <Card title="リモートサーバー" icon="globe" href="/ja/how-to/remote-server-setup/">
+    HTTPやSSEサーバーとの接続
+  </Card>
+  <Card title="タグフィルタリング" icon="tag" href="/ja/how-to/tag-filtering/">
+    環境ごとのサーバー管理
+  </Card>
+  <Card title="設定リファレンス" icon="book" href="/ja/reference/config/">
+    すべての設定オプション
+  </Card>
+</CardGrid>
+
+---
+
+<Aside type="note">
+  完全な設定オプションについては、[設定リファレンス](/ja/reference/config/)をご覧ください。
+</Aside>

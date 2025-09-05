@@ -1,0 +1,124 @@
+---
+title: '@himorishige/hatago-cli'
+description: CLI開発ツール（開発用）
+package: cli
+lang: ja
+---
+
+# @hatago/cli
+
+Command-line interface for Hatago MCP Hub.
+
+## Installation
+
+```bash
+npm install -g @hatago/cli
+# or
+npx @hatago/cli
+```
+
+## Usage
+
+### Server Management
+
+Start the MCP Hub server:
+
+```bash
+# Start with STDIO transport (default)
+hatago serve
+
+# Start with HTTP transport
+hatago serve --http --port 3000
+
+# Use custom configuration
+hatago serve --config ./hatago.config.json
+```
+
+### MCP Server Management
+
+Manage MCP servers:
+
+```bash
+# List configured servers
+hatago mcp list
+
+# Add a local server
+hatago mcp add myserver -- node ./server.js
+
+# Add an NPX server
+hatago mcp add fs -- npx -y @modelcontextprotocol/server-filesystem /tmp
+
+# Add a remote server
+hatago mcp add remote --transport http --url http://example.com/mcp
+
+# Remove a server
+hatago mcp remove myserver
+```
+
+### Configuration Management
+
+Manage Hatago configuration:
+
+```bash
+# Show current configuration
+hatago config show
+
+# Set a configuration value
+hatago config set port 3001
+hatago config set session.timeout 7200000
+
+# Get a configuration value
+hatago config get port
+
+# Reset to defaults
+hatago config reset
+```
+
+## Commands
+
+### `hatago serve`
+
+Start the MCP Hub server.
+
+**Options:**
+
+- `-m, --mode <mode>`: Server mode (`stdio` or `http`)
+- `-c, --config <path>`: Path to configuration file
+- `-p, --port <port>`: Port to listen on (HTTP mode)
+- `-h, --host <host>`: Host to bind to (HTTP mode)
+- `--stdio`: Use STDIO transport
+- `--http`: Use HTTP transport
+- `--verbose`: Verbose output
+- `--quiet`: Quiet output
+
+### `hatago mcp`
+
+Manage MCP servers.
+
+**Subcommands:**
+
+- `list`: List configured servers
+- `add <name> [command...]`: Add a new server
+- `remove <name>`: Remove a server
+
+### `hatago config`
+
+Manage Hatago configuration.
+
+**Subcommands:**
+
+- `show`: Show current configuration
+- `set <key> <value>`: Set a configuration value
+- `get <key>`: Get a configuration value
+- `reset`: Reset to defaults
+
+## Configuration Files
+
+Configuration files are stored in `~/.hatago/`:
+
+- `config.json`: Main configuration
+- `servers.json`: MCP server configurations
+
+## License
+
+Apache-2.0

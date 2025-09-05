@@ -1,0 +1,196 @@
+---
+title: 10分クイックスタート
+description: Hatago MCP Hubを10分で動かし、複数のMCPサーバーを統合管理する
+manual: true
+audience: 初めてHatagoを使う人
+prerequisites: Node.js 20以上がインストール済み
+time_to_complete: 10分
+sidebar:
+  order: 1
+  label: 🚀 10分で始める
+---
+
+import { Card, CardGrid, Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Hatago MCP Hubを使って、複数のMCPサーバーを10分で統合管理できるようにします。このガイドに従えば、すぐに動作確認まで完了します。
+
+## 📋 前提条件の確認（1分）
+
+<Steps>
+  1. **Node.jsのバージョン確認** ```bash node --version # v20.0.0以上が必要 ``` 2.
+  **使用するAIツールの確認** - Claude Code（推奨） - Codex CLI - Cursor / Windsurf
+  <Aside type="tip">
+    Claude Codeをまだインストールしていない場合は、[claude.ai/code](https://claude.ai/code)
+    からダウンロードできます。
+  </Aside>
+</Steps>
+
+## 🚀 インストール（2分）
+
+最も簡単な方法は`npx`を使うことです。インストール不要ですぐに使えます：
+
+```bash
+# 設定ファイルの初期化（対話型）
+npx @himorishige/hatago-mcp-hub init
+```
+
+<Aside type="note">
+  グローバルインストールを好む場合は： ```bash npm install -g @himorishige/hatago-mcp-hub hatago
+  init ```
+</Aside>
+
+## ⚙️ 設定作成（2分）
+
+`init`コマンドを実行すると、対話型で設定を作成できます：
+
+<Steps>
+1. **モードを選択**
+   ```
+   ? Select mode: 
+   ❯ stdio (for Claude Code)
+     http (for debugging)
+   ```
+   Claude Codeなら`stdio`を選びます。
+
+2. **サンプルサーバーを選択**
+
+   ```
+   ? Select sample servers: (Space to select, Enter to confirm)
+   ❯ ◉ filesystem - Browse and read files
+     ◯ github - GitHub API access
+     ◯ memory - Persistent memory storage
+   ```
+
+   試したいサーバーをスペースキーで選択します。
+
+3. **設定ファイルの作成確認**
+   ```
+   ✅ Created hatago.config.json
+   ✅ Created .mcp.json (for Claude Code)
+   ```
+   </Steps>
+
+<Aside type="tip" title="最小設定例">
+急いでいる場合は、以下の最小設定を`hatago.config.json`として保存：
+
+```json
+{
+  "version": 1,
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+</Aside>
+
+## 🔌 Claude Codeとの接続（2分）
+
+### 自動設定の場合
+
+`init`コマンドで`.mcp.json`が自動生成されています。Claude Codeを再起動するだけで接続完了です。
+
+### 手動設定の場合
+
+プロジェクトルートに`.mcp.json`を作成：
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "command": "npx",
+      "args": [
+        "@himorishige/hatago-mcp-hub",
+        "serve",
+        "--stdio",
+        "--config",
+        "./hatago.config.json"
+      ]
+    }
+  }
+}
+```
+
+<Aside type="caution">
+  Claude Codeの再起動が必要です。VS Codeメニューから「Developer: Reload Window」を実行してください。
+</Aside>
+
+## ✅ 動作確認（2分）
+
+<Steps>
+1. **Claude Codeで新しいチャットを開く**
+
+2. **利用可能なツールを確認**
+
+   ```
+   利用可能なツールを表示して
+   ```
+
+   または
+
+   ```
+   /tools
+   ```
+
+3. **ファイルシステムツールをテスト**
+
+   ```
+   現在のディレクトリのファイル一覧を表示して
+   ```
+
+4. **内部管理ツールを確認**
+   ```
+   _internal_hatago_status を実行して
+   ```
+   接続されているすべてのサーバーの状態が表示されます。
+   </Steps>
+
+<CardGrid>
+  <Card title="✅ 成功の確認" icon="check">
+    - 複数のツールが表示される - ファイル操作が実行できる - サーバーステータスが確認できる
+  </Card>
+  <Card title="❌ うまくいかない場合" icon="warning">
+    - Node.jsのバージョンを確認 - Claude Codeを再起動 -
+    [トラブルシューティング](/ja/troubleshooting/)を参照
+  </Card>
+</CardGrid>
+
+## 🎉 完了！次のステップ（1分）
+
+おめでとうございます！Hatago MCP Hubが動作しています。次は以下を試してみてください：
+
+<CardGrid stagger>
+  <Card title="GitHubサーバーを追加" icon="github">
+    [リモートサーバーの設定](/ja/how-to/remote-server-setup/)でGitHub APIと連携
+  </Card>
+  <Card title="環境ごとに設定を分ける" icon="setting">
+    [タグベースフィルタリング](/ja/how-to/tag-filtering/)で開発/本番を切り替え
+  </Card>
+  <Card title="チームで共有" icon="group">
+    [チーム開発ガイド](/ja/how-to/team-development/)で設定を共有
+  </Card>
+</CardGrid>
+
+## 💡 ヒント
+
+<Tabs>
+  <TabItem label="HTTPモードでデバッグ">
+    開発中はHTTPモードが便利です： ```bash npx @himorishige/hatago-mcp-hub serve --http ```
+    ブラウザで http://localhost:3535/health にアクセスして確認できます。
+  </TabItem>
+  <TabItem label="ログレベルを変更">
+    詳細なログが必要な場合： ```bash npx @himorishige/hatago-mcp-hub serve --verbose ```
+  </TabItem>
+  <TabItem label="設定の自動リロード">
+    設定ファイルの変更を監視： ```bash npx @himorishige/hatago-mcp-hub serve --watch ```
+  </TabItem>
+</Tabs>
+
+---
+
+<Aside type="tip" title="困ったときは">
+  問題が発生した場合は、[トラブルシューティングガイド](/ja/troubleshooting/)をご覧ください。よくある問題と解決方法をまとめています。
+</Aside>

@@ -1,0 +1,120 @@
+---
+title: コード例とレシピ
+description: Hatago Hubの実践的なコード例とレシピ集
+sidebar:
+  order: 1
+manual: true
+---
+
+import { Card, CardGrid, Code, LinkCard, Aside } from '@astrojs/starlight/components';
+import { BasicConfig, MultiServerConfig } from '../../../../components/examples/config-example.mdx';
+
+# コード例とレシピ
+
+実際のプロジェクトで使えるHatago Hubの設定例とレシピを集めました。これらの例をコピーして、あなたのプロジェクトに合わせてカスタマイズしてください。
+
+## 基本的な設定例
+
+### シンプルな構成
+
+<Code code={BasicConfig} lang="json" title="hatago-config.json" />
+
+### 複数サーバー構成
+
+<Code code={MultiServerConfig} lang="json" title="hatago-config.json" />
+
+## 用途別レシピ
+
+<CardGrid>
+  <LinkCard
+    title="AI開発環境"
+    description="OpenAI、Claude、ローカルLLMを組み合わせた開発環境"
+    href="/ja/examples/ai-development/"
+  />
+  <LinkCard
+    title="フルスタック開発"
+    description="フロントエンド、バックエンド、データベースを統合"
+    href="/ja/examples/fullstack/"
+  />
+  <LinkCard
+    title="データ分析環境"
+    description="Jupyter、データベース、可視化ツールの統合"
+    href="/ja/examples/data-analysis/"
+  />
+  <LinkCard
+    title="CI/CD環境"
+    description="GitHub Actions、Docker、デプロイツールの統合"
+    href="/ja/examples/ci-cd/"
+  />
+</CardGrid>
+
+## プラットフォーム別
+
+<CardGrid>
+  <Card title="Node.js" icon="seti:nodejs">
+    ローカル開発環境での標準的な使用方法
+  </Card>
+  <Card title="Cloudflare Workers" icon="cloudflare">
+    エッジ環境でのサーバーレス実装
+  </Card>
+  <Card title="Docker" icon="docker">
+    コンテナ化された環境での実行
+  </Card>
+  <Card title="Kubernetes" icon="seti:kubernetes">
+    スケーラブルなクラスター環境
+  </Card>
+</CardGrid>
+
+## 統合例
+
+### Claude Codeとの統合
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["claude", "local"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "tags": ["claude", "vcs"]
+    }
+  }
+}
+```
+
+### VS Code Cursorとの統合
+
+```json
+{
+  "mcpServers": {
+    "cursor-server": {
+      "command": "cursor-mcp-server",
+      "args": ["--workspace", "${workspaceFolder}"],
+      "tags": ["cursor", "ide"]
+    }
+  }
+}
+```
+
+## コミュニティレシピ
+
+<Aside type="tip">
+  コミュニティから提供されたレシピや設定例を募集しています！
+  GitHubでPRを送るか、Issueで共有してください。
+</Aside>
+
+## 関連リソース
+
+- [設定スキーマ](https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json)
+- [設定例リポジトリ](https://github.com/himorishige/hatago-mcp-hub/tree/main/examples)
+- [コミュニティフォーラム](https://github.com/himorishige/hatago-mcp-hub/discussions)
