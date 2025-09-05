@@ -1,0 +1,76 @@
+---
+title: パッケージ一覧
+description: Hatago MCP Hubを構成するnpmパッケージ
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+# パッケージ一覧
+
+Hatago MCP Hubは複数のnpmパッケージで構成されています。各パッケージは独立してインストール・使用可能です。
+
+<CardGrid>
+  <Card title="@himorishige/hatago-cli" icon="package" href="/ja/packages/cli/">
+    CLI開発ツール（開発用）
+  </Card>
+  <Card title="@himorishige/hatago-core" icon="package" href="/ja/packages/core/">
+    共通の型定義とインターフェース
+  </Card>
+  <Card title="@himorishige/hatago-hub" icon="package" href="/ja/packages/hub/">
+    Hubコア機能
+  </Card>
+  <Card title="@himorishige/hatago-mcp-hub" icon="package" href="/ja/packages/mcp-hub/">
+    CLIツールとメインエントリーポイント
+  </Card>
+  <Card title="@himorishige/hatago-runtime" icon="package" href="/ja/packages/runtime/">
+    ランタイムコンポーネント
+  </Card>
+  <Card title="@himorishige/hatago-server" icon="package" href="/ja/packages/server/">
+    サーバー実装（HTTP/STDIO対応）
+  </Card>
+  <Card title="@himorishige/hatago-test-fixtures" icon="package" href="/ja/packages/test-fixtures/">
+    テストフィクスチャ
+  </Card>
+  <Card title="@himorishige/hatago-test-utils" icon="package" href="/ja/packages/test-utils/">
+    テストユーティリティ
+  </Card>
+  <Card title="@himorishige/hatago-transport" icon="package" href="/ja/packages/transport/">
+    トランスポート層の実装
+  </Card>
+</CardGrid>
+
+## パッケージの関係図
+
+```mermaid
+graph TD
+  A[mcp-hub] --> B[server]
+  B --> C[hub]
+  C --> D[core]
+  C --> E[runtime]
+  C --> F[transport]
+
+  style A fill:#ff6b35
+  style B fill:#ff8c42
+  style C fill:#ffb347
+```
+
+## インストール方法
+
+### すべてのパッケージを使用する場合
+
+```bash
+npm install @himorishige/hatago-mcp-hub
+```
+
+### 特定のパッケージのみ使用する場合
+
+```bash
+# Hubコアのみ
+npm install @himorishige/hatago-hub
+
+# サーバー実装のみ
+npm install @himorishige/hatago-server
+
+# 型定義のみ
+npm install @himorishige/hatago-core
+```

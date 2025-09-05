@@ -1,0 +1,306 @@
+---
+title: リモートサーバーの接続
+description: HTTP/SSE経由でリモートMCPサーバーと接続する方法
+sidebar:
+  order: 2
+manual: true
+---
+
+import { Card, Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
+
+Hatago Hubは、ローカルのMCPサーバーだけでなく、HTTP/SSE経由でリモートのMCPサーバーとも接続できます。これにより、クラウド上のサービスや外部APIと簡単に連携できるようになります。
+
+## リモートサーバーの種類
+
+<Tabs>
+<TabItem label="HTTP">
+標準的なHTTP通信でMCPサーバーと接続します。リクエスト/レスポンス型の通信に適しています。
+
+```json
+{
+  "mcpServers": {
+    "remote-http": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+<TabItem label="SSE">
+Server-Sent Events（SSE）を使用して、サーバーからのリアルタイム通知を受け取れます。
+
+```json
+{
+  "mcpServers": {
+    "remote-sse": {
+      "url": "https://stream.example.com/mcp",
+      "type": "sse",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## 設定手順
+
+<Steps>
+1. **APIキーの準備**
+   
+   リモートサーバーのAPIキーやアクセストークンを取得します。
+   ```bash
+   # 環境変数に設定
+   export API_TOKEN="your-api-token-here"
+   ```
+
+2. **設定ファイルの編集**
+
+   `hatago-config.json`にリモートサーバーを追加します：
+
+   ```json
+   {
+     "mcpServers": {
+       "openai-api": {
+         "url": "https://api.openai.com/v1/mcp",
+         "type": "http",
+         "headers": {
+           "Authorization": "Bearer ${OPENAI_API_KEY}",
+           "Content-Type": "application/json"
+         },
+         "tags": ["ai", "production"]
+       }
+     }
+   }
+   ```
+
+3. **接続テスト**
+
+   サーバーを起動して接続を確認します：
+
+   ```bash
+   hatago serve --verbose
+   ```
+
+4. **ツール一覧の確認**
+   リモートサーバーのツールが正しく読み込まれているか確認：
+   ```bash
+   # Claude Codeの場合、内部ツールで確認可能
+   _internal_hatago_list_servers
+   ```
+</Steps>
+
+## 認証パターン
+
+### Bearer Token認証
+
+最も一般的な認証方式です：
+
+```json
+{
+  "mcpServers": {
+    "api-server": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+### APIキー認証
+
+ヘッダーまたはクエリパラメータで認証：
+
+```json
+{
+  "mcpServers": {
+    "api-key-header": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "X-API-Key": "${API_KEY}"
+      }
+    },
+    "api-key-query": {
+      "url": "https://api.example.com/mcp?api_key=${API_KEY}",
+      "type": "http"
+    }
+  }
+}
+```
+
+### Basic認証
+
+ユーザー名とパスワードでの認証：
+
+```json
+{
+  "mcpServers": {
+    "basic-auth": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Basic ${BASE64_CREDENTIALS}"
+      }
+    }
+  }
+}
+```
+
+<Aside type="tip">
+  `BASE64_CREDENTIALS`は`username:password`をBase64エンコードした値です。 ```bash echo -n
+  "username:password" | base64 ```
+</Aside>
+
+## 実践的な例
+
+### OpenAI APIとの連携
+
+```json
+{
+  "mcpServers": {
+    "openai": {
+      "url": "https://api.openai.com/v1/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${OPENAI_API_KEY}",
+        "OpenAI-Organization": "${OPENAI_ORG_ID}"
+      },
+      "tags": ["ai", "gpt", "production"]
+    }
+  }
+}
+```
+
+### Slack APIとの連携
+
+```json
+{
+  "mcpServers": {
+    "slack": {
+      "url": "https://slack.com/api/mcp",
+      "type": "sse",
+      "headers": {
+        "Authorization": "Bearer ${SLACK_BOT_TOKEN}"
+      },
+      "tags": ["communication", "notification"]
+    }
+  }
+}
+```
+
+### GitHub APIとの連携
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "url": "https://api.github.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "token ${GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+      },
+      "tags": ["development", "vcs"]
+    }
+  }
+}
+```
+
+## Cloudflare Workersでの利用
+
+Cloudflare Workersでは、ローカルサーバーは利用できませんが、リモートサーバーは問題なく利用できます：
+
+```typescript
+// wrangler.toml
+[vars];
+REMOTE_MCP_URL = 'https://api.example.com/mcp';
+
+// worker.ts
+import { createHub } from '@himorishige/hatago-hub';
+
+export default {
+  async fetch(request: Request, env: Env) {
+    const hub = createHub({
+      servers: {
+        'remote-api': {
+          url: env.REMOTE_MCP_URL,
+          type: 'http',
+          headers: {
+            Authorization: `Bearer ${env.API_TOKEN}`
+          }
+        }
+      }
+    });
+
+    // Hub処理...
+  }
+};
+```
+
+## トラブルシューティング
+
+### 接続エラー
+
+<Card title="症状" icon="warning">
+  `Connection refused`や`timeout`エラーが発生する
+</Card>
+
+**解決方法：**
+
+1. URLが正しいか確認
+2. ファイアウォールやプロキシの設定を確認
+3. APIサービスのステータスを確認
+
+### 認証エラー
+
+<Card title="症状" icon="warning">
+  `401 Unauthorized`や`403 Forbidden`エラー
+</Card>
+
+**解決方法：**
+
+1. 環境変数が正しく設定されているか確認
+   ```bash
+   echo $API_TOKEN
+   ```
+2. トークンの有効期限を確認
+3. 必要な権限が付与されているか確認
+
+### CORS エラー（ブラウザ環境）
+
+<Card title="症状" icon="warning">
+  ブラウザコンソールにCORSエラーが表示される
+</Card>
+
+**解決方法：**
+
+1. サーバー側でCORSヘッダーを設定
+2. プロキシサーバーを経由する
+3. Cloudflare WorkersなどのEdge環境を利用
+
+## ベストプラクティス
+
+<Aside type="tip" title="推奨事項">
+  - APIキーは必ず環境変数で管理する - タグを使って環境別に管理する（development/staging/production）
+  - レート制限に注意し、必要に応じてリトライ処理を実装 -
+  ログレベルを適切に設定してデバッグを容易にする
+</Aside>
+
+## 次のステップ
+
+- [タグを使った環境管理](/ja/how-to/tag-filtering/) - 環境別にサーバーを切り替える
+- [チーム開発の設定](/ja/how-to/team-setup/) - チームでの設定管理方法
+- [セキュリティのベストプラクティス](/ja/how-to/security/) - APIキーの安全な管理

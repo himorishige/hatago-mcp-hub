@@ -1,0 +1,222 @@
+---
+title: クイックスタート
+description: Hatago MCP Hubを5分で始める
+manual: true
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Hatago MCP Hubを使って、複数のMCPサーバーを統合管理する環境を5分で構築します。
+
+## 前提条件
+
+- Node.js 20以上
+- npm または pnpm
+- Claude Code、Codex CLI、またはその他のMCP対応ツール
+
+## 1. 設定ファイルの初期化
+
+まず、設定ファイルを作成します：
+
+```bash
+npx @himorishige/hatago-mcp-hub init
+```
+
+対話型プロンプトで以下を選択します：
+
+1. **モード**: `stdio`（Claude Code用）または `http`（デバッグ用）
+2. **設定ファイル名**: デフォルトの `hatago.config.json` を推奨
+3. **MCPサーバー**: 使用したいサーバーを選択
+
+## 2. Claude Codeへの設定
+
+<Tabs>
+  <TabItem label="自動設定">
+    初期化時に自動的に `.mcp.json` が生成されます：
+
+    ```json
+    {
+      "mcpServers": {
+        "hatago": {
+          "command": "npx",
+          "args": [
+            "@himorishige/hatago-mcp-hub",
+            "serve",
+            "--stdio",
+            "--config",
+            "./hatago.config.json"
+          ]
+        }
+      }
+    }
+    ```
+
+</TabItem>
+  <TabItem label="手動設定">
+    `.mcp.json` を手動で作成・編集する場合：
+
+    ```json
+    {
+      "mcpServers": {
+        "hatago": {
+          "command": "npx",
+          "args": [
+            "@himorishige/hatago-mcp-hub",
+            "serve",
+            "--stdio",
+            "--config",
+            "./hatago.config.json"
+          ]
+        }
+      }
+    }
+    ```
+
+</TabItem>
+</Tabs>
+
+## 3. サーバーの起動
+
+Claude Codeを再起動すると、Hatagoが自動的に起動します。
+
+手動でテストする場合：
+
+```bash
+# STDIOモード（本番用）
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+
+# HTTPモード（デバッグ用）
+npx @himorishige/hatago-mcp-hub serve --http
+```
+
+## 4. 動作確認
+
+Claude Codeで以下のコマンドを実行して確認：
+
+```
+/tools
+```
+
+Hatagoが管理するすべてのMCPサーバーのツールが表示されれば成功です。
+
+## 設定例
+
+### 基本的な設定
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+### リモートサーバーを含む設定
+
+```json
+{
+  "mcpServers": {
+    "local-fs": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    },
+    "remote-api": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${API_KEY}"
+      }
+    }
+  }
+}
+```
+
+## トラブルシューティング
+
+### よくある問題と解決方法
+
+<details>
+<summary>環境変数が展開されない</summary>
+
+環境変数が設定されているか確認：
+
+```bash
+echo $GITHUB_TOKEN
+```
+
+設定されていない場合は、エクスポート：
+
+```bash
+export GITHUB_TOKEN="your-token-here"
+```
+
+またはデフォルト値を使用：
+
+```json
+{
+  "env": {
+    "GITHUB_TOKEN": "${GITHUB_TOKEN:-default-value}"
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>サーバーが起動しない</summary>
+
+1. Node.jsバージョンを確認：
+
+   ```bash
+   node --version  # v20以上が必要
+   ```
+
+2. ログレベルを上げてデバッグ：
+
+   ```bash
+   npx @himorishige/hatago-mcp-hub serve --verbose
+   ```
+
+3. 設定ファイルの検証：
+   ```bash
+   cat hatago.config.json | jq .  # JSON構文チェック
+   ```
+
+</details>
+
+<details>
+<summary>ツールが表示されない</summary>
+
+1. 内部ステータスツールで確認：
+
+   ```
+   _internal_hatago_status
+   ```
+
+2. 個別サーバーの状態を確認
+3. 必要に応じて設定をリロード：
+   ```
+   _internal_hatago_reload
+   ```
+
+</details>
+
+## 次のステップ
+
+- [インストールガイド](/ja/getting-started/installation/) - 詳細なインストール方法
+- [設定ガイド](/ja/guides/configuration/) - 高度な設定オプション
+- [リモートサーバー接続](/ja/guides/remote-servers/) - HTTPベースのMCPサーバー
+- [タグベースフィルタリング](/ja/guides/tag-filtering/) - 環境ごとのサーバー管理

@@ -1,0 +1,119 @@
+---
+title: Hatago MCP Hub ドキュメント
+description: 複数のMCPサーバーを統合管理する軽量ハブサーバー
+template: splash
+hero:
+  tagline: Model Context Protocol (MCP) サーバーの統合管理を簡単に
+  actions:
+    - text: クイックスタート
+      link: /ja/getting-started/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: GitHubで見る
+      link: 'https://github.com/himorishige/hatago-mcp-hub'
+      icon: external
+manual: true
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## 🏮 Hatagoとは
+
+**Hatago (旅籠)** は江戸時代の旅人に宿を提供した日本の伝統的な宿です。現代のAIツールとMCPサーバーをつなぐ中継点として、Hatago MCP Hubは複数のMCPサーバーへの統合アクセスを提供します。
+
+## ✨ 主な特徴
+
+<CardGrid stagger>
+  <Card title="🎯 シンプル＆軽量" icon="rocket">
+    ゼロ設定で開始可能。既存プロジェクトに影響を与えない設計。
+  </Card>
+  <Card title="🔌 豊富な接続性" icon="puzzle">
+    STDIO、HTTP、SSE、WebSocket対応。リモートMCPプロキシ機能付き。
+  </Card>
+  <Card title="🔥 ホットリロード" icon="refresh">
+    設定ファイルの変更を自動検出。再起動不要で動的更新。
+  </Card>
+  <Card title="📊 進捗通知" icon="information">
+    子サーバーからの通知を透過的に転送。長時間実行操作もサポート。
+  </Card>
+</CardGrid>
+
+## 🚀 30秒で始める
+
+```bash
+# 設定の初期化
+npx @himorishige/hatago-mcp-hub init
+
+# サーバーの起動（Claude Code用）
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+
+# またはHTTPモード（デバッグ用）
+npx @himorishige/hatago-mcp-hub serve --http
+```
+
+## 📦 対応環境
+
+<CardGrid>
+  <Card title="Claude Code" icon="laptop">
+    Anthropic公式のコーディングアシスタント
+  </Card>
+  <Card title="Codex CLI" icon="terminal">
+    ターミナルベースのAIツール
+  </Card>
+  <Card title="Cursor / Windsurf" icon="pencil">
+    AIペアプログラミング対応エディタ
+  </Card>
+  <Card title="VS Code" icon="seti:config">
+    拡張機能経由でMCP対応
+  </Card>
+</CardGrid>
+
+## 🎯 ユースケース
+
+### 個人開発者向け
+
+- 複数のMCPサーバーを一元管理
+- 環境ごとの設定切り替え
+- ローカル・リモートサーバーの混在利用
+
+### チーム開発向け
+
+- 共有設定ファイルによる環境統一
+- タグベースのサーバーグループ管理
+- CI/CDパイプラインとの統合
+
+### エンタープライズ向け
+
+- セキュアなプロキシ経由接続
+- 監視・ログ収集との連携
+- カスタムMCPサーバーの統合
+
+## 📚 ドキュメント構成
+
+- **[はじめに](/ja/getting-started/quick-start/)** - インストールから基本的な使い方まで
+- **[基本概念](/ja/concepts/)** - Hub、Server、Coreの理解
+- **[ガイド](/ja/guides/)** - 実践的なタスク別チュートリアル
+- **[パッケージ](/ja/packages/)** - 各npmパッケージの詳細
+- **[APIリファレンス](/ja/reference/api/)** - 詳細なAPI仕様
+- **[設定リファレンス](/ja/reference/config/)** - 設定オプションの完全ガイド
+
+## 🤝 コントリビューション
+
+Hatago MCP Hubはオープンソースプロジェクトです。バグ報告、機能提案、プルリクエストを歓迎します。
+
+<CardGrid>
+  <Card title="バグを報告" icon="bug" href="https://github.com/himorishige/hatago-mcp-hub/issues">
+    問題を見つけた場合はGitHub Issuesで報告してください
+  </Card>
+  <Card
+    title="機能を提案"
+    icon="lightbulb"
+    href="https://github.com/himorishige/hatago-mcp-hub/discussions"
+  >
+    新機能のアイデアをDiscussionsで共有
+  </Card>
+</CardGrid>
+
+## 📄 ライセンス
+
+MIT License - 詳細は[LICENSE](https://github.com/himorishige/hatago-mcp-hub/blob/main/LICENSE)をご覧ください。

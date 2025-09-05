@@ -1,0 +1,19 @@
+{
+  "name": "@himorishige/hatago-docs",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.35.2",
+    "@pasqal-io/starlight-client-mermaid": "^0.1.0",
+    "astro": "^5.6.1",
+    "mermaid": "^11.11.0",
+    "sharp": "^0.34.2"
+  }
+}

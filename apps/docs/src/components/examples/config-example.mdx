@@ -1,0 +1,76 @@
+---
+# 設定例の共通コンポーネント
+# 他のドキュメントからimportして使用
+---
+
+export const BasicConfig = `{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}`;
+
+export const EnvironmentVariableConfig = `{
+  "mcpServers": {
+    "api-server": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer \${API_TOKEN}"
+      },
+      "env": {
+        "API_KEY": "\${API_KEY:-default_key}"
+      }
+    }
+  }
+}`;
+
+export const TaggedServersConfig = `{
+  "mcpServers": {
+    "dev-server": {
+      "command": "dev-server",
+      "tags": ["development", "local"]
+    },
+    "prod-server": {
+      "url": "https://prod.example.com/mcp",
+      "type": "http",
+      "tags": ["production", "remote"]
+    }
+  }
+}`;
+
+export const MultiServerConfig = `{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["local", "filesystem"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "\${GITHUB_TOKEN}"
+      },
+      "tags": ["development", "vcs"]
+    },
+    "openai": {
+      "url": "https://api.openai.com/v1/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer \${OPENAI_API_KEY}"
+      },
+      "tags": ["production", "ai"]
+    }
+  }
+}`;
+
+;

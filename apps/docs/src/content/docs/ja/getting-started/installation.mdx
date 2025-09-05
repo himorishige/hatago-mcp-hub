@@ -1,0 +1,300 @@
+---
+title: インストールガイド
+description: Hatago MCP Hubのインストール方法と初期設定
+manual: true
+---
+
+import { Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Hatago MCP Hubは複数の方法でインストールできます。プロジェクトの要件に応じて最適な方法を選択してください。
+
+## インストール方法
+
+<CardGrid>
+  <Card title="npx（推奨）" icon="rocket">
+    インストール不要で即座に使用開始。常に最新版を利用。
+  </Card>
+  <Card title="グローバルインストール" icon="laptop">
+    システム全体で利用可能。CLIコマンドとして使用。
+  </Card>
+  <Card title="プロジェクト依存" icon="document">
+    プロジェクトごとに管理。バージョン固定が可能。
+  </Card>
+  <Card title="Docker" icon="container">
+    完全に分離された環境。チーム開発に最適。
+  </Card>
+</CardGrid>
+
+## npx（推奨）
+
+インストール不要で、常に最新版を使用します：
+
+```bash
+# 設定の初期化
+npx @himorishige/hatago-mcp-hub init
+
+# サーバーの起動
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+```
+
+### メリット
+
+- 🚀 インストール不要
+- ✨ 常に最新版
+- 💾 ディスク容量を節約
+- 🔄 キャッシュ管理自動
+
+## グローバルインストール
+
+システム全体で使用する場合：
+
+<Steps>
+1. **パッケージをインストール**
+   
+   ```bash
+   # npm
+   npm install -g @himorishige/hatago-mcp-hub
+   
+   # pnpm
+   pnpm add -g @himorishige/hatago-mcp-hub
+   
+   # yarn
+   yarn global add @himorishige/hatago-mcp-hub
+   ```
+
+2. **インストール確認**
+
+   ```bash
+   hatago --version
+   ```
+
+3. **設定を初期化**
+
+   ```bash
+   hatago init
+   ```
+
+4. **サーバーを起動**
+   ```bash
+   hatago serve
+   ```
+</Steps>
+
+## プロジェクト依存として
+
+特定のプロジェクトに組み込む場合：
+
+<Steps>
+1. **プロジェクトに追加**
+   
+   ```bash
+   # npm
+   npm install @himorishige/hatago-mcp-hub
+   
+   # pnpm
+   pnpm add @himorishige/hatago-mcp-hub
+   
+   # yarn
+   yarn add @himorishige/hatago-mcp-hub
+   ```
+
+2. **package.jsonにスクリプト追加**
+
+   ```json
+   {
+     "scripts": {
+       "mcp": "hatago serve",
+       "mcp:init": "hatago init",
+       "mcp:dev": "hatago serve --http --verbose"
+     }
+   }
+   ```
+
+3. **スクリプト経由で実行**
+   ```bash
+   npm run mcp:init  # 初期化
+   npm run mcp       # 起動
+   ```
+</Steps>
+
+## Dockerを使用
+
+完全に分離された環境で実行：
+
+```dockerfile
+# Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Hatagoをインストール
+RUN npm install -g @himorishige/hatago-mcp-hub
+
+# 設定ファイルをコピー
+COPY hatago.config.json .
+
+# STDIOモードで起動
+CMD ["hatago", "serve", "--stdio"]
+```
+
+Docker Composeの例：
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  hatago:
+    build: .
+    volumes:
+      - ./hatago.config.json:/app/hatago.config.json
+      - ./workspace:/workspace
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - API_KEY=${API_KEY}
+```
+
+## 環境別設定
+
+### Claude Code
+
+`.mcp.json` を作成：
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "command": "npx",
+      "args": [
+        "@himorishige/hatago-mcp-hub",
+        "serve",
+        "--stdio",
+        "--config",
+        "./hatago.config.json"
+      ]
+    }
+  }
+}
+```
+
+### Codex CLI
+
+`~/.codex/config.toml` に追加：
+
+```toml
+[mcp_servers.hatago]
+command = "npx"
+args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+```
+
+### Cursor / Windsurf
+
+プロジェクトの `.cursor/mcp.json` または `.windsurf/mcp.json` に設定：
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "command": "hatago",
+      "args": ["serve", "--stdio"]
+    }
+  }
+}
+```
+
+## システム要件
+
+### 必須要件
+
+- **Node.js**: 20.0.0以上
+- **npm**: 9.0.0以上（またはpnpm 8.0.0以上）
+- **OS**: macOS、Linux、Windows（WSL推奨）
+
+### 推奨環境
+
+- **メモリ**: 512MB以上の空きメモリ
+- **ディスク**: 100MB以上の空き容量
+- **ネットワーク**: リモートMCPサーバー使用時はインターネット接続
+
+## バージョン管理
+
+### 最新版へのアップデート
+
+```bash
+# グローバルインストールの場合
+npm update -g @himorishige/hatago-mcp-hub
+
+# プロジェクト依存の場合
+npm update @himorishige/hatago-mcp-hub
+
+# npxの場合（キャッシュクリア）
+npx clear-npx-cache
+```
+
+### 特定バージョンの使用
+
+```bash
+# 特定バージョンをインストール
+npm install @himorishige/hatago-mcp-hub@0.0.2
+
+# npxで特定バージョンを使用
+npx @himorishige/hatago-mcp-hub@0.0.2 serve
+```
+
+## アンインストール
+
+### グローバルインストールの削除
+
+```bash
+npm uninstall -g @himorishige/hatago-mcp-hub
+```
+
+### プロジェクト依存の削除
+
+```bash
+npm uninstall @himorishige/hatago-mcp-hub
+```
+
+### npxキャッシュのクリア
+
+```bash
+npx clear-npx-cache
+# または
+rm -rf ~/.npm/_npx
+```
+
+## トラブルシューティング
+
+### パーミッションエラー
+
+グローバルインストール時にエラーが出る場合：
+
+```bash
+# npmの場合
+npm install -g @himorishige/hatago-mcp-hub --unsafe-perm
+
+# またはnpmのプレフィックスを変更
+npm config set prefix '~/.npm-global'
+export PATH=~/.npm-global/bin:$PATH
+```
+
+### バージョンの確認
+
+```bash
+# インストール済みバージョン
+hatago --version
+
+# 最新版の確認
+npm view @himorishige/hatago-mcp-hub version
+
+# 利用可能なすべてのバージョン
+npm view @himorishige/hatago-mcp-hub versions
+```
+
+## 次のステップ
+
+インストールが完了したら、以下のガイドを参照してください：
+
+- [クイックスタート](/ja/getting-started/quick-start/) - 5分で始める
+- [設定ガイド](/ja/guides/configuration/) - 詳細な設定方法
+- [CLIコマンド](/ja/reference/cli/) - 利用可能なコマンド一覧

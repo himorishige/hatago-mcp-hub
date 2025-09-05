@@ -1,0 +1,87 @@
+---
+# トラブルシューティング用の共通カードコンポーネント
+---
+
+import { Card, Aside, Steps } from '@astrojs/starlight/components';
+
+export const ConnectionErrorCard = () => (
+  <Card title="接続エラー" icon="warning">
+    <p>
+      <strong>症状:</strong> Connection refused, timeout エラー
+    </p>
+    <Steps>
+      1. URLが正しいか確認 2. ファイアウォール設定を確認 3. サービスのステータスを確認 4.
+      ネットワーク接続を確認
+    </Steps>
+  </Card>
+);
+
+export const AuthenticationErrorCard = () => (
+  <Card title="認証エラー" icon="error">
+    <p>
+      <strong>症状:</strong> 401 Unauthorized, 403 Forbidden
+    </p>
+    <Steps>
+      1. 環境変数が設定されているか確認 2. トークンの有効期限を確認 3.
+      必要な権限が付与されているか確認 4. APIキーの形式が正しいか確認
+    </Steps>
+  </Card>
+);
+
+export const EnvironmentVariableCard = () => (
+  <Card title="環境変数エラー" icon="setting">
+    <p><strong>症状:</strong> 環境変数が見つからない、展開されない</p>
+    <Steps>
+      1. `echo $VARIABLE_NAME`で確認
+      2. exportで環境変数を設定
+      3. デフォルト値構文を使用: `${VAR:-default}`
+      4. .envファイルの読み込みを確認
+    </Steps>
+  </Card>
+);
+
+export const PermissionErrorCard = () => (
+  <Card title="権限エラー" icon="lock">
+    <p>
+      <strong>症状:</strong> Permission denied, EACCES エラー
+    </p>
+    <Steps>
+      1. ファイルの権限を確認: `ls -la` 2. 実行権限を付与: `chmod +x file` 3. sudoが必要か確認 4.
+      ディレクトリの書き込み権限を確認
+    </Steps>
+  </Card>
+);
+
+export const PortConflictCard = () => (
+  <Card title="ポート競合" icon="warning">
+    <p>
+      <strong>症状:</strong> Address already in use
+    </p>
+    <Steps>
+      1. 使用中のポートを確認: `lsof -i :PORT` 2. プロセスを停止: `kill -9 PID` 3. 別のポートを使用:
+      `--port 8081` 4. ポート設定を変更
+    </Steps>
+  </Card>
+);
+
+export const DebugTip = () => (
+  <Aside type="tip" title="デバッグのヒント">
+    `--verbose`フラグを使用して詳細なログを表示し、問題の原因を特定しましょう。 ```bash hatago serve
+    --verbose ```
+  </Aside>
+);
+
+export const SecurityWarning = () => (
+  <Aside type="caution" title="セキュリティ警告">
+    APIキーやトークンは絶対にコードに直接記述せず、必ず環境変数で管理してください。
+    .envファイルは.gitignoreに追加することを忘れずに。
+  </Aside>
+);
+
+export const PerformanceTip = () => (
+  <Aside type="tip" title="パフォーマンス改善">
+    不要なサーバーは無効化するか、タグフィルタリングを使って必要なサーバーのみを起動することで、起動時間とリソース使用を削減できます。
+  </Aside>
+);
+
+;
