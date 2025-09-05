@@ -105,13 +105,6 @@ yarn add -D @himorishige/hatago-mcp-hub
    npx hatago init --mode stdio
 ````
 
-**期待する出力:**
-
-```
-✓ Created hatago-config.json
-✓ Added example server configuration
-```
-
 2. **環境変数ファイル作成**
 
    ```bash
@@ -131,6 +124,13 @@ yarn add -D @himorishige/hatago-mcp-hub
    echo -e "\n# Hatago MCP Hub\nhatago-config.local.json\n.env.local" >> .gitignore
    ```
    </Steps>
+
+**期待する出力:**
+
+```
+✓ Created hatago-config.json
+✓ Added example server configuration
+```
 
 <Aside type="caution">
   `.env.local`には機密情報が含まれます。絶対にGitにコミットしないでください。
@@ -418,7 +418,7 @@ flowchart TD
    問題が発生したら `npm run mcp:dev -- --verbose` で詳細ログを確認
    ```
 
-   </Steps>
+</Steps>
 
 ## ✅ 完了チェックリスト
 

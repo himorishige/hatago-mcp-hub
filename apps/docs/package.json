@@ -5,10 +5,9 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "pnpm run collect && astro build",
+    "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro",
-    "collect": "node ../../tools/scripts/collect-docs.js"
+    "astro": "astro"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.35.2",
