@@ -1,0 +1,22 @@
+{ "$schema":
+"https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+"version": 1, "logLevel": "info", "mcpServers": { "filesystem": { "command": "npx", "args": ["-y",
+"@modelcontextprotocol/server-filesystem", "{{projectPath}}"], "description": "Local filesystem
+access", "tags": ["local", "filesystem", "core"] }, "git": { "command": "npx", "args": ["-y",
+"@modelcontextprotocol/server-git"], "cwd": "{{projectPath}}", "description": "Git repository
+operations", "tags": ["local", "git", "version-control"] }, "github": { "command": "npx", "args":
+["-y", "@modelcontextprotocol/server-github"], "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "{{githubToken}}"
+}, "description": "GitHub API integration (Issues, PRs, repository management)", "tags": ["cloud",
+"github", "collaboration"] }, "search": { "command": "npx", "args": ["-y",
+"@modelcontextprotocol/server-search"], "cwd": "{{projectPath}}", "description": "Fast codebase
+search", "tags": ["local", "search", "productivity"] }, "browser": { "command": "npx", "args":
+["-y", "@modelcontextprotocol/server-browser"], "description": "Web browsing capabilities (research
+and search)", "tags": ["cloud", "browser", "research"] }, "memory": { "command": "npx", "args":
+["-y", "@modelcontextprotocol/server-memory"], "description": "Context persistence between AI
+sessions", "tags": ["local", "memory", "ai"] }, "deepwiki": { "url": "https://mcp.deepwiki.com/sse",
+"type": "sse", "description": "GitHub documentation search and Q&A", "tags": ["cloud",
+"documentation", "ai"] }{{#if openaiApiKey}}, "openai": { "command": "npx", "args": ["-y",
+  "@modelcontextprotocol/server-openai"], "env": { "OPENAI_API_KEY": "{{openaiApiKey}}" },
+  "description": "OpenAI API integration (code generation and analysis)", "tags": ["cloud", "ai",
+  "openai"] }{{/if}}
+} }

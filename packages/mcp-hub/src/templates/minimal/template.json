@@ -1,0 +1,10 @@
+{
+  "name": "minimal",
+  "version": "1.0.0",
+  "templateSpec": "1.0",
+  "hatagoVersion": ">=0.0.2 <2.0",
+  "description": "Minimal Hatago setup - ready to use in 10 seconds",
+  "tags": ["minimal", "quick-start", "beginner"],
+  "inputs": [],
+  "hooks": {}
+}

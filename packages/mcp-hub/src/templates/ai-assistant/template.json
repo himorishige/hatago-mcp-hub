@@ -1,0 +1,32 @@
+{
+  "name": "ai-assistant",
+  "version": "1.0.0",
+  "templateSpec": "1.0",
+  "hatagoVersion": ">=0.0.2 <2.0",
+  "description": "AI-powered development setup with filesystem, GitHub, search, and AI features",
+  "tags": ["ai", "assistant", "github", "filesystem", "search", "claude"],
+  "inputs": [
+    {
+      "name": "projectPath",
+      "type": "string",
+      "description": "Root path of your project",
+      "required": false,
+      "default": "."
+    },
+    {
+      "name": "githubToken",
+      "type": "string",
+      "description": "GitHub Personal Access Token",
+      "required": false,
+      "default": "${GITHUB_TOKEN}"
+    },
+    {
+      "name": "openaiApiKey",
+      "type": "string",
+      "description": "OpenAI API Key (optional)",
+      "required": false,
+      "default": "${OPENAI_API_KEY:-}"
+    }
+  ],
+  "hooks": {}
+}

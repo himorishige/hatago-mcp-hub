@@ -12,6 +12,17 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, isAbsolute, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
+import {
+  listTemplates,
+  getTemplate,
+  generateFromTemplate,
+  checkFileConflicts,
+  applyDefaults,
+  validateInputs,
+  formatTemplateList,
+  executeHook,
+  type TemplateVariables
+} from '../templates/index.js';
 
 // Get package version
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -34,10 +45,41 @@ program
   .option('-c, --config <path>', 'Path to configuration file', './hatago.config.json')
   .option('-f, --force', 'Overwrite existing configuration file')
   .option('-m, --mode <mode>', 'Integration mode (stdio or http)')
+  .option(
+    '-t, --template <name>',
+    'Use a template (minimal, local-dev, ai-assistant, cloud-only, full-stack)'
+  )
+  .option('--list-templates', 'List all available templates')
+  .option('--from-url <url>', 'Load template from URL (coming soon)')
+  .option('-i, --interactive', 'Interactive setup mode')
+  .option('--defaults', 'Use default values without prompting')
   .action(async (options: unknown) => {
-    const opts = options as { config?: string; force?: boolean; mode?: string };
+    const opts = options as {
+      config?: string;
+      force?: boolean;
+      mode?: string;
+      template?: string;
+      listTemplates?: boolean;
+      fromUrl?: string;
+      interactive?: boolean;
+      defaults?: boolean;
+    };
     const configPath = opts.config ?? './hatago.config.json';
     const force = opts.force ?? false;
+
+    // Handle --list-templates
+    if (opts.listTemplates) {
+      const templates = listTemplates();
+      console.log(formatTemplateList(templates));
+      process.exit(0);
+    }
+
+    // Handle --from-url (not yet implemented)
+    if (opts.fromUrl) {
+      console.error('❌ Remote templates not yet implemented');
+      console.error('   This feature is coming soon!');
+      process.exit(1);
+    }
 
     // Check if file already exists
     if (existsSync(configPath) && !force) {
@@ -47,6 +89,137 @@ program
     }
 
     try {
+      // Use template if specified
+      if (opts.template) {
+        const template = getTemplate(opts.template);
+        if (!template) {
+          console.error(`❌ Template not found: ${opts.template}`);
+          console.error('');
+          const templates = listTemplates();
+          console.error(formatTemplateList(templates));
+          process.exit(1);
+        }
+
+        console.log(`🎨 Using template: ${template.metadata.name}`);
+        console.log(`   ${template.metadata.description}`);
+        console.log('');
+
+        // Collect variables (interactive or defaults)
+        let variables: TemplateVariables = {};
+
+        if (opts.interactive && !opts.defaults) {
+          const rl = createInterface({
+            input: process.stdin,
+            output: process.stdout
+          });
+
+          for (const input of template.metadata.inputs) {
+            if (input.required || !opts.defaults) {
+              const defaultStr = input.default ? ` (default: ${input.default})` : '';
+              const answer = await new Promise<string>((resolve) => {
+                rl.question(`${input.description}${defaultStr}: `, (value) => {
+                  resolve(value.trim());
+                });
+              });
+
+              if (answer) {
+                // Convert to appropriate type
+                if (input.type === 'boolean') {
+                  variables[input.name] = answer.toLowerCase() === 'true';
+                } else if (input.type === 'number') {
+                  variables[input.name] = Number(answer);
+                } else {
+                  variables[input.name] = answer;
+                }
+              }
+            }
+          }
+
+          rl.close();
+        }
+
+        // Apply defaults
+        variables = applyDefaults(template.metadata, variables);
+
+        // Validate inputs
+        const validation = validateInputs(template.metadata, variables);
+        if (!validation.valid) {
+          console.error('❌ Invalid template inputs:');
+          validation.errors.forEach((error) => console.error(`   - ${error}`));
+          process.exit(1);
+        }
+
+        const targetDir = dirname(configPath);
+
+        // Check for file conflicts unless --force is used
+        if (!force) {
+          const conflicts = checkFileConflicts(template, targetDir);
+          if (conflicts.length > 0) {
+            console.error('❌ File conflicts detected:');
+            conflicts.forEach((file) => console.error(`   - ${file}`));
+            console.error('');
+            console.error('Options:');
+            console.error(`   - Use --force to overwrite existing files`);
+            console.error(`   - Remove conflicting files manually`);
+            console.error(`   - Choose a different directory`);
+            process.exit(1);
+          }
+        }
+
+        // Execute pre-init hook
+        await executeHook(template, 'preInit', targetDir);
+
+        // Generate from template
+        const result = generateFromTemplate(template, targetDir, variables, { force });
+
+        // Execute post-init hook
+        await executeHook(template, 'postInit', targetDir);
+
+        console.log(`✅ Generated configuration from template: ${opts.template}`);
+        console.log('');
+
+        if (result.created.length > 0) {
+          console.log('Files created:');
+          result.created.forEach((file) => {
+            const relativePath = file.startsWith(targetDir)
+              ? file.slice(targetDir.length + 1)
+              : file;
+            console.log(`  - ${relativePath}`);
+          });
+        }
+
+        if (result.skipped.length > 0) {
+          console.log('');
+          console.log('Files skipped (already exist):');
+          result.skipped.forEach((file) => {
+            const relativePath = file.startsWith(targetDir)
+              ? file.slice(targetDir.length + 1)
+              : file;
+            console.log(`  - ${relativePath}`);
+          });
+        }
+
+        console.log('');
+        console.log('Next steps:');
+        console.log('1. Review the generated configuration');
+        if (result.created.some((f) => f.endsWith('.env.hatago.example'))) {
+          console.log('2. Copy .env.hatago.example to .env and configure');
+          console.log('3. Run: hatago serve --stdio');
+        } else {
+          console.log('2. Run: hatago serve --stdio');
+        }
+
+        // Show template documentation if available
+        const templateDocPath = join(targetDir, 'HATAGO_TEMPLATE.md');
+        if (existsSync(templateDocPath)) {
+          console.log('');
+          console.log('📚 For detailed setup instructions, see HATAGO_TEMPLATE.md');
+        }
+
+        process.exit(0);
+      }
+
+      // Original flow (without template)
       // Determine mode
       let mode = opts.mode;
 

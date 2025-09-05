@@ -54,8 +54,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.4",
-    "hono": "^4.9.4",
-    "commander": "^14.0.0"
+    "commander": "^14.0.0",
+    "hono": "^4.9.4"
   },
   "devDependencies": {
     "@himorishige/hatago-core": "workspace:*",
@@ -64,6 +64,7 @@
     "@himorishige/hatago-server": "workspace:*",
     "@himorishige/hatago-transport": "workspace:*",
     "@types/node": "^20.11.5",
+    "handlebars": "^4.7.8",
     "tsdown": "^0.14.2",
     "typescript": "~5.7.2",
     "vitest": "^2.1.9"

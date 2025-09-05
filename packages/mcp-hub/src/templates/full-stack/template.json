@@ -1,0 +1,55 @@
+{
+  "name": "full-stack",
+  "version": "1.0.0",
+  "templateSpec": "1.0",
+  "hatagoVersion": ">=0.0.2 <2.0",
+  "description": "Production-ready full-stack setup with database, API, authentication, and monitoring",
+  "tags": [
+    "full-stack",
+    "production",
+    "database",
+    "api",
+    "monitoring",
+    "enterprise"
+  ],
+  "inputs": [
+    {
+      "name": "projectPath",
+      "type": "string",
+      "description": "Root path of your project",
+      "required": false,
+      "default": "."
+    },
+    {
+      "name": "githubToken",
+      "type": "string",
+      "description": "GitHub Personal Access Token",
+      "required": false,
+      "default": "${GITHUB_TOKEN}"
+    },
+    {
+      "name": "databaseUrl",
+      "type": "string",
+      "description": "Database connection URL",
+      "required": false,
+      "default": "${DATABASE_URL:-postgresql://localhost:5432/devdb}"
+    },
+    {
+      "name": "openaiApiKey",
+      "type": "string",
+      "description": "OpenAI API Key",
+      "required": false,
+      "default": "${OPENAI_API_KEY:-}"
+    },
+    {
+      "name": "slackWebhook",
+      "type": "string",
+      "description": "Slack webhook URL for notifications",
+      "required": false,
+      "default": "${SLACK_WEBHOOK_URL:-}"
+    }
+  ],
+  "hooks": {
+    "postInit": "./hooks/setup.sh"
+  }
+}

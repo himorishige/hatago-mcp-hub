@@ -1,0 +1,29 @@
+{ "$schema":
+"https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+"version": 1, "logLevel": "info", "timeouts": { "connectMs": 5000, "requestMs": 30000,
+"keepAliveMs": 20000 }, "mcpServers": { "filesystem": { "command": "npx", "args": ["-y",
+"@modelcontextprotocol/server-filesystem", "{{projectPath}}"], "description": "Local filesystem
+operations", "tags": ["core", "local", "filesystem"] }, "git": { "command": "npx", "args": ["-y",
+"@modelcontextprotocol/server-git"], "cwd": "{{projectPath}}", "description": "Git version control",
+"tags": ["core", "local", "git"] }, "github": { "command": "npx", "args": ["-y",
+"@modelcontextprotocol/server-github"], "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "{{githubToken}}"
+}, "description": "GitHub API integration", "tags": ["core", "cloud", "github", "collaboration"] },
+"postgres": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-postgres"], "env": {
+"DATABASE_URL": "{{databaseUrl}}" }, "description": "PostgreSQL database operations", "tags":
+["database", "postgres", "data"] }, "search": { "command": "npx", "args": ["-y",
+"@modelcontextprotocol/server-search"], "cwd": "{{projectPath}}", "description": "Advanced codebase
+search", "tags": ["productivity", "search", "local"] }, "browser": { "command": "npx", "args":
+["-y", "@modelcontextprotocol/server-browser"], "description": "Web browsing and scraping", "tags":
+["tools", "browser", "research"] }, "memory": { "command": "npx", "args": ["-y",
+"@modelcontextprotocol/server-memory"], "description": "Persistent context storage", "tags": ["ai",
+"memory", "context"] }, "deepwiki": { "url": "https://mcp.deepwiki.com/sse", "type": "sse",
+"description": "Documentation search", "tags": ["documentation", "cloud", "search"] }{{#if
+  openaiApiKey
+}}, "openai": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-openai"], "env": {
+  "OPENAI_API_KEY": "{{openaiApiKey}}" }, "description": "OpenAI API integration", "tags": ["ai",
+  "openai", "generation"] }{{/if}}{{#if slackWebhook}}, "slack": { "command": "npx", "args": ["-y",
+  "@modelcontextprotocol/server-slack"], "env": { "SLACK_WEBHOOK_URL": "{{slackWebhook}}" },
+  "description": "Slack notifications", "tags": ["notifications", "slack", "monitoring"] }{{/if}},
+"monitoring": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-monitoring"],
+"description": "System monitoring and metrics", "tags": ["monitoring", "metrics", "observability"] }
+} }

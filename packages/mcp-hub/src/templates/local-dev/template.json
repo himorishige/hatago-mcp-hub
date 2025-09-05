@@ -1,0 +1,25 @@
+{
+  "name": "local-dev",
+  "version": "1.0.0",
+  "templateSpec": "1.0",
+  "hatagoVersion": ">=0.0.2 <2.0",
+  "description": "Local development setup with filesystem, Git, and hot-reload support",
+  "tags": ["local", "development", "filesystem", "git", "hot-reload"],
+  "inputs": [
+    {
+      "name": "projectPath",
+      "type": "string",
+      "description": "Root path of your project",
+      "required": false,
+      "default": "."
+    },
+    {
+      "name": "enableWatch",
+      "type": "boolean",
+      "description": "Watch configuration file for changes",
+      "required": false,
+      "default": true
+    }
+  ],
+  "hooks": {}
+}

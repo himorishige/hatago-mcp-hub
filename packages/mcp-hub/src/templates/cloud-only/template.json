@@ -1,0 +1,18 @@
+{
+  "name": "cloud-only",
+  "version": "1.0.0",
+  "templateSpec": "1.0",
+  "hatagoVersion": ">=0.0.2 <2.0",
+  "description": "Cloud-only setup with remote MCP servers - no local dependencies",
+  "tags": ["cloud", "serverless", "remote", "minimal"],
+  "inputs": [
+    {
+      "name": "githubToken",
+      "type": "string",
+      "description": "GitHub Personal Access Token",
+      "required": false,
+      "default": "${GITHUB_TOKEN:-}"
+    }
+  ],
+  "hooks": {}
+}
