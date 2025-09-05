@@ -28,6 +28,7 @@ export type ServerOptions = {
   quiet?: boolean;
   watchConfig?: boolean;
   tags?: string[];
+  ui?: boolean;
 };
 
 /**
@@ -43,7 +44,8 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
     verbose = false,
     quiet = false,
     watchConfig = false,
-    tags
+    tags,
+    ui = false
   } = options;
 
   // Create logger
@@ -75,7 +77,8 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
       port,
       logger,
       watchConfig,
-      tags
+      tags,
+      ui
     });
   } else {
     throw new Error(`Invalid mode: ${mode}`);

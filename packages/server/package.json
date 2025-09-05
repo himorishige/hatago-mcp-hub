@@ -32,6 +32,9 @@
     "@hono/node-server": "^1.14.0",
     "hono": "^4.9.4"
   },
+  "optionalDependencies": {
+    "@himorishige/hatago-ui": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^20.17.10",
     "memfs": "^4.38.2",

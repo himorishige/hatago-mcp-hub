@@ -4,6 +4,7 @@ dist/
 build/
 coverage/
 *.tsbuildinfo
+.backups/
 
 # Logs
 npm-debug.log*

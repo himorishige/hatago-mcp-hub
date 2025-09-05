@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom animations */
+@keyframes pulse-primary {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--p) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--p) / 0);
+  }
+}
+
+.server-connecting {
+  animation: pulse-primary 2s infinite;
+}
+
+/* Custom scrollbar for dark mode */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--b2));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--b3));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--n));
+  }
+}

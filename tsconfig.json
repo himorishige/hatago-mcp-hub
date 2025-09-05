@@ -18,6 +18,7 @@
     { "path": "./packages/transport" },
     { "path": "./packages/hub" },
     { "path": "./packages/server" },
+    { "path": "./packages/ui" },
     { "path": "./packages/cli" },
     { "path": "./packages/mcp-hub" }
   ]

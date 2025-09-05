@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "deepwiki": {
+      "disabled": false,
+      "type": "sse",
+      "url": "https://mcp.deepwiki.com/sse"
+    },
+    "test": {
+      "disabled": false,
+      "tags": ["dev"],
+      "type": "http",
+      "url": "http://example.com/mcp",
+      "headers": {}
+    }
+  }
+}

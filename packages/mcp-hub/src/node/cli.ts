@@ -136,6 +136,7 @@ program
   .option('--quiet', 'Minimize output')
   .option('--watch', 'Watch configuration file for changes')
   .option('--tags <tags>', 'Filter servers by tags (comma-separated)')
+  .option('--ui', 'Enable web UI dashboard (requires HTTP mode)')
   .action(async (options: unknown) => {
     try {
       const opts = options as {
@@ -147,10 +148,26 @@ program
         quiet?: boolean;
         watch?: boolean;
         tags?: string;
+        ui?: boolean;
       };
 
       // Determine mode
-      const mode = opts.http ? 'http' : 'stdio';
+      let mode = opts.http ? 'http' : 'stdio';
+
+      // UI validation: UI requires HTTP mode
+      if (opts.ui && mode === 'stdio') {
+        console.error('\n❌ Web UI requires HTTP mode');
+        console.error('');
+        console.error('   Enable HTTP mode with --http:');
+        console.error('     hatago serve --http --ui');
+        console.error('');
+        process.exit(1);
+      }
+
+      // Auto-enable HTTP mode when UI is requested
+      if (opts.ui) {
+        mode = 'http';
+      }
 
       // Set log level
       const logLevel = opts.verbose ? 'debug' : opts.quiet ? 'error' : 'info';
@@ -185,7 +202,8 @@ program
         verbose: opts.verbose,
         quiet: opts.quiet,
         watchConfig: opts.watch,
-        tags
+        tags,
+        ui: opts.ui
       });
     } catch (error) {
       // Handle specific errors with cleaner messages

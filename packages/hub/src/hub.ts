@@ -13,7 +13,7 @@ import {
   ToolInvoker,
   ToolRegistry
 } from '@himorishige/hatago-runtime';
-import type { Tool, LogData } from '@himorishige/hatago-core';
+import type { Tool, LogData, HatagoConfig } from '@himorishige/hatago-core';
 import {
   SSEClientTransport,
   StreamableHTTPTransport,
@@ -1657,6 +1657,23 @@ export class HatagoHub {
    */
   async doReloadConfig(): Promise<void> {
     return this.reloadConfig();
+  }
+
+  /**
+   * Get current configuration
+   */
+  getConfig(): HatagoConfig {
+    // Return the current configuration from preloadedConfig or default
+    if (this.options.preloadedConfig?.data) {
+      return this.options.preloadedConfig.data as HatagoConfig;
+    }
+
+    // Return empty config if no config loaded
+    return {
+      version: 1,
+      logLevel: 'info' as const,
+      mcpServers: {}
+    };
   }
 
   /**

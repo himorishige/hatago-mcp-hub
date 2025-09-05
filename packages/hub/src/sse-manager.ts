@@ -127,9 +127,24 @@ export class SSEManager {
     }
 
     try {
-      const encoder = new TextEncoder();
-      const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-      await client.writer.write(encoder.encode(message));
+      const message = `event: ${event}
+data: ${JSON.stringify(data)}
+
+`;
+
+      // Use stream if available (Hono SSE), otherwise use writer
+      if (client.stream && typeof (client.stream as any).writeSSE === 'function') {
+        // Hono's writeSSE expects specific format
+        await (client.stream as any).writeSSE({
+          event: event,
+          data: JSON.stringify(data)
+        });
+      } else if (client.writer) {
+        const encoder = new TextEncoder();
+        await client.writer.write(encoder.encode(message));
+      } else {
+        throw new Error('No valid writer or stream available');
+      }
 
       this.logger.debug('[SSE] Event sent', { clientId, event });
     } catch (error) {
@@ -169,16 +184,20 @@ export class SSEManager {
 
     try {
       const streamWithWriteSSE = client.stream as
-        | { writeSSE?: (message: { comment: string }) => void }
+        | { writeSSE?: (message: any) => Promise<void> | void }
         | undefined;
       if (streamWithWriteSSE?.writeSSE) {
         // Framework-specific stream (e.g., Hono)
-        streamWithWriteSSE.writeSSE({ comment: 'keepalive' });
-      } else {
+        // Hono handles keepalive internally, skip manual keepalive
+        return;
+      } else if (client.writer) {
         // Standard SSE stream
         const encoder = new TextEncoder();
         const keepAlive = encoder.encode(':keepalive\n\n');
         await client.writer.write(keepAlive);
+      } else {
+        // No writer available, skip keepalive
+        this.logger.debug('[SSE] No writer available for keepalive', { clientId });
       }
 
       this.logger.debug('[SSE] Keep-alive sent', { clientId });

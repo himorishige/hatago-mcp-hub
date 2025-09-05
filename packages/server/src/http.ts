@@ -14,6 +14,7 @@ import { maybeRegisterMetricsEndpoint, registerHubMetrics } from './metrics.js';
 import { cors } from 'hono/cors';
 import type { Logger } from './logger.js';
 import type { HatagoConfig } from '@himorishige/hatago-core';
+import { ConfigManager } from './config-manager.js';
 
 type HttpOptions = {
   config: { path?: string; data: HatagoConfig };
@@ -22,13 +23,16 @@ type HttpOptions = {
   logger: Logger;
   watchConfig?: boolean;
   tags?: string[];
+  ui?: boolean;
 };
 
 /**
  * Start the MCP server in HTTP mode
  */
 export async function startHttp(options: HttpOptions): Promise<void> {
-  const { config, host, port, logger, watchConfig = false, tags } = options;
+  const { config, host, port, logger, watchConfig = false, tags, ui = false } = options;
+
+  logger.debug(`startHttp called with ui option: ${ui}`);
 
   // Create hub instance
   // If the config file does not exist, do not pass `configFile`.
@@ -75,6 +79,46 @@ export async function startHttp(options: HttpOptions): Promise<void> {
 
   // SSE endpoint for progress notifications
   app.get('/sse', createEventsEndpoint(hub));
+
+  // Web UI integration (optional, dynamic import)
+  if (ui) {
+    try {
+      logger.debug('Loading Web UI module...');
+
+      // Dynamic import to avoid loading UI dependencies when not needed
+      const { createHatagoUI } = await import('../../ui/dist/index.js');
+
+      // Create ConfigManager instance for UI
+      const configManager = config.path
+        ? new ConfigManager({
+            configPath: config.path,
+            logger
+          })
+        : undefined;
+
+      // Create UI app with config path and manager
+      const uiApp = await createHatagoUI({
+        hub,
+        configPath: config.path || './config.json',
+        configManager
+      });
+
+      // Mount UI at /ui path
+      app.route('/ui', uiApp);
+
+      // Redirect root to UI when enabled
+      app.get('/', (c) => c.redirect('/ui'));
+
+      logger.info(`Web UI enabled at: http://${host}:${port}/ui`);
+    } catch (error) {
+      logger.error(
+        'Failed to load Web UI module:',
+        error instanceof Error ? error.message : String(error)
+      );
+      logger.error('Make sure @himorishige/hatago-ui is installed:');
+      logger.error('  pnpm add @himorishige/hatago-ui');
+    }
+  }
 
   // Start HTTP server
   const srv = serve({
