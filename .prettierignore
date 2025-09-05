@@ -6,3 +6,6 @@ pnpm-lock.yaml
 .turbo
 .cache
 schemas/
+
+# MDX files have special indentation for Starlight components
+apps/docs/**/*.mdx

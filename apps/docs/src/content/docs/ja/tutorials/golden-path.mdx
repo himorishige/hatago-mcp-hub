@@ -45,7 +45,7 @@ import { Card, CardGrid, Steps, Tabs, TabItem, Aside, Code } from '@astrojs/star
    ```bash
    npm config get prefix  # グローバルインストール先を確認
    ```
-   </Steps>
+</Steps>
 
 ## 🚀 Step 1: インストール（2分）
 
@@ -103,7 +103,7 @@ yarn add -D @himorishige/hatago-mcp-hub
 1. **設定ファイル作成**
    ```bash
    npx hatago init --mode stdio
-````
+   ```
 
 2. **環境変数ファイル作成**
 
@@ -123,7 +123,7 @@ yarn add -D @himorishige/hatago-mcp-hub
    ```bash
    echo -e "\n# Hatago MCP Hub\nhatago-config.local.json\n.env.local" >> .gitignore
    ```
-   </Steps>
+</Steps>
 
 **期待する出力:**
 
@@ -181,7 +181,7 @@ yarn add -D @himorishige/hatago-mcp-hub
    ```bash
    echo '{"jsonrpc":"2.0","method":"tools/list","id":1,"params":{}}' | npx hatago serve --stdio
    ```
-   </Steps>
+</Steps>
 
 <Card title="つまずきポイント" icon="warning">
   `command not found`エラーが出たら、`npx`が使えることを確認: `which npx`
@@ -239,7 +239,7 @@ yarn add -D @himorishige/hatago-mcp-hub
    ```json
    { "jsonrpc": "2.0", "method": "_internal_hatago_list_servers", "id": 1, "params": {} }
    ```
-   </Steps>
+</Steps>
 
 ## 🧪 Step 5: 動作検証（5分）
 
