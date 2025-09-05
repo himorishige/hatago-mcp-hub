@@ -1,0 +1,51 @@
+---
+title: Examples & Recipes
+description: Practical configurations and recipes for Hatago Hub
+sidebar:
+  order: 1
+manual: true
+---
+
+import { Card, CardGrid, Code, Aside, LinkCard } from '@astrojs/starlight/components';
+import { BasicConfig, MultiServerConfig } from '../../../../components/examples/config-example.mdx';
+
+# Examples & Recipes
+
+Copy these examples and adapt them to your project. Start with the basic configs, then jump to a recipe.
+
+## Basic Configs
+
+### Minimal
+
+<Code code={BasicConfig} lang="json" title="hatago-config.json" />
+
+### Multiple servers
+
+<Code code={MultiServerConfig} lang="json" title="hatago-config.json" />
+
+## Recipes
+
+<CardGrid>
+  <LinkCard title="AI Development" description="OpenAI/Claude + local LLMs" href="/en/examples/ai-development/" />
+  <LinkCard title="Full‑stack" description="Frontend + backend + database" href="/en/examples/fullstack/" />
+  <LinkCard title="Data Analysis" description="Jupyter + DB + visualization" href="/en/examples/data-analysis/" />
+  <LinkCard title="CI/CD" description="GitHub Actions + Docker + deploy" href="/en/examples/ci-cd/" />
+  </CardGrid>
+
+## Platform
+
+<CardGrid>
+  <Card title="Node.js" icon="seti:nodejs">Local development</Card>
+  <Card title="Cloudflare Workers" icon="cloudflare">Edge/serverless</Card>
+  <Card title="Docker" icon="docker">Containerized</Card>
+  <Card title="Kubernetes" icon="seti:kubernetes">Clustered</Card>
+</CardGrid>
+
+<Aside type="tip">Got a cool recipe? Share it in GitHub Discussions!</Aside>
+
+## Related
+
+- [Config Reference](/en/reference/config/)
+- [Remote Servers](/en/how-to/remote-servers/)
+- [Tag Filtering](/en/how-to/tag-filtering/)
+

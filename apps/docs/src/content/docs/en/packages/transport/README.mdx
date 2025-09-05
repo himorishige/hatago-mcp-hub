@@ -1,0 +1,58 @@
+---
+title: '@himorishige/hatago-transport'
+description: Transport implementations
+package: transport
+lang: en
+---
+
+# @himorishige/hatago-transport
+
+Transport layer implementations: STDIO, HTTP/SSE, WebSocket.
+
+## Install
+
+```bash
+npm install @himorishige/hatago-transport
+```
+
+## STDIO
+
+```ts
+import { createStdioTransport } from '@himorishige/hatago-transport';
+const t = await createStdioTransport({ command: 'node', args: ['./server.js'] });
+await t.connect();
+```
+
+## HTTP/SSE
+
+```ts
+import { createHttpTransport } from '@himorishige/hatago-transport';
+const t = createHttpTransport({ url: 'http://localhost:3535', sessionId: 'abc' });
+await t.connect();
+```
+
+## WebSocket
+
+```ts
+import { createWebSocketTransport } from '@himorishige/hatago-transport';
+const t = createWebSocketTransport({ url: 'ws://localhost:3535', reconnect: true });
+await t.connect();
+```
+
+## Interface
+
+```ts
+interface Transport {
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  send(message: any): Promise<void>;
+  onMessage(fn: (m: any) => void): void;
+  onError(fn: (e: Error) => void): void;
+  onClose(fn: () => void): void;
+}
+```
+
+## License
+
+MIT
+

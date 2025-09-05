@@ -1,0 +1,51 @@
+---
+title: Quick Start
+description: Start using Hatago in minutes
+manual: true
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+## Prerequisites
+
+- Node.js 20+
+
+## 1. Initialize
+
+```bash
+npx @himorishige/hatago-mcp-hub init
+```
+
+## 2. Configure Client
+
+Claude Code `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "command": "npx",
+      "args": [
+        "@himorishige/hatago-mcp-hub",
+        "serve",
+        "--stdio",
+        "--config",
+        "./hatago.config.json"
+      ]
+    }
+  }
+}
+```
+
+## 3. Run
+
+```bash
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+```
+
+## 4. Next
+
+- [Remote Servers](/en/how-to/remote-servers/)
+- [Tag Filtering](/en/how-to/tag-filtering/)
+- [Config Reference](/en/reference/config/)
+

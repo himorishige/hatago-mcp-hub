@@ -1,0 +1,107 @@
+---
+title: Troubleshooting
+description: Common failures, causes, and step‑by‑step fixes
+manual: true
+---
+
+import { Card, CardGrid, Steps, Aside } from '@astrojs/starlight/components';
+
+## Quick checks
+
+1) Node.js 20+ (`node --version`)
+2) Config present (`ls hatago.config.json`) for STDIO mode
+3) Run with `--verbose` and read first error
+
+## Top 10 Issues
+
+### 1. Command not found
+
+<Card title="Symptoms" icon="warning">`hatago: command not found` / `npx: not found`</Card>
+
+Causes:
+- Global install missing, or PATH not set
+
+Fix:
+- Use `npx @himorishige/hatago-mcp-hub ...` or add global bin to PATH
+
+### 2. Config not found
+
+<Card title="Symptoms" icon="warning">`ENOENT: hatago-config.json`</Card>
+
+Fix:
+```bash
+npx @himorishige/hatago-mcp-hub init
+hatago serve --stdio --config ./hatago.config.json
+```
+
+Prevention: keep an example (`hatago-config.example.json`) and document copying.
+
+### 3. Invalid JSON
+
+Fix: validate with `cat hatago.config.json | jq .` and fix syntax.
+
+### 4. Env var not found
+
+<Card title="Symptoms" icon="warning">`${VAR} not found`</Card>
+
+Fix: export vars or add defaults (`${VAR:-default}`).
+
+### 5. Child server fails to start
+
+Causes: wrong command, missing deps, permissions.
+
+Fix: run the server directly (e.g. `npx @modelcontextprotocol/server-filesystem .`) and read its logs.
+
+### 6. Remote connect errors
+
+<Card title="Symptoms" icon="warning">`ECONNREFUSED` / `timeout`</Card>
+
+Fixes:
+- Verify URL and DNS
+- Check firewall/proxy
+- Increase timeouts on the remote side if applicable
+
+### 7. 401/403 Unauthorized
+
+Fixes:
+- Ensure `Authorization` header present
+- Refresh token / check scopes
+
+### 8. No tools listed
+
+Fixes:
+- Confirm child server is running
+- Check `notifications/tools/list_changed` support and wait a moment
+- Use internal tool `_internal_hatago_list_servers`
+
+### 9. Logs too noisy or silent
+
+Use `--verbose` for debug, or `--quiet` to reduce noise.
+
+### 10. Port already in use (HTTP)
+
+Change port: `hatago serve --http --port 3536`.
+
+## Diagnose by layers
+
+| Layer | Symptom | Command | First action |
+| --- | --- | --- | --- |
+| 1. Startup | `command not found` | `which hatago` | Use `npx` or fix PATH |
+| 2. Config | `Invalid config` | `cat config | jq .` | Fix JSON |
+| 3. Env | `${VAR} not found` | `echo $VAR` | Export or set default |
+| 4. Spawn | `spawn ENOENT` | `which npx` | Use absolute path |
+| 5. Network | `ECONNREFUSED` | `curl -I <url>` | Verify URL/firewall |
+| 6. Auth | `401/403` | `echo $TOKEN` | Refresh token/scopes |
+| 7. Timeout | `Request timeout` | `time curl <url>` | Increase timeout |
+
+## Useful commands
+
+```bash
+hatago serve --verbose
+hatago serve --tags development
+```
+
+## Need help?
+
+- GitHub Issues: https://github.com/himorishige/hatago-hub/issues
+- Discussions: https://github.com/himorishige/hatago-hub/discussions

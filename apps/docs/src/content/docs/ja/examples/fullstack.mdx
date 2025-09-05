@@ -1,0 +1,45 @@
+---
+title: フルスタック開発
+description: フロントエンド + バックエンド + データベースを統合
+manual: true
+---
+
+## 構成例
+
+```json title="hatago-config.json"
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "debug",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["essential", "dev"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" },
+      "tags": ["vcs", "dev"]
+    },
+    "database": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": { "DATABASE_URL": "${DATABASE_URL:-postgresql://localhost/dev}" },
+      "tags": ["database", "dev"]
+    }
+  }
+}
+```
+
+## 起動
+
+```bash
+hatago serve --tags dev --watch
+```
+
+## ヒント
+
+`dev` / `staging` / `production` のタグを決め、`--tags` で切り替える。
+

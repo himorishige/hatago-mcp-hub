@@ -5,6 +5,7 @@ import starlightMermaid from '@pasqal-io/starlight-client-mermaid';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://hatago.dev',
   integrations: [
     starlight({
       plugins: [starlightMermaid()],
@@ -31,11 +32,7 @@ export default defineConfig({
           translations: {
             en: 'Getting Started'
           },
-          items: [
-            { label: 'イントロダクション', link: '/' },
-            { label: 'クイックスタート', link: '/getting-started/quick-start/' },
-            { label: 'インストール', link: '/getting-started/installation/' }
-          ]
+          items: ['', 'getting-started/quick-start', 'getting-started/installation']
         },
         {
           label: 'チュートリアル',
@@ -43,10 +40,7 @@ export default defineConfig({
             en: 'Tutorials'
           },
           collapsed: false,
-          items: [
-            { label: '🚀 10分クイックスタート', link: '/tutorials/10-minute-quickstart/' },
-            { label: '🎯 ゴールデンパス', link: '/tutorials/golden-path/' }
-          ]
+          items: ['tutorials/10-minute-quickstart', 'tutorials/golden-path']
         },
         {
           label: 'How-to ガイド',
@@ -54,11 +48,7 @@ export default defineConfig({
             en: 'How-to Guides'
           },
           collapsed: false,
-          items: [
-            { label: '基本設定', link: '/how-to/basic-configuration/' },
-            { label: 'リモートサーバー接続', link: '/how-to/remote-servers/' },
-            { label: 'タグフィルタリング', link: '/how-to/tag-filtering/' }
-          ]
+          items: ['how-to/basic-configuration', 'how-to/remote-servers', 'how-to/tag-filtering']
         },
         {
           label: '概念説明',
@@ -66,10 +56,7 @@ export default defineConfig({
             en: 'Explanation'
           },
           collapsed: false,
-          items: [
-            { label: 'システムアーキテクチャ', link: '/explanation/architecture/' },
-            { label: 'データフロー', link: '/explanation/data-flow/' }
-          ]
+          items: ['explanation/architecture', 'explanation/data-flow']
         },
         {
           label: 'トラブルシューティング',
@@ -77,7 +64,7 @@ export default defineConfig({
             en: 'Troubleshooting'
           },
           collapsed: false,
-          items: [{ label: 'よくある問題 Top10', link: '/troubleshooting/' }]
+          items: ['troubleshooting']
         },
         {
           label: 'レシピ・例',
@@ -85,7 +72,7 @@ export default defineConfig({
             en: 'Examples & Recipes'
           },
           collapsed: true,
-          items: [{ label: 'コード例一覧', link: '/examples/' }]
+          items: ['examples']
         },
         {
           label: 'パッケージ',
@@ -101,10 +88,7 @@ export default defineConfig({
             en: 'Reference'
           },
           collapsed: true,
-          items: [
-            { label: '設定オプション', link: '/reference/config/' },
-            { label: 'APIリファレンス', link: '/reference/api/' }
-          ]
+          items: ['reference/config', 'reference/api']
         }
       ],
       editLink: {

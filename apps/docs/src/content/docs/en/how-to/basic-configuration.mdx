@@ -1,0 +1,169 @@
+---
+title: Basic Configuration
+description: Create and manage hatago.config.json
+manual: true
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Aside, Code } from '@astrojs/starlight/components';
+
+## Create a config
+
+<Tabs>
+  <TabItem label="Interactive (recommended)">
+    ```bash
+    npx @himorishige/hatago-mcp-hub init
+    ```
+    The wizard generates a sensible starter config.
+  </TabItem>
+  <TabItem label="Manual">
+    ```json
+    {
+      "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
+      "version": 1,
+      "logLevel": "info",
+      "mcpServers": {}
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Structure
+
+```json
+{
+  "$schema": "...",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "server-id": {
+      // server definition
+    }
+  }
+}
+```
+
+<Aside type="tip">With `$schema` editors like VS Code provide completions and validation.</Aside>
+
+## Server types
+
+### Local
+
+```json
+{
+  "mcpServers": {
+    "local-fs": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": { "LOG_LEVEL": "debug" },
+      "cwd": "."
+    }
+  }
+}
+```
+
+### Remote (HTTP/SSE)
+
+```json
+{
+  "mcpServers": {
+    "api": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": { "Authorization": "Bearer ${API_TOKEN}" }
+    },
+    "stream": {
+      "url": "https://stream.example.com/mcp",
+      "type": "sse"
+    }
+  }
+}
+```
+
+## Environment variables
+
+- `${VAR}` — expands to variable (errors if undefined)
+- `${VAR:-default}` — uses default when undefined
+
+Example:
+
+```json
+{
+  "env": {
+    "API_URL": "${API_URL:-https://api.example.com}",
+    "LOG_LEVEL": "${LOG_LEVEL:-info}",
+    "TIMEOUT": "${TIMEOUT_MS:-30000}"
+  }
+}
+```
+
+## Tag-based management
+
+```json
+{
+  "mcpServers": {
+    "dev-tools": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["development", "local"]
+    },
+    "prod-api": {
+      "url": "https://api.production.com/mcp",
+      "tags": ["production", "remote"]
+    },
+    "shared-db": {
+      "command": "mcp-postgres",
+      "tags": ["development", "production", "database"]
+    }
+  }
+}
+```
+
+Start with tags:
+
+```bash
+hatago serve --tags development
+hatago serve --tags development,local
+```
+
+## Best practices
+
+<Steps>
+1. Use clear IDs
+   ```json
+   ✅ "github-api", "local-filesystem" / ❌ "srv1"
+   ```
+2. Provide defaults for env vars
+   ```json
+   { "DATABASE_URL": "${DATABASE_URL:-postgresql://localhost/dev}" }
+   ```
+3. Organize with tags (environment, purpose, criticality)
+4. Disable unused servers with `"disabled": true`
+5. Adjust log level per environment via env
+</Steps>
+
+## Validate & test
+
+```bash
+# JSON syntax
+cat hatago.config.json | jq .
+
+# Run with verbose logs (Ctrl+C to stop)
+hatago serve --stdio --config ./hatago.config.json --verbose
+```
+
+## Hot reload
+
+```bash
+hatago serve --watch
+```
+
+On change: reload config, reconnect servers, notify clients.
+
+## Related
+
+<CardGrid>
+  <Card title="Config Inheritance" icon="document" href="/en/how-to/config-inheritance/" />
+  <Card title="Remote Servers" icon="globe" href="/en/how-to/remote-servers/" />
+  <Card title="Tag Filtering" icon="tag" href="/en/how-to/tag-filtering/" />
+  <Card title="Config Reference" icon="book" href="/en/reference/config/" />
+</CardGrid>

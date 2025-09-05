@@ -1,0 +1,74 @@
+---
+title: '@himorishige/hatago-mcp-hub'
+description: CLI tool and main entry point
+package: mcp-hub
+lang: en
+---
+
+# @himorishige/hatago-mcp-hub
+
+[![npm](https://img.shields.io/npm/v/@himorishige/hatago-mcp-hub?logo=npm&color=cb0000)](https://www.npmjs.com/package/@himorishige/hatago-mcp-hub)
+[![GitHub Release](https://img.shields.io/github/v/release/himorishige/hatago-hub?display_name=tag&sort=semver)](https://github.com/himorishige/hatago-hub/releases)
+
+Unified MCP Hub for managing multiple MCP servers. Works with Claude Code, Codex CLI, Cursor, Windsurf, VS Code.
+
+## Quick Start
+
+```bash
+# Create config
+npx @himorishige/hatago-mcp-hub init
+
+# STDIO (Claude Code)
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+
+# HTTP (debug)
+npx @himorishige/hatago-mcp-hub serve --http --port 3535
+```
+
+## Commands
+
+```bash
+hatago init  [--mode stdio|http] [--config path] [--force]
+hatago serve [--stdio|--http] [-c path] [-h host] [-p port] [--watch] [--tags a,b] [--verbose|--quiet]
+```
+
+## Configuration
+
+`hatago.config.json`:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+Remote servers:
+
+```json
+{
+  "mcpServers": {
+    "deepwiki": { "url": "https://mcp.deepwiki.com/sse", "type": "sse" },
+    "custom":   { "url": "https://api.example.com/mcp", "type": "http", "headers": { "Authorization": "Bearer ${API_KEY}" } }
+  }
+}
+```
+
+## Programmatic
+
+```ts
+import { startServer } from '@himorishige/hatago-mcp-hub';
+await startServer({ mode: 'stdio', config: './hatago.config.json', watchConfig: true });
+```
+
+## License
+
+MIT
+

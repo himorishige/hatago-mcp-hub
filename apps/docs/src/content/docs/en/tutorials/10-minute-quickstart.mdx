@@ -1,0 +1,160 @@
+---
+title: 10‑Minute Quickstart
+description: Run Hatago MCP Hub and manage multiple MCP servers in 10 minutes
+manual: true
+audience: First‑time users
+prerequisites: Node.js 20+
+time_to_complete: 10 minutes
+sidebar:
+  order: 1
+  label: 🚀 10‑Minute Quickstart
+---
+
+import { Card, CardGrid, Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Hatago MCP Hub lets you manage multiple MCP servers from one place. Follow this guide to get to a working setup quickly.
+
+## ✅ Prerequisites (1 min)
+
+<Steps>
+1. Check Node.js version
+   ```bash
+   node --version  # v20.0.0+
+   ```
+
+2. Pick your AI client
+   - Claude Code (recommended)
+   - Codex CLI
+   - Cursor / Windsurf
+</Steps>
+
+## 🚀 Install (2 min)
+
+Use `npx` for zero‑install usage:
+
+```bash
+# Create config interactively
+npx @himorishige/hatago-mcp-hub init
+```
+
+## ⚙️ Create Config (2 min)
+
+The `init` command walks you through an interactive setup.
+
+<Steps>
+1. Select mode
+   ```
+   ? Select mode:
+   ❯ stdio (for Claude Code)
+     http (for debugging)
+   ```
+
+2. Pick sample servers (e.g. filesystem)
+
+3. Confirm files were created
+   ```
+   ✅ Created hatago.config.json
+   ✅ Created .mcp.json (for Claude Code)
+   ```
+</Steps>
+
+<Aside type="tip" title="Minimal config">
+In a hurry? Save this as `hatago.config.json`:
+
+```json
+{
+  "version": 1,
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+</Aside>
+
+## 🔌 Connect with Claude Code (2 min)
+
+### If auto‑generated
+`.mcp.json` is already created by `init`. Restart Claude Code.
+
+### Manual setup
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "command": "npx",
+      "args": [
+        "@himorishige/hatago-mcp-hub",
+        "serve",
+        "--stdio",
+        "--config",
+        "./hatago.config.json"
+      ]
+    }
+  }
+}
+```
+
+## ✅ Verify (2 min)
+
+<Steps>
+1. Open a new chat in Claude Code
+2. List available tools (e.g. type `/tools`)
+3. Try the filesystem tool ("list current directory")
+4. Check internal status tool: `_internal_hatago_status`
+</Steps>
+
+<CardGrid>
+  <Card title="Looks good when" icon="check">
+    - You see multiple tools
+    - File operations work
+    - Status shows connected servers
+  </Card>
+  <Card title="If it fails" icon="warning">
+    - Check Node.js version
+    - Restart Claude Code
+    - See [Troubleshooting](/en/troubleshooting/)
+  </Card>
+</CardGrid>
+
+## 🎉 Next Steps (1 min)
+
+<CardGrid stagger>
+  <Card title="Add GitHub" icon="github" href="/en/how-to/remote-servers/">
+    Connect to remote APIs via HTTP/SSE
+  </Card>
+  <Card title="Split by environment" icon="setting" href="/en/how-to/tag-filtering/">
+    Use tags for dev/prod switching
+  </Card>
+</CardGrid>
+
+## 💡 Tips
+
+<Tabs>
+  <TabItem label="Debug in HTTP mode">
+    ```bash
+    npx @himorishige/hatago-mcp-hub serve --http
+    ```
+    Then open http://localhost:3535/health
+  </TabItem>
+  <TabItem label="Verbose logs">
+    ```bash
+    npx @himorishige/hatago-mcp-hub serve --verbose
+    ```
+  </TabItem>
+  <TabItem label="Hot reload">
+    ```bash
+    npx @himorishige/hatago-mcp-hub serve --watch
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+<Aside type="tip" title="Stuck?">
+  Check the [Troubleshooting Guide](/en/troubleshooting/).
+</Aside>
+

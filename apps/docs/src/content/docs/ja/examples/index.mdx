@@ -6,7 +6,7 @@ sidebar:
 manual: true
 ---
 
-import { Card, CardGrid, Code, Aside } from '@astrojs/starlight/components';
+import { Card, CardGrid, Code, Aside, LinkCard } from '@astrojs/starlight/components';
 import { BasicConfig, MultiServerConfig } from '../../../../components/examples/config-example.mdx';
 
 # コード例とレシピ
@@ -23,9 +23,30 @@ import { BasicConfig, MultiServerConfig } from '../../../../components/examples/
 
 <Code code={MultiServerConfig} lang="json" title="hatago-config.json" />
 
-## 用途別レシピ（準備中）
+## 用途別レシピ
 
-<Aside type="note">このセクションは順次追加予定です。まずは下記の基本構成とHow-toを参照してください。</Aside>
+<CardGrid>
+  <LinkCard
+    title="AI開発環境"
+    description="OpenAI、GitHub、ローカルFSの統合"
+    href="/ja/examples/ai-development/"
+  />
+  <LinkCard
+    title="フルスタック開発"
+    description="フロントエンド + バックエンド + データベース"
+    href="/ja/examples/fullstack/"
+  />
+  <LinkCard
+    title="データ分析環境"
+    description="Jupyter/DB/可視化ツールを統合"
+    href="/ja/examples/data-analysis/"
+  />
+  <LinkCard
+    title="CI/CD統合"
+    description="GitHub Actions + Docker + デプロイ"
+    href="/ja/examples/ci-cd/"
+  />
+</CardGrid>
 
 ## プラットフォーム別
 

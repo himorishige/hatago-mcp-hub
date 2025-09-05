@@ -1,0 +1,156 @@
+---
+title: Tag Filtering
+description: Group and enable servers by tags
+manual: true
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
+
+Hatago lets you label each server with multiple tags and start a subset with `--tags`.
+
+## Add tags
+
+```json
+{
+  "mcpServers": {
+    "fs-dev": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./dev"],
+      "tags": ["development", "filesystem"]
+    },
+    "api-prod": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "tags": ["production", "api"]
+    }
+  }
+}
+```
+
+## Start with tags
+
+<Tabs>
+  <TabItem label="Development">
+  ```bash
+  hatago serve --tags development
+  ```
+  </TabItem>
+  <TabItem label="Production">
+  ```bash
+  hatago serve --tags production
+  ```
+  </TabItem>
+  <TabItem label="Multiple (OR)">
+  ```bash
+  hatago serve --tags production,api
+  ```
+  </TabItem>
+</Tabs>
+
+## Environment sets
+
+```json
+{
+  "mcpServers": {
+    // dev
+    "local-fs": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["dev", "local"]
+    },
+    "mock-api": { "command": "mock-server", "tags": ["dev", "api", "mock"] },
+
+    // staging
+    "staging-api": {
+      "url": "https://staging-api.example.com/mcp",
+      "type": "http",
+      "tags": ["staging", "api"]
+    },
+
+    // prod
+    "prod-api": {
+      "url": "https://api.example.com/mcp",
+      "type": "http",
+      "headers": { "Authorization": "Bearer ${PROD_API_TOKEN}" },
+      "tags": ["production", "api"]
+    }
+  }
+}
+```
+
+## Matching examples
+
+Config:
+
+```json
+{
+  "server1": { "tags": ["dev", "test"] },
+  "server2": { "tags": ["prod", "test"] },
+  "server3": { "tags": ["dev"] },
+  "server4": { "tags": [] }
+}
+```
+
+Results:
+
+- `--tags dev` → server1, server3
+- `--tags test` → server1, server2
+- `--tags dev,prod` → server1, server2, server3
+- `--tags unknown` → none
+- no `--tags` → all servers
+
+## Shell integration
+
+```bash
+#!/usr/bin/env bash
+ENV="${1:-development}"
+case "$ENV" in
+  production) TAGS="production" ;;
+  staging)    TAGS="staging" ;;
+  *)          TAGS="development,local" ;;
+esac
+hatago serve --tags "$TAGS" --verbose
+```
+
+## package.json scripts
+
+```json
+{
+  "scripts": {
+    "mcp:dev": "hatago serve --tags development,local --watch",
+    "mcp:staging": "hatago serve --tags staging --verbose",
+    "mcp:prod": "hatago serve --tags production"
+  }
+}
+```
+
+## Best practices
+
+<CardGrid>
+  <Card title="Consistent names" icon="pencil">Use dev/staging/prod</Card>
+  <Card title="Combine tags" icon="list">Mix environment + purpose</Card>
+  <Card title="Document tags" icon="document">List tags in README</Card>
+  <Card title="Common set" icon="rocket">Add `common` for always‑on servers</Card>
+</CardGrid>
+
+## Troubleshooting
+
+### Filtering has no effect
+
+<Steps>
+1. Print tags from config
+   ```bash
+   cat hatago.config.json | jq '.mcpServers | to_entries[] | {name: .key, tags: .value.tags}'
+   ```
+2. Check typos and case mismatches
+3. Run with `--verbose` and watch which servers are activated
+</Steps>
+
+### Unexpected servers started
+
+Untyped servers (no `tags`) start when no `--tags` is provided. Add a `common` tag or add explicit tags.
+
+## Next
+
+- [Config Inheritance](/en/how-to/config-inheritance/)
+- [Remote Servers](/en/how-to/remote-servers/)

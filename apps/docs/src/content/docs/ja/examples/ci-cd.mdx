@@ -1,0 +1,48 @@
+---
+title: CI/CD統合
+description: CIでHatagoを使って自動化を実行
+manual: true
+---
+
+## アイデア
+
+CI上で最小構成のHubを起動し、リポジトリの検査やドキュメント生成、ボット的な自動化をMCPで実行する。
+
+## 構成例
+
+```json
+{
+  "version": 1,
+  "mcpServers": {
+    "repo": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" },
+      "tags": ["ci", "vcs"]
+    }
+  }
+}
+```
+
+## GitHub Actions（例）
+
+```yaml
+name: Hatago CI
+on: [push, pull_request]
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json --quiet
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## ヒント
+
+- CIでは `--quiet` を推奨
+- 秘密情報は設定ファイルに書かず、CIのシークレットに置く
+

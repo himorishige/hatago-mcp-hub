@@ -1,0 +1,82 @@
+---
+title: Hatago MCP Hub Docs
+description: A lightweight hub to unify multiple MCP servers
+template: splash
+hero:
+  tagline: Unify Model Context Protocol (MCP) servers with one hub
+  actions:
+    - text: Quick Start
+      link: /en/getting-started/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: 'https://github.com/himorishige/hatago-hub'
+      icon: external
+manual: true
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What is Hatago?
+
+Hatago MCP Hub is a lightweight hub server that provides unified access to multiple MCP (Model Context Protocol) servers from clients like Claude Code, Codex CLI, Cursor, Windsurf, and VS Code.
+
+## Highlights
+
+<CardGrid stagger>
+  <Card title="🎯 Simple & Lightweight" icon="rocket">
+    Start quickly with minimal setup. Non-invasive design.
+  </Card>
+  <Card title="🔌 Connectivity" icon="puzzle">
+    Supports STDIO, HTTP, SSE, WebSocket. Proxy to remote MCP servers.
+  </Card>
+  <Card title="🔥 Hot Reload" icon="refresh">
+    Auto-reload config changes without restart.
+  </Card>
+  <Card title="📊 Progress" icon="information">
+    Forwards `notifications/progress` transparently.
+  </Card>
+</CardGrid>
+
+## 30‑second Start
+
+```bash
+# Initialize config
+npx @himorishige/hatago-mcp-hub init
+
+# Start for Claude Code (STDIO)
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+
+# Or HTTP mode (debug)
+npx @himorishige/hatago-mcp-hub serve --http
+```
+
+## Documentation
+
+- [Getting Started](/en/getting-started/quick-start/)
+- [How‑to Guides](/en/how-to/)
+- [Packages](/en/packages/)
+- [API Reference](/en/reference/api/)
+- [Config Reference](/en/reference/config/)
+
+## Contributing
+
+This project is open source. Contributions are welcome:
+
+<CardGrid>
+  <Card title="Report an Issue" icon="bug" href="https://github.com/himorishige/hatago-hub/issues">
+    File a bug or request a feature on GitHub.
+  </Card>
+  <Card
+    title="Propose Ideas"
+    icon="lightbulb"
+    href="https://github.com/himorishige/hatago-hub/discussions"
+  >
+    Share ideas in Discussions
+  </Card>
+</CardGrid>
+
+## License
+
+MIT — see the project LICENSE.
+

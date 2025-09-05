@@ -5,7 +5,7 @@ package: transport
 lang: ja
 ---
 
-# @hatago/transport
+# @himorishige/hatago-transport
 
 Transport layer implementations for Hatago MCP Hub.
 
@@ -19,7 +19,7 @@ Transport layer implementations for Hatago MCP Hub.
 ## Installation
 
 ```bash
-npm install @hatago/transport
+npm install @himorishige/hatago-transport
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ npm install @hatago/transport
 ### STDIO Transport
 
 ```typescript
-import { createStdioTransport } from '@hatago/transport';
+import { createStdioTransport } from '@himorishige/hatago-transport';
 
 const transport = await createStdioTransport({
   command: 'node',
@@ -41,7 +41,7 @@ await transport.connect();
 ### HTTP/SSE Transport
 
 ```typescript
-import { createHttpTransport } from '@hatago/transport';
+import { createHttpTransport } from '@himorishige/hatago-transport';
 
 const transport = createHttpTransport({
   url: 'http://localhost:3000',
@@ -54,7 +54,7 @@ await transport.connect();
 ### WebSocket Transport
 
 ```typescript
-import { createWebSocketTransport } from '@hatago/transport';
+import { createWebSocketTransport } from '@himorishige/hatago-transport';
 
 const transport = createWebSocketTransport({
   url: 'ws://localhost:3000',

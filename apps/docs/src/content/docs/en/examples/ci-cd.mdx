@@ -1,0 +1,48 @@
+---
+title: CI/CD Integration
+description: Use Hatago with CI pipelines and deploy tools
+manual: true
+---
+
+## Idea
+
+Run a minimal hub in CI to lint repos, generate docs, or run automations via MCP servers.
+
+## Config
+
+```json
+{
+  "version": 1,
+  "mcpServers": {
+    "repo": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" },
+      "tags": ["ci", "vcs"]
+    }
+  }
+}
+```
+
+## GitHub Actions (example)
+
+```yaml
+name: Hatago CI
+on: [push, pull_request]
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json --quiet
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Tips
+
+- Prefer `--quiet` in CI
+- Keep secrets in Actions secrets, not in configs
+

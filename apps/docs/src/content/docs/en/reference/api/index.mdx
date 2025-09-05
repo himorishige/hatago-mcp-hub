@@ -1,0 +1,55 @@
+---
+title: API Reference
+description: Public APIs of Hatago MCP Hub
+manual: true
+---
+
+# API Reference
+
+## Hub API
+
+### createHub
+
+```ts
+function createHub(config: HubConfig): Hub;
+```
+
+Create a Hub instance.
+
+### Hub.start()
+
+```ts
+async start(): Promise<void>
+```
+
+Start the hub.
+
+### Hub.listTools()
+
+```ts
+async listTools(): Promise<Tool[]>
+```
+
+List available tools (aggregated).
+
+## Server API
+
+### startServer
+
+```ts
+async function startServer(options: ServerOptions): Promise<void>;
+```
+
+Start the MCP hub server (STDIO/HTTP).
+
+## Internal Tools
+
+### _internal_hatago_status
+Return connection status of all servers.
+
+### _internal_hatago_reload
+Trigger configuration reload.
+
+### _internal_hatago_list_servers
+List configured servers with details.
+

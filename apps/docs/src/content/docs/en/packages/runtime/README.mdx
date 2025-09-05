@@ -1,0 +1,40 @@
+---
+title: '@himorishige/hatago-runtime'
+description: Runtime components (sessions/registries/router)
+package: runtime
+lang: en
+---
+
+# @himorishige/hatago-runtime
+
+Runtime components for Hatago MCP Hub: sessions, registries, router, and error recovery.
+
+## Install
+
+```bash
+npm install @himorishige/hatago-runtime
+```
+
+## Features
+
+- Session management with TTL
+- Tool/resource/prompt registries (WIP)
+- Router for MCP messages (WIP)
+- Retry and circuit breaker (WIP)
+
+## Example
+
+```ts
+import { SessionManager } from '@himorishige/hatago-runtime';
+const sm = new SessionManager(3600);
+const session = await sm.createSession('id-123');
+```
+
+## Depends on
+
+- `@himorishige/hatago-core`
+
+## License
+
+MIT
+

@@ -1,0 +1,74 @@
+---
+title: CLI Reference
+description: hatago commands and options
+manual: true
+---
+
+# CLI Reference
+
+Hatago MCP Hub exposes the `hatago` command.
+
+## Install / Run
+
+```bash
+# npx (recommended)
+npx @himorishige/hatago-mcp-hub --version
+
+# or global
+npm install -g @himorishige/hatago-mcp-hub
+```
+
+## hatago init
+
+Create `hatago.config.json`.
+
+```bash
+hatago init                    # interactive
+hatago init --mode stdio       # STDIO template
+hatago init --mode http        # HTTP template
+hatago init --config my.json   # custom path
+```
+
+Options: `--config`, `--force`, `--mode <stdio|http>`
+
+## hatago serve
+
+Start the hub.
+
+```bash
+hatago serve --stdio --config ./hatago.config.json  # STDIO
+hatago serve --http                                 # HTTP
+hatago serve --watch                                # hot‑reload
+hatago serve --tags dev,api                         # tag filter
+hatago serve --verbose                              # verbose logs
+```
+
+Options: `--stdio|--http`, `--config`, `--host`, `--port`, `--tags`, `--watch`, `--verbose|--quiet`
+
+## Client examples
+
+Claude Code `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "command": "npx",
+      "args": ["@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+    }
+  }
+}
+```
+
+Codex CLI `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.hatago]
+command = "npx"
+args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
+```
+
+---
+
+See also: [Config Reference](/en/reference/config/), [Remote Servers](/en/how-to/remote-servers/), [Tag Filtering](/en/how-to/tag-filtering/).
+

@@ -1,0 +1,44 @@
+---
+title: '@himorishige/hatago-core'
+description: Core types and interfaces
+package: core
+lang: en
+---
+
+# @himorishige/hatago-core
+
+Core type definitions for Hatago MCP Hub.
+
+## Overview
+
+Pure TypeScript types and minimal helpers with no side effects. All other packages depend on these types.
+
+## Install
+
+```bash
+npm install @himorishige/hatago-core
+```
+
+## Dependency Direction
+
+```
+core → runtime → transport → server → mcp-hub
+```
+
+## Contents
+
+- Types for connections, sessions, registries
+- Error codes and severity
+- Event contracts for lifecycle and sessions
+- Protocol constants for MCP
+
+## Example
+
+```ts
+import { ErrorCode } from '@himorishige/hatago-core';
+```
+
+## License
+
+MIT
+

@@ -1,0 +1,116 @@
+---
+title: Remote Servers
+description: Connect to HTTP/SSE MCP servers
+manual: true
+---
+
+import { Card, Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
+
+## Types
+
+<Tabs>
+  <TabItem label="HTTP">
+  ```json
+  {
+    "mcpServers": {
+      "remote-http": {
+        "url": "https://api.example.com/mcp",
+        "type": "http",
+        "headers": { "Authorization": "Bearer ${API_TOKEN}" }
+      }
+    }
+  }
+  ```
+  </TabItem>
+  <TabItem label="SSE">
+  ```json
+  {
+    "mcpServers": {
+      "remote-sse": {
+        "url": "https://stream.example.com/mcp",
+        "type": "sse",
+        "headers": { "Authorization": "Bearer ${API_TOKEN}" }
+      }
+    }
+  }
+  ```
+  </TabItem>
+</Tabs>
+
+## Authentication patterns
+
+### Bearer token
+```json
+{ "headers": { "Authorization": "Bearer ${API_TOKEN}" } }
+```
+
+### API key
+```json
+{ "headers": { "X-API-Key": "${API_KEY}" } }
+```
+
+### API key (query)
+```json
+{ "url": "https://api.example.com/mcp?api_key=${API_KEY}" }
+```
+
+### Basic auth
+```json
+{ "headers": { "Authorization": "Basic ${BASE64_CREDENTIALS}" } }
+```
+<Aside type="tip">`BASE64_CREDENTIALS` = base64 of `username:password`.</Aside>
+
+## Cloudflare Workers (example)
+
+```ts title="worker.ts"
+import { createHub } from '@himorishige/hatago-hub';
+export default {
+  async fetch(_req: Request, env: Env) {
+    const hub = createHub({
+      servers: {
+        'remote-api': {
+          url: env.REMOTE_MCP_URL,
+          type: 'http',
+          headers: { Authorization: `Bearer ${env.API_TOKEN}` }
+        }
+      }
+    });
+    // handle request with hub...
+  }
+}
+```
+
+## Troubleshooting
+
+### Connection errors
+
+<Card title="Symptoms" icon="warning">`Connection refused` or `timeout`</Card>
+
+Fixes:
+1) Verify URL and reachability
+2) Check firewall/proxy
+3) Confirm remote service status
+
+### Auth errors
+
+<Card title="Symptoms" icon="warning">`401` or `403`</Card>
+
+Fixes:
+1) Ensure env vars are set
+2) Check token expiry
+3) Verify required scopes
+
+### CORS (browser)
+
+Set CORS headers on the server or use a proxy/edge runtime like Workers.
+
+## Tips
+
+- Keep secrets in env vars
+- Use tags to separate environments (development/staging/production)
+- Turn on `--verbose` while debugging
+
+## Next
+
+- [Tag Filtering](/en/how-to/tag-filtering/)
+- [Config Reference](/en/reference/config/)

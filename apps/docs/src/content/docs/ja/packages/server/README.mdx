@@ -5,7 +5,7 @@ package: server
 lang: ja
 ---
 
-# @hatago/server
+# @himorishige/hatago-server
 
 NPX-ready MCP Hub server for Claude Code and other AI assistants.
 
@@ -13,13 +13,13 @@ NPX-ready MCP Hub server for Claude Code and other AI assistants.
 
 ```bash
 # Run with npx (STDIO mode by default)
-npx @hatago/server
+npx @himorishige/hatago-server
 
 # Run in HTTP mode for development
-npx @hatago/server --http
+npx @himorishige/hatago-server --http
 
 # With custom configuration
-npx @hatago/server --config ./hatago.config.json
+npx @himorishige/hatago-server --config ./hatago.config.json
 ```
 
 ## Claude Code Integration
@@ -31,7 +31,7 @@ Add to your `.mcp.json`:
   "mcpServers": {
     "hatago": {
       "command": "npx",
-      "args": ["@hatago/server", "--stdio"]
+      "args": ["@himorishige/hatago-server", "--stdio"]
     }
   }
 }
@@ -59,7 +59,7 @@ Add to your `.mcp.json`:
 --http               Run in HTTP mode
 --config <path>      Path to configuration file
 --host <string>      HTTP server host (default: 127.0.0.1)
---port <number>      HTTP server port (default: 3929)
+--port <number>      HTTP server port (default: 3535)
 --log-level <level>  Log level (silent|error|warn|info|debug|trace)
 --help               Show help
 --version            Show version

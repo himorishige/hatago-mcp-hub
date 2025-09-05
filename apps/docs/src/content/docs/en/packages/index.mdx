@@ -1,0 +1,46 @@
+---
+title: Packages
+description: Hatago MCP Hub monorepo packages
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+# Packages
+
+Hatago MCP Hub is organized as a monorepo. Each package has a clear responsibility and can be used independently.
+
+<CardGrid>
+  <Card title="@himorishige/hatago-mcp-hub" icon="package" href="/en/packages/mcp-hub/" >
+    CLI tool and main entry point
+  </Card>
+  <Card title="@himorishige/hatago-server" icon="package" href="/en/packages/server/" >
+    Server implementation (HTTP / STDIO)
+  </Card>
+  <Card title="@himorishige/hatago-core" icon="package" href="/en/packages/core/" >
+    Core types and interfaces
+  </Card>
+  <Card title="@himorishige/hatago-runtime" icon="package" href="/en/packages/runtime/" >
+    Runtime components (sessions/registries)
+  </Card>
+  <Card title="@himorishige/hatago-transport" icon="package" href="/en/packages/transport/" >
+    Transport implementations (STDIO/HTTP/SSE/WS)
+  </Card>
+  <Card title="@himorishige/hatago-cli" icon="package" href="/en/packages/cli/" >
+    Dev CLI utilities (for development)
+  </Card>
+</CardGrid>
+
+## Install
+
+Use the main package to get started:
+
+```bash
+npm install @himorishige/hatago-mcp-hub
+```
+
+Or install a specific package only, e.g. the server:
+
+```bash
+npm install @himorishige/hatago-server
+```
+

@@ -1,0 +1,94 @@
+---
+title: Installation Guide
+description: How to install and run Hatago MCP Hub
+manual: true
+---
+
+import { Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Hatago MCP Hub can be used via npx, installed globally, or added to a project.
+
+## Methods
+
+<CardGrid>
+  <Card title="npx (Recommended)" icon="rocket">
+    No installation. Always up to date.
+  </Card>
+  <Card title="Global Install" icon="laptop">
+    Use `hatago` anywhere.
+  </Card>
+  <Card title="Project Dependency" icon="document">
+    Pin a version per project.
+  </Card>
+  <Card title="Docker" icon="container">
+    Isolated runtime for teams.
+  </Card>
+</CardGrid>
+
+## npx (Recommended)
+
+```bash
+# Initialize config
+npx @himorishige/hatago-mcp-hub init
+
+# Start server
+npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+```
+
+## Global Install
+
+<Steps>
+1. Install
+
+   ```bash
+   npm install -g @himorishige/hatago-mcp-hub
+   ```
+
+2. Verify
+
+   ```bash
+   hatago --version
+   ```
+
+3. Init
+
+   ```bash
+   hatago init
+   ```
+
+4. Serve
+   ```bash
+   hatago serve
+   ```
+</Steps>
+
+## As a Project Dependency
+
+<Steps>
+1. Add
+   ```bash
+   npm install @himorishige/hatago-mcp-hub
+   ```
+2. package.json scripts
+   ```json
+   {
+     "scripts": {
+       "mcp": "hatago serve",
+       "mcp:init": "hatago init",
+       "mcp:dev": "hatago serve --http --verbose"
+     }
+   }
+   ```
+3. Run
+   ```bash
+   npm run mcp:init
+   npm run mcp
+   ```
+</Steps>
+
+## Next Steps
+
+- [Quick Start](/en/getting-started/quick-start/)
+- [Config Reference](/en/reference/config/)
+- [CLI Reference](/en/reference/cli/)
+

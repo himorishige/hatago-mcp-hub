@@ -1,0 +1,39 @@
+---
+title: Data Analysis Environment
+description: Jupyter, database and visualization tools
+manual: true
+---
+
+## Config
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["data", "dev"]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": { "DATABASE_URL": "${DATABASE_URL}" },
+      "tags": ["db", "dev"]
+    },
+    "viz": {
+      "url": "https://viz.example.com/mcp",
+      "type": "http",
+      "tags": ["viz", "remote"]
+    }
+  }
+}
+```
+
+## Start
+
+```bash
+hatago serve --tags dev,data
+```
+

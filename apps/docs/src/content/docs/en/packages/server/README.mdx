@@ -1,0 +1,60 @@
+---
+title: '@himorishige/hatago-server'
+description: Server implementation (HTTP/STDIO)
+package: server
+lang: en
+---
+
+# @himorishige/hatago-server
+
+NPX‑ready MCP Hub server for Claude Code and other MCP clients.
+
+## Quick Start
+
+```bash
+# STDIO mode (default)
+npx @himorishige/hatago-server
+
+# HTTP mode (development)
+npx @himorishige/hatago-server --http
+
+# Custom config
+npx @himorishige/hatago-server --config ./hatago.config.json
+```
+
+## Claude Code integration
+
+`.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "hatago": {
+      "command": "npx",
+      "args": ["@himorishige/hatago-server", "--stdio"]
+    }
+  }
+}
+```
+
+## Endpoints (HTTP mode)
+
+- `/mcp` — JSON‑RPC endpoint
+- `/sse` — Server‑Sent Events for progress
+- `/health` — health check
+- `/metrics` — enabled when `HATAGO_METRICS=1`
+
+## Options
+
+```
+--stdio | --http
+--config <path>
+--host <host> (default 127.0.0.1)
+--port <port> (default 3535)
+--verbose | --quiet
+```
+
+## License
+
+MIT
+

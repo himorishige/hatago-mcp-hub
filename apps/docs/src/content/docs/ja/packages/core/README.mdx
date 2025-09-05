@@ -5,7 +5,7 @@ package: core
 lang: ja
 ---
 
-# @hatago/core
+# @himorishige/hatago-core
 
 Core types and protocol definitions for Hatago MCP Hub.
 
@@ -16,7 +16,7 @@ This package provides pure type definitions with no side effects. All implementa
 ## Installation
 
 ```bash
-npm install @hatago/core
+npm install @himorishige/hatago-core
 ```
 
 ## Dependency Direction
@@ -24,7 +24,7 @@ npm install @hatago/core
 The dependency flow must be strictly maintained:
 
 ```
-core → runtime → transport → cli
+core → runtime → transport → server → mcp-hub
 ```
 
 ## Contents
@@ -37,7 +37,7 @@ core → runtime → transport → cli
 ## Usage
 
 ```typescript
-import { ErrorCode, ConnectionType, EventName } from '@hatago/core';
+import { ErrorCode, ConnectionType, EventName } from '@himorishige/hatago-core';
 
 // Use types in your implementation
 const connectionType: ConnectionType = 'local';

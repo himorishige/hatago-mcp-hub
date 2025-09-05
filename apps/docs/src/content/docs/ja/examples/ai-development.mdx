@@ -1,0 +1,50 @@
+---
+title: AI開発環境
+description: ファイルシステム、GitHub、リモートLLM APIを組み合わせる
+manual: true
+---
+
+## 目的
+
+ローカルのコード/ドキュメントにアクセスしながら、GitHubとリモートのLLM APIも使える最小構成を用意する。
+
+## 構成例
+
+```json title="hatago-config.json"
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "fs": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tags": ["dev", "local"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" },
+      "tags": ["dev", "vcs"]
+    },
+    "openai": {
+      "url": "https://api.openai.com/v1/mcp",
+      "type": "http",
+      "headers": { "Authorization": "Bearer ${OPENAI_API_KEY}" },
+      "tags": ["ai", "remote"]
+    }
+  }
+}
+```
+
+## 起動
+
+```bash
+hatago serve --tags dev --verbose
+```
+
+## 次のステップ
+
+- 好みのLLMサーバーを追加
+- `dev,ai` のようなタグの組み合わせでAIツールのON/OFFを切り替え
+

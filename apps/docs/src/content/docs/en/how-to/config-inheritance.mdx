@@ -1,0 +1,72 @@
+---
+title: Config Inheritance
+description: Reuse and extend base configurations
+manual: true
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+## Basic idea
+
+Use `extends` to compose configs and keep them DRY.
+
+```json
+{
+  "extends": ["~/.hatago/base.json", "./team.json"],
+  "mcpServers": {
+    "local": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+## Rules
+
+- Multiple parents are supported: `"extends": ["./base1.json", "./base2.json"]`
+- Paths support `~` (home), relative, and absolute
+- Deep merge: child values override parent values
+- Remove inherited env vars by setting `null`
+
+### Env override example
+
+```json
+{
+  "extends": "~/.hatago/global.json",
+  "mcpServers": {
+    "github": {
+      "env": {
+        "GITHUB_TOKEN": "${WORK_GITHUB_TOKEN}",
+        "DEBUG": null
+      }
+    }
+  }
+}
+```
+
+## Verify behavior
+
+```bash
+hatago serve --stdio --config ./hatago.config.json --verbose
+```
+
+## Troubleshooting
+
+### Circular extends
+
+Break the cycle and ensure each file appears once in the chain.
+
+### File not found
+
+Check path correctness, `~` expansion, and relative path base (current file).
+
+### Unexpected merge results
+
+Remember child overrides parent. Inspect the effective config with `--verbose` and review logs.
+
+## Next
+
+- [Tag Filtering](/en/how-to/tag-filtering/)
+- [Remote Servers](/en/how-to/remote-servers/)
+- [Config Reference](/en/reference/config/)
