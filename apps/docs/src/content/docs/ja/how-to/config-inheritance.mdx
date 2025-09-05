@@ -357,14 +357,14 @@ Error: Cannot find extended config: ./missing.json
 設定が期待通りにマージされない場合：
 
 ```bash
-# 最終的な設定を確認
-hatago serve --dry-run --verbose
+# 最終的な設定の挙動を確認（Ctrl+C で停止）
+hatago serve --stdio --config ./hatago.config.json --verbose
 ```
 
 デバッグ用に設定の展開過程を確認できます。
 
 ## 次のステップ
 
-- [環境別管理](/ja/how-to/environment-management/) - 継承を使った環境管理
-- [チーム設定](/ja/how-to/team-setup/) - チームでの設定共有方法
+- [タグフィルタリング](/ja/how-to/tag-filtering/) - 継承とタグの併用
+- [リモートサーバー接続](/ja/how-to/remote-servers/) - HTTP/SSE設定
 - [設定リファレンス](/ja/reference/config/) - 全設定オプションの詳細

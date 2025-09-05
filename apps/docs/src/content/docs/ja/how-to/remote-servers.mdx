@@ -294,13 +294,14 @@ export default {
 ## ベストプラクティス
 
 <Aside type="tip" title="推奨事項">
-  - APIキーは必ず環境変数で管理する - タグを使って環境別に管理する（development/staging/production）
-  - レート制限に注意し、必要に応じてリトライ処理を実装 -
-  ログレベルを適切に設定してデバッグを容易にする
+  - APIキーは必ず環境変数で管理する
+  - タグで環境別に管理する（development/staging/production）
+  - レート制限に注意し、必要に応じてリトライ処理を実装
+  - ログレベル（`--verbose`/`--quiet`）を適切に設定してデバッグを容易にする
 </Aside>
 
 ## 次のステップ
 
 - [タグを使った環境管理](/ja/how-to/tag-filtering/) - 環境別にサーバーを切り替える
-- [チーム開発の設定](/ja/how-to/team-setup/) - チームでの設定管理方法
-- [セキュリティのベストプラクティス](/ja/how-to/security/) - APIキーの安全な管理
+- [設定の継承](/ja/how-to/config-inheritance/) - 共通設定の再利用
+- [トラブルシューティング](/ja/troubleshooting/) - 代表的な失敗と解決策

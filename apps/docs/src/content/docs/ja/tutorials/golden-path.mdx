@@ -102,7 +102,7 @@ yarn add -D @himorishige/hatago-mcp-hub
 <Steps>
 1. **設定ファイル作成**
    ```bash
-   npx hatago init --mode stdio
+   npx @himorishige/hatago-mcp-hub init --mode stdio
    ```
 
 2. **環境変数ファイル作成**
@@ -144,7 +144,7 @@ yarn add -D @himorishige/hatago-mcp-hub
 1. **設定ファイル編集**
    ```json title="hatago-config.json"
    {
-     "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+     "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
      "version": 1,
      "logLevel": "info",
      "mcpServers": {
@@ -179,7 +179,7 @@ yarn add -D @himorishige/hatago-mcp-hub
 3. **動作確認**
    別のターミナルで:
    ```bash
-   echo '{"jsonrpc":"2.0","method":"tools/list","id":1,"params":{}}' | npx hatago serve --stdio
+   echo '{"jsonrpc":"2.0","method":"tools/list","id":1,"params":{}}' | npx @himorishige/hatago-mcp-hub serve --stdio
    ```
 </Steps>
 
@@ -277,7 +277,7 @@ async function verifyHatago() {
     }
   ];
 
-  const hatago = spawn('npx', ['hatago', 'serve', '--stdio'], {
+  const hatago = spawn('npx', ['@himorishige/hatago-mcp-hub', 'serve', '--stdio'], {
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
@@ -364,7 +364,7 @@ flowchart TD
 
 | エラー                           | 原因                     | 対処法                           |
 | -------------------------------- | ------------------------ | -------------------------------- |
-| `ENOENT: hatago-config.json`     | 設定ファイルがない       | `npx hatago init`を実行          |
+| `ENOENT: hatago-config.json`     | 設定ファイルがない       | `npx @himorishige/hatago-mcp-hub init`を実行 |
 | `Invalid JSON`                   | 設定ファイルの構文エラー | JSONリンターで確認               |
 | `Environment variable not found` | 環境変数未設定           | `.env.local`を確認、`export`する |
 | `Server failed to start`         | サーバー起動失敗         | `--verbose`で詳細ログ確認        |
@@ -437,14 +437,14 @@ flowchart TD
 おめでとうございます！基本的なセットアップが完了しました。
 
 <CardGrid>
-  <Card title="カスタムサーバー作成" icon="rocket" href="/ja/how-to/custom-server/">
-    独自のMCPサーバーを実装
+  <Card title="タグフィルタリング" icon="tag" href="/ja/how-to/tag-filtering/">
+    環境ごとのサーバー管理
   </Card>
-  <Card title="CI/CD統合" icon="setting" href="/ja/how-to/ci-cd-integration/">
-    自動テストとデプロイ
+  <Card title="リモートサーバー接続" icon="globe" href="/ja/how-to/remote-servers/">
+    HTTP / SSE の接続
   </Card>
-  <Card title="高度な設定" icon="puzzle" href="/ja/how-to/advanced-configuration/">
-    パフォーマンス最適化
+  <Card title="設定の継承" icon="document" href="/ja/how-to/config-inheritance/">
+    共通設定の再利用
   </Card>
 </CardGrid>
 
@@ -452,5 +452,5 @@ flowchart TD
 
 <Aside type="tip">
   **サポート**: 問題が解決しない場合は[GitHub
-  Issues](https://github.com/himorishige/hatago-mcp-hub/issues)で質問してください。
+  Issues](https://github.com/himorishige/hatago-hub/issues)で質問してください。
 </Aside>
