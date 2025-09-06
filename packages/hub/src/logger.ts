@@ -83,3 +83,10 @@ export class Logger {
     return new Logger(`${this.prefix}[${prefix}]`);
   }
 }
+
+/**
+ * Create a logger instance with optional prefix
+ */
+export function createLogger(prefix?: string): Logger {
+  return new Logger(prefix);
+}

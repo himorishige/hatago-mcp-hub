@@ -8,13 +8,25 @@
 import type { EnhancedHubOptions } from './enhanced-hub.js';
 import { EnhancedHatagoHub } from './enhanced-hub.js';
 import { HatagoHub } from './hub.js';
+import { HubCoreAdapter } from './hub-core-adapter.js';
+import type { IHub } from './hub-interface.js';
 import type { HubOptions, ServerSpec } from './types.js';
 
 /**
  * Create a new Hatago Hub instance
  * If a configFile is provided, creates an EnhancedHatagoHub with management features
  */
-export function createHub(options?: HubOptions | EnhancedHubOptions): HatagoHub {
+export function createHub(options?: HubOptions | EnhancedHubOptions): IHub {
+  // Check for experimental HubCore flag first
+  if (options?.useHubCore) {
+    console.info(
+      '[EXPERIMENTAL] Using HubCore thin implementation.\n' +
+        'This is a minimal, transparent hub without state management or caching.\n' +
+        'Report issues at: https://github.com/himorishige/hatago-mcp-hub/issues'
+    );
+    return new HubCoreAdapter(options);
+  }
+
   // Use EnhancedHatagoHub when config is provided (file or preloaded)
   const hasEnhanced = Boolean(
     (options as EnhancedHubOptions)?.configFile ?? (options as EnhancedHubOptions)?.preloadedConfig
@@ -102,6 +114,11 @@ export {
 } from './errors.js';
 // Export main class and types
 export { HatagoHub } from './hub.js';
+// Export minimal hub interface
+export type { IHub } from './hub-interface.js';
+// Export experimental thin implementation
+export { HubCore } from './hub-core.js';
+export { HubCoreAdapter } from './hub-core-adapter.js';
 // Export streamable HTTP helpers
 export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
 // Management components - DEPRECATED

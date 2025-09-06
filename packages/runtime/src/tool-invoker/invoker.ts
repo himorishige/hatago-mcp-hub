@@ -232,7 +232,7 @@ export class ToolInvoker {
   /**
    * List available tools
    */
-  listTools(_sessionId?: string): unknown[] {
+  listTools(_sessionId?: string): Tool[] {
     return this.toolRegistry.getAllTools();
   }
 

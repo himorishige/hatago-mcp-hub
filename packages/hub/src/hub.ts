@@ -13,7 +13,7 @@ import {
   ToolInvoker,
   ToolRegistry
 } from '@himorishige/hatago-runtime';
-import type { Tool, LogData } from '@himorishige/hatago-core';
+import type { Tool, LogData, Resource, Prompt } from '@himorishige/hatago-core';
 import {
   SSEClientTransport,
   StreamableHTTPTransport,
@@ -27,6 +27,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { UnsupportedFeatureError } from './errors.js';
 import { Logger } from './logger.js';
+import type { IHub } from './hub-interface.js';
 import {
   type NotificationConfig,
   NotificationManager,
@@ -93,7 +94,7 @@ class CapabilityRegistry {
 /**
  * Main Hub class - provides simplified API for MCP operations
  */
-export class HatagoHub {
+export class HatagoHub implements IHub {
   // Core components
   protected sessions: SessionManager;
   protected toolRegistry: ToolRegistry;
@@ -1169,7 +1170,7 @@ export class HatagoHub {
   private async calculateToolsetHash(): Promise<string> {
     const tools = this.tools.list();
     const toolData = tools.map((t) => {
-      const tool = t as Tool;
+      const tool = t;
       const toolInfo = {
         name: String(tool.name),
         description: String(tool.description ?? '')
@@ -1269,7 +1270,7 @@ export class HatagoHub {
   /**
    * Reload configuration
    */
-  private async reloadConfig(): Promise<void> {
+  async reloadConfig(): Promise<void> {
     if (!this.options.configFile) {
       return;
     }
@@ -1454,12 +1455,12 @@ export class HatagoHub {
     /**
      * List available tools
      */
-    list: (options?: ListOptions) => {
+    list: (options?: ListOptions): Tool[] => {
       if (options?.serverId) {
         const server = this.servers.get(options.serverId);
         return server?.tools ?? [];
       }
-      return this.toolInvoker.listTools();
+      return this.toolInvoker.listTools() as Tool[];
     },
 
     /**
@@ -1505,13 +1506,13 @@ export class HatagoHub {
    * Resources API
    */
   resources: {
-    list: (options?: ListOptions) => unknown[];
+    list: (options?: ListOptions) => Resource[];
     read: (uri: string, options?: ReadOptions) => Promise<unknown>;
   } = {
     /**
      * List available resources
      */
-    list: (options?: ListOptions) => {
+    list: (options?: ListOptions): Resource[] => {
       if (options?.serverId) {
         const server = this.servers.get(options.serverId);
         return server?.resources ?? [];
@@ -1610,13 +1611,13 @@ export class HatagoHub {
    * Prompts API
    */
   prompts: {
-    list: (options?: ListOptions) => unknown[];
+    list: (options?: ListOptions) => Prompt[];
     get: (name: string, args?: unknown) => Promise<unknown>;
   } = {
     /**
      * List available prompts
      */
-    list: (options?: ListOptions) => {
+    list: (options?: ListOptions): Prompt[] => {
       if (options?.serverId) {
         const server = this.servers.get(options.serverId);
         return server?.prompts ?? [];

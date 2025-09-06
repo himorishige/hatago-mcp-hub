@@ -40,6 +40,12 @@ export type HubOptions = {
   namingStrategy?: 'none' | 'namespace' | 'prefix';
   separator?: string;
   tags?: string[]; // Filter servers by tags
+  /**
+   * @experimental Use the thin HubCore implementation instead of the full HatagoHub.
+   * This provides a minimal, transparent hub without state management or caching.
+   * Default: false
+   */
+  useHubCore?: boolean;
 };
 
 /**
