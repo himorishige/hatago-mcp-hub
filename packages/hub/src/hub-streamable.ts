@@ -134,8 +134,10 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
     const isToolCall = bodyAsRecord.method === 'tools/call';
     const acceptsSSE = c.req.header('Accept')?.includes('text/event-stream');
 
-    // Always use SSE if client accepts it and it's a tool call with progress token
-    if (acceptsSSE && isToolCall && hasProgressToken) {
+    // Use SSE when client accepts it and either it's a tool call OR a progress token is provided.
+    // This aligns with StreamableHTTPTransport behavior and avoids "hung" JSON waits when
+    // clients forget to attach a progressToken. [SF][REH]
+    if (acceptsSSE && (isToolCall || hasProgressToken)) {
       // Use SSE response
       return streamSSE(c, async (stream) => {
         const sseStream = createSSEAdapter(stream);
