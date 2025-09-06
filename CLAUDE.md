@@ -14,7 +14,7 @@ Hatago MCP Hub is a lightweight MCP (Model Context Protocol) hub server that man
 - **MCP SDK**: @modelcontextprotocol/sdk (requires Zod schemas for tools)
 - **Build Tool**: tsdown
 - **Test Framework**: Vitest
-- **Linter/Formatter**: Biome
+- **Linter/Formatter**: ESLint + Prettier
 - **Package Manager**: pnpm
 
 ## Project Structure
@@ -249,7 +249,7 @@ const result = await client.request({ method: 'tools/list', params: {} }, ListTo
 - **File naming**: kebab-case
 - **MCP tool names**: snake_case (per MCP spec)
 - **TypeScript**: Strict mode enabled
-- **Imports**: Organized by Biome
+- **Imports**: Keep consistent; rely on ESLint/Prettier rules
 
 ## Testing & Quality
 
@@ -288,6 +288,110 @@ pnpm check  # Runs format + lint + typecheck
 - Progress notification forwarding
 - Internal management tools
 - Environment variable expansion
+
+## Hatago Design Philosophy
+
+### Core Mantra - The Magic of "Thinness"
+
+The essence of Hatago lies in its "thin implementation". This characteristic, clarified through comparative analysis, must be preserved as the highest priority.
+
+**Hatago's Core Mantra:**
+
+- **"Don't add, remove"** - Prioritize reduction over feature addition
+- **"Don't transform, relay"** - Avoid data processing, maintain transparency
+- **"Don't judge, pass through"** - Avoid complex logic, simple relay only
+- **"Don't thicken, stay thin"** - Maintain minimal implementation
+
+### Design Principles - Principles of Thin Implementation
+
+#### 1. Maintaining Transparency
+
+```typescript
+// ✅ Good: Simple relay
+async callTool(name, args) {
+  const server = this.resolveServer(name);
+  return server.call(name, args);
+}
+
+// ❌ Bad: Complex processing
+async callTool(name, args) {
+  const enhanced = await this.analyzeContext(args);
+  const optimized = await this.optimizeQuery(enhanced);
+  const result = await this.execute(optimized);
+  return this.postProcess(result);
+}
+```
+
+#### 2. Minimal Intervention
+
+What Hatago does:
+
+- Namespace resolution/prefixing
+- Connection management
+- Error forwarding
+- Progress notification relay
+
+What Hatago doesn't do:
+
+- Data transformation or processing
+- Result caching
+- Complex error recovery
+- AI-based optimization
+
+#### 3. Convention over Configuration
+
+```json
+// Simple default behavior - works with minimal config
+{
+  "mcpServers": {
+    "server1": { "command": "..." }
+  }
+}
+```
+
+### Feature Addition Criteria
+
+Before adding any new feature, verify ALL criteria are met:
+
+```typescript
+function shouldAddFeature(feature: Feature): boolean {
+  // 1. Is code addition under 100 lines?
+  if (feature.linesOfCode > 100) return false;
+
+  // 2. Does it require new dependencies?
+  if (feature.requiresNewDependency) return false;
+
+  // 3. Does it transform/process data?
+  if (feature.transformsData) return false;
+
+  // 4. Does it maintain state?
+  if (feature.maintainsState) return false;
+
+  // 5. Is it simple passthrough/relay?
+  if (!feature.isPassthrough) return false;
+
+  return true;
+}
+```
+
+### Acceptable vs Unacceptable Features
+
+#### ✅ Acceptable "Thin" Features
+
+- **Passthrough functionality**: Direct relay without modification
+- **Simple filtering**: Basic tag-based selection
+- **Basic multiplexing**: Promise.all for parallel operations
+- **Metrics collection**: Recording only, no analysis
+- **Health checks**: Simple ping operations
+- **Connection pooling**: Reuse only, no complex management
+
+#### ❌ Absolutely Unacceptable "Thick" Features
+
+- **AI Integration**: Memory or reasoning systems
+- **Cache Systems**: Requires state management
+- **Complex Routing**: Contains business logic
+- **Data Transformation Pipeline**: Input/output processing
+- **Business Logic**: Application-specific processing
 
 ## Architecture Highlights
 

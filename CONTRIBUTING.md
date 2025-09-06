@@ -14,7 +14,7 @@ By participating, you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.
 - Install deps: `pnpm install`
 - Build all packages: `pnpm -r build`
 - Type check: `pnpm -r typecheck` or `pnpm check`
-- Lint: `pnpm lint` (Biome) / Format: `pnpm format`
+- Lint: `pnpm lint` (ESLint) / Format: `pnpm format` (Prettier)
 - Tests: `pnpm -r test` (Vitest)
 - Package dev: `cd packages/<name> && pnpm dev`
 
@@ -28,7 +28,7 @@ Project layout:
 ## Development Guidelines
 
 - Language: TypeScript (ESM), strict mode, avoid `any` and non‑null assertions
-- Style: Biome + Prettier; single quotes; 2‑space indentation
+- Style: ESLint + Prettier; single quotes; 2‑space indentation
 - Tests: co‑locate as `*.test.ts` near sources (Vitest)
 - Architecture: Keep modules small, typed, and reusable; colocate types near usage
 - Error handling: Prefer typed, explicit errors and helpful messages
@@ -58,7 +58,7 @@ Please report vulnerabilities privately. See [SECURITY.md](./SECURITY.md).
 
 ## Release & Publishing
 
-Packages under `packages/*` are published to npm as public packages under the `@hatago/*` scope. General checklist:
+Packages under `packages/*` are published to npm as public packages under the `@himorishige/*` scope. General checklist:
 
 - Ensure package has `license: MIT`, correct `name`, `version`, `repository`, and `files`/`exports`
 - Run `pnpm -r build` and `pnpm -r test`

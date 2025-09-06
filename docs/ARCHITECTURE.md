@@ -203,6 +203,17 @@ Claude Code compatible syntax:
 - `${VAR}` - Required environment variable
 - `${VAR:-default}` - With default fallback
 
+### Tag-based Filtering
+
+- Servers can be grouped with `tags` (string array) in the configuration.
+- The CLI option `--tags a,b` starts servers that match any of the given tags (OR logic).
+- Japanese tags are supported.
+
+### Configuration Inheritance
+
+- Use `"extends": "path/to/base.config.json"` to inherit and override configuration fields.
+- Child values override parent values; arrays are replaced unless explicitly merged by the consumer.
+
 ## Key Features
 
 ### Hot Reload & Configuration Watching
@@ -225,6 +236,11 @@ Built-in tools prefixed with `_internal_`:
 - `_internal_hatago_status` - Server status monitoring
 - `_internal_hatago_reload` - Manual config reload
 - `_internal_hatago_list_servers` - Server listing
+
+## Observability
+
+- Metrics (HTTP mode): Set `HATAGO_METRICS=1` to enable a lightweight in-memory metrics endpoint at `/metrics`.
+- Logging: Set `HATAGO_LOG=json` to enable JSON logs (respects `HATAGO_LOG_LEVEL`).
 
 ## Data Flow
 
@@ -316,17 +332,21 @@ interface Platform {
 - Connection pooling for remote servers
 - Automatic cleanup of unused resources
 
-### Caching Strategy
+### Caching Policy
 
-- Tool definition caching
-- Resource metadata caching
-- Configuration caching with invalidation
+- No persistent caching by default to preserve a thin, transparent design.
+- Minimal, ephemeral in-process data may be used where it does not alter semantics.
 
 ### Request Optimization
 
-- Request batching where applicable
 - Parallel server queries
 - Response streaming support
+
+### MCP Compliance Notes
+
+- STDIO transport uses newline-delimited JSON (no `Content-Length` framing).
+- Notifications must not include `id` (JSON-RPC 2.0).
+- Tool definitions must provide Zod-based schemas via the MCP SDK.
 
 ## Error Handling
 
@@ -360,7 +380,7 @@ interface Platform {
 ### Build System
 
 - tsdown for fast builds
-- Biome for linting and formatting
+- ESLint + Prettier for linting and formatting
 - pnpm for package management
 
 ## Extension Points
