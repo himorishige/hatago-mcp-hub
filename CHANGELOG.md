@@ -5,6 +5,30 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.9] - 2025-09-06
+
+### Added
+
+- CLI: `--env-file <path...>` to load environment variables before config parsing, and `--env-override` to overwrite existing values. Supports `KEY=VALUE` / `export KEY=VALUE`, `#` comments, quotes stripping, `\n/\r/\t` escapes, `~/` path expansion. [DM][SF][ISA]
+
+### Changed
+
+- Startup UX: Eager servers now connect in parallel; per‑server `tools/list_changed` is suppressed during startup and a single notification is sent after all connections complete. [PA][SF]
+- HTTP mode: The first `tools/list` waits briefly (up to 3s) while startup completes to accommodate clients that only fetch once. [REH]
+
+### Fixed
+
+- Remote auth headers: Pass `headers` to remote transports (SSE/HTTP/StreamableHTTP) via a fetch wrapper so `Authorization` reliably reaches the endpoint. Fixes 401 "Missing Authorization header" on some providers. [SFT][REH]
+- Error output: Environment‑variable validation and config‑load failures now print concise messages (no stack) in the CLI, while internal logging preserves the `(message, Error)` signature expected by tests. [REH][RP]
+
+### Docs
+
+- README/README.ja and package README updated with `--env-file` usage examples and notes. [SD]
+
+### Chore
+
+- Bump all packages to `0.0.9` and align hardcoded versions (hub_version, serverInfo.version, Client.version). [PEC]
+
 ## [0.0.8] - 2025-09-06
 
 ### Added
