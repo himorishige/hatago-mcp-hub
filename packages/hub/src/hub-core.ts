@@ -45,6 +45,7 @@ export type HubCoreOptions = {
   logger?: {
     debug: (message: string, ...args: any[]) => void;
     info: (message: string, ...args: any[]) => void;
+    warn: (message: string, ...args: any[]) => void;
     error: (message: string, ...args: any[]) => void;
   };
 };
@@ -239,8 +240,27 @@ export class HubCore {
         });
       } else if ('url' in spec) {
         // Remote server (HTTP/SSE)
-        // This would need implementation in transport package
-        throw new Error('Remote servers not yet implemented in HubCore');
+        const transportModule = await import('@himorishige/hatago-transport');
+
+        if (spec.type === 'sse') {
+          // SSE transport
+          const { SSEClientTransport } = transportModule;
+          if (!spec.url) {
+            throw new Error(`SSE server ${id} requires a URL`);
+          }
+          transport = new SSEClientTransport(new URL(spec.url));
+        } else {
+          // HTTP transport - use SSE for now as HTTP client is not yet implemented
+          // This is a limitation that will be addressed in future versions
+          this.logger?.warn(
+            `HTTP transport not yet fully implemented for ${id}, falling back to SSE`
+          );
+          const { SSEClientTransport } = transportModule;
+          if (!spec.url) {
+            throw new Error(`HTTP server ${id} requires a URL`);
+          }
+          transport = new SSEClientTransport(new URL(spec.url));
+        }
       } else {
         throw new Error(`Unknown server spec type for ${id}`);
       }
@@ -272,35 +292,45 @@ export class HubCore {
   }
 
   /**
+   * Method routing table for clean dispatch
+   * @internal Currently all methods use same handler but table structure
+   * enables future method-specific handling without breaking changes
+   */
+  private static readonly METHOD_HANDLERS: Record<
+    string,
+    'direct' | 'tools' | 'resources' | 'prompts' | 'system'
+  > = {
+    // System methods
+    initialize: 'system',
+    initialized: 'system',
+    shutdown: 'system',
+    ping: 'system',
+
+    // Tool methods
+    'tools/list': 'tools',
+    'tools/call': 'tools',
+
+    // Resource methods
+    'resources/list': 'resources',
+    'resources/read': 'resources',
+
+    // Prompt methods
+    'prompts/list': 'prompts',
+    'prompts/get': 'prompts'
+  };
+
+  /**
    * Forward request to server - pure passthrough
    */
   private async forwardToServer(client: Client, request: JSONRPCRequest): Promise<JSONRPCResponse> {
-    // Direct method-to-method mapping for common MCP methods
-    // This is a thin mapping layer, not transformation
-
     try {
-      switch (request.method) {
-        case 'initialize':
-        case 'initialized':
-        case 'shutdown':
-        case 'ping':
-          // System methods - pass through directly
-          return await this.callClientMethod(client, request);
+      // Method routing is defined in METHOD_HANDLERS table but all go through same handler
+      // This maintains the table-driven pattern for future extensibility
+      const handlerType = HubCore.METHOD_HANDLERS[request.method] ?? 'direct';
+      this.logger?.debug(`Routing ${request.method} as ${handlerType} type`);
 
-        case 'tools/list':
-        case 'tools/call':
-        case 'resources/list':
-        case 'resources/read':
-        case 'prompts/list':
-        case 'prompts/get':
-          // MCP standard methods - pass through directly
-          return await this.callClientMethod(client, request);
-
-        default:
-          // Unknown method - pass through anyway
-          // Let the server handle or reject it
-          return await this.callClientMethod(client, request);
-      }
+      // All methods go through the same handler - pure relay
+      return await this.callClientMethod(client, request);
     } catch (error) {
       return {
         jsonrpc: '2.0',
@@ -314,100 +344,65 @@ export class HubCore {
   }
 
   /**
+   * Method handlers for different request types
+   */
+  private static readonly METHOD_EXECUTORS: Record<
+    string,
+    (client: Client, params: unknown) => Promise<unknown>
+  > = {
+    'tools/list': async (client) => client.listTools(),
+    'tools/call': async (client, params) =>
+      client.callTool({
+        name: (params as any).name,
+        arguments: (params as any).arguments as Record<string, unknown> | undefined
+      }),
+    'resources/list': async (client) => client.listResources(),
+    'resources/read': async (client, params) => client.readResource(params as { uri: string }),
+    'prompts/list': async (client) => client.listPrompts(),
+    'prompts/get': async (client, params) =>
+      client.getPrompt(params as { name: string; arguments?: Record<string, string> })
+  };
+
+  /**
    * Call client method - thin wrapper for error handling
    */
   private async callClientMethod(
     client: Client,
     request: JSONRPCRequest
   ): Promise<JSONRPCResponse> {
-    // MCP SDK Client doesn't expose direct request method
-    // We need to use the appropriate method based on the request type
-
     try {
-      // Map method names to client methods
-      switch (request.method) {
-        case 'initialize':
-          // Initialize is handled differently - usually called once
-          return {
-            jsonrpc: '2.0',
-            id: request.id ?? null,
-            result: {
-              protocolVersion: '1.0.0',
-              capabilities: {}
-            }
-          };
-
-        case 'tools/list': {
-          const tools = await client.listTools();
-          return {
-            jsonrpc: '2.0',
-            id: request.id ?? null,
-            result: tools
-          };
-        }
-
-        case 'tools/call': {
-          const params = request.params as { name: string; arguments?: unknown };
-          const result = await client.callTool({
-            name: params.name,
-            arguments: params.arguments as Record<string, unknown> | undefined
-          });
-          return {
-            jsonrpc: '2.0',
-            id: request.id ?? null,
-            result
-          };
-        }
-
-        case 'resources/list': {
-          const resources = await client.listResources();
-          return {
-            jsonrpc: '2.0',
-            id: request.id ?? null,
-            result: resources
-          };
-        }
-
-        case 'resources/read': {
-          const params = request.params as { uri: string };
-          const result = await client.readResource(params);
-          return {
-            jsonrpc: '2.0',
-            id: request.id ?? null,
-            result
-          };
-        }
-
-        case 'prompts/list': {
-          const prompts = await client.listPrompts();
-          return {
-            jsonrpc: '2.0',
-            id: request.id ?? null,
-            result: prompts
-          };
-        }
-
-        case 'prompts/get': {
-          const params = request.params as { name: string; arguments?: Record<string, string> };
-          const result = await client.getPrompt(params);
-          return {
-            jsonrpc: '2.0',
-            id: request.id ?? null,
-            result
-          };
-        }
-
-        default:
-          // Unknown method
-          return {
-            jsonrpc: '2.0',
-            id: request.id ?? null,
-            error: {
-              code: -32601,
-              message: `Method not found: ${request.method}`
-            }
-          };
+      // Special handling for system methods
+      if (request.method === 'initialize') {
+        return {
+          jsonrpc: '2.0',
+          id: request.id ?? null,
+          result: {
+            protocolVersion: '1.0.0',
+            capabilities: {}
+          }
+        };
       }
+
+      // Use executor table for standard methods
+      const executor = HubCore.METHOD_EXECUTORS[request.method];
+      if (executor) {
+        const result = await executor(client, request.params);
+        return {
+          jsonrpc: '2.0',
+          id: request.id ?? null,
+          result
+        };
+      }
+
+      // Unknown method - return method not found error
+      return {
+        jsonrpc: '2.0',
+        id: request.id ?? null,
+        error: {
+          code: -32601,
+          message: `Method not found: ${request.method}`
+        }
+      };
     } catch (error) {
       return {
         jsonrpc: '2.0',
