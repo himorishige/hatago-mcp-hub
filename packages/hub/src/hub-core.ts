@@ -60,8 +60,13 @@ export class HubCore {
       spec: ServerSpec;
       client?: Client;
       transport?: Transport;
+      connectionError?: Error;
+      lastConnectionAttempt?: number;
     }
   > = new Map();
+
+  // Track ongoing connection attempts to prevent race conditions
+  private connectingServers: Map<string, Promise<void>> = new Map();
 
   private readonly logger: HubCoreOptions['logger'];
   private closed = false;
@@ -152,6 +157,12 @@ export class HubCore {
     if (this.closed) return;
     this.closed = true;
 
+    // Wait for any ongoing connections to complete before closing
+    if (this.connectingServers.size > 0) {
+      this.logger?.debug('Waiting for ongoing connections to complete before closing');
+      await Promise.allSettled(this.connectingServers.values());
+    }
+
     // Close all connected servers
     const closePromises: Promise<void>[] = [];
     for (const [id, server] of this.servers) {
@@ -167,6 +178,7 @@ export class HubCore {
 
     await Promise.allSettled(closePromises);
     this.servers.clear();
+    this.connectingServers.clear();
     this.logger?.info('HubCore closed');
   }
 
@@ -202,7 +214,20 @@ export class HubCore {
 
     // Lazy connection - connect on first use
     if (!server.client) {
-      await this.connectServer(id, server);
+      // Check if already connecting to prevent race conditions
+      let connectPromise = this.connectingServers.get(id);
+
+      if (!connectPromise) {
+        // Start new connection and track it
+        connectPromise = this.connectServer(id, server).finally(() => {
+          // Clean up after connection attempt (success or failure)
+          this.connectingServers.delete(id);
+        });
+        this.connectingServers.set(id, connectPromise);
+      }
+
+      // Wait for connection to complete
+      await connectPromise;
     }
 
     return server;
@@ -217,6 +242,8 @@ export class HubCore {
       spec: ServerSpec;
       client?: Client;
       transport?: Transport;
+      connectionError?: Error;
+      lastConnectionAttempt?: number;
     }
   ): Promise<void> {
     try {
@@ -284,9 +311,18 @@ export class HubCore {
       server.client = client;
       server.transport = transport;
 
+      // Clear any previous error state on successful connection
+      server.connectionError = undefined;
+      server.lastConnectionAttempt = Date.now();
+
       this.logger?.info(`Connected to server ${id}`);
     } catch (error) {
       this.logger?.error(`Failed to connect to server ${id}:`, error);
+
+      // Store error information for diagnostics
+      server.connectionError = error instanceof Error ? error : new Error(String(error));
+      server.lastConnectionAttempt = Date.now();
+
       throw error;
     }
   }
@@ -344,6 +380,72 @@ export class HubCore {
   }
 
   /**
+   * Validate and extract tool call parameters
+   */
+  private static validateToolCallParams(params: unknown): { name: string; arguments?: unknown } {
+    if (!params || typeof params !== 'object') {
+      throw new Error('Invalid tools/call parameters: expected object');
+    }
+    const p = params as Record<string, unknown>;
+    if (typeof p.name !== 'string') {
+      throw new Error('Invalid tools/call parameters: name must be a string');
+    }
+    return {
+      name: p.name,
+      arguments: p.arguments
+    };
+  }
+
+  /**
+   * Validate and extract resource read parameters
+   */
+  private static validateResourceReadParams(params: unknown): { uri: string } {
+    if (!params || typeof params !== 'object') {
+      throw new Error('Invalid resources/read parameters: expected object');
+    }
+    const p = params as Record<string, unknown>;
+    if (typeof p.uri !== 'string') {
+      throw new Error('Invalid resources/read parameters: uri must be a string');
+    }
+    return { uri: p.uri };
+  }
+
+  /**
+   * Validate and extract prompt get parameters
+   */
+  private static validatePromptGetParams(params: unknown): {
+    name: string;
+    arguments?: Record<string, string>;
+  } {
+    if (!params || typeof params !== 'object') {
+      throw new Error('Invalid prompts/get parameters: expected object');
+    }
+    const p = params as Record<string, unknown>;
+    if (typeof p.name !== 'string') {
+      throw new Error('Invalid prompts/get parameters: name must be a string');
+    }
+
+    // Validate arguments if present
+    if (p.arguments !== undefined && p.arguments !== null) {
+      if (typeof p.arguments !== 'object') {
+        throw new Error('Invalid prompts/get parameters: arguments must be an object');
+      }
+      // Ensure all values are strings
+      const args = p.arguments as Record<string, unknown>;
+      for (const [key, value] of Object.entries(args)) {
+        if (typeof value !== 'string') {
+          throw new Error(`Invalid prompts/get parameters: argument '${key}' must be a string`);
+        }
+      }
+    }
+
+    return {
+      name: p.name,
+      arguments: p.arguments as Record<string, string> | undefined
+    };
+  }
+
+  /**
    * Method handlers for different request types
    */
   private static readonly METHOD_EXECUTORS: Record<
@@ -352,17 +454,22 @@ export class HubCore {
   > = {
     'tools/list': async (client) => client.listTools(),
     'tools/call': async (client, params) => {
-      const toolParams = params as { name: string; arguments?: unknown };
+      const validated = HubCore.validateToolCallParams(params);
       return client.callTool({
-        name: toolParams.name,
-        arguments: toolParams.arguments as Record<string, unknown> | undefined
+        name: validated.name,
+        arguments: validated.arguments as Record<string, unknown> | undefined
       });
     },
     'resources/list': async (client) => client.listResources(),
-    'resources/read': async (client, params) => client.readResource(params as { uri: string }),
+    'resources/read': async (client, params) => {
+      const validated = HubCore.validateResourceReadParams(params);
+      return client.readResource(validated);
+    },
     'prompts/list': async (client) => client.listPrompts(),
-    'prompts/get': async (client, params) =>
-      client.getPrompt(params as { name: string; arguments?: Record<string, string> })
+    'prompts/get': async (client, params) => {
+      const validated = HubCore.validatePromptGetParams(params);
+      return client.getPrompt(validated);
+    }
   };
 
   /**

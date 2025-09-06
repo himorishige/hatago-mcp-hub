@@ -350,7 +350,7 @@ export class HatagoHub implements IHub {
         const client = new Client(
           {
             name: `hatago-hub-${id}`,
-            version: '0.0.9'
+            version: '0.1.0'
           },
           {
             capabilities: {
@@ -1888,7 +1888,7 @@ export class HatagoHub implements IHub {
               },
               serverInfo: {
                 name: 'hatago-hub',
-                version: '0.0.9'
+                version: '0.1.0'
               }
             }
           };
