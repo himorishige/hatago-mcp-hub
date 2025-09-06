@@ -491,7 +491,20 @@ export class HatagoHub {
    * Connect to a server
    */
   private async connectServer(id: string, spec: ServerSpec): Promise<void> {
-    this.logger.info(`Connecting to server: ${id}`, { spec });
+    // Mask sensitive headers before logging
+    const maskedSpec: ServerSpec = {
+      ...spec,
+      headers: spec.headers
+        ? Object.fromEntries(
+            Object.entries(spec.headers).map(([k, v]) =>
+              k.toLowerCase() === 'authorization'
+                ? [k, typeof v === 'string' ? v.replace(/^(Bearer\s+).+$/, '$1***') : '***']
+                : [k, v]
+            )
+          )
+        : undefined
+    };
+    this.logger.info(`Connecting to server: ${id}`, { spec: maskedSpec });
 
     // Create transport factory based on spec
     const createTransport = async () => {
