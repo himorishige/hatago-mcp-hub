@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-mcp-hub",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Unified MCP Hub for managing multiple Model Context Protocol servers",
   "type": "module",
   "main": "./dist/node/index.js",

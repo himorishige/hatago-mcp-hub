@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-transport",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Transport abstractions and implementations for Hatago MCP Hub",
   "type": "module",
   "main": "./dist/index.js",
