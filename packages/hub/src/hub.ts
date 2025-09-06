@@ -154,6 +154,9 @@ export class HatagoHub {
   private toolsetRevision = 0;
   private toolsetHash = '';
 
+  // Startup synchronization: ensure first tools/list waits briefly until servers connect [REH][SF]
+  private startupDeferred?: { promise: Promise<void>; resolve: () => void; completed: boolean };
+
   // Notification sink tracking (for logging once)
   private warnedNoSinkOnce = false;
   private notedHttpSinkOnce = false;
@@ -215,7 +218,11 @@ export class HatagoHub {
   /**
    * Add and connect to a server
    */
-  async addServer(id: string, spec: ServerSpec): Promise<this> {
+  async addServer(
+    id: string,
+    spec: ServerSpec,
+    options?: { suppressToolListNotification?: boolean }
+  ): Promise<this> {
     if (this.servers.has(id)) {
       throw new Error(`Server ${id} already exists`);
     }
@@ -248,9 +255,11 @@ export class HatagoHub {
     }
 
     // Notify clients that tools are available after startup
-    // Some MCP clients populate their tool view only after receiving
-    // notifications/tools/list_changed. Send it once here. [REH][ISA]
-    await this.sendToolListChangedNotification();
+    // Some MCP clients（例: Claude Code）では最初の通知しか認識しないケースがあるため、
+    // 起動フェーズでは呼び出し側で一括通知に切り替え可能にする。[REH][ISA]
+    if (!options?.suppressToolListNotification) {
+      await this.sendToolListChangedNotification();
+    }
 
     return this;
   }
@@ -486,6 +495,24 @@ export class HatagoHub {
 
     // Create transport factory based on spec
     const createTransport = async () => {
+      // Helper: wrap fetch to inject headers for remote transports [REH][SF]
+      const makeHeaderFetch = (headers?: Record<string, string>) => {
+        if (!headers || Object.keys(headers).length === 0) return undefined;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const headerFetch = async (input: any, init?: RequestInit) => {
+          const mergedHeaders = {
+            ...(init?.headers instanceof Headers
+              ? Object.fromEntries(init.headers.entries())
+              : ((init?.headers as Record<string, string> | undefined) ?? {})),
+            ...headers
+          } as Record<string, string>;
+          const nextInit: RequestInit = { ...init, headers: mergedHeaders };
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          return fetch(input, nextInit);
+        };
+        return headerFetch;
+      };
+
       if (spec.command) {
         // Local server via stdio - check platform capability
         const platform = getPlatform();
@@ -514,13 +541,22 @@ export class HatagoHub {
         this.logger.debug(`Creating SSEClientTransport for ${id}`, {
           url: spec.url
         });
-        return new SSEClientTransport(new URL(spec.url));
+        // Inject headers via custom fetch (EventSource-style transports often ignore plain headers option)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const transport = new (SSEClientTransport as unknown as any)(new URL(spec.url), {
+          fetch: makeHeaderFetch(spec.headers)
+        });
+        return transport as unknown as ITransport;
       } else if (spec.url && spec.type === 'http') {
         // Remote HTTP server
         this.logger.debug(`Creating HTTPClientTransport (via SSE) for ${id}`, {
           url: spec.url
         });
-        return new SSEClientTransport(new URL(spec.url));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const transport = new (SSEClientTransport as unknown as any)(new URL(spec.url), {
+          fetch: makeHeaderFetch(spec.headers)
+        });
+        return transport as unknown as ITransport;
       } else if (spec.url && spec.type === 'streamable-http') {
         // Streamable HTTP server
         const { StreamableHTTPClientTransport } = await import(
@@ -529,7 +565,11 @@ export class HatagoHub {
         this.logger.debug(`Creating StreamableHTTPClientTransport for ${id}`, {
           url: spec.url
         });
-        return new StreamableHTTPClientTransport(new URL(spec.url));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const transport = new (StreamableHTTPClientTransport as unknown as any)(new URL(spec.url), {
+          fetch: makeHeaderFetch(spec.headers)
+        });
+        return transport as unknown as ITransport;
       } else {
         throw new Error(`Invalid server specification for ${id}`);
       }
@@ -745,6 +785,13 @@ export class HatagoHub {
     // Register internal management tools
     await this.registerInternalTools();
 
+    // Prepare startup gate (resolved after eager servers connect)
+    if (!this.startupDeferred) {
+      let _resolve!: () => void;
+      const promise = new Promise<void>((res) => (_resolve = res));
+      this.startupDeferred = { promise, resolve: _resolve, completed: false };
+    }
+
     // Load config if provided
     if (this.options.configFile || this.options.preloadedConfig) {
       try {
@@ -870,6 +917,7 @@ export class HatagoHub {
 
         // Process MCP servers from config
         if (config.mcpServers) {
+          const connectPromises: Array<Promise<void>> = [];
           for (const [id, serverConfig] of Object.entries(config.mcpServers)) {
             // Skip disabled servers
             if (serverConfig.disabled === true) {
@@ -896,20 +944,32 @@ export class HatagoHub {
             // Check if server should be started eagerly
             const hatagoOptions = serverConfig.hatagoOptions ?? {};
             if (hatagoOptions.start !== 'lazy') {
-              try {
-                this.notificationManager?.notifyServerStatus(id, 'starting');
-                await this.addServer(id, spec);
-                this.logger.info(`Connected to server: ${id}`);
-                this.notificationManager?.notifyServerStatus(id, 'connected');
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                this.logger.error(`Failed to connect to server ${id}`, {
-                  error: errorMessage
-                });
-                this.notificationManager?.notifyServerStatus(id, 'error', errorMessage);
-                // Continue with other servers
-              }
+              const task = (async () => {
+                try {
+                  this.notificationManager?.notifyServerStatus(id, 'starting');
+                  // 起動時はツール一覧通知を抑止し、後で一括送信する
+                  await this.addServer(id, spec, { suppressToolListNotification: true });
+                  this.logger.info(`Connected to server: ${id}`);
+                  this.notificationManager?.notifyServerStatus(id, 'connected');
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  this.logger.error(`Failed to connect to server ${id}`, {
+                    error: errorMessage
+                  });
+                  this.notificationManager?.notifyServerStatus(id, 'error', errorMessage);
+                  // Continue with other servers
+                }
+              })();
+              connectPromises.push(task);
             }
+          }
+          // すべての eager サーバー接続が終わってから、最初の tools/list_changed を一度だけ送る
+          await Promise.allSettled(connectPromises);
+          await this.sendToolListChangedNotification();
+          // Mark startup as complete for HTTP clients
+          if (this.startupDeferred && !this.startupDeferred.completed) {
+            this.startupDeferred.completed = true;
+            this.startupDeferred.resolve();
           }
         }
       } catch (error) {
@@ -963,6 +1023,11 @@ export class HatagoHub {
           }
         })();
       };
+      // No servers configured: mark startup complete
+      if (this.startupDeferred && !this.startupDeferred.completed) {
+        this.startupDeferred.completed = true;
+        this.startupDeferred.resolve();
+      }
     }
 
     return this;
@@ -1305,7 +1370,7 @@ export class HatagoHub {
                   this.logger.info(`Reloading server ${id} (config changed)`);
                   await this.removeServer(id);
                   this.notificationManager?.notifyServerStatus(id, 'starting');
-                  await this.addServer(id, spec);
+                  await this.addServer(id, spec, { suppressToolListNotification: true });
                   this.notificationManager?.notifyServerStatus(id, 'connected');
                 }
               } else {
@@ -1314,7 +1379,7 @@ export class HatagoHub {
                   spec
                 });
                 this.notificationManager?.notifyServerStatus(id, 'starting');
-                await this.addServer(id, spec);
+                await this.addServer(id, spec, { suppressToolListNotification: true });
                 this.notificationManager?.notifyServerStatus(id, 'connected');
               }
             } catch (error) {
@@ -1853,6 +1918,14 @@ export class HatagoHub {
         }
 
         case 'tools/list':
+          // Wait briefly for startup so the first response includes external tools [REH][SF]
+          if (this.startupDeferred && !this.startupDeferred.completed) {
+            const WAIT_MS = 3000;
+            await Promise.race([
+              this.startupDeferred.promise,
+              new Promise((r) => setTimeout(r, WAIT_MS))
+            ]);
+          }
           // Update hash if needed
           if (!this.toolsetHash) {
             this.toolsetHash = await this.calculateToolsetHash();
