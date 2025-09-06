@@ -14,7 +14,8 @@ export default tseslint.config(
       '**/*.test.ts',
       '**/*.test.tsx',
       '**/*.spec.ts',
-      '**/*.spec.tsx'
+      '**/*.spec.tsx',
+      'apps/docs/.astro/**'
     ]
   },
 
