@@ -146,7 +146,7 @@ async function main() {
   // Version
   if (args.flags.version) {
     // Version will be injected during build or read from package.json
-    console.error('0.0.7'); // TODO: Replace with actual version during build
+    console.error('0.0.8'); // TODO: Replace with actual version during build
     process.exit(0);
   }
 

@@ -36,7 +36,7 @@ export function getInternalTools(): Array<InternalTool<unknown>> {
         }));
 
         return {
-          hub_version: '0.0.7',
+          hub_version: '0.0.8',
           mcp_protocol: '2025-06-18',
           toolset: {
             revision,
