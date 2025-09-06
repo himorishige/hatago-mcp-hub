@@ -491,7 +491,20 @@ export class HatagoHub {
    * Connect to a server
    */
   private async connectServer(id: string, spec: ServerSpec): Promise<void> {
-    this.logger.info(`Connecting to server: ${id}`, { spec });
+    // Mask sensitive headers before logging
+    const maskedSpec: ServerSpec = {
+      ...spec,
+      headers: spec.headers
+        ? Object.fromEntries(
+            Object.entries(spec.headers).map(([k, v]) =>
+              k.toLowerCase() === 'authorization'
+                ? [k, typeof v === 'string' ? v.replace(/^(Bearer\s+).+$/, '$1***') : '***']
+                : [k, v]
+            )
+          )
+        : undefined
+    };
+    this.logger.info(`Connecting to server: ${id}`, { spec: maskedSpec });
 
     // Create transport factory based on spec
     const createTransport = async () => {
@@ -542,21 +555,23 @@ export class HatagoHub {
           url: spec.url
         });
         // Inject headers via custom fetch (EventSource-style transports often ignore plain headers option)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const transport = new (SSEClientTransport as unknown as any)(new URL(spec.url), {
+        type TransportCtor = new (url: URL, options?: { fetch?: typeof fetch }) => unknown;
+        const Ctor = SSEClientTransport as unknown as TransportCtor;
+        const transport = new Ctor(new URL(spec.url), {
           fetch: makeHeaderFetch(spec.headers)
         });
-        return transport as unknown as ITransport;
+        return transport;
       } else if (spec.url && spec.type === 'http') {
         // Remote HTTP server
         this.logger.debug(`Creating HTTPClientTransport (via SSE) for ${id}`, {
           url: spec.url
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const transport = new (SSEClientTransport as unknown as any)(new URL(spec.url), {
+        type TransportCtor = new (url: URL, options?: { fetch?: typeof fetch }) => unknown;
+        const Ctor = SSEClientTransport as unknown as TransportCtor;
+        const transport = new Ctor(new URL(spec.url), {
           fetch: makeHeaderFetch(spec.headers)
         });
-        return transport as unknown as ITransport;
+        return transport;
       } else if (spec.url && spec.type === 'streamable-http') {
         // Streamable HTTP server
         const { StreamableHTTPClientTransport } = await import(
@@ -565,11 +580,12 @@ export class HatagoHub {
         this.logger.debug(`Creating StreamableHTTPClientTransport for ${id}`, {
           url: spec.url
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const transport = new (StreamableHTTPClientTransport as unknown as any)(new URL(spec.url), {
+        type StreamableCtor = new (url: URL, options?: { fetch?: typeof fetch }) => unknown;
+        const StreamCtor = StreamableHTTPClientTransport as unknown as StreamableCtor;
+        const transport = new StreamCtor(new URL(spec.url), {
           fetch: makeHeaderFetch(spec.headers)
         });
-        return transport as unknown as ITransport;
+        return transport;
       } else {
         throw new Error(`Invalid server specification for ${id}`);
       }
