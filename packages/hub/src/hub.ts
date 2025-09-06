@@ -247,6 +247,11 @@ export class HatagoHub {
       throw error;
     }
 
+    // Notify clients that tools are available after startup
+    // Some MCP clients populate their tool view only after receiving
+    // notifications/tools/list_changed. Send it once here. [REH][ISA]
+    await this.sendToolListChangedNotification();
+
     return this;
   }
 
