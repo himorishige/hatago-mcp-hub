@@ -62,8 +62,10 @@ export async function loadConfig(
       validateEnvironmentVariables(rawData);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      // Print concise message without stack trace
       logger.error(`Environment variable validation failed: ${message}`);
-      throw error;
+      // Re-throw a plain Error with only the message so upstream handlers can render succinctly
+      throw new Error(message);
     }
 
     // Expand environment variables
@@ -87,14 +89,17 @@ export async function loadConfig(
       data: parseResult.data
     };
   } catch (error) {
-    logger.error(`Failed to load config from ${absolutePath}:`, error);
+    const message = error instanceof Error ? error.message : String(error);
+    // Keep logger signature (message, Error) for tests, but avoid noisy stacks in CLI by rethrowing a plain Error below
+    logger.error(`Failed to load config from ${absolutePath}:`, error as Error);
 
     // Re-throw with better message
     if (error instanceof SyntaxError) {
       throw new Error(`Invalid JSON in configuration file: ${error.message}`);
     }
 
-    throw error;
+    // Re-throw a plain Error with concise message so CLI can print without stack
+    throw new Error(message);
   }
 }
 
