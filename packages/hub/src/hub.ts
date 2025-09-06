@@ -340,7 +340,7 @@ export class HatagoHub {
         const client = new Client(
           {
             name: `hatago-hub-${id}`,
-            version: '0.0.6'
+            version: '0.0.7'
           },
           {
             capabilities: {
@@ -1806,7 +1806,7 @@ export class HatagoHub {
               },
               serverInfo: {
                 name: 'hatago-hub',
-                version: '0.0.6'
+                version: '0.0.7'
               }
             }
           };
