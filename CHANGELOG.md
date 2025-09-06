@@ -5,6 +5,25 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2025-09-06
+
+### Added
+
+- Lightweight `.env` loader in CLI (auto-loads CWD `.env` without external deps). [DM][SF]
+
+### Changed
+
+- Mask `Authorization` header values in connection logs. [SFT]
+
+### Fixed
+
+- Align timeout keys to schema (`requestMs`, `connectMs`, `keepAliveMs`) and stabilize SSE keepalive timing. [REH][ISA]
+- ESLint errors in Hub transport constructors fixed by adding safe constructor typing and removing unnecessary assertions. [ISA]
+
+### Chore
+
+- Bump all package versions to `0.0.8`.
+
 ## [0.0.7] - 2025-09-06
 
 ### Fixed
