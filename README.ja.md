@@ -170,7 +170,23 @@ hatago serve --config ./my-config.json
 # タグでサーバーをフィルタリング
 hatago serve --tags dev,test      # dev または test タグを持つサーバーのみ起動
 hatago serve --tags 開発,テスト    # 日本語タグもサポート
+
+# .env から環境変数を読み込む（複数指定可）
+hatago serve --http --env-file ./.env
+hatago serve --http --env-file ./base.env ./local.env
+
+# 既存の環境変数も上書きしたい場合
+hatago serve --http --env-file ./.env --env-override
 ```
+
+#### 環境変数をファイルから読み込む
+
+`--env-file <path...>` を使うと、設定の展開（`${VAR}` / `${VAR:-default}`）より前に環境変数を読み込める。グローバルに `export` しなくても動作確認できる。
+
+- フォーマット: `KEY=VALUE` / `export KEY=VALUE`、`#` でコメント、空行可。
+- 値の両端の `'` / `"` は除去。`\n`、`\r`、`\t` を展開。
+- パス: 相対パスはカレント基準、`~/` はホームに展開。
+- 優先順位: 指定順に適用。既存の `process.env` は保持（`--env-override` で上書き）。
 
 ### 設定戦略
 

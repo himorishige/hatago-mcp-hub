@@ -66,6 +66,25 @@ hatago serve --http                                 # HTTP mode (config optional
 hatago serve --watch           # Watch config for changes
 hatago serve --config custom.json  # Use custom config file
 hatago serve --verbose         # Enable debug logging
+hatago serve --env-file ./.env # Load variables from .env before start (can repeat)
+hatago serve --env-override    # Override existing process.env with values from env-file(s)
+```
+
+#### Environment Variables from Files
+
+`--env-file <path...>` loads environment variables from one or more files before configuration is parsed. This allows `${VAR}` and `${VAR:-default}` placeholders in `hatago.config.json` to resolve without exporting variables manually.
+
+- Supports lines like `KEY=VALUE`, `export KEY=VALUE`, comments starting with `#`, and empty lines.
+- Quotes are stripped from values; `\n`, `\r`, `\t` escapes are expanded.
+- Relative paths are resolved from the current working directory; `~/` is expanded to the home directory.
+- By default, existing `process.env` keys are preserved. Use `--env-override` to overwrite.
+
+Examples:
+
+```bash
+hatago serve --http --env-file ./.env
+hatago serve --http --env-file ./base.env ./secrets.env
+hatago serve --http --env-file ./local.env --env-override
 ```
 
 ## Usage with MCP Clients

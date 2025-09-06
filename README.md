@@ -369,7 +369,18 @@ hatago serve --watch           # Watch config changes
 hatago serve --config custom.json  # Custom config
 hatago serve --verbose         # Debug logging
 hatago serve --tags dev,test   # Filter servers by tags
+hatago serve --env-file ./.env # Load variables from .env before start (repeatable)
+hatago serve --env-override    # Override existing env vars when using --env-file
 ```
+
+#### Loading Environment Variables from Files
+
+Use `--env-file <path...>` to load variables before config parsing. This helps resolve `${VAR}` and `${VAR:-default}` placeholders without exporting variables globally.
+
+- Format: `KEY=VALUE`, `export KEY=VALUE`, `#` comments, blank lines.
+- Quotes are stripped; supports escaped `\n`, `\r`, `\t`.
+- Paths: relative to CWD, `~/` expanded to home.
+- Precedence: files are applied in the given order; existing `process.env` keys are preserved unless `--env-override` is provided.
 
 ## 🔧 Advanced Usage
 

@@ -11,6 +11,7 @@ import { Command } from 'commander';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, isAbsolute, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import { createInterface } from 'node:readline';
 
 // Get package version
@@ -62,6 +63,52 @@ program
   .name('hatago')
   .description('🏮 Hatago MCP Hub - Unified MCP server management')
   .version((packageJson as { version: string }).version);
+
+// --- helpers: env file loading (no external deps) ---
+function expandPath(path: string): string {
+  if (!path) return path;
+  if (path.startsWith('~/')) return resolve(homedir(), path.slice(2));
+  return isAbsolute(path) ? path : resolve(process.cwd(), path);
+}
+
+function parseEnv(content: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const lines = content.split(/\r?\n/);
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const withoutExport = line.startsWith('export ') ? line.slice('export '.length).trim() : line;
+    const eq = withoutExport.indexOf('=');
+    if (eq <= 0) continue;
+    const key = withoutExport.slice(0, eq).trim();
+    let val = withoutExport.slice(eq + 1).trim();
+    // strip surrounding quotes
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    // basic escapes
+    val = val.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t');
+    result[key] = val;
+  }
+  return result;
+}
+
+function loadEnvFile(path: string): Record<string, string> {
+  const abs = expandPath(path);
+  if (!existsSync(abs)) {
+    throw new Error(`${abs} not found`);
+  }
+  const content = readFileSync(abs, 'utf-8');
+  return parseEnv(content);
+}
+
+function applyEnv(vars: Record<string, string>, override: boolean): void {
+  for (const [k, v] of Object.entries(vars)) {
+    if (override || process.env[k] === undefined) {
+      process.env[k] = v;
+    }
+  }
+}
 
 // Init command
 program
@@ -172,6 +219,8 @@ program
   .option('--quiet', 'Minimize output')
   .option('--watch', 'Watch configuration file for changes')
   .option('--tags <tags>', 'Filter servers by tags (comma-separated)')
+  .option('--env-file <path...>', 'Load environment variables from file(s) before start')
+  .option('--env-override', 'Override existing environment variables from env-file(s)')
   .action(async (options: unknown) => {
     try {
       const opts = options as {
@@ -183,6 +232,8 @@ program
         quiet?: boolean;
         watch?: boolean;
         tags?: string;
+        envFile?: string | string[];
+        envOverride?: boolean;
       };
 
       // Determine mode
@@ -193,6 +244,26 @@ program
 
       // Parse tags if provided
       const tags = opts.tags ? opts.tags.split(',').map((t) => t.trim()) : undefined;
+
+      // Load environment variables from --env-file before any config handling
+      const envFiles = Array.isArray(opts.envFile)
+        ? opts.envFile
+        : opts.envFile
+          ? [opts.envFile]
+          : [];
+      if (envFiles.length > 0) {
+        const override = !!opts.envOverride;
+        for (const p of envFiles) {
+          try {
+            const loaded = loadEnvFile(p);
+            applyEnv(loaded, override);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            console.error(`\n❌ Failed to load env file: ${msg}`);
+            process.exit(1);
+          }
+        }
+      }
 
       // Preflight: STDIO requires a config file. Check existence and fail immediately.
       if (mode === 'stdio') {
@@ -227,6 +298,7 @@ program
       // Handle specific errors with cleaner messages
       const errorMessage = error instanceof Error ? error.message : String(error);
 
+      // Missing config file
       if (errorMessage.includes('ENOENT') && errorMessage.includes('hatago.config.json')) {
         console.error('\n❌ Configuration file not found');
         console.error('');
@@ -236,11 +308,29 @@ program
         console.error('   Or specify a different config file:');
         console.error('     hatago serve --config path/to/config.json');
         console.error('');
-      } else if (errorMessage.includes('ENOENT')) {
-        console.error(`\n❌ File not found: ${errorMessage.split("'")[1] ?? 'unknown'}`);
-      } else {
-        console.error('Failed to start server:', error);
+        process.exit(1);
       }
+
+      // Other missing files
+      if (errorMessage.includes('ENOENT')) {
+        console.error(`\n❌ File not found: ${errorMessage.split("'")[1] ?? 'unknown'}`);
+        process.exit(1);
+      }
+
+      // Environment variable validation (no stack trace)
+      if (
+        errorMessage.includes('Missing required environment variables') ||
+        errorMessage.toLowerCase().includes('environment variable validation failed')
+      ) {
+        console.error(`\n❌ ${errorMessage}`);
+        console.error(
+          '   Tip: define the variable(s) or use ${VAR:-default} in hatago.config.json'
+        );
+        process.exit(1);
+      }
+
+      // Fallback: concise message only (no stack)
+      console.error(`\n❌ Failed to start server: ${errorMessage}`);
       process.exit(1);
     }
   });
