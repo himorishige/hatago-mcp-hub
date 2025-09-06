@@ -19,6 +19,42 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'
   version: string;
 };
 
+// Simple .env loader (no external deps) [SF][DM]
+function loadDotEnv(file = '.env') {
+  try {
+    const cwd = process.cwd();
+    const path = resolve(cwd, file);
+    if (!existsSync(path)) return;
+
+    const raw = readFileSync(path, 'utf-8');
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      let val = trimmed.slice(eq + 1).trim();
+
+      // Remove optional quotes
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1);
+      }
+      // Only set if not already defined
+      if (key && process.env[key] === undefined) {
+        process.env[key] = val;
+      }
+    }
+  } catch {
+    // ignore parsing failures to keep CLI robust [REH]
+  }
+}
+
+// Preload env from .env in CWD
+loadDotEnv();
+
 // Create CLI program
 const program = new Command();
 
