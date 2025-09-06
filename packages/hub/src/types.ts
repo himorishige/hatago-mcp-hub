@@ -41,11 +41,11 @@ export type HubOptions = {
   separator?: string;
   tags?: string[]; // Filter servers by tags
   /**
-   * @experimental Use the thin HubCore implementation instead of the full HatagoHub.
-   * This provides a minimal, transparent hub without state management or caching.
-   * Default: false
+   * @deprecated Use the legacy HatagoHub implementation instead of the default HubCore.
+   * The legacy hub includes state management, caching, and other "thick" features.
+   * Default: false (HubCore is now the default)
    */
-  useHubCore?: boolean;
+  useLegacyHub?: boolean;
 };
 
 /**

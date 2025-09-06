@@ -351,11 +351,13 @@ export class HubCore {
     (client: Client, params: unknown) => Promise<unknown>
   > = {
     'tools/list': async (client) => client.listTools(),
-    'tools/call': async (client, params) =>
-      client.callTool({
-        name: (params as any).name,
-        arguments: (params as any).arguments as Record<string, unknown> | undefined
-      }),
+    'tools/call': async (client, params) => {
+      const toolParams = params as { name: string; arguments?: unknown };
+      return client.callTool({
+        name: toolParams.name,
+        arguments: toolParams.arguments as Record<string, unknown> | undefined
+      });
+    },
     'resources/list': async (client) => client.listResources(),
     'resources/read': async (client, params) => client.readResource(params as { uri: string }),
     'prompts/list': async (client) => client.listPrompts(),
