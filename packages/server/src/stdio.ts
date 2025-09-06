@@ -44,6 +44,30 @@ export async function startStdio(
   // Metrics via hub event (opt-in); no HTTP endpoint in STDIO
   registerHubMetrics(hub);
 
+  // Hub readiness and early-request buffering
+  let hubReady = false;
+  const pendingRequests: Array<Record<string, unknown>> = [];
+
+  const shouldWaitForHub = (method?: unknown) => {
+    if (typeof method !== 'string') return false;
+    if (method === 'initialize') return false; // respond immediately
+    if (method.startsWith('notifications/')) return false; // pass-through
+    return (
+      method.startsWith('tools/') ||
+      method.startsWith('resources/') ||
+      method.startsWith('prompts/')
+    );
+  };
+
+  const flushPending = async () => {
+    for (const msg of pendingRequests.splice(0)) {
+      const response = await processMessage(hub, msg, logger);
+      if (response) {
+        await sendMessage(response, logger, isShuttingDown);
+      }
+    }
+  };
+
   // Set up notification handler to forward to Claude Code
   hub.onNotification = async (notification: unknown) => {
     // Don't send notifications during shutdown
@@ -168,6 +192,12 @@ export async function startStdio(
 
           logger.debug('Received:', message);
 
+          // If hub isn't ready yet, buffer tools/resources/prompts requests
+          if (!hubReady && shouldWaitForHub(msg.method)) {
+            pendingRequests.push(msg);
+            continue;
+          }
+
           // Process message through hub
           const response = await processMessage(hub, msg, logger);
 
@@ -219,6 +249,10 @@ export async function startStdio(
   // Start hub AFTER setting up all listeners
   // This prevents missing any messages that arrive immediately after startup
   await hub.start();
+
+  // Mark ready and flush any buffered requests
+  hubReady = true;
+  await flushPending();
 
   logger.info('Hatago MCP Hub started in STDIO mode');
 }
