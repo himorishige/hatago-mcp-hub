@@ -40,6 +40,12 @@ export type HubOptions = {
   namingStrategy?: 'none' | 'namespace' | 'prefix';
   separator?: string;
   tags?: string[]; // Filter servers by tags
+  /**
+   * Enable internal StreamableHTTP transport (HTTP/SSE bridge inside the hub).
+   * Disable when running in pure STDIO environments to avoid mixed transports.
+   * Default: true
+   */
+  enableStreamableTransport?: boolean;
 };
 
 /**

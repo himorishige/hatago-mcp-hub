@@ -135,7 +135,9 @@ export async function handleToolsCall(
   }
 
   try {
-    if (streamableTransport && serverId && progressToken) {
+    // Use direct client path whenever we know the server and a progressToken is present.
+    // This ensures onprogress forwarding works in both STDIO and HTTP modes. [REH][SF]
+    if (serverId && progressToken) {
       const client = clients.get(serverId);
       if (client) {
         const upstreamToken = `upstream-${Date.now()}`;

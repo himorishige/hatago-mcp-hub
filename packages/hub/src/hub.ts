@@ -89,6 +89,7 @@ export class HatagoHub {
     namingStrategy: 'none' | 'namespace' | 'prefix';
     separator: string;
     tags?: string[];
+    enableStreamableTransport: boolean;
   };
 
   // Notification callback for forwarding to parent
@@ -111,7 +112,8 @@ export class HatagoHub {
       defaultTimeout: options.defaultTimeout ?? 30000,
       namingStrategy: options.namingStrategy ?? 'namespace',
       separator: options.separator ?? '_',
-      tags: options.tags
+      tags: options.tags,
+      enableStreamableTransport: options.enableStreamableTransport ?? true
     };
 
     // Initialize logger
@@ -139,21 +141,23 @@ export class HatagoHub {
     this.promptRegistry = createPromptRegistry();
     this.capabilityRegistry = new CapabilityRegistry();
 
-    // Initialize StreamableHTTP Transport
-    this.streamableTransport = new StreamableHTTPTransport({
-      sessionIdGenerator: () => crypto.randomUUID(),
-      enableJsonResponse: true,
-      onsessioninitialized: (sessionId) => {
-        this.logger.debug('[Hub] Session initialized via StreamableHTTP', {
-          sessionId
-        });
-      },
-      onsessionclosed: (sessionId) => {
-        this.logger.debug('[Hub] Session closed via StreamableHTTP', {
-          sessionId
-        });
-      }
-    });
+    // Initialize StreamableHTTP Transport only when enabled
+    if (this.options.enableStreamableTransport) {
+      this.streamableTransport = new StreamableHTTPTransport({
+        sessionIdGenerator: () => crypto.randomUUID(),
+        enableJsonResponse: true,
+        onsessioninitialized: (sessionId) => {
+          this.logger.debug('[Hub] Session initialized via StreamableHTTP', {
+            sessionId
+          });
+        },
+        onsessionclosed: (sessionId) => {
+          this.logger.debug('[Hub] Session closed via StreamableHTTP', {
+            sessionId
+          });
+        }
+      });
+    }
   }
 
   /**

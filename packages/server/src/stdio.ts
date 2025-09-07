@@ -38,7 +38,8 @@ export async function startStdio(
     configFile: maybeExists ? config.path : undefined,
     preloadedConfig: { path: config.path, data: config.data },
     watchConfig,
-    tags
+    tags,
+    enableStreamableTransport: false
   });
   // Metrics via hub event (opt-in); no HTTP endpoint in STDIO
   registerHubMetrics(hub);
