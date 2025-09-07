@@ -859,6 +859,17 @@ export class HatagoHub {
     this.clients.clear();
     this.servers.clear();
     this.sessions.stop();
+
+    // Close StreamableHTTP transport if enabled to release timers/sockets
+    if (this.streamableTransport) {
+      try {
+        await this.streamableTransport.close();
+      } catch (error) {
+        this.logger.warn('[Hub] Error while closing StreamableHTTP transport', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
   }
 
   /**
