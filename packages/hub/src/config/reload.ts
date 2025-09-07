@@ -6,6 +6,15 @@ import type { Logger } from '../logger.js';
 import type { ConnectedServer, ServerSpec } from '../types.js';
 import { normalizeServerSpec } from '../client/connector.js';
 
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((v) => stableStringify(v)).join(',')}]`;
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  const entries = keys.map((k) => `"${k}":${stableStringify(obj[k])}`).join(',');
+  return `{${entries}}`;
+}
+
 type ReloadHub = {
   options: { configFile?: string; tags?: string[] };
   logger: Logger;
@@ -103,7 +112,10 @@ export async function reloadConfig(hub: HatagoHub): Promise<void> {
           try {
             if (existingServerIds.has(id)) {
               const existingServer = h.servers.get(id);
-              if (existingServer && JSON.stringify(existingServer.spec) !== JSON.stringify(spec)) {
+              if (
+                existingServer &&
+                stableStringify(existingServer.spec) !== stableStringify(spec)
+              ) {
                 logger.info(`Reloading server ${id} (config changed)`);
                 await h.removeServer(id);
                 await h.addServer(id, spec, { suppressToolListNotification: true });

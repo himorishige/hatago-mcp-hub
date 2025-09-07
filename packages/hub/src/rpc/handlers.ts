@@ -111,9 +111,11 @@ export async function handleToolsCall(
     sessionId
   } as LogData);
 
+  let tokenRegistered = false;
   if (progressToken && sessionId && sseManager) {
     logger.info(`[Hub] Registering progress token`, { progressToken, sessionId } as LogData);
     sseManager.registerProgressToken(progressToken.toString(), sessionId);
+    tokenRegistered = true;
   }
 
   let toolName = (params as { name?: string })?.name ?? '';

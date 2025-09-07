@@ -5,9 +5,9 @@
 
 export type CapabilitySupport = 'supported' | 'unsupported' | 'unknown';
 
-export class CapabilityRegistry {
+export class CapabilityRegistry<TClientCaps extends object = Record<string, unknown>> {
   private serverCapabilities = new Map<string, Map<string, CapabilitySupport>>();
-  private clientCapabilities = new Map<string, Record<string, unknown>>(); // sessionId -> capabilities
+  private clientCapabilities = new Map<string, TClientCaps>(); // sessionId -> capabilities
 
   // Track server capability support status
   markServerCapability(serverId: string, method: string, support: CapabilitySupport) {
@@ -23,12 +23,12 @@ export class CapabilityRegistry {
   }
 
   // Store client capabilities
-  setClientCapabilities(sessionId: string, capabilities: Record<string, unknown>) {
-    this.clientCapabilities.set(sessionId, capabilities ?? {});
+  setClientCapabilities(sessionId: string, capabilities: TClientCaps) {
+    this.clientCapabilities.set(sessionId, capabilities ?? ({} as TClientCaps));
   }
 
-  getClientCapabilities(sessionId: string): Record<string, unknown> {
-    return this.clientCapabilities.get(sessionId) ?? {};
+  getClientCapabilities(sessionId: string): TClientCaps {
+    return this.clientCapabilities.get(sessionId) ?? ({} as TClientCaps);
   }
 
   // Clear capabilities for a session

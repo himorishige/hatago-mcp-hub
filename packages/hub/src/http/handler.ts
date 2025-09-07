@@ -4,6 +4,7 @@
 import type { HatagoHub } from '../hub.js';
 import type { LogData } from '@himorishige/hatago-core';
 import type { Logger } from '../logger.js';
+import type { Context } from 'hono';
 
 type HubForHttp = {
   logger: Logger;
@@ -13,26 +14,13 @@ type HubForHttp = {
 };
 
 export async function handleHttpRequest(hub: HatagoHub, context: unknown): Promise<Response> {
-  const ctx = context as {
-    req?: {
-      method: string;
-      url: string;
-      json: () => Promise<unknown>;
-      headers: { get: (key: string) => string | null };
-    };
-    request?: {
-      method: string;
-      url: string;
-      json: () => Promise<unknown>;
-      headers: { get: (key: string) => string | null };
-    };
-    method?: string;
-    url?: string;
-    json?: () => Promise<unknown>;
-    headers?: { get: (key: string) => string | null };
-  };
+  const ctx = context as Partial<Context> &
+    Partial<{
+      req: Request;
+      request: Request;
+    }>;
 
-  const request = ctx.req ?? ctx.request ?? (ctx as Record<string, unknown>);
+  const request = (ctx.req as Request) ?? (ctx.request as Request) ?? (ctx as unknown as Request);
   const method = (request as { method: string }).method;
   const url = new URL((request as { url: string }).url);
 

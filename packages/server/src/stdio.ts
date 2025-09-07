@@ -68,7 +68,9 @@ export async function startStdio(
   };
 
   // Set up notification handler to forward to Claude Code
-  (hub as unknown).onNotification = async (notification: unknown) => {
+  (hub as { onNotification?: (n: unknown) => Promise<void> }).onNotification = async (
+    notification: unknown
+  ) => {
     // Don't send notifications during shutdown
     if (isShuttingDown) {
       return;

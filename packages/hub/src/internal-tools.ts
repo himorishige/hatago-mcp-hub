@@ -8,9 +8,9 @@ import type { HatagoHub } from './hub.js';
 // Registration helper extracted from hub.ts [DRY][SF]
 import { zodToJsonSchema } from './zod-to-json-schema.js';
 import { HatagoManagementServer } from './mcp-server/hatago-management-server.js';
-import type { ActivationManager } from './mcp-server/activation-manager.js';
-import type { IdleManager } from './mcp-server/idle-manager.js';
-import type { ServerStateMachine } from './mcp-server/state-machine.js';
+import { ActivationManager } from './mcp-server/activation-manager.js';
+import { IdleManager } from './mcp-server/idle-manager.js';
+import { ServerStateMachine } from './mcp-server/state-machine.js';
 import type { Resource, Prompt } from '@himorishige/hatago-core';
 
 export type InternalTool<T = unknown> = {
@@ -145,11 +145,15 @@ export function prepareInternalRegistrations(hub: HatagoHub): {
 } {
   const internalTools = getInternalTools();
 
+  // Use real lightweight instances instead of null stubs
+  const sm = new ServerStateMachine();
+  const am = new ActivationManager(sm);
+  const im = new IdleManager(sm, am);
   const managementServer = new HatagoManagementServer({
     configFilePath: '',
-    stateMachine: null as unknown as ServerStateMachine,
-    activationManager: null as unknown as ActivationManager,
-    idleManager: null as unknown as IdleManager
+    stateMachine: sm,
+    activationManager: am,
+    idleManager: im
   });
 
   const tools = internalTools.map((tool) => ({
