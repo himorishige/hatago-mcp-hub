@@ -186,7 +186,7 @@ export async function handleToolsCall(
               }
               if (hasStreamable && streamableTransport) {
                 void streamableTransport.sendProgressNotification?.(
-                  progressToken as string | number,
+                  progressToken,
                   progress?.progress ?? 0,
                   progress?.total,
                   progress?.message

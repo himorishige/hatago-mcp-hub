@@ -17,7 +17,8 @@ describe('Internal Resource: hatago://servers', () => {
   beforeAll(() => {
     // Initialize platform for potential child process use
     setPlatform(createNodePlatform());
-    fixturePath = join(__dirname, '../../../test-fixtures/dist/stdio-server.js');
+    // From packages/hub/src → ../../test-fixtures == packages/test-fixtures
+    fixturePath = join(__dirname, '../../test-fixtures/dist/stdio-server.js');
   });
 
   beforeEach(() => {
@@ -51,7 +52,8 @@ describe('Internal Resource: hatago://servers', () => {
 
       await hub.addServer('test', {
         command: 'node',
-        args: [fixturePath, '--echo']
+        args: [fixturePath, '--echo'],
+        connectTimeout: 10000
       });
 
       const res = await hub.resources.read('hatago://servers');
