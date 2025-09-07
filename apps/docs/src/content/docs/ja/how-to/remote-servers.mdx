@@ -91,12 +91,8 @@ Server-Sent Events（SSE）を使用して、サーバーからのリアルタ�
    hatago serve --verbose
    ```
 
-4. **ツール一覧の確認**
-   リモートサーバーのツールが正しく読み込まれているか確認：
-   ```bash
-   # Claude Codeの場合、内部ツールで確認可能
-   _internal_hatago_list_servers
-   ```
+4. **接続確認**
+   内部リソース `hatago://servers` を読み取って、接続済みサーバーを確認します。
 </Steps>
 
 ## 認証パターン

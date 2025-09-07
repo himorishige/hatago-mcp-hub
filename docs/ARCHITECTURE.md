@@ -243,13 +243,9 @@ Claude Code compatible syntax:
 - `notifications/progress` pass-through
 - Works with all server types
 
-### Internal Management Tools
+### Internal Resource
 
-Built-in tools prefixed with `_internal_`:
-
-- `_internal_hatago_status` - Server status monitoring
-- `_internal_hatago_reload` - Manual config reload
-- `_internal_hatago_list_servers` - Server listing
+- `hatago://servers` — JSON snapshot of connected servers
 
 ## Observability
 

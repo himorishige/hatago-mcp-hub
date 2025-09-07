@@ -200,17 +200,14 @@ export GITHUB_TOKEN="your-token-here"
 <details>
 <summary>ツールが表示されない</summary>
 
-1. 内部ステータスツールで確認：
+1. 内部リソースで確認：
 
-   ```
-   _internal_hatago_status
+   ```json
+   { "jsonrpc": "2.0", "method": "resources/read", "id": 1, "params": { "uri": "hatago://servers" } }
    ```
 
 2. 個別サーバーの状態を確認
-3. 必要に応じて設定をリロード：
-   ```
-   _internal_hatago_reload
-   ```
+3. 変更反映が必要なときは `--watch` を付けて起動、または再起動
 
 </details>
 

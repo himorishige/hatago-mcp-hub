@@ -174,8 +174,7 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 async function verify() {
   const tests = [
-    { name: 'list servers', req: { jsonrpc: '2.0', method: '_internal_hatago_list_servers', id: 1, params: {} } },
-    { name: 'status',       req: { jsonrpc: '2.0', method: '_internal_hatago_status',       id: 2, params: {} } }
+    { name: 'read servers resource', req: { jsonrpc: '2.0', method: 'resources/read', id: 1, params: { uri: 'hatago://servers' } } }
   ];
   const hatago = spawn('npx', ['@himorishige/hatago-mcp-hub', 'serve', '--stdio'], { stdio: ['pipe','pipe','pipe'] });
   const rl = readline.createInterface({ input: hatago.stdout, crlfDelay: Infinity });
@@ -260,4 +259,3 @@ Common fixes:
 <Aside type="tip">
   Need help? Open an issue on GitHub: https://github.com/himorishige/hatago-hub/issues
  </Aside>
-

@@ -40,11 +40,9 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 - **長時間実行操作対応** - リアルタイムな進捗更新
 - **ローカル/リモート両対応** - 多くのMCPサーバータイプで動作
 
-#### 内部管理ツール
+#### 内部リソース（最小）
 
-- **`_internal_hatago_status`** - 全サーバーの接続状態とツール数を確認
-- **`_internal_hatago_reload`** - 手動での設定リロードトリガー
-- **`_internal_hatago_list_servers`** - 設定済みサーバーの詳細リスト
+- `hatago://servers` — 現在接続中のサーバー一覧を JSON で返します（`id`/`status`/`type`/`tools`/`resources`/`prompts`）。
 
 #### 既存機能の改善
 

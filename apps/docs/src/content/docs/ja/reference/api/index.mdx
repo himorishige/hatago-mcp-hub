@@ -44,16 +44,8 @@ async function startServer(options: ServerOptions): Promise<void>;
 
 サーバーを起動します。
 
-## 内部管理ツール
+## 内部リソース
 
-### \_internal_hatago_status
+### `hatago://servers`
 
-すべてのサーバーの接続状態を確認します。
-
-### \_internal_hatago_reload
-
-設定を再読み込みします。
-
-### \_internal_hatago_list_servers
-
-設定されているサーバー一覧を表示します。
+現在接続しているサーバー一覧を JSON で返します。`id` / `status` / `type` に加え、`tools` / `resources` / `prompts` の配列を含みます。

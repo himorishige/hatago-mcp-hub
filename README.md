@@ -40,11 +40,9 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 - **Long-running Operation Support** - Real-time progress updates
 - **Local/Remote Support** - Works with many MCP server types
 
-#### Internal Management Tools
+#### Built-in Internal Resource
 
-- **`_internal_hatago_status`** - Check connection status and tool count for all servers
-- **`_internal_hatago_reload`** - Manually trigger configuration reload
-- **`_internal_hatago_list_servers`** - List details of configured servers
+- `hatago://servers` - JSON snapshot of currently connected servers (id, status, type, tools, resources, prompts)
 
 #### Enhanced Features
 
