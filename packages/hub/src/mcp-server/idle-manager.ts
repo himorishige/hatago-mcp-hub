@@ -53,11 +53,13 @@ export class IdleManager {
     this.activationManager = activationManager;
 
     // Listen to state changes
-    this.stateMachine.on('state:ACTIVE', ({ serverId }: { serverId: string }) => {
+    this.stateMachine.on('state:ACTIVE', (data: unknown) => {
+      const { serverId } = data as { serverId: string };
       this.initializeActivity(serverId);
     });
 
-    this.stateMachine.on('state:INACTIVE', ({ serverId }: { serverId: string }) => {
+    this.stateMachine.on('state:INACTIVE', (data: unknown) => {
+      const { serverId } = data as { serverId: string };
       this.clearActivity(serverId);
     });
   }

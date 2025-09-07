@@ -12,8 +12,12 @@ export function createEventEmitter<E extends string, D = unknown>(
   const handlers = new Map<E, Set<(data: D) => void>>();
 
   function on(event: E, handler: (data: D) => void): void {
-    if (!handlers.has(event)) handlers.set(event, new Set());
-    handlers.get(event)!.add(handler);
+    let set = handlers.get(event);
+    if (!set) {
+      set = new Set<(data: D) => void>();
+      handlers.set(event, set);
+    }
+    set.add(handler);
   }
 
   function off(event: E, handler: (data: D) => void): void {
