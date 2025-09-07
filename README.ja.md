@@ -53,6 +53,30 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 - **タグベースフィルタリング** - タグによるサーバーのグループ化とフィルタリング
 - **設定ファイル継承** - `extends`フィールドによる設定の継承とDRY原則の実現
 
+### 最小 Hub インターフェース（IHub）
+
+サーバーやテストユーティリティは、具体クラスへ強く依存しないために最小インターフェース `IHub` を使用します。
+
+```ts
+import type { IHub } from '@himorishige/hatago-hub';
+import { createHub } from '@himorishige/hatago-hub/node';
+
+const hub = createHub({
+  preloadedConfig: { data: { version: 1, mcpServers: {} } }
+}) as unknown as IHub;
+await hub.start();
+hub.on('tool:called', (evt) => {
+  /* 計測やログなど */
+});
+await hub.stop();
+```
+
+薄いハブ化のための抽出ファイル:
+
+- RPC ハンドラ: `packages/hub/src/rpc/handlers.ts`
+- HTTP ハンドラ: `packages/hub/src/http/handler.ts`
+- 設定のリロード/監視: `packages/hub/src/config/reload.ts`, `packages/hub/src/config/watch.ts`
+
 ## 📦 インストール
 
 ```bash

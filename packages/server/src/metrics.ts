@@ -6,9 +6,7 @@
  */
 
 import type { Hono } from 'hono';
-
-// Minimal hub interface (avoid cross-package type coupling during typecheck)
-type HubWithEvents = { on: (event: unknown, handler: unknown) => void };
+import type { IHub } from '@himorishige/hatago-hub';
 
 type Counters = {
   tool_calls_total: number;
@@ -34,7 +32,7 @@ const gauges: Gauges = {
   sse_clients: 0
 };
 
-export function registerHubMetrics(hub: HubWithEvents): void {
+export function registerHubMetrics(hub: Pick<IHub, 'on'>): void {
   if (!enabled()) return;
 
   // Count tool calls and errors via hub event

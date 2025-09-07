@@ -124,91 +124,90 @@ export async function handleToolsCall(
     toolName = parts.slice(1).join(options.separator);
   }
 
-  if (streamableTransport && serverId && progressToken) {
-    const client = clients.get(serverId);
-    if (client) {
-      const upstreamToken = `upstream-${Date.now()}`;
-      const result = await client.callTool(
-        {
-          name: toolName,
-          arguments: (params as { arguments?: unknown })?.arguments,
-          _meta: { progressToken: upstreamToken }
-        },
-        undefined,
-        {
-          onprogress: (progress: {
-            progressToken?: string;
-            progress?: number;
-            total?: number;
-            message?: string;
-          }) => {
-            logger.info(`[Hub] Direct client onprogress`, {
-              serverId,
-              toolName,
-              progressToken,
-              progress
-            } as LogData);
-
-            const notification = {
-              jsonrpc: '2.0' as const,
-              method: 'notifications/progress',
-              params: {
+  try {
+    if (streamableTransport && serverId && progressToken) {
+      const client = clients.get(serverId);
+      if (client) {
+        const upstreamToken = `upstream-${Date.now()}`;
+        const result = await client.callTool(
+          {
+            name: toolName,
+            arguments: (params as { arguments?: unknown })?.arguments,
+            _meta: { progressToken: upstreamToken }
+          },
+          undefined,
+          {
+            onprogress: (progress: {
+              progressToken?: string;
+              progress?: number;
+              total?: number;
+              message?: string;
+            }) => {
+              logger.info(`[Hub] Direct client onprogress`, {
+                serverId,
+                toolName,
                 progressToken,
-                progress: progress?.progress ?? 0,
-                total: progress?.total,
-                message: progress?.message
+                progress
+              } as LogData);
+
+              const notification = {
+                jsonrpc: '2.0' as const,
+                method: 'notifications/progress',
+                params: {
+                  progressToken,
+                  progress: progress?.progress ?? 0,
+                  total: progress?.total,
+                  message: progress?.message
+                }
+              };
+
+              const hasStreamable = !!streamableTransport;
+              const hasOnNotification = !!onNotification;
+
+              if (!hasOnNotification && !hasStreamable) {
+                logger.warn('[Hub] No notification sink configured; notifications will be dropped');
+              } else if (!hasOnNotification && hasStreamable) {
+                logger.debug('[Hub] Using StreamableHTTP transport for notifications (HTTP mode)');
               }
-            };
 
-            const hasStreamable = !!streamableTransport;
-            const hasOnNotification = !!onNotification;
+              if (hasOnNotification && onNotification) {
+                void onNotification(notification);
+              }
+              if (hasStreamable && streamableTransport) {
+                void streamableTransport.send(notification);
+              }
 
-            if (!hasOnNotification && !hasStreamable) {
-              logger.warn('[Hub] No notification sink configured; notifications will be dropped');
-            } else if (!hasOnNotification && hasStreamable) {
-              logger.debug('[Hub] Using StreamableHTTP transport for notifications (HTTP mode)');
-            }
-
-            if (hasOnNotification && onNotification) {
-              void onNotification(notification);
-            }
-            if (hasStreamable && streamableTransport) {
-              void streamableTransport.send(notification);
-            }
-
-            if (progressToken && sseManager && sessionId) {
-              sseManager.sendProgress(progressToken.toString(), {
-                progressToken: progressToken.toString(),
-                progress: progress?.progress ?? 0,
-                total: progress?.total,
-                message: progress?.message
-              });
+              if (progressToken && sseManager && sessionId) {
+                sseManager.sendProgress(progressToken.toString(), {
+                  progressToken: progressToken.toString(),
+                  progress: progress?.progress ?? 0,
+                  total: progress?.total,
+                  message: progress?.message
+                });
+              }
             }
           }
-        }
-      );
+        );
 
-      if (progressToken && sseManager) {
-        sseManager.unregisterProgressToken(String(progressToken));
+        return { jsonrpc: '2.0', id: id as string | number, result };
       }
+    }
 
-      return { jsonrpc: '2.0', id: id as string | number, result };
+    // Fallback to normal invoker path (with optional progress token passthrough)
+    const result = await h.tools.call(
+      (params as { name?: string; arguments?: unknown } | undefined)?.name as string,
+      (params as { arguments?: unknown } | undefined)?.arguments,
+      {
+        progressToken: progressToken as string | undefined,
+        sessionId
+      }
+    );
+    return { jsonrpc: '2.0', id: id as string | number, result };
+  } finally {
+    if (tokenRegistered && sseManager && progressToken) {
+      sseManager.unregisterProgressToken(String(progressToken));
     }
   }
-
-  // Fallback to normal invoker path (with optional progress token passthrough)
-  const result = await h.tools.call(
-    (params as { name?: string; arguments?: unknown } | undefined)?.name as string,
-    (params as { arguments?: unknown } | undefined)?.arguments,
-    {
-      progressToken: progressToken as string | undefined,
-      sessionId
-    }
-  );
-  if (progressToken && sseManager) {
-    sseManager.unregisterProgressToken(String(progressToken));
-  }
-  return { jsonrpc: '2.0', id: id as string | number, result };
 }
 
 export function handlePromptsList(hub: HatagoHub, id: string | number | null): JSONRPCResponse {

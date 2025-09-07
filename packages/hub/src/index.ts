@@ -110,6 +110,7 @@ export { FileAccessGuard } from './security/file-guard.js';
 export type {
   CallOptions,
   ConnectedServer,
+  IHub,
   HubEvent,
   HubEventHandler,
   HubOptions,

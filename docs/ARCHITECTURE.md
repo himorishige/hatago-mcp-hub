@@ -104,6 +104,20 @@ The central coordinator for all MCP operations. Simplified to ~500 lines from 10
 - Progress notification forwarding
 - Hot reload support
 
+### Refactor Overview (2025-09-07)
+
+To keep the hub thin, several responsibilities were extracted into focused modules and a minimal interface was introduced:
+
+- Minimal interface `IHub` (exported from `@himorishige/hatago-hub`): start/stop, event subscription, notification hook, and JSON‑RPC entry. External packages (server/test-utils) depend on this instead of the concrete class.
+- Extracted modules (hub remains an orchestrator):
+  - `src/rpc/handlers.ts` – JSON‑RPC methods (initialize, tools, resources, prompts, ping)
+  - `src/http/handler.ts` – HTTP request handler (POST/DELETE)
+  - `src/config/reload.ts` & `src/config/watch.ts` – Config reload + file watcher
+- Removed internal complexity from the base hub:
+  - Sampling bridge, startup tools/list wait, simple SSE GET fallback, base-hub notifications
+
+Result: a simpler hub surface, easier testing, and clearer integration boundaries for servers and tools.
+
 ### Server Registry (`packages/runtime/src/server-registry.ts`)
 
 Manages the lifecycle of different server types.

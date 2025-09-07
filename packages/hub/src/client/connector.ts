@@ -98,7 +98,17 @@ export async function connectWithRetry(args: {
     }
   }
 
-  throw lastError ?? new Error(`Failed to connect to ${id} after ${maxRetries} attempts`);
+  if (lastError) {
+    // Preserve original error details for better debuggability
+    const err = new Error(
+      `Failed to connect to ${id} after ${maxRetries} attempts`,
+      // Node 16+/TS 4.8 supports ErrorOptions.cause
+      { cause: lastError } as unknown as ErrorOptions
+    );
+    (err as { cause?: unknown }).cause ??= lastError;
+    throw err;
+  }
+  throw new Error(`Failed to connect to ${id} after ${maxRetries} attempts`);
 }
 
 // ---- normalize server spec -------------------------------------------------
