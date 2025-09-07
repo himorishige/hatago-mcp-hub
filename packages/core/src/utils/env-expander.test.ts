@@ -115,6 +115,13 @@ describe('env-expander', () => {
   });
 
   describe('expandConfig', () => {
+    it('should expand top-level logLevel', () => {
+      delete process.env.LOG_LEVEL;
+      const config = { logLevel: '${LOG_LEVEL:-debug}' };
+      const result = expandConfig(config) as any;
+      expect(result.logLevel).toBe('debug');
+    });
+
     it('should expand command field', () => {
       process.env.MCP_PATH = '/usr/local/bin';
       const config = {

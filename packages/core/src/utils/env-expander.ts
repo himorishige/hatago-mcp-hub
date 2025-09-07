@@ -55,7 +55,9 @@ export function expandEnvironmentVariables(value: string, getEnv: GetEnv = defau
 
 /**
  * Recursively expand environment variables in configuration object
- * Only processes specific fields: command, args, env, url, headers
+ * Processes well-known fields:
+ * - Top-level: logLevel
+ * - Server fields: command, args, env, url, headers (for both mcpServers and servers)
  * @param config - Configuration object
  * @param getEnv - Function to get environment variable values
  * @returns Configuration with expanded environment variables
@@ -67,6 +69,11 @@ export function expandConfig(config: unknown, getEnv: GetEnv = defaultGetEnv): u
 
   // Deep clone to avoid mutating original
   const expanded = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
+
+  // Expand top-level logLevel if present
+  if (typeof expanded.logLevel === 'string') {
+    expanded.logLevel = expandEnvironmentVariables(expanded.logLevel, getEnv);
+  }
 
   // Process mcpServers if present
   if (expanded.mcpServers && typeof expanded.mcpServers === 'object') {
