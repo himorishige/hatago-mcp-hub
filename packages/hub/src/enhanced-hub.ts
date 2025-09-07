@@ -120,7 +120,7 @@ export class EnhancedHatagoHub extends HatagoHub {
     const originalTools = this.tools;
     this.tools = {
       list: (options?: ListOptions): Tool[] => {
-        return originalTools.list(options);
+        return originalTools.list(options) as Tool[];
       },
       call: async (
         name: string,

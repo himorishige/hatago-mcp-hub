@@ -1,45 +1,27 @@
 /**
- * @himorishige/hatago-hub - Thin, transparent MCP Hub
+ * @himorishige/hatago-hub - User-friendly facade for Hatago MCP Hub
  *
- * This package provides a minimal, efficient hub for MCP servers,
- * following the Hatago philosophy of "Don't add, remove" and "Don't transform, relay".
+ * This package provides a simplified API for working with MCP servers,
+ * tools, and resources.
  */
 
 import type { EnhancedHubOptions } from './enhanced-hub.js';
 import { EnhancedHatagoHub } from './enhanced-hub.js';
 import { HatagoHub } from './hub.js';
-import { HubCoreAdapter } from './hub-core-adapter.js';
-import type { IHub } from './hub-interface.js';
 import type { HubOptions, ServerSpec } from './types.js';
 
 /**
  * Create a new Hatago Hub instance
  * If a configFile is provided, creates an EnhancedHatagoHub with management features
  */
-export function createHub(options?: HubOptions | EnhancedHubOptions): IHub {
-  // Default to HubCore (thin implementation) unless explicitly opting for legacy
-  if (!options?.useLegacyHub) {
-    // HubCore is now the default
-    return new HubCoreAdapter(options);
-  }
-
-  // Legacy implementation path
-  console.warn(
-    '[LEGACY] Using legacy HatagoHub implementation.\n' +
-      'The legacy hub includes state management, caching, and other "thick" features.\n' +
-      'Consider migrating to the default thin implementation (HubCore) for better performance.\n' +
-      'Migration guide: https://github.com/himorishige/hatago-mcp-hub/blob/main/docs/migration-to-thin.md'
-  );
-
+export function createHub(options?: HubOptions | EnhancedHubOptions): HatagoHub {
   // Use EnhancedHatagoHub when config is provided (file or preloaded)
   const hasEnhanced = Boolean(
     (options as EnhancedHubOptions)?.configFile ?? (options as EnhancedHubOptions)?.preloadedConfig
   );
-
   if (hasEnhanced) {
     return new EnhancedHatagoHub(options as EnhancedHubOptions);
   }
-
   return new HatagoHub(options);
 }
 
@@ -100,12 +82,10 @@ export function sseServer(
   ];
 }
 
-// Primary exports - Thin implementation (Hatago philosophy)
-export { HubCore } from './hub-core.js';
-export { HubCoreAdapter } from './hub-core-adapter.js';
-export type { IHub } from './hub-interface.js';
-
-// Error handling
+export type { EnhancedHubOptions } from './enhanced-hub.js';
+// Export enhanced hub with management features
+export { EnhancedHatagoHub } from './enhanced-hub.js';
+// Export error classes
 export {
   ConfigError,
   HatagoError,
@@ -115,11 +95,18 @@ export {
   TransportError,
   toHatagoError
 } from './errors.js';
-
-// Streamable HTTP helpers
+// Export main class and types
+export { HatagoHub } from './hub.js';
+// Export streamable HTTP helpers
 export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
-
-// Types
+export { ActivationManager } from './mcp-server/activation-manager.js';
+export { HatagoManagementServer } from './mcp-server/hatago-management-server.js';
+export { IdleManager } from './mcp-server/idle-manager.js';
+export { MetadataStore } from './mcp-server/metadata-store.js';
+// Export management components
+export { ServerStateMachine } from './mcp-server/state-machine.js';
+export { AuditLogger } from './security/audit-logger.js';
+export { FileAccessGuard } from './security/file-guard.js';
 export type {
   CallOptions,
   ConnectedServer,
@@ -130,7 +117,3 @@ export type {
   ReadOptions,
   ServerSpec
 } from './types.js';
-
-// Legacy exports - Use @himorishige/hatago-hub/legacy instead
-// These are kept for minimal backward compatibility but will be removed
-export type { EnhancedHubOptions } from './enhanced-hub.js';

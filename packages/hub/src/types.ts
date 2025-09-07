@@ -40,12 +40,6 @@ export type HubOptions = {
   namingStrategy?: 'none' | 'namespace' | 'prefix';
   separator?: string;
   tags?: string[]; // Filter servers by tags
-  /**
-   * @deprecated Use the legacy HatagoHub implementation instead of the default HubCore.
-   * The legacy hub includes state management, caching, and other "thick" features.
-   * Default: false (HubCore is now the default)
-   */
-  useLegacyHub?: boolean;
 };
 
 /**

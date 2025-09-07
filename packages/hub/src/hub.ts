@@ -13,7 +13,7 @@ import {
   ToolInvoker,
   ToolRegistry
 } from '@himorishige/hatago-runtime';
-import type { Tool, LogData, Resource, Prompt } from '@himorishige/hatago-core';
+import type { Tool, LogData } from '@himorishige/hatago-core';
 import {
   SSEClientTransport,
   StreamableHTTPTransport,
@@ -27,7 +27,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { UnsupportedFeatureError } from './errors.js';
 import { Logger } from './logger.js';
-import type { IHub } from './hub-interface.js';
 import {
   type NotificationConfig,
   NotificationManager,
@@ -94,7 +93,7 @@ class CapabilityRegistry {
 /**
  * Main Hub class - provides simplified API for MCP operations
  */
-export class HatagoHub implements IHub {
+export class HatagoHub {
   // Core components
   protected sessions: SessionManager;
   protected toolRegistry: ToolRegistry;
@@ -350,7 +349,7 @@ export class HatagoHub implements IHub {
         const client = new Client(
           {
             name: `hatago-hub-${id}`,
-            version: '0.1.0'
+            version: '0.0.9'
           },
           {
             capabilities: {
@@ -1170,7 +1169,7 @@ export class HatagoHub implements IHub {
   private async calculateToolsetHash(): Promise<string> {
     const tools = this.tools.list();
     const toolData = tools.map((t) => {
-      const tool = t;
+      const tool = t as Tool;
       const toolInfo = {
         name: String(tool.name),
         description: String(tool.description ?? '')
@@ -1270,7 +1269,7 @@ export class HatagoHub implements IHub {
   /**
    * Reload configuration
    */
-  async reloadConfig(): Promise<void> {
+  private async reloadConfig(): Promise<void> {
     if (!this.options.configFile) {
       return;
     }
@@ -1455,12 +1454,12 @@ export class HatagoHub implements IHub {
     /**
      * List available tools
      */
-    list: (options?: ListOptions): Tool[] => {
+    list: (options?: ListOptions) => {
       if (options?.serverId) {
         const server = this.servers.get(options.serverId);
         return server?.tools ?? [];
       }
-      return this.toolInvoker.listTools() as Tool[];
+      return this.toolInvoker.listTools();
     },
 
     /**
@@ -1506,13 +1505,13 @@ export class HatagoHub implements IHub {
    * Resources API
    */
   resources: {
-    list: (options?: ListOptions) => Resource[];
+    list: (options?: ListOptions) => unknown[];
     read: (uri: string, options?: ReadOptions) => Promise<unknown>;
   } = {
     /**
      * List available resources
      */
-    list: (options?: ListOptions): Resource[] => {
+    list: (options?: ListOptions) => {
       if (options?.serverId) {
         const server = this.servers.get(options.serverId);
         return server?.resources ?? [];
@@ -1611,13 +1610,13 @@ export class HatagoHub implements IHub {
    * Prompts API
    */
   prompts: {
-    list: (options?: ListOptions) => Prompt[];
+    list: (options?: ListOptions) => unknown[];
     get: (name: string, args?: unknown) => Promise<unknown>;
   } = {
     /**
      * List available prompts
      */
-    list: (options?: ListOptions): Prompt[] => {
+    list: (options?: ListOptions) => {
       if (options?.serverId) {
         const server = this.servers.get(options.serverId);
         return server?.prompts ?? [];
@@ -1888,7 +1887,7 @@ export class HatagoHub implements IHub {
               },
               serverInfo: {
                 name: 'hatago-hub',
-                version: '0.1.0'
+                version: '0.0.9'
               }
             }
           };
