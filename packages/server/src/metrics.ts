@@ -6,7 +6,7 @@
  */
 
 import type { Hono } from 'hono';
-import type { HatagoHub } from '@himorishige/hatago-hub';
+import type { IHub } from '@himorishige/hatago-hub';
 
 type Counters = {
   tool_calls_total: number;
@@ -32,11 +32,11 @@ const gauges: Gauges = {
   sse_clients: 0
 };
 
-export function registerHubMetrics(hub: HatagoHub): void {
+export function registerHubMetrics(hub: Pick<IHub, 'on'>): void {
   if (!enabled()) return;
 
   // Count tool calls and errors via hub event
-  hub.on('tool:called', (evt) => {
+  hub.on('tool:called', (evt: unknown) => {
     counters.tool_calls_total++;
     const result = (evt as { result?: { isError?: boolean } }).result;
     if (result?.isError) {

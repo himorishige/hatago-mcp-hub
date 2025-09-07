@@ -139,6 +139,17 @@ export class EnhancedHatagoHub extends HatagoHub {
   }
 
   /**
+   * Stop enhanced components and base hub
+   */
+  async stop(): Promise<void> {
+    // Stop idle manager if running to avoid dangling timers
+    if (this.idleManager) {
+      this.idleManager.stop();
+    }
+    await super.stop();
+  }
+
+  /**
    * Initialize management components
    */
   private initializeManagement(): void {

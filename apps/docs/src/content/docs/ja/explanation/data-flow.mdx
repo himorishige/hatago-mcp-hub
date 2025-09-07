@@ -366,10 +366,11 @@ done
 
 # 4. 接続テスト
 echo -e "\n🌐 接続テスト:"
-    echo '{"jsonrpc":"2.0","method":"_internal_hatago_status","id":1,"params":{}}' | \
+    echo '{"jsonrpc":"2.0","method":"resources/read","id":1,"params":{"uri":"hatago://servers"}}' | \
     timeout 5 npx @himorishige/hatago-mcp-hub serve --stdio 2>/dev/null | \
-    jq -r '.result.status' | \
-    grep -q "ready" && echo "✅ Hub is ready" || echo "❌ Hub not responding"
+    jq -r '.result.contents[0].text' | \
+    jq -r '.total' | \
+    grep -Eq '^[0-9]+$' && echo "✅ Hub is responding" || echo "❌ Hub not responding"
 
 echo -e "\n✨ 診断完了"
 ```

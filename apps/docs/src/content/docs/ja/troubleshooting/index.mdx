@@ -321,12 +321,8 @@ Hatagoは自動的にサーバーIDをプレフィックスとして追加しま
    hatago serve --watch
    ```
 
-2. **手動でリロード**
-   Claude Codeで実行：
-
-   ```
-   _internal_hatago_reload を実行
-   ```
+2. **手動で反映**
+   変更を即時反映したい場合は `--watch` を有効化して起動し、または一度再起動します。
 
 3. **サーバーを再起動**
    ```bash
@@ -399,11 +395,9 @@ Hatagoは自動的にサーバーIDをプレフィックスとして追加しま
    hatago serve --tags essential
    ```
 
-2. **遅いサーバーを特定**
+2. **状態を確認**
 
-   ```
-   _internal_hatago_status で各サーバーの応答時間を確認
-   ```
+   内部リソース `hatago://servers` を読み取り、接続状態を確認します。
 
 3. **タイムアウトを調整**
    ```json

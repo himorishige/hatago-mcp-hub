@@ -1,5 +1,5 @@
 import type { HatagoConfig } from '@himorishige/hatago-core/schemas';
-import type { HatagoHub } from '@himorishige/hatago-hub';
+import type { IHub } from '@himorishige/hatago-hub';
 
 export type HubTestOptions = {
   config?: Partial<HatagoConfig>;
@@ -35,6 +35,6 @@ export type TestFixture = {
 };
 
 export type TestContext = {
-  hub: HatagoHub;
+  hub: IHub;
   fixture: TestFixture;
 };

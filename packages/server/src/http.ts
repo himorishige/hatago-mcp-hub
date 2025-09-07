@@ -7,6 +7,7 @@
 
 import { createEventsEndpoint } from '@himorishige/hatago-hub';
 import { createHub, handleMCPEndpoint } from '@himorishige/hatago-hub/node';
+import type { IHub } from '@himorishige/hatago-hub';
 import { serve } from '@hono/node-server';
 // Intentionally avoid importing concrete server/socket types to keep compatibility
 import { Hono } from 'hono';
@@ -41,7 +42,8 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   });
   await hub.start();
   // Register metrics via hub events (opt-in)
-  registerHubMetrics(hub);
+  // Register metrics via minimal hub interface (no runtime change)
+  registerHubMetrics(hub as unknown as Pick<IHub, 'on'>);
 
   // Create Hono app
   const app = new Hono();

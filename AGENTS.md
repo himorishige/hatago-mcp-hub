@@ -95,11 +95,9 @@ HTTP モードの追加オプション（計測/ログ）:
 - 詳細ログ: `hatago serve --verbose`
 - タグによる起動フィルタ: `hatago serve --tags dev,test`（OR 条件／日本語タグ可）
 
-内部管理ツール（MCP ツール名）:
+内部リソース（最小構成）:
 
-- `_internal_hatago_status`
-- `_internal_hatago_reload`
-- `_internal_hatago_list_servers`
+- `hatago://servers` — 現在接続中のサーバー一覧を JSON で参照できます。
 
 ## コーディング規約
 

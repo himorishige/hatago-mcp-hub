@@ -39,7 +39,6 @@ Hatago MCP Hub is a lightweight MCP (Model Context Protocol) hub server that man
 │   ├── hub/            # Hub core (@himorishige/hatago-hub)
 │   │   ├── src/
 │   │   │   ├── hub.ts              # Main hub (~500 lines)
-│   │   │   ├── internal-tools.ts   # Internal management tools
 │   │   │   ├── types.ts            # Core types
 │   │   │   └── ...
 │   │   └── package.json
@@ -155,7 +154,7 @@ Claude Code compatible syntax:
 - **Progress Notifications**: Transparent forwarding from child servers
 - **Tool Collision Avoidance**: Automatic prefixing with server ID
 - **Session Management**: Independent sessions per client
-- **Internal Tools**: `_internal_hatago_status`, `_internal_hatago_reload`, `_internal_hatago_list_servers`
+- **Internal Resource**: `hatago://servers` (JSON snapshot of connected servers)
 - **Tag-based Filtering**: Filter servers by tags for different profiles/environments
 
 ### Protocol Compliance

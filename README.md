@@ -40,11 +40,9 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 - **Long-running Operation Support** - Real-time progress updates
 - **Local/Remote Support** - Works with many MCP server types
 
-#### Internal Management Tools
+#### Built-in Internal Resource
 
-- **`_internal_hatago_status`** - Check connection status and tool count for all servers
-- **`_internal_hatago_reload`** - Manually trigger configuration reload
-- **`_internal_hatago_list_servers`** - List details of configured servers
+- `hatago://servers` - JSON snapshot of currently connected servers (id, status, type, tools, resources, prompts)
 
 #### Enhanced Features
 
@@ -52,6 +50,30 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 - **Configuration Validation** - Type-safe configuration with Zod schemas
 - **Tag-based Server Filtering** - Group and filter servers using tags
 - **Configuration Inheritance** - Extend base configurations with `extends` field for DRY principle
+
+### Minimal Hub Interface (IHub)
+
+External packages (server/test-utils) use a thin `IHub` interface to avoid tight coupling with the concrete class.
+
+```ts
+import type { IHub } from '@himorishige/hatago-hub';
+import { createHub } from '@himorishige/hatago-hub/node';
+
+const hub = createHub({
+  preloadedConfig: { data: { version: 1, mcpServers: {} } }
+}) as unknown as IHub;
+await hub.start();
+hub.on('tool:called', (evt) => {
+  /* metrics, logs */
+});
+await hub.stop();
+```
+
+Extracted modules for thin hub:
+
+- RPC handlers: `packages/hub/src/rpc/handlers.ts`
+- HTTP handler: `packages/hub/src/http/handler.ts`
+- Config reload/watch: `packages/hub/src/config/reload.ts`, `packages/hub/src/config/watch.ts`
 
 ## 📦 Installation
 

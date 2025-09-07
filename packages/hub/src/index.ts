@@ -100,7 +100,6 @@ export { HatagoHub } from './hub.js';
 // Export streamable HTTP helpers
 export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
 export { ActivationManager } from './mcp-server/activation-manager.js';
-export { HatagoManagementServer } from './mcp-server/hatago-management-server.js';
 export { IdleManager } from './mcp-server/idle-manager.js';
 export { MetadataStore } from './mcp-server/metadata-store.js';
 // Export management components
@@ -110,6 +109,7 @@ export { FileAccessGuard } from './security/file-guard.js';
 export type {
   CallOptions,
   ConnectedServer,
+  IHub,
   HubEvent,
   HubEventHandler,
   HubOptions,

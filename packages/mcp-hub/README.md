@@ -297,13 +297,9 @@ Example:
 - **Progress Notifications**: Real-time operation updates from child servers
 - **Graceful Reconnection**: Maintains sessions during config changes
 
-### 🛠️ Management Tools
+### 🧩 Built-in Internal Resource
 
-Built-in internal tools for server management:
-
-- `_internal_hatago_status`: Get status of all connected servers
-- `_internal_hatago_reload`: Manually trigger configuration reload
-- `_internal_hatago_list_servers`: List all configured servers with details
+- `hatago://servers`: Returns a JSON snapshot of currently connected servers and their basic details.
 
 ### 🚀 Developer Experience
 

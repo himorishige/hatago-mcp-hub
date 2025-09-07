@@ -40,6 +40,12 @@ export type HubOptions = {
   namingStrategy?: 'none' | 'namespace' | 'prefix';
   separator?: string;
   tags?: string[]; // Filter servers by tags
+  /**
+   * Enable internal StreamableHTTP transport (HTTP/SSE bridge inside the hub).
+   * Disable when running in pure STDIO environments to avoid mixed transports.
+   * Default: true
+   */
+  enableStreamableTransport?: boolean;
 };
 
 /**
@@ -115,4 +121,23 @@ export type ConnectedServer = {
   tools: Tool[];
   resources: Resource[];
   prompts: Prompt[];
+};
+
+/**
+ * Minimal public Hub interface for external packages (server/test-utils)
+ * Keeps compile-time coupling low while preserving safety. [SF][CA]
+ */
+export type IHub = {
+  // lifecycle
+  start: () => Promise<IHub>;
+  stop: () => Promise<void>;
+
+  // events
+  on: (event: HubEvent, handler: (evt: HubEventData) => void) => void;
+
+  // notifications (STDIO bridge)
+  onNotification?: (notification: unknown) => Promise<void>;
+
+  // JSON-RPC entry
+  handleJsonRpcRequest: (body: unknown, sessionId?: string) => Promise<unknown>;
 };

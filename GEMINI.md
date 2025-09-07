@@ -15,7 +15,7 @@ Key features include:
 - **Hot-reloading:** Automatically reloads the configuration when the `hatago.config.json` file changes.
 - **Progress notifications:** Real-time progress updates for long-running operations.
 - **Multi-runtime support:** Designed to run on Node.js and Cloudflare Workers.
-- **Internal management tools:** Provides tools like `_internal_hatago_status` to check server status.
+- **Minimal internal resource:** Provides `hatago://servers` to inspect connected servers.
 
 ## Building and Running
 

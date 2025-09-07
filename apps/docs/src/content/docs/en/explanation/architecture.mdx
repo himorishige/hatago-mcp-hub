@@ -180,13 +180,9 @@ Custom transports can implement a common `Transport` interface and be plugged un
 - Short‑term: improved error recovery, perf insights, Bun/Deno adapters
 - Long‑term: WASM, browser runtime, distributed clustering
 
-## Internal Tools
+## Internal Resource
 
-| Tool | Purpose |
-| --- | --- |
-| `_internal_hatago_status` | Check connection status |
-| `_internal_hatago_reload` | Manually trigger config reload |
-| `_internal_hatago_list_servers` | List configured servers |
+- `hatago://servers` — JSON snapshot of connected servers (id/status/type/tools/resources/prompts).
 
 ## Related
 

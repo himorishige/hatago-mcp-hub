@@ -36,6 +36,7 @@ export type SSEStream = {
 type StreamData = {
   stream: SSEStream;
   createdAt: number;
+  lastActivityAt?: number;
   resolveResponse?: () => void;
   keepaliveInterval?: ReturnType<typeof setInterval>;
 };
@@ -58,7 +59,9 @@ export class StreamableHTTPTransport implements Transport {
 
   // Cleanup settings
   private readonly maxMapSize = 1000;
-  private readonly ttlMs = 30000;
+  // Consider a stream stale only after prolonged inactivity.
+  // Keep above keepAliveMs to avoid dropping active streams. [REH][SF]
+  private readonly ttlMs = 120000;
   private cleanupInterval?: ReturnType<typeof setInterval>;
 
   sessionId?: string;
@@ -146,6 +149,7 @@ export class StreamableHTTPTransport implements Transport {
         if (streamData?.stream) {
           // Send response via SSE
           await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
+          streamData.lastActivityAt = Date.now();
 
           // Resolve the response promise to close the stream
           streamData.resolveResponse?.();
@@ -170,6 +174,7 @@ export class StreamableHTTPTransport implements Transport {
           if (streamData?.stream && !streamData.stream.closed) {
             try {
               await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
+              streamData.lastActivityAt = Date.now();
             } catch (error) {
               console.error('Failed to send progress notification:', error);
             }
@@ -182,6 +187,7 @@ export class StreamableHTTPTransport implements Transport {
           if (streamData.stream && !streamData.stream.closed) {
             try {
               await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
+              streamData.lastActivityAt = Date.now();
             } catch (error) {
               console.error('Failed to send notification:', error);
             }
@@ -278,6 +284,8 @@ export class StreamableHTTPTransport implements Transport {
       void (async () => {
         try {
           await sseStream.write(':heartbeat\n\n');
+          const sd = this.streamMapping.get(streamId);
+          if (sd) sd.lastActivityAt = Date.now();
         } catch {
           clearInterval(keepaliveInterval);
         }
@@ -289,6 +297,7 @@ export class StreamableHTTPTransport implements Transport {
     this.streamMapping.set(streamId, {
       stream: sseStream,
       createdAt: Date.now(),
+      lastActivityAt: Date.now(),
       keepaliveInterval
     });
 
@@ -426,6 +435,7 @@ export class StreamableHTTPTransport implements Transport {
         this.streamMapping.set(streamId, {
           stream: sseStream,
           createdAt: Date.now(),
+          lastActivityAt: Date.now(),
           resolveResponse: resolve
         });
       });
@@ -544,9 +554,10 @@ export class StreamableHTTPTransport implements Transport {
     this.cleanupInterval = setInterval(() => {
       const now = Date.now();
 
-      // Clean up old streams
+      // Clean up closed or truly idle streams only [REH]
       for (const [streamId, streamData] of this.streamMapping.entries()) {
-        if (now - streamData.createdAt > this.ttlMs || streamData.stream.closed) {
+        const idleFor = now - (streamData.lastActivityAt ?? streamData.createdAt);
+        if (streamData.stream.closed || idleFor > this.ttlMs) {
           if (streamData.keepaliveInterval) {
             clearInterval(streamData.keepaliveInterval);
           }

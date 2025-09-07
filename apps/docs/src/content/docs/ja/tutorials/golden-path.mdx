@@ -235,9 +235,9 @@ yarn add -D @himorishige/hatago-mcp-hub
    ```
 
 3. **アクティブサーバー確認**
-   内部ツールで確認:
+   `resources/read` で内部リソースを確認:
    ```json
-   { "jsonrpc": "2.0", "method": "_internal_hatago_list_servers", "id": 1, "params": {} }
+   { "jsonrpc": "2.0", "method": "resources/read", "id": 1, "params": { "uri": "hatago://servers" } }
    ```
 </Steps>
 
@@ -261,18 +261,9 @@ async function verifyHatago() {
       name: 'サーバー一覧取得',
       request: {
         jsonrpc: '2.0',
-        method: '_internal_hatago_list_servers',
+        method: 'resources/read',
         id: 1,
-        params: {}
-      }
-    },
-    {
-      name: 'ステータス確認',
-      request: {
-        jsonrpc: '2.0',
-        method: '_internal_hatago_status',
-        id: 2,
-        params: {}
+        params: { uri: 'hatago://servers' }
       }
     }
   ];

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "timeouts": {
+    "requestMs": 30000,
+    "keepAliveMs": 15000
+  },
+  "mcpServers": {
+    "fixture": {
+      "command": "node",
+      "args": [
+        "${FIXTURE_JS:-./packages/test-fixtures/dist/stdio-server.js}",
+        "--echo"
+      ],
+      "tags": ["dev"]
+    }
+  }
+}
