@@ -26,9 +26,7 @@ import { UnsupportedFeatureError } from './errors.js';
 import { Logger } from './logger.js';
 // Notifications are handled outside base hub (Enhanced only)
 import { SSEManager } from './sse-manager.js';
-import type { ServerStateMachine } from './mcp-server/state-machine.js';
-import type { ActivationManager } from './mcp-server/activation-manager.js';
-import type { IdleManager } from './mcp-server/idle-manager.js';
+// Management server types removed with internal tools/resources simplification [SF]
 import type {
   CallOptions,
   ConnectedServer,
@@ -43,7 +41,8 @@ import type {
 
 import { CapabilityRegistry } from './capability-registry.js';
 import { connectWithRetry, normalizeServerSpec } from './client/connector.js';
-import { prepareInternalRegistrations } from './internal-tools.js';
+// Internal tools removed. Keep minimal internal resources only. [SF]
+import type { Resource } from '@himorishige/hatago-core';
 
 /**
  * Main Hub class - provides simplified API for MCP operations
@@ -559,8 +558,8 @@ export class HatagoHub {
    * Start the hub
    */
   async start(): Promise<this> {
-    // Register internal management tools
-    await this.registerInternalTools();
+    // Register minimal internal resources (no internal tools/prompts)
+    this.registerInternalResources();
 
     // Startup gate removed
 
@@ -756,40 +755,21 @@ export class HatagoHub {
   }
 
   /**
-   * Register internal management tools
+   * Register minimal internal resources only
+   * Keep hub thin: no internal tools/prompts. [SF][DM]
    */
-  private async registerInternalTools(): Promise<void> {
-    const {
-      tools: toolsWithHandlers,
-      resources,
-      prompts
-    } = await prepareInternalRegistrations(this);
-
-    this.logger.info('[Hub] Registering internal management tools', {
-      count: toolsWithHandlers.length
-    });
-
-    // Register as internal server
-    this.toolRegistry.registerServerTools('_internal', toolsWithHandlers as unknown as Tool[]);
-
-    // Register resources/prompts
-    this.resourceRegistry.registerServerResources('_internal', resources);
-    this.promptRegistry.registerServerPrompts('_internal', prompts);
-
-    // Register handlers with actual registered names
-    const registeredTools = this.toolRegistry.getServerTools('_internal');
-    for (let i = 0; i < registeredTools.length; i++) {
-      const registeredTool = registeredTools[i];
-      const originalTool = toolsWithHandlers[i];
-      if (registeredTool && originalTool) {
-        this.toolInvoker.registerHandler(registeredTool.name, originalTool.handler);
-        this.logger.debug('[Hub] Registered internal tool handler', { name: registeredTool.name });
+  private registerInternalResources(): void {
+    const resources: Resource[] = [
+      {
+        uri: 'hatago://servers',
+        name: 'Connected Servers',
+        description: 'List of currently connected MCP servers',
+        mimeType: 'application/json'
       }
-    }
+    ];
 
-    // Update hash and revision
-    this.toolsetRevision++;
-    this.toolsetHash = await this.calculateToolsetHash();
+    this.logger.info('[Hub] Registering internal resources', { count: resources.length });
+    this.resourceRegistry.registerServerResources('_internal', resources);
   }
 
   /**
@@ -958,32 +938,27 @@ export class HatagoHub {
       const resourceInfo = this.resourceRegistry.resolveResource(uri);
 
       if (resourceInfo) {
-        // Special handling for internal server resources
+        // Minimal internal resource handling [SF]
         if (resourceInfo.serverId === '_internal') {
-          const { HatagoManagementServer } = await import(
-            './mcp-server/hatago-management-server.js'
-          );
-          const managementServer = new HatagoManagementServer({
-            configFilePath: this.options.configFile ?? '',
-            stateMachine: null as unknown as ServerStateMachine,
-            activationManager: null as unknown as ActivationManager,
-            idleManager: null as unknown as IdleManager
-          });
+          if (uri === 'hatago://servers') {
+            const serverList = this.getServers().map((s) => ({
+              id: s.id,
+              status: s.status,
+              type: s.spec?.url ? 'remote' : 'local',
+              url: s.spec?.url ?? null,
+              command: s.spec?.command ?? null,
+              tools: s.tools?.map((t) => t.name) ?? [],
+              resources: s.resources?.map((r) => r.uri) ?? [],
+              prompts: s.prompts?.map((p) => p.name) ?? [],
+              error: s.error?.message ?? null
+            }));
 
-          try {
-            const result = await managementServer.handleResourceRead(uri);
-            this.emit('resource:read', {
-              uri,
-              serverId: '_internal',
-              result
-            });
-            return { contents: [{ uri, text: JSON.stringify(result, null, 2) }] };
-          } catch (error) {
-            this.logger.error(`Failed to read internal resource ${uri}`, {
-              error: error instanceof Error ? error.message : String(error)
-            });
-            throw error;
+            const payload = { total: serverList.length, servers: serverList };
+            this.emit('resource:read', { uri, serverId: '_internal', result: payload });
+            return { contents: [{ uri, text: JSON.stringify(payload, null, 2) }] };
           }
+          // Unknown internal resource
+          throw new Error(`Unknown internal resource: ${uri}`);
         }
 
         // Resource found in registry

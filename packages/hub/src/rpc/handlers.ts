@@ -41,7 +41,15 @@ type HubCtx = {
       p: { progressToken: string; progress: number; total?: number; message?: string }
     ) => void;
   };
-  streamableTransport?: { send: (m: unknown) => Promise<void> };
+  streamableTransport?: {
+    send: (m: unknown) => Promise<void>;
+    sendProgressNotification?: (
+      token: string | number,
+      progress: number,
+      total?: number,
+      message?: string
+    ) => Promise<void>;
+  };
   onNotification?: (n: unknown) => Promise<void>;
 };
 
@@ -152,17 +160,6 @@ export async function handleToolsCall(
                 progress
               } as LogData);
 
-              const notification = {
-                jsonrpc: '2.0' as const,
-                method: 'notifications/progress',
-                params: {
-                  progressToken,
-                  progress: progress?.progress ?? 0,
-                  total: progress?.total,
-                  message: progress?.message
-                }
-              };
-
               const hasStreamable = !!streamableTransport;
               const hasOnNotification = !!onNotification;
 
@@ -173,10 +170,25 @@ export async function handleToolsCall(
               }
 
               if (hasOnNotification && onNotification) {
+                const notification = {
+                  jsonrpc: '2.0' as const,
+                  method: 'notifications/progress',
+                  params: {
+                    progressToken,
+                    progress: progress?.progress ?? 0,
+                    total: progress?.total,
+                    message: progress?.message
+                  }
+                };
                 void onNotification(notification);
               }
               if (hasStreamable && streamableTransport) {
-                void streamableTransport.send(notification);
+                void streamableTransport.sendProgressNotification?.(
+                  progressToken as string | number,
+                  progress?.progress ?? 0,
+                  progress?.total,
+                  progress?.message
+                );
               }
 
               if (progressToken && sseManager && sessionId) {
