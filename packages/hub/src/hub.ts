@@ -1173,7 +1173,15 @@ export class HatagoHub {
    */
   async doReloadConfig(): Promise<void> {
     const { reloadConfig } = await import('./config/reload.js');
-    return reloadConfig(this);
+    const ctx = {
+      options: this.options,
+      logger: this.logger,
+      servers: this.servers,
+      removeServer: this.removeServer.bind(this),
+      addServer: this.addServer.bind(this),
+      sendToolListChangedNotification: this.sendToolListChangedNotification.bind(this)
+    };
+    return reloadConfig(ctx);
   }
 
   /**

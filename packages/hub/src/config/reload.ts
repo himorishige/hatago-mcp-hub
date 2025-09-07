@@ -1,7 +1,6 @@
 /**
  * Config reload logic extracted from hub.ts [SF][CA]
  */
-import type { HatagoHub } from '../hub.js';
 import type { Logger } from '../logger.js';
 import type { ConnectedServer, ServerSpec } from '../types.js';
 import { normalizeServerSpec } from '../client/connector.js';
@@ -24,12 +23,11 @@ type ReloadHub = {
     id: string,
     spec: ServerSpec,
     options?: { suppressToolListNotification?: boolean }
-  ) => Promise<void>;
+  ) => Promise<unknown>;
   sendToolListChangedNotification: () => Promise<void>;
 };
 
-export async function reloadConfig(hub: HatagoHub): Promise<void> {
-  const h = hub as unknown as ReloadHub;
+export async function reloadConfig(h: ReloadHub): Promise<void> {
   const { options, logger } = h;
 
   if (!options.configFile) return;

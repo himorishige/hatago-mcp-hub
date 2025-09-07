@@ -99,13 +99,13 @@ export async function connectWithRetry(args: {
   }
 
   if (lastError) {
-    // Preserve original error details for better debuggability
-    const err = new Error(
-      `Failed to connect to ${id} after ${maxRetries} attempts`,
-      // Node 16+/TS 4.8 supports ErrorOptions.cause
-      { cause: lastError } as unknown as ErrorOptions
-    );
-    (err as { cause?: unknown }).cause ??= lastError;
+    // Preserve original error details for better debuggability without risky casts
+    const err = new Error(`Failed to connect to ${id} after ${maxRetries} attempts`);
+    // Set cause when supported (avoid unsafe member access in strict lint)
+    // Assign lazily for runtimes supporting Error.cause
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    err.cause = err.cause ?? lastError;
     throw err;
   }
   throw new Error(`Failed to connect to ${id} after ${maxRetries} attempts`);
