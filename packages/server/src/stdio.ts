@@ -6,7 +6,6 @@
  */
 
 import { once } from 'node:events';
-import type { HatagoHub } from '@himorishige/hatago-hub';
 import type { HatagoConfig } from '@himorishige/hatago-core';
 import { createHub } from '@himorishige/hatago-hub/node';
 import type { Logger } from './logger.js';
@@ -69,7 +68,7 @@ export async function startStdio(
   };
 
   // Set up notification handler to forward to Claude Code
-  hub.onNotification = async (notification: unknown) => {
+  (hub as unknown).onNotification = async (notification: unknown) => {
     // Don't send notifications during shutdown
     if (isShuttingDown) {
       return;
@@ -294,7 +293,7 @@ async function sendMessage(
  * Process incoming MCP message
  */
 async function processMessage(
-  hub: HatagoHub,
+  hub: unknown,
   message: Record<string, unknown>,
   logger: Logger
 ): Promise<unknown> {
@@ -336,7 +335,9 @@ async function processMessage(
       case 'prompts/list':
       case 'prompts/get':
         // Forward to hub's JSON-RPC handler
-        return await hub.handleJsonRpcRequest(message);
+        return await (
+          hub as { handleJsonRpcRequest: (b: unknown) => Promise<unknown> }
+        ).handleJsonRpcRequest(message);
 
       default:
         // If it's a notification (no id), don't return an error

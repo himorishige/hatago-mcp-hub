@@ -83,7 +83,7 @@ describe('HatagoHub start() config loading', () => {
     expect(fs.readFileSync).not.toHaveBeenCalled();
   });
 
-  it('should handle config with notification settings from preloadedConfig', async () => {
+  it('should ignore notifications settings in base hub (handled by Enhanced)', async () => {
     const preloadedData = {
       version: 1,
       notifications: {
@@ -106,9 +106,8 @@ describe('HatagoHub start() config loading', () => {
 
     await hub.start();
 
-    // Verify notification manager was initialized
-    // Note: This is a private property, but we're testing internal behavior
-    expect((hub as any).notificationManager).toBeDefined();
+    // Base hub no longer initializes notification manager; ensure no crash and property absent
+    expect((hub as any).notificationManager).toBeUndefined();
   });
 
   it('should handle invalid JSON in config file gracefully', async () => {

@@ -1,5 +1,4 @@
 import { createHub } from '@himorishige/hatago-hub';
-import type { HatagoHub } from '@himorishige/hatago-hub';
 import type { HatagoConfig } from '@himorishige/hatago-core/schemas';
 import type { HubTestOptions } from './types.js';
 import { waitFor } from './wait-for.js';
@@ -9,7 +8,7 @@ import { waitFor } from './wait-for.js';
  */
 export async function withHub<T>(
   configOrOptions: Partial<HatagoConfig> | HubTestOptions,
-  callback: (hub: HatagoHub) => Promise<T>
+  callback: (hub: unknown) => Promise<T>
 ): Promise<T> {
   const isOptions = (v: unknown): v is HubTestOptions =>
     typeof v === 'object' &&

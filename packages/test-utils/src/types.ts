@@ -1,5 +1,5 @@
 import type { HatagoConfig } from '@himorishige/hatago-core/schemas';
-import type { HatagoHub } from '@himorishige/hatago-hub';
+import type { HatagoHub } from '@himorishige/hatago-hub/node';
 
 export type HubTestOptions = {
   config?: Partial<HatagoConfig>;

@@ -5,6 +5,14 @@
 import { z } from 'zod';
 import type { HatagoHub } from './hub.js';
 
+// Registration helper extracted from hub.ts [DRY][SF]
+import { zodToJsonSchema } from './zod-to-json-schema.js';
+import { HatagoManagementServer } from './mcp-server/hatago-management-server.js';
+import type { ActivationManager } from './mcp-server/activation-manager.js';
+import type { IdleManager } from './mcp-server/idle-manager.js';
+import type { ServerStateMachine } from './mcp-server/state-machine.js';
+import type { Resource, Prompt } from '@himorishige/hatago-core';
+
 export type InternalTool<T = unknown> = {
   name: string;
   description: string;
@@ -119,4 +127,40 @@ export function getInternalTools(): Array<InternalTool<unknown>> {
       }
     }
   ];
+}
+
+/**
+ * Prepare internal registrations (tools/resources/prompts) for the hub.
+ * The caller performs actual registry writes to keep visibility constraints. [RP][DRY]
+ */
+export function prepareInternalRegistrations(hub: HatagoHub): {
+  tools: Array<{
+    name: string;
+    description: string;
+    inputSchema: unknown;
+    handler: (args: unknown) => Promise<unknown>;
+  }>;
+  resources: Resource[];
+  prompts: Prompt[];
+} {
+  const internalTools = getInternalTools();
+
+  const managementServer = new HatagoManagementServer({
+    configFilePath: '',
+    stateMachine: null as unknown as ServerStateMachine,
+    activationManager: null as unknown as ActivationManager,
+    idleManager: null as unknown as IdleManager
+  });
+
+  const tools = internalTools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    inputSchema: zodToJsonSchema(tool.inputSchema),
+    handler: async (args: unknown) => Promise.resolve(tool.handler(args, hub))
+  }));
+
+  const resources = managementServer.getResources();
+  const prompts = managementServer.getPrompts();
+
+  return { tools, resources, prompts };
 }

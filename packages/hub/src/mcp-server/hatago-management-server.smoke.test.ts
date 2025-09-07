@@ -1,19 +1,19 @@
 /**
  * Smoke tests for HatagoManagementServer
- * 重要機能の回帰確認に絞る
+ * Focused on regression of critical features only
  */
 
 import { ServerState } from '@himorishige/hatago-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// FS をモックして初期コンフィグ読込を制御
+// Mock FS to control initial config loading
 let CURRENT_CONFIG: any = {};
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => true),
   readFileSync: vi.fn(() => JSON.stringify(CURRENT_CONFIG))
 }));
 
-// 副作用のあるセキュリティ系はスタブ
+// Stub security modules that have side effects
 vi.mock('../security/audit-logger.js', () => ({
   AuditLogger: class {
     async log() {}
@@ -45,7 +45,7 @@ describe('HatagoManagementServer (smoke)', () => {
   async function createServerWithConfig(config: any) {
     CURRENT_CONFIG = config;
 
-    // 最小限のスタブ
+    // Minimal stub
     const stateMachine = {
       getState: vi.fn((id: string) => (id === 's1' ? ServerState.ACTIVE : ServerState.INACTIVE)),
       getAllStates: vi.fn(() => new Map([['s1', ServerState.ACTIVE]])),
@@ -80,7 +80,7 @@ describe('HatagoManagementServer (smoke)', () => {
       stopIdleServers: vi.fn(async () => new Map([['s1', { stopped: true }]]))
     } as any;
 
-    // 動的インポートでモジュールのモックを反映
+    // Reflect module mocks via dynamic import
     const { HatagoManagementServer } = await import('./hatago-management-server.js');
     const server = new HatagoManagementServer({
       configFilePath: '/fake/hatago.config.json',
