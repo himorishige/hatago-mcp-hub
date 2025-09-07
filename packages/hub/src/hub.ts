@@ -954,81 +954,24 @@ export class HatagoHub {
     const { method, params, id } = request;
 
     try {
-      switch (method) {
-        case 'initialize': {
-          const { handleInitialize } = await import('./rpc/handlers.js');
-          return handleInitialize(this, params ?? {}, id ?? null, sessionId);
-        }
+      // Notification (no response)
+      if (method === 'notifications/initialized') return null;
 
-        case 'notifications/initialized':
-          // This is a notification, no response needed
-          return null;
+      // Table dispatch
+      const { createRpcDispatch } = await import('./rpc/dispatch.js');
+      const table = createRpcDispatch();
+      const handler = method ? table[method] : undefined;
 
-        // 'notifications/progress' handling (sampling bridge) removed
-
-        case 'tools/list': {
-          const { handleToolsList } = await import('./rpc/handlers.js');
-          return await handleToolsList(this, id ?? null);
-        }
-
-        case 'tools/call': {
-          const { handleToolsCall } = await import('./rpc/handlers.js');
-          return await handleToolsCall(this, params ?? {}, id ?? null, sessionId);
-        }
-
-        case 'resources/list': {
-          const { handleResourcesList } = await import('./rpc/handlers.js');
-          return handleResourcesList(this, id ?? null);
-        }
-
-        case 'resources/read': {
-          const { handleResourcesRead } = await import('./rpc/handlers.js');
-          return await handleResourcesRead(this, params ?? {}, id ?? null);
-        }
-
-        case 'resources/templates/list': {
-          const { handleResourcesTemplatesList } = await import('./rpc/handlers.js');
-          return await handleResourcesTemplatesList(this, id ?? null);
-        }
-
-        case 'prompts/list': {
-          const { handlePromptsList } = await import('./rpc/handlers.js');
-          return handlePromptsList(this, id ?? null);
-        }
-
-        case 'prompts/get': {
-          const { handlePromptsGet } = await import('./rpc/handlers.js');
-          return await handlePromptsGet(this, params ?? {}, id ?? null);
-        }
-
-        case 'ping': {
-          const { handlePing } = await import('./rpc/handlers.js');
-          return handlePing(id ?? null);
-        }
-
-        case 'sampling/createMessage':
-          // This is a sampling request from the client - should not happen in normal flow
-          // as sampling requests come from servers to clients
-          this.logger.warn('[Hub] Unexpected sampling/createMessage from client');
-          return {
-            jsonrpc: '2.0',
-            id,
-            error: {
-              code: -32601,
-              message: 'Method not supported by hub'
-            }
-          };
-
-        default:
-          return {
-            jsonrpc: '2.0',
-            id: id as string | number,
-            error: {
-              code: -32601,
-              message: 'Method not found'
-            }
-          };
+      if (handler) {
+        return await handler(this, params ?? {}, id ?? null, sessionId);
       }
+
+      // Default: method not found (keep legacy behavior)
+      return {
+        jsonrpc: '2.0',
+        id: id as string | number,
+        error: { code: -32601, message: 'Method not found' }
+      };
     } catch (error) {
       return {
         jsonrpc: '2.0',
