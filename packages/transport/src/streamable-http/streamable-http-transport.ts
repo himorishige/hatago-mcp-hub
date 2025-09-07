@@ -146,8 +146,6 @@ export class StreamableHTTPTransport implements Transport {
         if (streamData?.stream) {
           // Send response via SSE
           await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
-          // Touch activity to prevent premature GC during long operations
-          streamData.createdAt = Date.now();
 
           // Resolve the response promise to close the stream
           streamData.resolveResponse?.();
@@ -172,8 +170,6 @@ export class StreamableHTTPTransport implements Transport {
           if (streamData?.stream && !streamData.stream.closed) {
             try {
               await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
-              // Touch activity on progress to keep mapping alive
-              streamData.createdAt = Date.now();
             } catch (error) {
               console.error('Failed to send progress notification:', error);
             }
@@ -186,8 +182,6 @@ export class StreamableHTTPTransport implements Transport {
           if (streamData.stream && !streamData.stream.closed) {
             try {
               await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
-              // Touch activity on broadcast
-              streamData.createdAt = Date.now();
             } catch (error) {
               console.error('Failed to send notification:', error);
             }
@@ -436,19 +430,6 @@ export class StreamableHTTPTransport implements Transport {
         });
       });
 
-      // Start lightweight heartbeat to keep intermediaries and our GC alive during long calls
-      const keepaliveInterval = setInterval(() => {
-        void (async () => {
-          try {
-            await sseStream.write(':heartbeat\n\n');
-            const data = this.streamMapping.get(streamId);
-            if (data) data.createdAt = Date.now();
-          } catch {
-            clearInterval(keepaliveInterval);
-          }
-        })();
-      }, this.keepAliveMs);
-
       // Map requests to stream
       for (const message of messages) {
         if (isJSONRPCRequest(message)) {
@@ -485,8 +466,6 @@ export class StreamableHTTPTransport implements Transport {
           })}\n\n`
         );
       } finally {
-        // Clear keepalive
-        clearInterval(keepaliveInterval);
         // Clean up
         this.streamMapping.delete(streamId);
         for (const message of messages) {
@@ -516,27 +495,16 @@ export class StreamableHTTPTransport implements Transport {
       this.onmessage?.(message);
 
       if (isJSONRPCRequest(message)) {
-        // Wait for response up to 120s to accommodate slow servers when client cannot use SSE
+        // Wait for response
         const startTime = Date.now();
-        const WAIT_MS = 120000;
-        let delivered = false;
-        while (Date.now() - startTime < WAIT_MS) {
+        while (Date.now() - startTime < 30000) {
           const response = this.requestResponseMap.get(message.id);
           if (response) {
             responses.push(response);
             this.requestResponseMap.delete(message.id);
-            delivered = true;
             break;
           }
           await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-        if (!delivered) {
-          // Return a proper JSON-RPC error for this id instead of dropping the response entirely
-          responses.push({
-            jsonrpc: '2.0',
-            id: message.id,
-            error: { code: -32001, message: 'Request timed out (JSON mode)' }
-          } as unknown as JSONRPCMessage);
         }
       }
     }

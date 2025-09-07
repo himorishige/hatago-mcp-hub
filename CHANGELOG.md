@@ -5,55 +5,6 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2025-09-06
-
-### Changed
-
-- **BREAKING**: HubCore is now the default implementation (thin, ~400 lines)
-  - Legacy HatagoHub moved behind `useLegacyHub` flag
-  - ~83% code reduction while maintaining full MCP compliance
-  - Follows "Don't transform, relay" philosophy
-- **Architecture**: Complete refactoring to "thin implementation"
-  - Removed state management, caching, and "thick" features
-  - Pure relay without data transformation
-  - Lazy connection pattern (connect on first use)
-  - Table-driven dispatch for method routing
-
-### Added
-
-- **HubCoreAdapter**: Compatibility layer between HubCore and IHub interface
-- **Race condition prevention**: Connection pooling to prevent duplicate connections
-- **Error state tracking**: Store connection errors and timestamps for diagnostics
-- **Parameter validation**: Comprehensive validation for tool/resource/prompt parameters
-- **Comprehensive test suite**: Race conditions, error handling, validation tests
-
-### Fixed
-
-- Race condition in concurrent server connections
-- Error state not properly tracked for failed connections
-- Missing parameter validation causing runtime errors
-- TypeScript and ESLint errors in transport constructors
-
-### Removed
-
-- Default export of legacy HatagoHub (use named export from legacy path)
-- Proxy exports (HatagoHub, EnhancedHub) from main index
-- Complex state machines and activation managers from default path
-
-### Migration
-
-- Default behavior unchanged for most users
-- For legacy features, set `useLegacyHub: true` in options
-- Legacy components available via `@himorishige/hatago-hub/legacy/*`
-- See docs/MIGRATION_TO_THIN.md for detailed migration guide
-
-### Performance
-
-- ~5x faster startup time
-- ~10x reduction in memory usage
-- Instant server connections (lazy loading)
-- Zero overhead for unused servers
-
 ## [0.0.9] - 2025-09-06
 
 ### Added

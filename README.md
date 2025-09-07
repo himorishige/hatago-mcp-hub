@@ -10,7 +10,7 @@
 
 ## Overview
 
-Hatago MCP Hub is a **thin, transparent** hub server that provides unified management for multiple MCP (Model Context Protocol) servers. Built on the philosophy of "Don't add, remove" and "Don't transform, relay", it offers a minimal ~400 line core implementation that enables centralized access to various MCP servers from development tools like Claude Code, Codex CLI, Cursor, Windsurf, and VS Code.
+Hatago MCP Hub is a lightweight hub server that provides unified management for multiple MCP (Model Context Protocol) servers. It enables centralized access to various MCP servers from development tools like Claude Code, Codex CLI, Cursor, Windsurf, and VS Code.
 
 [Dev.to: Getting Started with Multi-MCP Using Hatago MCP Hub — One Config to Connect Them All](https://dev.to/himorishige/getting-started-with-multi-mcp-using-hatago-mcp-hub-one-config-to-connect-them-all-2bjp)
 
@@ -18,11 +18,8 @@ Hatago MCP Hub is a **thin, transparent** hub server that provides unified manag
 
 ### 🎯 Simple & Lightweight
 
-- **Thin Core Implementation** - ~400 lines of pure relay logic (HubCore)
 - **Zero Configuration Start (HTTP mode)** - `npx @himorishige/hatago-mcp-hub serve --http`
 - **Non-invasive to Existing Projects** - Doesn't pollute your project directory
-- **83% Less Code** - Compared to traditional hub implementations
-- **4-8x Less Memory** - Minimal footprint with lazy connections
 
 ### 🔌 Rich Connectivity
 
@@ -55,34 +52,6 @@ Hatago MCP Hub is a **thin, transparent** hub server that provides unified manag
 - **Configuration Validation** - Type-safe configuration with Zod schemas
 - **Tag-based Server Filtering** - Group and filter servers using tags
 - **Configuration Inheritance** - Extend base configurations with `extends` field for DRY principle
-
-## 🚀 HubCore: The Default Thin Implementation
-
-Starting from v0.1.0, Hatago uses **HubCore** as the default implementation - a minimal, transparent hub that follows the Hatago philosophy:
-
-- **Pure Relay**: No data transformation, just pass through
-- **No State Management**: Stateless operation for simplicity
-- **Lazy Connections**: Connect only when needed
-- **Minimal Footprint**: ~400 lines vs 2,300+ lines
-
-### Performance Benefits
-
-- **10-100x faster startup** - Lazy connection on first use
-- **4-8x less memory** - No caching or state storage
-- **2x faster requests** - Direct relay without layers
-
-### Legacy Mode
-
-If you need the full feature set (state management, caching, hot reload), use legacy mode:
-
-```javascript
-import { createHub } from '@himorishige/hatago-mcp-hub';
-
-const hub = createHub({
-  useLegacyHub: true // Enable legacy features
-  // ... other options
-});
-```
 
 ## 📦 Installation
 
