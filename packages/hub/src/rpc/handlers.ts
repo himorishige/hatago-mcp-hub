@@ -2,6 +2,7 @@
  * JSON-RPC handlers (partial extraction) [SF][CA]
  */
 import type { HatagoHub } from '../hub.js';
+import { HATAGO_PROTOCOL_VERSION, HATAGO_SERVER_INFO } from '@himorishige/hatago-core';
 import type { LogData } from '@himorishige/hatago-core';
 import type { Logger } from '../logger.js';
 type HubCtx = {
@@ -76,9 +77,9 @@ export function handleInitialize(
     jsonrpc: '2.0',
     id: id as string | number,
     result: {
-      protocolVersion: '2025-06-18',
+      protocolVersion: HATAGO_PROTOCOL_VERSION,
       capabilities: { tools: {}, resources: {}, prompts: {} },
-      serverInfo: { name: 'hatago-hub', version: '0.0.9' }
+      serverInfo: HATAGO_SERVER_INFO
     }
   };
 }

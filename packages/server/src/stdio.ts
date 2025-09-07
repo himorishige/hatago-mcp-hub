@@ -7,6 +7,7 @@
 
 import { once } from 'node:events';
 import type { HatagoConfig } from '@himorishige/hatago-core';
+import { HATAGO_PROTOCOL_VERSION, HATAGO_SERVER_INFO } from '@himorishige/hatago-core';
 import { createHub } from '@himorishige/hatago-hub/node';
 import type { Logger } from './logger.js';
 import { registerHubMetrics } from './metrics.js';
@@ -311,15 +312,14 @@ async function processMessage(
           jsonrpc: '2.0',
           id: id as string | number | null,
           result: {
-            protocolVersion: '2025-06-18',
+            protocolVersion: HATAGO_PROTOCOL_VERSION,
             capabilities: {
               tools: {},
               resources: {},
               prompts: {}
             },
             serverInfo: {
-              name: 'hatago-hub',
-              version: '0.0.9'
+              ...HATAGO_SERVER_INFO
             }
           }
         };
