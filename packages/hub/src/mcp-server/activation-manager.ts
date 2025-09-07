@@ -24,7 +24,7 @@ type ServerConfig = {
   };
 };
 
-import { EventEmitter } from 'node:events';
+import { createEventEmitter, type EventEmitter as HubEventEmitter } from '../utils/events.js';
 import type { ServerStateMachine } from './state-machine.js';
 
 /**
@@ -56,24 +56,25 @@ export type ActivationResult = {
  * Server activation manager
  * Handles server lifecycle with deduplication
  */
-export class ActivationManager extends EventEmitter {
+export class ActivationManager {
   private readonly stateMachine: ServerStateMachine;
   private readonly activationQueue = new Map<string, Promise<ActivationResult>>();
   private readonly serverConfigs = new Map<string, ServerConfig>();
   private readonly activationHistory = new Map<string, ActivationRequest[]>();
   private readonly maxHistorySize = 100;
+  private events: HubEventEmitter<string, unknown>;
 
   // Connection handlers (to be set by hub)
   private connectHandler?: (serverId: string) => Promise<void>;
   private disconnectHandler?: (serverId: string) => Promise<void>;
 
   constructor(stateMachine: ServerStateMachine) {
-    super();
+    this.events = createEventEmitter<string, unknown>();
     this.stateMachine = stateMachine;
 
     // Listen to state changes
     this.stateMachine.on('transition', (event) => {
-      this.emit('state:changed', event);
+      this.events.emit('state:changed', event);
     });
   }
 
@@ -141,7 +142,7 @@ export class ActivationManager extends EventEmitter {
     // Check if already activating
     const existing = this.activationQueue.get(serverId);
     if (existing) {
-      this.emit('activation:deduplicated', { serverId, source });
+      this.events.emit('activation:deduplicated', { serverId, source });
       return existing;
     }
 
@@ -202,7 +203,7 @@ export class ActivationManager extends EventEmitter {
 
     try {
       // Emit activation start
-      this.emit('activation:start', request);
+      this.events.emit('activation:start', request);
 
       // Check if can activate
       if (!this.stateMachine.canActivate(serverId)) {
@@ -237,7 +238,7 @@ export class ActivationManager extends EventEmitter {
 
       // Emit success
       const duration = Date.now() - startTime;
-      this.emit('activation:success', {
+      this.events.emit('activation:success', {
         serverId,
         duration,
         request
@@ -258,7 +259,7 @@ export class ActivationManager extends EventEmitter {
       );
 
       // Emit failure
-      this.emit('activation:failed', {
+      this.events.emit('activation:failed', {
         serverId,
         error,
         request
@@ -309,7 +310,7 @@ export class ActivationManager extends EventEmitter {
         'Successfully disconnected'
       );
 
-      this.emit('deactivation:success', { serverId });
+      this.events.emit('deactivation:success', { serverId });
 
       return {
         success: true,
@@ -324,7 +325,7 @@ export class ActivationManager extends EventEmitter {
         error instanceof Error ? error.message : 'Deactivation failed'
       );
 
-      this.emit('deactivation:failed', {
+      this.events.emit('deactivation:failed', {
         serverId,
         error
       });
@@ -485,5 +486,12 @@ export class ActivationManager extends EventEmitter {
     this.stateMachine.resetAll();
     this.activationQueue.clear();
     this.activationHistory.clear();
+  }
+  // Lightweight on/off
+  on(event: string, handler: (data: unknown) => void): void {
+    this.events.on(event, handler);
+  }
+  off(event: string, handler: (data: unknown) => void): void {
+    this.events.off(event, handler);
   }
 }

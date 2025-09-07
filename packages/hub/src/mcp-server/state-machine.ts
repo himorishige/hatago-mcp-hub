@@ -2,7 +2,7 @@
  * Server state machine for managing server lifecycle
  */
 
-import { EventEmitter } from 'node:events';
+import { createEventEmitter, type EventEmitter as HubEventEmitter } from '../utils/events.js';
 import { ServerState } from '@himorishige/hatago-core';
 
 /**
@@ -34,10 +34,15 @@ const VALID_TRANSITIONS: Record<ServerState, ServerState[]> = {
  * Server state machine
  * Manages server lifecycle states and transitions
  */
-export class ServerStateMachine extends EventEmitter {
+export class ServerStateMachine {
   private states = new Map<string, ServerState>();
   private transitions = new Map<string, Promise<void>>();
   private transitionHistory = new Map<string, StateTransitionEvent[]>();
+  private events: HubEventEmitter<string, unknown>;
+
+  constructor() {
+    this.events = createEventEmitter<string, unknown>();
+  }
 
   /**
    * Get current state of a server
@@ -130,11 +135,11 @@ export class ServerStateMachine extends EventEmitter {
     this.transitionHistory.set(serverId, history);
 
     // Emit event
-    this.emit('transition', event);
-    this.emit(`transition:${serverId}`, event);
+    this.events.emit('transition', event);
+    this.events.emit(`transition:${serverId}`, event);
 
     // State-specific events
-    this.emit(`state:${to}`, { serverId, reason });
+    this.events.emit(`state:${to}`, { serverId, reason });
   }
 
   /**
@@ -205,5 +210,13 @@ export class ServerStateMachine extends EventEmitter {
     this.states.clear();
     this.transitions.clear();
     this.transitionHistory.clear();
+  }
+
+  // Lightweight on/off
+  on(event: string, handler: (data: unknown) => void): void {
+    this.events.on(event, handler);
+  }
+  off(event: string, handler: (data: unknown) => void): void {
+    this.events.off(event, handler);
   }
 }

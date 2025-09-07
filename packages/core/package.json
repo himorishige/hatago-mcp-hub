@@ -14,6 +14,10 @@
     "./schemas": {
       "types": "./dist/schemas.d.ts",
       "import": "./dist/schemas.js"
+    },
+    "./types/rpc": {
+      "types": "./dist/types/rpc.d.ts",
+      "import": "./dist/types/rpc.js"
     }
   },
   "files": [

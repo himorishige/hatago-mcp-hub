@@ -8,6 +8,7 @@ export type { Prompt, Resource, Tool } from '@modelcontextprotocol/sdk/types.js'
 export type { ConnectionType, McpConnection } from './connection.js';
 export type { McpServer, NegotiatedProtocol, ProtocolFeatures } from './protocol.js';
 export { SUPPORTED_PROTOCOL_VERSION } from './protocol.js';
+export type { RpcMethod } from './rpc.js';
 export type { PromptMetadata, ResourceMetadata, ToolMetadata } from './registry.js';
 export type { Session } from './session.js';
 

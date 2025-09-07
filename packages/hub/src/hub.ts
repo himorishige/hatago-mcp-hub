@@ -14,6 +14,9 @@ import {
 } from '@himorishige/hatago-runtime';
 import type { Tool } from '@himorishige/hatago-core';
 import { StreamableHTTPTransport, type ITransport } from '@himorishige/hatago-transport';
+import * as ToolsApi from './api/tools.js';
+import * as ResourcesApi from './api/resources.js';
+import * as PromptsApi from './api/prompts.js';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ServerConfig } from '@himorishige/hatago-core/schemas';
 import { type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -33,6 +36,7 @@ import type {
   ReadOptions,
   ServerSpec
 } from './types.js';
+import { createEventEmitter, type EventEmitter as HubEventEmitter } from './utils/events.js';
 
 import { CapabilityRegistry } from './capability-registry.js';
 import { connectWithRetry, normalizeServerSpec } from './client/connector.js';
@@ -62,8 +66,8 @@ export class HatagoHub {
   protected servers = new Map<string, ConnectedServer>();
   protected clients = new Map<string, Client>();
 
-  // Event handlers
-  protected eventHandlers = new Map<HubEvent, Set<HubEventHandler>>();
+  // Event emitter (extracted)
+  private events: HubEventEmitter<HubEvent, unknown>;
 
   // Logger
   protected logger: Logger;
@@ -120,6 +124,8 @@ export class HatagoHub {
 
     // Initialize logger
     this.logger = new Logger('[Hub]');
+    // Initialize event emitter
+    this.events = createEventEmitter<HubEvent, unknown>(this.logger);
 
     // Initialize SSE manager
     this.sseManager = new SSEManager(this.logger);
@@ -638,13 +644,8 @@ export class HatagoHub {
     /**
      * List available tools
      */
-    list: (options?: ListOptions) => {
-      if (options?.serverId) {
-        const server = this.servers.get(options.serverId);
-        return server?.tools ?? [];
-      }
-      return this.toolInvoker.listTools();
-    },
+    list: (options?: ListOptions) =>
+      ToolsApi.listTools(this as unknown as ToolsApi.ToolsHub, options),
 
     /**
      * Call a tool
@@ -656,33 +657,7 @@ export class HatagoHub {
         progressToken?: string;
         progressCallback?: unknown;
       }
-    ) => {
-      // Parse qualified name (serverId/toolName or just toolName)
-      let toolName = name;
-      let serverId = options?.serverId;
-
-      if (name.includes('/')) {
-        const parts = name.split('/');
-        serverId = parts[0];
-        toolName = parts.slice(1).join('/');
-      }
-
-      // Use naming strategy to resolve actual tool name
-      const publicName =
-        serverId && this.options.namingStrategy !== 'none'
-          ? `${serverId}${this.options.separator}${toolName}`
-          : toolName;
-
-      // Handle tool with progressToken if provided
-      // Call the tool through invoker with progress support
-      const result = await this.toolInvoker.callTool('default', publicName, args, {
-        timeout: options?.timeout ?? this.options.defaultTimeout,
-        progressToken: options?.progressToken
-      });
-
-      this.emit('tool:called', { name, args, result });
-      return result;
-    }
+    ) => ToolsApi.callTool(this as unknown as ToolsApi.ToolsHub, name, args, options)
   };
 
   /**
@@ -695,94 +670,14 @@ export class HatagoHub {
     /**
      * List available resources
      */
-    list: (options?: ListOptions) => {
-      if (options?.serverId) {
-        const server = this.servers.get(options.serverId);
-        return server?.resources ?? [];
-      }
-      // Return all registered resources from registry
-      return this.resourceRegistry.getAllResources();
-    },
+    list: (options?: ListOptions) =>
+      ResourcesApi.listResources(this as unknown as ResourcesApi.ResourcesHub, options),
 
     /**
      * Read a resource
      */
-    read: async (uri: string, options?: ReadOptions) => {
-      // Try to resolve the resource through the registry
-      const resourceInfo = this.resourceRegistry.resolveResource(uri);
-
-      if (resourceInfo) {
-        // Minimal internal resource handling [SF]
-        if (resourceInfo.serverId === '_internal') {
-          if (uri === 'hatago://servers') {
-            const serverList = this.getServers().map((s) => ({
-              id: s.id,
-              status: s.status,
-              type: s.spec?.url ? 'remote' : 'local',
-              url: s.spec?.url ?? null,
-              command: s.spec?.command ?? null,
-              tools: s.tools?.map((t) => t.name) ?? [],
-              resources: s.resources?.map((r) => r.uri) ?? [],
-              prompts: s.prompts?.map((p) => p.name) ?? [],
-              error: s.error?.message ?? null
-            }));
-
-            const payload = { total: serverList.length, servers: serverList };
-            this.emit('resource:read', { uri, serverId: '_internal', result: payload });
-            return { contents: [{ uri, text: JSON.stringify(payload, null, 2) }] };
-          }
-          // Unknown internal resource
-          throw new Error(`Unknown internal resource: ${uri}`);
-        }
-
-        // Resource found in registry
-        const client = this.clients.get(resourceInfo.serverId);
-        if (client) {
-          try {
-            // Use the original URI to read from the server
-            const result = await client.readResource({
-              uri: resourceInfo.originalUri
-            });
-            this.emit('resource:read', {
-              uri,
-              serverId: resourceInfo.serverId,
-              result
-            });
-            return result;
-          } catch (error) {
-            this.logger.error(`Failed to read resource ${uri}`, {
-              serverId: resourceInfo.serverId,
-              error: error instanceof Error ? error.message : String(error)
-            });
-            throw error;
-          }
-        }
-      }
-
-      // Fallback: try to find by serverId if provided
-      if (options?.serverId) {
-        const client = this.clients.get(options.serverId);
-        if (client) {
-          try {
-            const result = await client.readResource({ uri });
-            this.emit('resource:read', {
-              uri,
-              serverId: options.serverId,
-              result
-            });
-            return result;
-          } catch (error) {
-            this.logger.error(`Failed to read resource ${uri}`, {
-              serverId: options.serverId,
-              error: error instanceof Error ? error.message : String(error)
-            });
-            throw error;
-          }
-        }
-      }
-
-      throw new Error(`No server found for resource: ${uri}`);
-    }
+    read: async (uri: string, options?: ReadOptions) =>
+      ResourcesApi.readResource(this as unknown as ResourcesApi.ResourcesHub, uri, options)
   };
 
   /**
@@ -795,84 +690,29 @@ export class HatagoHub {
     /**
      * List available prompts
      */
-    list: (options?: ListOptions) => {
-      if (options?.serverId) {
-        const server = this.servers.get(options.serverId);
-        return server?.prompts ?? [];
-      }
-      // Return all registered prompts from registry
-      return this.promptRegistry.getAllPrompts();
-    },
+    list: (options?: ListOptions) =>
+      PromptsApi.listPrompts(this as unknown as PromptsApi.PromptsHub, options),
 
     /**
      * Get a prompt
      */
-    get: async (name: string, args?: unknown) => {
-      // Parse prompt name to check if it's namespaced
-      let promptName = name;
-      let serverId: string | undefined;
-
-      // Check if the name contains the separator (e.g., server_promptName)
-      if (name.includes(this.options.separator)) {
-        const parts = name.split(this.options.separator);
-        serverId = parts[0];
-        promptName = parts.slice(1).join(this.options.separator);
-      }
-
-      // Find the client for the server
-      if (serverId) {
-        const client = this.clients.get(serverId);
-        if (client) {
-          const result = await client.getPrompt({
-            name: promptName,
-            arguments: args as { [x: string]: string } | undefined
-          });
-          this.emit('prompt:got', { name, args, result });
-          return result;
-        }
-      }
-
-      // Fallback to prompt registry - for now, return the prompt definition
-      // In the future, this could execute the prompt template
-      const prompt = this.promptRegistry.getPrompt(name);
-      if (prompt) {
-        return {
-          description: prompt.description,
-          arguments: prompt.arguments,
-          messages: []
-        };
-      }
-      throw new Error(`Prompt not found: ${name}`);
-    }
+    get: async (name: string, args?: unknown) =>
+      PromptsApi.getPrompt(this as unknown as PromptsApi.PromptsHub, name, args)
   };
 
   /**
    * Event handling
    */
   on(event: HubEvent, handler: HubEventHandler): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    this.eventHandlers.get(event)?.add(handler);
+    this.events.on(event, handler as (d: unknown) => void);
   }
 
   off(event: HubEvent, handler: HubEventHandler): void {
-    this.eventHandlers.get(event)?.delete(handler);
+    this.events.off(event, handler as (d: unknown) => void);
   }
 
   private emit(event: HubEvent, data: unknown): void {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      for (const handler of handlers) {
-        try {
-          handler(data as HubEventData);
-        } catch (error) {
-          this.logger.error(`Error in event handler for ${event}`, {
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-      }
-    }
+    this.events.emit(event, data as HubEventData);
   }
 
   /**
@@ -958,9 +798,8 @@ export class HatagoHub {
       if (method === 'notifications/initialized') return null;
 
       // Table dispatch
-      const { createRpcDispatch } = await import('./rpc/dispatch.js');
-      const table = createRpcDispatch();
-      const handler = method ? table[method] : undefined;
+      const { RPC_DISPATCH, isRpcMethod } = await import('./rpc/dispatch.js');
+      const handler = method && isRpcMethod(method) ? RPC_DISPATCH[method] : undefined;
 
       if (handler) {
         return await handler(this, params ?? {}, id ?? null, sessionId);

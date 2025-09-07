@@ -129,10 +129,11 @@ export async function handleToolsCall(
 
   let toolName = (params as { name?: string })?.name ?? '';
   let serverId: string | undefined;
-  if (toolName.includes(options.separator)) {
-    const parts = toolName.split(options.separator);
-    serverId = parts[0];
-    toolName = parts.slice(1).join(options.separator);
+  if (toolName) {
+    const { parseQualifiedName } = await import('../utils/naming.js');
+    const parsed = parseQualifiedName(toolName, options.separator);
+    serverId = parsed.serverId;
+    toolName = parsed.name;
   }
 
   try {
@@ -257,6 +258,7 @@ export async function handleResourcesTemplatesList(
   const logger = h.logger;
   const clients = h.clients;
   const separator = h.options.separator;
+  const { buildQualifiedName } = await import('../utils/naming.js');
 
   const allTemplates: unknown[] = [];
 
@@ -293,7 +295,7 @@ export async function handleResourcesTemplatesList(
           const t = template as { name?: string };
           return {
             ...(template as Record<string, unknown>),
-            name: t.name ? `${serverId}${separator}${t.name}` : undefined,
+            name: t.name ? buildQualifiedName(serverId, t.name, separator) : undefined,
             serverId
           };
         });
