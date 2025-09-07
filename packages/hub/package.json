@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-hub",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "User-friendly facade for Hatago MCP Hub",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,6 +23,38 @@
     "./hub-streamable": {
       "import": "./dist/hub-streamable.js",
       "types": "./dist/hub-streamable.d.ts"
+    },
+    "./legacy/activation-manager": {
+      "import": "./dist/mcp-server/activation-manager.js",
+      "types": "./dist/mcp-server/activation-manager.d.ts"
+    },
+    "./legacy/idle-manager": {
+      "import": "./dist/mcp-server/idle-manager.js",
+      "types": "./dist/mcp-server/idle-manager.d.ts"
+    },
+    "./legacy/metadata-store": {
+      "import": "./dist/mcp-server/metadata-store.js",
+      "types": "./dist/mcp-server/metadata-store.d.ts"
+    },
+    "./legacy/state-machine": {
+      "import": "./dist/mcp-server/state-machine.js",
+      "types": "./dist/mcp-server/state-machine.d.ts"
+    },
+    "./legacy/management-server": {
+      "import": "./dist/mcp-server/hatago-management-server.js",
+      "types": "./dist/mcp-server/hatago-management-server.d.ts"
+    },
+    "./legacy/audit-logger": {
+      "import": "./dist/security/audit-logger.js",
+      "types": "./dist/security/audit-logger.d.ts"
+    },
+    "./legacy/file-guard": {
+      "import": "./dist/security/file-guard.js",
+      "types": "./dist/security/file-guard.d.ts"
+    },
+    "./legacy/enhanced-hub": {
+      "import": "./dist/enhanced-hub.js",
+      "types": "./dist/enhanced-hub.d.ts"
     }
   },
   "scripts": {

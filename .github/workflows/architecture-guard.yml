@@ -1,0 +1,176 @@
+name: Architecture Guard
+
+on:
+  pull_request:
+    paths:
+      - "packages/hub/src/**/*.ts"
+      - "!packages/hub/src/**/*.test.ts"
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "packages/hub/src/**/*.ts"
+      - "!packages/hub/src/**/*.test.ts"
+
+jobs:
+  check-code-size:
+    name: Check Code Size Limits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check hub.ts line count
+        run: |
+          HUB_LINES=$(wc -l < packages/hub/src/hub.ts)
+          echo "hub.ts has $HUB_LINES lines"
+
+          # Current limit: 2500 lines (will be reduced gradually)
+          # Target: 500-700 lines
+          if [ $HUB_LINES -gt 2500 ]; then
+            echo "❌ ERROR: hub.ts exceeds 2500 lines (current: $HUB_LINES)"
+            echo "This violates Hatago's design philosophy of 'thin implementation'"
+            echo "Please refactor to reduce code size."
+            exit 1
+          elif [ $HUB_LINES -gt 2000 ]; then
+            echo "⚠️ WARNING: hub.ts has $HUB_LINES lines (target: 500-700)"
+            echo "Consider refactoring to align with Hatago's philosophy"
+          else
+            echo "✅ hub.ts size is acceptable (current: $HUB_LINES, target: 500-700)"
+          fi
+
+      - name: Check handleJsonRpcRequest method size
+        run: |
+          # Extract handleJsonRpcRequest method and count lines
+          # This is a simplified check - ideally use AST parsing
+          START_LINE=$(grep -n "handleJsonRpcRequest" packages/hub/src/hub.ts | head -1 | cut -d: -f1)
+          if [ ! -z "$START_LINE" ]; then
+            # Find the closing brace of the method (simplified)
+            METHOD_LINES=$(awk "NR>=$START_LINE" packages/hub/src/hub.ts | awk '/^  \}$/{print NR; exit}')
+            echo "handleJsonRpcRequest is approximately $METHOD_LINES lines"
+            
+            if [ $METHOD_LINES -gt 450 ]; then
+              echo "⚠️ WARNING: handleJsonRpcRequest exceeds 450 lines"
+              echo "Target: 120 lines with table-driven approach"
+            fi
+          fi
+
+  check-forbidden-imports:
+    name: Check Forbidden Imports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for state management imports in hub.ts
+        run: |
+          echo "Checking for forbidden state management imports in hub.ts..."
+
+          FORBIDDEN_IMPORTS=(
+            "ActivationManager"
+            "IdleManager"
+            "MetadataStore"
+            "ServerStateMachine"
+            "AuditLogger"
+            "FileAccessGuard"
+          )
+
+          FOUND_FORBIDDEN=false
+          for IMPORT in "${FORBIDDEN_IMPORTS[@]}"; do
+            if grep -q "import.*$IMPORT" packages/hub/src/hub.ts; then
+              echo "❌ ERROR: hub.ts imports $IMPORT"
+              echo "This violates the separation of concerns."
+              echo "State management should be optional middleware, not core functionality."
+              FOUND_FORBIDDEN=true
+            fi
+          done
+
+          if [ "$FOUND_FORBIDDEN" = true ]; then
+            exit 1
+          else
+            echo "✅ No forbidden imports found in hub.ts"
+          fi
+
+  detect-feature-creep:
+    name: Detect Feature Creep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history for diff
+
+      - name: Check for new features in frozen modules
+        run: |
+          echo "Checking for new features in frozen modules..."
+
+          # Files that should not receive new features
+          FROZEN_FILES=(
+            "packages/hub/src/hub.ts"
+            "packages/hub/src/enhanced-hub.ts"
+            "packages/hub/src/mcp-server/activation-manager.ts"
+            "packages/hub/src/mcp-server/idle-manager.ts"
+            "packages/hub/src/mcp-server/metadata-store.ts"
+          )
+
+          for FILE in "${FROZEN_FILES[@]}"; do
+            if [ -f "$FILE" ]; then
+              # Check if file has grown compared to main branch
+              MAIN_LINES=$(git show main:$FILE 2>/dev/null | wc -l || echo 0)
+              CURRENT_LINES=$(wc -l < $FILE)
+              
+              if [ $CURRENT_LINES -gt $MAIN_LINES ]; then
+                DIFF=$((CURRENT_LINES - MAIN_LINES))
+                echo "⚠️ WARNING: $FILE has grown by $DIFF lines"
+                echo "These modules are frozen. New features should be added as optional middleware."
+                echo "Following Hatago's philosophy: 'Don't add, remove'"
+              fi
+            fi
+          done
+
+          echo "✅ Feature freeze check complete"
+
+  philosophy-reminder:
+    name: Philosophy Reminder
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Post Hatago Philosophy Reminder
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const philosophy = `## 🎯 Hatago Design Philosophy Reminder
+
+            Before merging, please ensure your changes align with Hatago's core principles:
+
+            - **"Don't add, remove"** - Prioritize reduction over feature addition
+            - **"Don't transform, relay"** - Avoid data processing, maintain transparency  
+            - **"Don't judge, pass through"** - Avoid complex logic, simple relay only
+            - **"Don't thicken, stay thin"** - Maintain minimal implementation
+
+            Current targets:
+            - hub.ts: ~500 lines (currently enforced: <2500)
+            - handleJsonRpcRequest: ~120 lines (currently: ~432)
+            - Zero state management in core
+            - Zero caching in core
+            - Zero data transformation
+
+            If your PR adds "thick" features, consider implementing them as optional middleware instead.`;
+
+            // Check if reminder already posted
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const reminderExists = comments.data.some(comment => 
+              comment.body.includes('Hatago Design Philosophy Reminder')
+            );
+
+            if (!reminderExists) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: philosophy
+              });
+            }
