@@ -12,7 +12,7 @@ import {
   ToolInvoker,
   ToolRegistry
 } from '@himorishige/hatago-runtime';
-import type { Tool, LogData } from '@himorishige/hatago-core';
+import type { Tool } from '@himorishige/hatago-core';
 import { StreamableHTTPTransport, type ITransport } from '@himorishige/hatago-transport';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ServerConfig } from '@himorishige/hatago-core/schemas';
@@ -37,6 +37,12 @@ import type {
 import { CapabilityRegistry } from './capability-registry.js';
 import { connectWithRetry, normalizeServerSpec } from './client/connector.js';
 import { createTransportFactory } from './client/transport-factory.js';
+import { attachClientNotificationForwarder } from './client/notifier.js';
+import {
+  registerServerTools,
+  registerServerResources,
+  registerServerPrompts
+} from './client/registrar.js';
 // Internal tools removed. Keep minimal internal resources only. [SF]
 import type { Resource } from '@himorishige/hatago-core';
 
@@ -280,27 +286,17 @@ export class HatagoHub {
     // Store client
     this.clients.set(id, client);
 
-    // Set up notification handler to forward notifications
-    // This will catch all notifications from the child server
-    const clientWithHandler = client as Client & {
-      fallbackNotificationHandler?: (notification: JSONRPCMessage) => Promise<void>;
-    };
-    clientWithHandler.fallbackNotificationHandler = async (notification: unknown) => {
-      this.logger.debug(`[Hub] Notification from server ${id}`, notification as LogData);
-
-      // Forward notification to parent (Claude Code) via callback
-      if (this.onNotification) {
-        await this.onNotification(notification as JSONRPCMessage);
-      }
-
-      // Forward notification to parent via StreamableHTTP transport
-      if (this.streamableTransport) {
-        await this.streamableTransport.send(notification as JSONRPCMessage);
-      }
-
-      // Emit event for other listeners
-      this.emit('server:notification', { serverId: id, notification });
-    };
+    // Attach unified notification forwarder
+    attachClientNotificationForwarder(
+      {
+        logger: this.logger,
+        emit: this.emit.bind(this),
+        onNotification: this.onNotification?.bind(this),
+        getStreamableTransport: this.getStreamableTransport.bind(this)
+      },
+      client,
+      id
+    );
 
     // Update server status
     const server = this.servers.get(id);
@@ -310,166 +306,15 @@ export class HatagoHub {
       this.logger.warn(`Server ${id} not found when updating status to connected`);
     }
 
-    // Register tools using high-level API
-    try {
-      const toolsResult = await client.listTools();
-      const toolArray = toolsResult.tools ?? [];
-
-      this.logger.debug(`[Hub] Registering ${toolArray.length} tools from ${id}`, {
-        toolNames: toolArray.map((t) => t.name)
-      });
-
-      // Prepare all tools with handlers
+    // Register tools using extracted registrar
+    {
       const requestTimeoutMs = spec.timeout ?? this.options.defaultTimeout;
-      const toolsWithHandlers = toolArray.map((tool) => ({
-        ...tool,
-        handler: async (args: unknown, progressCallback?: (progress: number) => void) => {
-          // Use high-level callTool API with progress support
-          const toolCall = client.callTool(
-            {
-              name: tool.name,
-              arguments: args as { [x: string]: unknown } | undefined
-            },
-            undefined, // Use default schema
-            {
-              onprogress: (progress: {
-                progressToken?: string;
-                progress?: number;
-                total?: number;
-                message?: string;
-              }) => {
-                this.logger.debug(`[Hub] Tool progress from ${id}/${tool.name}`, progress);
-
-                // Forward progress notification to parent
-                const notification = {
-                  jsonrpc: '2.0' as const,
-                  method: 'notifications/progress',
-                  params: {
-                    progressToken: progress.progressToken ?? `${id}-${tool.name}-${Date.now()}`,
-                    progress: progress.progress ?? 0,
-                    total: progress.total,
-                    message: progress.message
-                  }
-                };
-
-                // Call the progress callback if provided
-                if (progressCallback && typeof progress.progress === 'number') {
-                  void progressCallback(progress.progress);
-                }
-
-                // Forward to parent via onNotification
-                if (this.onNotification) {
-                  void this.onNotification(notification);
-                }
-              }
-            }
-          );
-
-          // Apply request timeout per server
-          let timer: ReturnType<typeof setTimeout> | undefined;
-          const timeoutPromise = new Promise((_, reject) => {
-            timer = setTimeout(
-              () => reject(new Error(`Tool call timed out after ${requestTimeoutMs}ms`)),
-              requestTimeoutMs
-            );
-          });
-          try {
-            const result = await Promise.race([toolCall, timeoutPromise]);
-            return result;
-          } finally {
-            if (timer) clearTimeout(timer);
-          }
-        }
-      }));
-
-      // Register all tools at once to avoid clearing issue
-      this.toolRegistry.registerServerTools(id, toolsWithHandlers);
-
-      // Get registered tools with their public names
-      const registeredTools = this.toolRegistry.getServerTools(id);
-
-      // Register handlers and update server info
-      for (let i = 0; i < toolsWithHandlers.length; i++) {
-        const tool = toolsWithHandlers[i];
-        const registeredTool = registeredTools[i];
-
-        if (registeredTool && tool) {
-          if (server) {
-            server.tools.push(registeredTool);
-          }
-          this.toolInvoker.registerHandler(registeredTool.name, tool.handler);
-          this.emit('tool:registered', { serverId: id, tool: registeredTool });
-        }
-      }
-    } catch (error) {
-      this.logger.warn(`Failed to list tools for ${id}`, {
-        error: error instanceof Error ? error.message : String(error)
-      });
+      await registerServerTools(this as never, client, id, requestTimeoutMs);
     }
 
-    // Register resources using high-level API
-    try {
-      const resourcesResult = await client.listResources();
-      const resourceArray = resourcesResult.resources ?? [];
+    await registerServerResources(this as never, client, id);
 
-      // Mark as supported
-      this.capabilityRegistry.markServerCapability(id, 'resources/list', 'supported');
-
-      // Store resources in server object
-      if (server) {
-        server.resources = resourceArray;
-      }
-
-      // Register all resources in the registry
-      this.resourceRegistry.registerServerResources(id, resourceArray);
-
-      for (const resource of resourceArray) {
-        this.emit('resource:registered', { serverId: id, resource });
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('-32601')) {
-        // Method not found - server doesn't support resources
-        this.capabilityRegistry.markServerCapability(id, 'resources/list', 'unsupported');
-        this.logger.debug(`Server ${id} does not support resources`);
-      } else {
-        // Other errors are still warnings
-        this.logger.warn(`Failed to list resources for ${id}`, {
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
-
-    // Register prompts using high-level API
-    try {
-      const promptsResult = await client.listPrompts();
-      const promptArray = promptsResult.prompts ?? [];
-
-      // Mark as supported
-      this.capabilityRegistry.markServerCapability(id, 'prompts/list', 'supported');
-
-      // Store prompts in server object
-      if (server) {
-        server.prompts = promptArray;
-      }
-
-      // Register all prompts in the registry
-      this.promptRegistry.registerServerPrompts(id, promptArray);
-
-      for (const prompt of promptArray) {
-        this.emit('prompt:registered', { serverId: id, prompt });
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('-32601')) {
-        // Method not found - server doesn't support prompts
-        this.capabilityRegistry.markServerCapability(id, 'prompts/list', 'unsupported');
-        this.logger.debug(`Server ${id} does not support prompts`);
-      } else {
-        // Other errors are still warnings
-        this.logger.warn(`Failed to list prompts for ${id}`, {
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
+    await registerServerPrompts(this as never, client, id);
   }
 
   /**
