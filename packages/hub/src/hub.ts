@@ -6,7 +6,6 @@ import type { FSWatcher } from 'node:fs';
 import {
   createPromptRegistry,
   createResourceRegistry,
-  getPlatform,
   type PromptRegistry,
   type ResourceRegistry,
   SessionManager,
@@ -14,15 +13,11 @@ import {
   ToolRegistry
 } from '@himorishige/hatago-runtime';
 import type { Tool, LogData } from '@himorishige/hatago-core';
-import {
-  SSEClientTransport,
-  StreamableHTTPTransport,
-  type ITransport
-} from '@himorishige/hatago-transport';
+import { StreamableHTTPTransport, type ITransport } from '@himorishige/hatago-transport';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ServerConfig } from '@himorishige/hatago-core/schemas';
 import { type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import { UnsupportedFeatureError } from './errors.js';
+// import { UnsupportedFeatureError } from './errors.js'; // moved to transport-factory
 import { Logger } from './logger.js';
 // Notifications are handled outside base hub (Enhanced only)
 import { SSEManager } from './sse-manager.js';
@@ -41,6 +36,7 @@ import type {
 
 import { CapabilityRegistry } from './capability-registry.js';
 import { connectWithRetry, normalizeServerSpec } from './client/connector.js';
+import { createTransportFactory } from './client/transport-factory.js';
 // Internal tools removed. Keep minimal internal resources only. [SF]
 import type { Resource } from '@himorishige/hatago-core';
 
@@ -269,90 +265,8 @@ export class HatagoHub {
     };
     this.logger.info(`Connecting to server: ${id}`, { spec: maskedSpec });
 
-    // Create transport factory based on spec
-    const createTransport = async () => {
-      // Helper: wrap fetch to inject headers for remote transports [REH][SF]
-      const makeHeaderFetch = (headers?: Record<string, string>) => {
-        if (!headers || Object.keys(headers).length === 0) return undefined;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const headerFetch = async (input: any, init?: RequestInit) => {
-          const mergedHeaders = {
-            ...(init?.headers instanceof Headers
-              ? Object.fromEntries(init.headers.entries())
-              : ((init?.headers as Record<string, string> | undefined) ?? {})),
-            ...headers
-          } as Record<string, string>;
-          const nextInit: RequestInit = { ...init, headers: mergedHeaders };
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-          return fetch(input, nextInit);
-        };
-        return headerFetch;
-      };
-
-      if (spec.command) {
-        // Local server via stdio - check platform capability
-        const platform = getPlatform();
-        if (!platform.capabilities.hasProcessSpawn) {
-          throw new UnsupportedFeatureError(
-            `Local MCP servers are not supported in this environment. Server "${id}" requires process spawning capability.`
-          );
-        }
-
-        // Dynamically import StdioClientTransport only when needed
-        const transportModule = await import('@himorishige/hatago-transport/stdio');
-        const { StdioClientTransport } = transportModule;
-
-        this.logger.debug(`Creating StdioClientTransport for ${id}`, {
-          command: spec.command,
-          args: spec.args
-        });
-        return new StdioClientTransport({
-          command: spec.command,
-          args: spec.args ?? [],
-          env: spec.env,
-          cwd: spec.cwd
-        });
-      } else if (spec.url && spec.type === 'sse') {
-        // Remote SSE server
-        this.logger.debug(`Creating SSEClientTransport for ${id}`, {
-          url: spec.url
-        });
-        // Inject headers via custom fetch (EventSource-style transports often ignore plain headers option)
-        type TransportCtor = new (url: URL, options?: { fetch?: typeof fetch }) => unknown;
-        const Ctor = SSEClientTransport as unknown as TransportCtor;
-        const transport = new Ctor(new URL(spec.url), {
-          fetch: makeHeaderFetch(spec.headers)
-        });
-        return transport;
-      } else if (spec.url && spec.type === 'http') {
-        // Remote HTTP server
-        this.logger.debug(`Creating HTTPClientTransport (via SSE) for ${id}`, {
-          url: spec.url
-        });
-        type TransportCtor = new (url: URL, options?: { fetch?: typeof fetch }) => unknown;
-        const Ctor = SSEClientTransport as unknown as TransportCtor;
-        const transport = new Ctor(new URL(spec.url), {
-          fetch: makeHeaderFetch(spec.headers)
-        });
-        return transport;
-      } else if (spec.url && spec.type === 'streamable-http') {
-        // Streamable HTTP server
-        const { StreamableHTTPClientTransport } = await import(
-          '@modelcontextprotocol/sdk/client/streamableHttp.js'
-        );
-        this.logger.debug(`Creating StreamableHTTPClientTransport for ${id}`, {
-          url: spec.url
-        });
-        type StreamableCtor = new (url: URL, options?: { fetch?: typeof fetch }) => unknown;
-        const StreamCtor = StreamableHTTPClientTransport as unknown as StreamableCtor;
-        const transport = new StreamCtor(new URL(spec.url), {
-          fetch: makeHeaderFetch(spec.headers)
-        });
-        return transport;
-      } else {
-        throw new Error(`Invalid server specification for ${id}`);
-      }
-    };
+    // Create transport factory based on spec (extracted) [SF]
+    const createTransport = createTransportFactory(id, spec, this.logger);
 
     // Connect with retry logic
     const client = await connectWithRetry({
