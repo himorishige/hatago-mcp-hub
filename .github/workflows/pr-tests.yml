@@ -23,9 +23,13 @@ jobs:
           version: 9
           run_install: true
 
-      - name: Build core deps for tests (core, runtime)
+      - name: Build core deps for tests (core, runtime, test-fixtures)
         run: |
-          pnpm -r --filter @himorishige/hatago-core --filter @himorishige/hatago-runtime run build
+          pnpm -r \
+            --filter @himorishige/hatago-core \
+            --filter @himorishige/hatago-runtime \
+            --filter @himorishige/hatago-test-fixtures \
+            run build
 
       - name: Run tests (hub, transport)
         run: |
