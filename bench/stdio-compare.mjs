@@ -8,11 +8,31 @@
 import { spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { resolve, isAbsolute } from 'node:path';
+import { fileURLToPath, URL } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
-function parseArgs(argv) {
-  const out = { npm: '0.0.9', iters: 200, envFile: undefined, config: undefined };
+async function loadCoreConstants() {
+  // Read constants directly from source to avoid build dependency. [SF][DM]
+  try {
+    const here = fileURLToPath(new URL('.', import.meta.url));
+    const repo = resolve(here, '..');
+    const constantsPath = resolve(repo, 'packages/core/src/constants.ts');
+    if (!existsSync(constantsPath)) throw new Error('constants.ts not found');
+    const text = readFileSync(constantsPath, 'utf-8');
+    const ver = /export const HATAGO_VERSION\s*=\s*['"]([^'"]+)['"]/m.exec(text)?.[1];
+    const proto = /export const HATAGO_PROTOCOL_VERSION\s*=\s*['"]([^'"]+)['"]/m.exec(text)?.[1];
+    return {
+      version: ver ?? '0.0.9',
+      protocolVersion: proto ?? '2025-06-18'
+    };
+  } catch {
+    return { version: '0.0.9', protocolVersion: '2025-06-18' };
+  }
+}
+
+function parseArgs(argv, defaults) {
+  const out = { npm: defaults.npm, iters: 200, envFile: undefined, config: undefined };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--npm') out.npm = argv[++i];
@@ -23,7 +43,7 @@ function parseArgs(argv) {
   }
   if (!out.config)
     throw new Error(
-      'Usage: node bench/stdio-compare.mjs --config <path> [--npm 0.0.9] [--iters 200] [--env-file ./.env]'
+      `Usage: node bench/stdio-compare.mjs --config <path> [--npm ${defaults.npm}] [--iters 200] [--env-file ./.env]`
     );
   out.config = isAbsolute(out.config) ? out.config : resolve(process.cwd(), out.config);
   if (!existsSync(out.config)) throw new Error(`Config not found: ${out.config}`);
@@ -92,7 +112,7 @@ async function runStdio(label, cmd, args, opts) {
     id: 1,
     method: 'initialize',
     params: {
-      protocolVersion: '2025-06-18',
+      protocolVersion: opts.protocolVersion,
       capabilities: {},
       clientInfo: { name: 'bench', version: '1' }
     }
@@ -125,7 +145,8 @@ async function runStdio(label, cmd, args, opts) {
 }
 
 (async () => {
-  const args = parseArgs(process.argv);
+  const c = await loadCoreConstants();
+  const args = parseArgs(process.argv, { npm: c.version });
   const localCli = resolve(process.cwd(), 'packages/mcp-hub/dist/node/cli.js');
   if (!existsSync(localCli)) {
     console.error('Local CLI not found. Run: pnpm -r build');
@@ -137,7 +158,8 @@ async function runStdio(label, cmd, args, opts) {
 
   const local = await runStdio('local-refactor', 'node', [localCli, ...base], {
     iters: args.iters,
-    env
+    env,
+    protocolVersion: c.protocolVersion
   });
   const npmArgs = [
     '-y',
@@ -147,7 +169,11 @@ async function runStdio(label, cmd, args, opts) {
     '--config',
     args.config
   ];
-  const npm = await runStdio(`npm@${args.npm}`, 'npx', npmArgs, { iters: args.iters, env });
+  const npm = await runStdio(`npm@${args.npm}`, 'npx', npmArgs, {
+    iters: args.iters,
+    env,
+    protocolVersion: c.protocolVersion
+  });
 
   console.log(JSON.stringify({ local, npm }, null, 2));
 })().catch((e) => {

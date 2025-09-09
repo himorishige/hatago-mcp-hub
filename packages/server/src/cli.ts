@@ -145,8 +145,9 @@ async function main() {
 
   // Version
   if (args.flags.version) {
-    // Version will be injected during build or read from package.json
-    console.error('0.0.9'); // TODO: Replace with actual version during build
+    // Prefer core constant; build tooling can still override at publish time. [DRY]
+    const { HATAGO_VERSION } = await import('@himorishige/hatago-core');
+    console.error(HATAGO_VERSION);
     process.exit(0);
   }
 

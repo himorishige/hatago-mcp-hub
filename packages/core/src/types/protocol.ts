@@ -4,6 +4,7 @@
  */
 
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { HATAGO_PROTOCOL_VERSION } from '../constants.js';
 
 /**
  * MCP Server type alias for compatibility
@@ -13,7 +14,7 @@ export type McpServer = Server;
 /**
  * Supported protocol version
  */
-export const SUPPORTED_PROTOCOL_VERSION = '2025-06-18' as const;
+export const SUPPORTED_PROTOCOL_VERSION = HATAGO_PROTOCOL_VERSION;
 
 /**
  * Protocol features (simplified)
@@ -29,7 +30,7 @@ export type ProtocolFeatures = {
  * Simplified protocol negotiation result
  */
 export type NegotiatedProtocol = {
-  // Protocol version (always '2025-06-18' for now)
+  // Protocol version (use SUPPORTED_PROTOCOL_VERSION)
   protocol: string;
 
   // Server information

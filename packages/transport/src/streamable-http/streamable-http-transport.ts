@@ -5,6 +5,16 @@
  */
 
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
+
+// Fallback to literals if core export is not yet built in local dev/test. [REH][SF]
+const FALLBACK_RPC_NOTIFICATION = {
+  initialized: 'notifications/initialized',
+  cancelled: 'notifications/cancelled',
+  progress: 'notifications/progress',
+  tools_list_changed: 'notifications/tools/list_changed'
+} as const;
+const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
 import type {
   JSONRPCMessage,
   JSONRPCNotification,
@@ -143,21 +153,11 @@ export class StreamableHTTPTransport implements Transport {
     if (isJSONRPCResponse(message) || isJSONRPCError(message)) {
       const requestId = message.id;
       const streamId = this.requestToStreamMapping.get(requestId);
-
       if (streamId) {
-        const streamData = this.streamMapping.get(streamId);
-        if (streamData?.stream) {
-          // Send response via SSE
-          await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
-          streamData.lastActivityAt = Date.now();
-
-          // Resolve the response promise to close the stream
-          streamData.resolveResponse?.();
-
-          // Clean up mappings
-          this.requestToStreamMapping.delete(requestId);
-          this.requestResponseMap.delete(requestId);
-        }
+        await this.writeToStream(streamId, message, true);
+        // Clean up mappings
+        this.requestToStreamMapping.delete(requestId);
+        this.requestResponseMap.delete(requestId);
       } else {
         // Store response for JSON response mode
         this.requestResponseMap.set(requestId, message);
@@ -167,34 +167,48 @@ export class StreamableHTTPTransport implements Transport {
     else if (!('id' in message)) {
       // Route progress notifications to specific streams
       const notification = message as { method?: string; params?: { progressToken?: string } };
-      if (notification.method === 'notifications/progress' && notification.params?.progressToken) {
-        const streamId = this.progressTokenToStream.get(notification.params.progressToken);
-        if (streamId) {
-          const streamData = this.streamMapping.get(streamId);
-          if (streamData?.stream && !streamData.stream.closed) {
-            try {
-              await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
-              streamData.lastActivityAt = Date.now();
-            } catch (error) {
-              console.error('Failed to send progress notification:', error);
-            }
-          }
-        }
+      if (notification.method === RPC_NOTIFICATION.progress && notification.params?.progressToken) {
+        await this.routeProgressNotification(notification.params.progressToken, message);
       } else {
-        // For other notifications, broadcast to all active streams
-        // (This could be further refined to use session-specific streams)
-        for (const streamData of this.streamMapping.values()) {
-          if (streamData.stream && !streamData.stream.closed) {
-            try {
-              await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
-              streamData.lastActivityAt = Date.now();
-            } catch (error) {
-              console.error('Failed to send notification:', error);
-            }
-          }
-        }
+        await this.broadcastNotification(message);
       }
     }
+  }
+
+  // --- notification helpers ---------------------------------------------
+
+  private async writeToStream(
+    streamId: string,
+    message: JSONRPCMessage,
+    isResponse = false
+  ): Promise<void> {
+    const streamData = this.streamMapping.get(streamId);
+    if (!streamData?.stream || streamData.stream.closed) return;
+    try {
+      await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
+      streamData.lastActivityAt = Date.now();
+      if (isResponse) streamData.resolveResponse?.();
+    } catch (error) {
+      console.error('Failed to send message to stream:', error);
+    }
+  }
+
+  private async routeProgressNotification(
+    token: string | number,
+    message: JSONRPCMessage
+  ): Promise<void> {
+    const streamId = this.progressTokenToStream.get(token);
+    if (!streamId) return;
+    await this.writeToStream(streamId, message, false);
+  }
+
+  private async broadcastNotification(message: JSONRPCMessage): Promise<void> {
+    const tasks: Array<Promise<void>> = [];
+    for (const [streamId, streamData] of this.streamMapping.entries()) {
+      if (!streamData.stream || streamData.stream.closed) continue;
+      tasks.push(this.writeToStream(streamId, message, false));
+    }
+    await Promise.all(tasks);
   }
 
   /**
@@ -208,7 +222,7 @@ export class StreamableHTTPTransport implements Transport {
   ): Promise<void> {
     const notification: JSONRPCNotification = {
       jsonrpc: '2.0',
-      method: 'notifications/progress',
+      method: RPC_NOTIFICATION.progress,
       params: {
         progressToken,
         progress,
@@ -264,22 +278,29 @@ export class StreamableHTTPTransport implements Transport {
     headers: Record<string, string | undefined>,
     sseStream?: SSEStream
   ): Promise<undefined> {
-    if (!sseStream) {
-      throw new Error('SSE stream required for GET request');
-    }
+    if (!sseStream) throw new Error('SSE stream required for GET request');
+    const sessionId = this.initSessionForGet(headers);
+    const { streamId, keepaliveInterval } = this.createSseStream(sseStream);
+    this.mapSessionToStream(sessionId, streamId);
+    this.attachSseCleanup(sseStream, streamId, keepaliveInterval);
+    return undefined; // SSE response handled by the server
+  }
 
-    // Generate or get session ID
+  // --- GET helpers -------------------------------------------------------
+
+  private initSessionForGet(headers: Record<string, string | undefined>): string {
     const sessionId =
       headers['mcp-session-id'] ?? this.sessionIdGenerator?.() ?? crypto.randomUUID();
-
     this.sessionId = sessionId;
+    this.onsessioninitialized?.(sessionId);
+    return sessionId;
+  }
 
-    // Initialize session
-    if (this.onsessioninitialized) {
-      this.onsessioninitialized(sessionId);
-    }
-
-    // Set up keepalive
+  private createSseStream(sseStream: SSEStream): {
+    streamId: string;
+    keepaliveInterval: ReturnType<typeof setInterval>;
+  } {
+    const streamId = crypto.randomUUID();
     const keepaliveInterval = setInterval(() => {
       void (async () => {
         try {
@@ -292,24 +313,28 @@ export class StreamableHTTPTransport implements Transport {
       })();
     }, this.keepAliveMs);
 
-    // Store stream data
-    const streamId = crypto.randomUUID();
     this.streamMapping.set(streamId, {
       stream: sseStream,
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
       keepaliveInterval
     });
+    return { streamId, keepaliveInterval };
+  }
 
-    // Map sessionId to streamId
+  private mapSessionToStream(sessionId: string, streamId: string): void {
     this.sessionIdToStream.set(sessionId, streamId);
+  }
 
-    // Clean up on close
+  private attachSseCleanup(
+    sseStream: SSEStream,
+    streamId: string,
+    keepaliveInterval: ReturnType<typeof setInterval>
+  ): void {
     sseStream.onAbort?.(() => {
       clearInterval(keepaliveInterval);
       this.streamMapping.delete(streamId);
 
-      // Clean up sessionId mapping
       for (const [sid, sId] of this.sessionIdToStream.entries()) {
         if (sId === streamId) {
           this.sessionIdToStream.delete(sid);
@@ -317,20 +342,12 @@ export class StreamableHTTPTransport implements Transport {
         }
       }
 
-      // Clean up any progressToken mappings for this stream
       const tokensToDelete: Array<string | number> = [];
       for (const [token, sid] of this.progressTokenToStream.entries()) {
-        if (sid === streamId) {
-          tokensToDelete.push(token);
-        }
+        if (sid === streamId) tokensToDelete.push(token);
       }
-      tokensToDelete.forEach((token) => {
-        this.progressTokenToStream.delete(token);
-      });
+      tokensToDelete.forEach((token) => this.progressTokenToStream.delete(token));
     });
-
-    // Return undefined to indicate SSE response is handled
-    return undefined;
   }
 
   private async handlePostRequest(
@@ -338,7 +355,37 @@ export class StreamableHTTPTransport implements Transport {
     body: unknown,
     sseStream?: SSEStream
   ): Promise<{ status: number; headers?: Record<string, string>; body?: unknown }> {
-    // Validate Accept header - at least one of the required types
+    // 1) Validate Accept header
+    const acceptValidation = this.validateAccept(headers);
+    if (acceptValidation) return acceptValidation;
+
+    // 2) Normalize payload → messages
+    const messages = this.normalizeMessages(body);
+
+    // 3) Ensure session is initialized / associated
+    this.ensureSession(headers, messages);
+
+    // 4) Fast-path: notifications only
+    if (!messages.some(isJSONRPCRequest)) {
+      for (const message of messages) this.onmessage?.(message);
+      return { status: 202 };
+    }
+
+    // 5) Decide response mode (SSE or JSON)
+    const { existingStreamId, useSSE } = this.selectResponseMode(headers, messages, sseStream);
+
+    if (useSSE && sseStream) {
+      return this.processSSEFlow(headers, messages, sseStream, existingStreamId);
+    }
+
+    return this.processJsonFlow(headers, messages, existingStreamId);
+  }
+
+  // --- helpers -----------------------------------------------------------
+
+  private validateAccept(
+    headers: Record<string, string | undefined>
+  ): { status: number; body: unknown } | undefined {
     const acceptHeader = headers.accept;
     if (
       acceptHeader &&
@@ -357,147 +404,132 @@ export class StreamableHTTPTransport implements Transport {
         }
       };
     }
+    return undefined;
+  }
 
-    // Parse messages
-    const messages: JSONRPCMessage[] = Array.isArray(body)
-      ? (body as JSONRPCMessage[])
-      : [body as JSONRPCMessage];
+  private normalizeMessages(body: unknown): JSONRPCMessage[] {
+    return Array.isArray(body) ? (body as JSONRPCMessage[]) : [body as JSONRPCMessage];
+  }
 
-    // Check for initialization
+  private ensureSession(
+    headers: Record<string, string | undefined>,
+    messages: JSONRPCMessage[]
+  ): void {
     const isInitialization = messages.some(isInitializeRequest);
     if (isInitialization) {
       const sessionId =
         headers['mcp-session-id'] ?? this.sessionIdGenerator?.() ?? crypto.randomUUID();
-
       this.sessionId = sessionId;
       this.initializedSessions.set(sessionId, true);
-
-      if (this.onsessioninitialized) {
-        this.onsessioninitialized(sessionId);
-      }
-    } else {
-      // Handle non-initialization requests
-      const sessionId = headers['mcp-session-id'];
-      if (sessionId) {
-        // Use provided session ID
-        this.sessionId = sessionId;
-        if (!this.initializedSessions.has(sessionId)) {
-          // Auto-initialize if not already initialized
-          this.initializedSessions.set(sessionId, true);
-          if (this.onsessioninitialized) {
-            this.onsessioninitialized(sessionId);
-          }
-        }
-      } else if (!this.sessionId) {
-        // Generate new session ID if none exists
-        const newSessionId = this.sessionIdGenerator?.() ?? crypto.randomUUID();
-        this.sessionId = newSessionId;
-        this.initializedSessions.set(newSessionId, true);
-        if (this.onsessioninitialized) {
-          this.onsessioninitialized(newSessionId);
-        }
-      }
+      this.onsessioninitialized?.(sessionId);
+      return;
     }
 
-    // Process messages
-    const hasRequests = messages.some(isJSONRPCRequest);
-
-    // Handle notifications only
-    if (!hasRequests) {
-      for (const message of messages) {
-        this.onmessage?.(message);
+    const sessionId = headers['mcp-session-id'];
+    if (sessionId) {
+      this.sessionId = sessionId;
+      if (!this.initializedSessions.has(sessionId)) {
+        this.initializedSessions.set(sessionId, true);
+        this.onsessioninitialized?.(sessionId);
       }
-      return { status: 202 };
+      return;
     }
 
-    // Check if SSE response is needed
+    if (!this.sessionId) {
+      const newSessionId = this.sessionIdGenerator?.() ?? crypto.randomUUID();
+      this.sessionId = newSessionId;
+      this.initializedSessions.set(newSessionId, true);
+      this.onsessioninitialized?.(newSessionId);
+    }
+  }
+
+  private selectResponseMode(
+    headers: Record<string, string | undefined>,
+    messages: JSONRPCMessage[],
+    _sseStream?: SSEStream
+  ): { existingStreamId?: string; useSSE: boolean } {
     const hasProgressToken = messages.some(
       (msg) =>
         isJSONRPCRequest(msg) &&
         (msg as { params?: { _meta?: { progressToken?: string } } }).params?._meta?.progressToken
     );
     const isToolCall = messages.some((msg) => isJSONRPCRequest(msg) && msg.method === 'tools/call');
-
-    // Check if there's an existing SSE stream for this session (from GET request)
     const sessionId = headers['mcp-session-id'];
     const existingStreamId = sessionId ? this.sessionIdToStream.get(sessionId) : undefined;
+    const useSSE = Boolean(
+      (hasProgressToken || isToolCall) && headers.accept?.includes('text/event-stream')
+    );
+    return { existingStreamId, useSSE };
+  }
 
-    // Use SSE for long-running operations
-    if (
-      (hasProgressToken || isToolCall) &&
-      sseStream &&
-      headers.accept?.includes('text/event-stream')
-    ) {
-      const streamId = crypto.randomUUID();
+  private async processSSEFlow(
+    _headers: Record<string, string | undefined>,
+    messages: JSONRPCMessage[],
+    sseStream: SSEStream,
+    existingStreamId?: string
+  ): Promise<{ status: number }> {
+    const streamId = crypto.randomUUID();
 
-      // Set up response promise
-      const responsePromise = new Promise<void>((resolve) => {
-        this.streamMapping.set(streamId, {
-          stream: sseStream,
-          createdAt: Date.now(),
-          lastActivityAt: Date.now(),
-          resolveResponse: resolve
-        });
+    const responsePromise = new Promise<void>((resolve) => {
+      this.streamMapping.set(streamId, {
+        stream: sseStream,
+        createdAt: Date.now(),
+        lastActivityAt: Date.now(),
+        resolveResponse: resolve
       });
+    });
 
-      // Map requests to stream
-      for (const message of messages) {
-        if (isJSONRPCRequest(message)) {
-          this.requestToStreamMapping.set(message.id, streamId);
-
-          // Map progressToken to stream if present
-          if (message.params?._meta?.progressToken) {
-            // If there's an existing GET SSE stream for this session, map to that instead
-            const streamIdToUse = existingStreamId ?? streamId;
-            this.progressTokenToStream.set(message.params._meta.progressToken, streamIdToUse);
-          }
+    // Map requests to stream
+    for (const message of messages) {
+      if (isJSONRPCRequest(message)) {
+        this.requestToStreamMapping.set(message.id, streamId);
+        if (message.params?._meta?.progressToken) {
+          const streamIdToUse = existingStreamId ?? streamId;
+          this.progressTokenToStream.set(message.params._meta.progressToken, streamIdToUse);
         }
       }
-
-      // Process messages
-      for (const message of messages) {
-        this.onmessage?.(message);
-      }
-
-      // Wait for response with timeout
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout')), 120000)
-      );
-
-      try {
-        await Promise.race([responsePromise, timeout]);
-      } catch {
-        // Send timeout error
-        await sseStream.write(
-          `data: ${JSON.stringify({
-            jsonrpc: '2.0',
-            error: { code: -32001, message: 'Request timed out' },
-            id: messages.find(isJSONRPCRequest)?.id ?? null
-          })}\n\n`
-        );
-      } finally {
-        // Clean up
-        this.streamMapping.delete(streamId);
-        for (const message of messages) {
-          if (isJSONRPCRequest(message)) {
-            this.requestToStreamMapping.delete(message.id);
-
-            // Clean up progressToken mapping
-            if (message.params?._meta?.progressToken) {
-              this.progressTokenToStream.delete(message.params._meta.progressToken);
-            }
-          }
-        }
-      }
-
-      return { status: 200 };
     }
 
-    // JSON response mode
+    // Process
+    for (const message of messages) this.onmessage?.(message);
+
+    // Wait for response with timeout
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), 120000)
+    );
+    try {
+      await Promise.race([responsePromise, timeout]);
+    } catch {
+      await sseStream.write(
+        `data: ${JSON.stringify({
+          jsonrpc: '2.0',
+          error: { code: -32001, message: 'Request timed out' },
+          id: messages.find(isJSONRPCRequest)?.id ?? null
+        })}\n\n`
+      );
+    } finally {
+      this.streamMapping.delete(streamId);
+      for (const message of messages) {
+        if (isJSONRPCRequest(message)) {
+          this.requestToStreamMapping.delete(message.id);
+          if (message.params?._meta?.progressToken) {
+            this.progressTokenToStream.delete(message.params._meta.progressToken);
+          }
+        }
+      }
+    }
+
+    return { status: 200 };
+  }
+
+  private async processJsonFlow(
+    _headers: Record<string, string | undefined>,
+    messages: JSONRPCMessage[],
+    existingStreamId?: string
+  ): Promise<{ status: number; headers: Record<string, string>; body: unknown }> {
     const responses: JSONRPCMessage[] = [];
 
     for (const message of messages) {
-      // Map progressToken to existing GET SSE stream if available
       if (isJSONRPCRequest(message) && message.params?._meta?.progressToken && existingStreamId) {
         this.progressTokenToStream.set(message.params._meta.progressToken, existingStreamId);
       }
@@ -505,7 +537,6 @@ export class StreamableHTTPTransport implements Transport {
       this.onmessage?.(message);
 
       if (isJSONRPCRequest(message)) {
-        // Wait for response
         const startTime = Date.now();
         while (Date.now() - startTime < 30000) {
           const response = this.requestResponseMap.get(message.id);
@@ -519,11 +550,8 @@ export class StreamableHTTPTransport implements Transport {
       }
     }
 
-    // Return response
     const responseHeaders: Record<string, string> = {};
-    if (this.sessionId) {
-      responseHeaders['mcp-session-id'] = this.sessionId;
-    }
+    if (this.sessionId) responseHeaders['mcp-session-id'] = this.sessionId;
 
     return {
       status: 200,

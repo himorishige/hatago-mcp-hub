@@ -5,6 +5,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import type { Prompt, Resource, ServerMetadata, Tool } from '@himorishige/hatago-core';
 
 /**
@@ -419,15 +420,8 @@ export class MetadataStore {
    */
   private calculateHash(data: unknown): string {
     const str = JSON.stringify(data);
-    let hash = 0;
-
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-
-    return hash.toString(36);
+    // Use stable cryptographic hash and trim for compactness. [REH][PA]
+    return createHash('sha256').update(str).digest('hex').slice(0, 16);
   }
 
   /**

@@ -2,6 +2,33 @@
  * JSON-RPC handlers (partial extraction) [SF][CA]
  */
 import type { HatagoHub } from '../hub.js';
+import {
+  HATAGO_PROTOCOL_VERSION,
+  HATAGO_SERVER_INFO,
+  RPC_NOTIFICATION as CORE_RPC_NOTIFICATION,
+  RPC_METHOD as CORE_RPC_METHOD
+} from '@himorishige/hatago-core';
+const FALLBACK_RPC_NOTIFICATION = {
+  initialized: 'notifications/initialized',
+  cancelled: 'notifications/cancelled',
+  progress: 'notifications/progress',
+  tools_list_changed: 'notifications/tools/list_changed'
+} as const;
+const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
+
+const FALLBACK_RPC_METHOD = {
+  initialize: 'initialize',
+  tools_list: 'tools/list',
+  tools_call: 'tools/call',
+  resources_list: 'resources/list',
+  resources_read: 'resources/read',
+  resources_templates_list: 'resources/templates/list',
+  prompts_list: 'prompts/list',
+  prompts_get: 'prompts/get',
+  ping: 'ping',
+  sampling_createMessage: 'sampling/createMessage'
+} as const;
+const RPC_METHOD = CORE_RPC_METHOD ?? FALLBACK_RPC_METHOD;
 import type { LogData } from '@himorishige/hatago-core';
 import type { Logger } from '../logger.js';
 type HubCtx = {
@@ -76,9 +103,9 @@ export function handleInitialize(
     jsonrpc: '2.0',
     id: id as string | number,
     result: {
-      protocolVersion: '2025-06-18',
+      protocolVersion: HATAGO_PROTOCOL_VERSION,
       capabilities: { tools: {}, resources: {}, prompts: {} },
-      serverInfo: { name: 'hatago-hub', version: '0.0.9' }
+      serverInfo: HATAGO_SERVER_INFO
     }
   };
 }
@@ -128,10 +155,11 @@ export async function handleToolsCall(
 
   let toolName = (params as { name?: string })?.name ?? '';
   let serverId: string | undefined;
-  if (toolName.includes(options.separator)) {
-    const parts = toolName.split(options.separator);
-    serverId = parts[0];
-    toolName = parts.slice(1).join(options.separator);
+  if (toolName) {
+    const { parseQualifiedName } = await import('../utils/naming.js');
+    const parsed = parseQualifiedName(toolName, options.separator);
+    serverId = parsed.serverId;
+    toolName = parsed.name;
   }
 
   try {
@@ -174,7 +202,7 @@ export async function handleToolsCall(
               if (hasOnNotification && onNotification) {
                 const notification = {
                   jsonrpc: '2.0' as const,
-                  method: 'notifications/progress',
+                  method: RPC_NOTIFICATION.progress,
                   params: {
                     progressToken,
                     progress: progress?.progress ?? 0,
@@ -256,6 +284,7 @@ export async function handleResourcesTemplatesList(
   const logger = h.logger;
   const clients = h.clients;
   const separator = h.options.separator;
+  const { buildQualifiedName } = await import('../utils/naming.js');
 
   const allTemplates: unknown[] = [];
 
@@ -267,7 +296,7 @@ export async function handleResourcesTemplatesList(
         client as unknown as {
           request: (req: unknown, schema: unknown) => Promise<unknown>;
         }
-      ).request({ method: 'resources/templates/list', params: {} }, {
+      ).request({ method: RPC_METHOD.resources_templates_list, params: {} }, {
         parse: (data: unknown) => data,
         type: 'object',
         properties: {
@@ -292,7 +321,7 @@ export async function handleResourcesTemplatesList(
           const t = template as { name?: string };
           return {
             ...(template as Record<string, unknown>),
-            name: t.name ? `${serverId}${separator}${t.name}` : undefined,
+            name: t.name ? buildQualifiedName(serverId, t.name, separator) : undefined,
             serverId
           };
         });

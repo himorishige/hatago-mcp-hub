@@ -33,6 +33,24 @@ Project layout:
 - Architecture: Keep modules small, typed, and reusable; colocate types near usage
 - Error handling: Prefer typed, explicit errors and helpful messages
 
+### RPC constants policy (methods/notifications)
+
+Always use constants from `@himorishige/hatago-core` for JSON‑RPC method and notification names to avoid string literals drifting across packages.
+
+Example:
+
+```ts
+import { RPC_METHOD, RPC_NOTIFICATION } from '@himorishige/hatago-core';
+
+// Dispatch
+const req = { jsonrpc: '2.0' as const, id: 1, method: RPC_METHOD.tools_list };
+
+// Notifications
+const n = { jsonrpc: '2.0' as const, method: RPC_NOTIFICATION.progress, params: { progress: 50 } };
+```
+
+Tests and documentation may use inline strings for readability, but production sources should import constants.
+
 ## Commit Style
 
 Use Conventional Commits:

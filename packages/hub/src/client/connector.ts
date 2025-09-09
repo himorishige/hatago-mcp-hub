@@ -3,6 +3,7 @@ import type { ITransport } from '@himorishige/hatago-transport';
 import type { Logger } from '../logger.js';
 import type { ServerConfig } from '@himorishige/hatago-core/schemas';
 import type { ServerSpec } from '../types.js';
+import { HATAGO_VERSION } from '@himorishige/hatago-core';
 
 // ---- transport wrapping ----------------------------------------------------
 
@@ -50,7 +51,7 @@ export async function connectWithRetry(args: {
       const client = new Client(
         {
           name: `hatago-hub-${id}`,
-          version: '0.0.9'
+          version: HATAGO_VERSION
         },
         {
           capabilities: {

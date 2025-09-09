@@ -7,6 +7,18 @@
 
 import { once } from 'node:events';
 import type { HatagoConfig } from '@himorishige/hatago-core';
+import {
+  HATAGO_PROTOCOL_VERSION,
+  HATAGO_SERVER_INFO,
+  RPC_NOTIFICATION as CORE_RPC_NOTIFICATION
+} from '@himorishige/hatago-core';
+const FALLBACK_RPC_NOTIFICATION = {
+  initialized: 'notifications/initialized',
+  cancelled: 'notifications/cancelled',
+  progress: 'notifications/progress',
+  tools_list_changed: 'notifications/tools/list_changed'
+} as const;
+const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
 import { createHub } from '@himorishige/hatago-hub/node';
 import type { Logger } from './logger.js';
 import { registerHubMetrics } from './metrics.js';
@@ -51,7 +63,12 @@ export async function startStdio(
   const shouldWaitForHub = (method?: unknown) => {
     if (typeof method !== 'string') return false;
     if (method === 'initialize') return false; // respond immediately
-    if (method.startsWith('notifications/')) return false; // pass-through
+    if (
+      method === RPC_NOTIFICATION.initialized ||
+      method === RPC_NOTIFICATION.cancelled ||
+      method === RPC_NOTIFICATION.progress
+    )
+      return false; // pass-through
     return (
       method.startsWith('tools/') ||
       method.startsWith('resources/') ||
@@ -311,22 +328,21 @@ async function processMessage(
           jsonrpc: '2.0',
           id: id as string | number | null,
           result: {
-            protocolVersion: '2025-06-18',
+            protocolVersion: HATAGO_PROTOCOL_VERSION,
             capabilities: {
               tools: {},
               resources: {},
               prompts: {}
             },
             serverInfo: {
-              name: 'hatago-hub',
-              version: '0.0.9'
+              ...HATAGO_SERVER_INFO
             }
           }
         };
 
-      case 'notifications/initialized':
-      case 'notifications/cancelled':
-      case 'notifications/progress':
+      case RPC_NOTIFICATION.initialized:
+      case RPC_NOTIFICATION.cancelled:
+      case RPC_NOTIFICATION.progress:
         // These are notifications, no response needed
         return null;
 

@@ -3,7 +3,7 @@
  * Tracks server usage and manages automatic shutdown
  */
 
-import { EventEmitter } from 'node:events';
+import { createEventEmitter, type EventEmitter as HubEventEmitter } from '../utils/events.js';
 import type { IdlePolicy } from '@himorishige/hatago-core';
 import { ServerState } from '@himorishige/hatago-core';
 import type { ActivationManager } from './activation-manager.js';
@@ -37,7 +37,7 @@ export type IdleCheckResult = {
 /**
  * Idle manager for automatic server shutdown
  */
-export class IdleManager extends EventEmitter {
+export class IdleManager {
   private readonly stateMachine: ServerStateMachine;
   private readonly activationManager: ActivationManager;
   private readonly activities = new Map<string, ActivityData>();
@@ -45,18 +45,21 @@ export class IdleManager extends EventEmitter {
   private readonly checkInterval: number = 10000; // 10 seconds
   private checkTimer?: NodeJS.Timeout;
   private readonly idleTimers = new Map<string, NodeJS.Timeout>();
+  private events: HubEventEmitter<string, unknown>;
 
   constructor(stateMachine: ServerStateMachine, activationManager: ActivationManager) {
-    super();
+    this.events = createEventEmitter<string, unknown>();
     this.stateMachine = stateMachine;
     this.activationManager = activationManager;
 
     // Listen to state changes
-    this.stateMachine.on('state:ACTIVE', ({ serverId }: { serverId: string }) => {
+    this.stateMachine.on('state:ACTIVE', (data: unknown) => {
+      const { serverId } = data as { serverId: string };
       this.initializeActivity(serverId);
     });
 
-    this.stateMachine.on('state:INACTIVE', ({ serverId }: { serverId: string }) => {
+    this.stateMachine.on('state:INACTIVE', (data: unknown) => {
+      const { serverId } = data as { serverId: string };
       this.clearActivity(serverId);
     });
   }
@@ -84,7 +87,7 @@ export class IdleManager extends EventEmitter {
       this.checkAllServers();
     }, this.checkInterval);
 
-    this.emit('monitoring:started');
+    this.events.emit('monitoring:started', undefined);
   }
 
   /**
@@ -102,7 +105,7 @@ export class IdleManager extends EventEmitter {
     }
     this.idleTimers.clear();
 
-    this.emit('monitoring:stopped');
+    this.events.emit('monitoring:stopped', undefined);
   }
 
   /**
@@ -132,7 +135,7 @@ export class IdleManager extends EventEmitter {
 
     activity.totalCalls++;
 
-    this.emit('activity:start', {
+    this.events.emit('activity:start', {
       serverId,
       sessionId,
       toolName,
@@ -172,7 +175,7 @@ export class IdleManager extends EventEmitter {
       activity.activeSessions.delete(sessionId);
     }
 
-    this.emit('activity:end', {
+    this.events.emit('activity:end', {
       serverId,
       sessionId,
       toolName,
@@ -194,7 +197,7 @@ export class IdleManager extends EventEmitter {
       activity.lastActivity = Date.now();
       this.cancelIdleTimer(serverId);
 
-      this.emit('activity:touch', { serverId });
+      this.events.emit('activity:touch', { serverId });
     }
   }
 
@@ -318,7 +321,7 @@ export class IdleManager extends EventEmitter {
       totalCalls: 0
     });
 
-    this.emit('activity:initialized', { serverId });
+    this.events.emit('activity:initialized', { serverId });
   }
 
   /**
@@ -328,7 +331,7 @@ export class IdleManager extends EventEmitter {
     this.activities.delete(serverId);
     this.cancelIdleTimer(serverId);
 
-    this.emit('activity:cleared', { serverId });
+    this.events.emit('activity:cleared', { serverId });
   }
 
   /**
@@ -377,7 +380,7 @@ export class IdleManager extends EventEmitter {
       this.stateMachine
         .transition(serverId, ServerState.ACTIVE, 'Activity resumed')
         .catch((err) => {
-          this.emit('error', err);
+          this.events.emit('error', err);
         });
     }
   }
@@ -394,7 +397,7 @@ export class IdleManager extends EventEmitter {
 
       if (result.shouldStop) {
         this.handleIdleStop(serverId, result).catch((err) => {
-          this.emit('error', err);
+          this.events.emit('error', err);
         });
       }
     }
@@ -404,7 +407,7 @@ export class IdleManager extends EventEmitter {
    * Handle idle server stop
    */
   private async handleIdleStop(serverId: string, result: IdleCheckResult): Promise<void> {
-    this.emit('idle:stopping', {
+    this.events.emit('idle:stopping', {
       serverId,
       reason: result.reason,
       idleTimeMs: result.idleTimeMs
@@ -413,9 +416,9 @@ export class IdleManager extends EventEmitter {
     try {
       await this.activationManager.deactivate(serverId, `Idle timeout: ${result.reason}`);
 
-      this.emit('idle:stopped', { serverId });
+      this.events.emit('idle:stopped', { serverId });
     } catch (error) {
-      this.emit('idle:stop-failed', {
+      this.events.emit('idle:stop-failed', {
         serverId,
         error
       });
@@ -451,5 +454,12 @@ export class IdleManager extends EventEmitter {
     this.stop();
     this.activities.clear();
     this.idlePolicies.clear();
+  }
+  // Lightweight on/off
+  on(event: string, handler: (data: unknown) => void): void {
+    this.events.on(event, handler);
+  }
+  off(event: string, handler: (data: unknown) => void): void {
+    this.events.off(event, handler);
   }
 }

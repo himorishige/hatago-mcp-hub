@@ -4,6 +4,9 @@ import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import minimist from 'minimist';
 
+// Local constant to avoid workspace dependency from test fixture package. [DM]
+const PROTOCOL_VERSION = '2025-06-18' as const;
+
 interface Args {
   port?: string;
   echo?: boolean;
@@ -47,7 +50,7 @@ app.post('/initialize', async (c) => {
     jsonrpc: '2.0',
     id: body.id,
     result: {
-      protocolVersion: '2025-06-18',
+      protocolVersion: PROTOCOL_VERSION,
       capabilities: {
         tools: {},
         resources: features.resources ? {} : undefined
