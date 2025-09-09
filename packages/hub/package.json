@@ -26,7 +26,7 @@
     }
   },
   "scripts": {
-    "pretest": "pnpm -w -F @himorishige/hatago-core -F @himorishige/hatago-runtime -F @himorishige/hatago-transport build",
+    "pretest": "pnpm -r --filter @himorishige/hatago-core --filter @himorishige/hatago-runtime --filter @himorishige/hatago-transport run build",
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
