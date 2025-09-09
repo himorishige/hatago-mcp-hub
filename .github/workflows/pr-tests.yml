@@ -25,7 +25,7 @@ jobs:
 
       - name: Build core deps for tests (core, runtime)
         run: |
-          pnpm -w -F @himorishige/hatago-core -F @himorishige/hatago-runtime build
+          pnpm -r --filter @himorishige/hatago-core --filter @himorishige/hatago-runtime run build
 
       - name: Run tests (hub, transport)
         run: |
