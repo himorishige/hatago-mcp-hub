@@ -37,11 +37,30 @@ export async function callTool(
     hub.options.separator
   );
 
-  const result = await hub.toolInvoker.callTool('default', publicName, args, {
-    timeout: options?.timeout ?? hub.options.defaultTimeout,
-    progressToken: options?.progressToken
-  });
+  try {
+    const result = await hub.toolInvoker.callTool('default', publicName, args, {
+      timeout: options?.timeout ?? hub.options.defaultTimeout,
+      progressToken: options?.progressToken
+    });
 
-  hub.emit('tool:called', { name, args, result });
-  return result;
+    hub.emit('tool:called', { name, serverId, publicName, result });
+    return result;
+  } catch (error) {
+    const payload = {
+      name,
+      serverId,
+      publicName,
+      // エラー詳細は安全な範囲に限定して送る [REH]
+      error:
+        error instanceof Error
+          ? { name: error.name, message: error.message }
+          : { message: String(error) }
+    } as const;
+    try {
+      hub.emit('tool:error', payload);
+    } catch {
+      // emit 側の失敗は握りつぶして本来のエラーを優先 [REH]
+    }
+    throw error;
+  }
 }
