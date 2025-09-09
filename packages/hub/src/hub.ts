@@ -13,6 +13,14 @@ import {
   ToolRegistry
 } from '@himorishige/hatago-runtime';
 import type { Tool } from '@himorishige/hatago-core';
+import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
+const FALLBACK_RPC_NOTIFICATION = {
+  initialized: 'notifications/initialized',
+  cancelled: 'notifications/cancelled',
+  progress: 'notifications/progress',
+  tools_list_changed: 'notifications/tools/list_changed'
+} as const;
+const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
 import { StreamableHTTPTransport, type ITransport } from '@himorishige/hatago-transport';
 import * as ToolsApi from './api/tools.js';
 import * as ResourcesApi from './api/resources.js';
@@ -567,7 +575,7 @@ export class HatagoHub {
 
     const notification = {
       jsonrpc: '2.0' as const,
-      method: 'notifications/tools/list_changed',
+      method: RPC_NOTIFICATION.tools_list_changed,
       params: {
         revision: this.toolsetRevision,
         hash: this.toolsetHash
@@ -795,7 +803,7 @@ export class HatagoHub {
 
     try {
       // Notification (no response)
-      if (method === 'notifications/initialized') return null;
+      if (method === RPC_NOTIFICATION.initialized) return null;
 
       // Table dispatch
       const { RPC_DISPATCH, isRpcMethod } = await import('./rpc/dispatch.js');

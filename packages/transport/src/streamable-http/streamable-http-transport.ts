@@ -5,6 +5,16 @@
  */
 
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
+
+// Fallback to literals if core export is not yet built in local dev/test. [REH][SF]
+const FALLBACK_RPC_NOTIFICATION = {
+  initialized: 'notifications/initialized',
+  cancelled: 'notifications/cancelled',
+  progress: 'notifications/progress',
+  tools_list_changed: 'notifications/tools/list_changed'
+} as const;
+const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
 import type {
   JSONRPCMessage,
   JSONRPCNotification,
@@ -157,7 +167,7 @@ export class StreamableHTTPTransport implements Transport {
     else if (!('id' in message)) {
       // Route progress notifications to specific streams
       const notification = message as { method?: string; params?: { progressToken?: string } };
-      if (notification.method === 'notifications/progress' && notification.params?.progressToken) {
+      if (notification.method === RPC_NOTIFICATION.progress && notification.params?.progressToken) {
         await this.routeProgressNotification(notification.params.progressToken, message);
       } else {
         await this.broadcastNotification(message);
@@ -212,7 +222,7 @@ export class StreamableHTTPTransport implements Transport {
   ): Promise<void> {
     const notification: JSONRPCNotification = {
       jsonrpc: '2.0',
-      method: 'notifications/progress',
+      method: RPC_NOTIFICATION.progress,
       params: {
         progressToken,
         progress,

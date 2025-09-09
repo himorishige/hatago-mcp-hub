@@ -1,6 +1,7 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { Tool } from '@himorishige/hatago-core';
+import { RPC_NOTIFICATION } from '@himorishige/hatago-core';
 import type { Logger } from '../logger.js';
 import type { ConnectedServer, HubEvent } from '../types.js';
 import type { ToolRegistry } from '@himorishige/hatago-runtime';
@@ -58,7 +59,7 @@ export async function registerServerTools(
 
               const notification = {
                 jsonrpc: '2.0' as const,
-                method: 'notifications/progress',
+                method: RPC_NOTIFICATION.progress,
                 params: {
                   progressToken: progress.progressToken ?? `${serverId}-${tool.name}-${Date.now()}`,
                   progress: progress.progress ?? 0,

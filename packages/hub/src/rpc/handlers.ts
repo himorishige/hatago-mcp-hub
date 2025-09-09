@@ -2,7 +2,33 @@
  * JSON-RPC handlers (partial extraction) [SF][CA]
  */
 import type { HatagoHub } from '../hub.js';
-import { HATAGO_PROTOCOL_VERSION, HATAGO_SERVER_INFO } from '@himorishige/hatago-core';
+import {
+  HATAGO_PROTOCOL_VERSION,
+  HATAGO_SERVER_INFO,
+  RPC_NOTIFICATION as CORE_RPC_NOTIFICATION,
+  RPC_METHOD as CORE_RPC_METHOD
+} from '@himorishige/hatago-core';
+const FALLBACK_RPC_NOTIFICATION = {
+  initialized: 'notifications/initialized',
+  cancelled: 'notifications/cancelled',
+  progress: 'notifications/progress',
+  tools_list_changed: 'notifications/tools/list_changed'
+} as const;
+const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
+
+const FALLBACK_RPC_METHOD = {
+  initialize: 'initialize',
+  tools_list: 'tools/list',
+  tools_call: 'tools/call',
+  resources_list: 'resources/list',
+  resources_read: 'resources/read',
+  resources_templates_list: 'resources/templates/list',
+  prompts_list: 'prompts/list',
+  prompts_get: 'prompts/get',
+  ping: 'ping',
+  sampling_createMessage: 'sampling/createMessage'
+} as const;
+const RPC_METHOD = CORE_RPC_METHOD ?? FALLBACK_RPC_METHOD;
 import type { LogData } from '@himorishige/hatago-core';
 import type { Logger } from '../logger.js';
 type HubCtx = {
@@ -176,7 +202,7 @@ export async function handleToolsCall(
               if (hasOnNotification && onNotification) {
                 const notification = {
                   jsonrpc: '2.0' as const,
-                  method: 'notifications/progress',
+                  method: RPC_NOTIFICATION.progress,
                   params: {
                     progressToken,
                     progress: progress?.progress ?? 0,
@@ -270,7 +296,7 @@ export async function handleResourcesTemplatesList(
         client as unknown as {
           request: (req: unknown, schema: unknown) => Promise<unknown>;
         }
-      ).request({ method: 'resources/templates/list', params: {} }, {
+      ).request({ method: RPC_METHOD.resources_templates_list, params: {} }, {
         parse: (data: unknown) => data,
         type: 'object',
         properties: {

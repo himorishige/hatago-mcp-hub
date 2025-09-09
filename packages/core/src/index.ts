@@ -23,3 +23,6 @@ export * from './types/server-config.js';
 export * from './utils/env-expander.js';
 // Global constants
 export * from './constants.js';
+// RPC constants
+export * from './rpc/methods.js';
+export * from './rpc/notifications.js';
