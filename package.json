@@ -10,7 +10,6 @@
     "typecheck": "pnpm -r run typecheck",
     "build:doc": "pnpm -C apps/docs build",
     "build:hatago": "pnpm -r --filter './packages/*' run build",
-    "build:no-docs": "pnpm -r --filter '!@himorishige/hatago-docs' run build",
     "build": "pnpm -r build",
     "test": "pnpm -r run test",
     "test:forks": "pnpm -r --filter @himorishige/hatago-* run test:forks",
