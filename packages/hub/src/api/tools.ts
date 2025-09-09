@@ -50,7 +50,7 @@ export async function callTool(
       name,
       serverId,
       publicName,
-      // エラー詳細は安全な範囲に限定して送る [REH]
+      // Send only safe error details. [REH]
       error:
         error instanceof Error
           ? { name: error.name, message: error.message }
@@ -59,7 +59,7 @@ export async function callTool(
     try {
       hub.emit('tool:error', payload);
     } catch {
-      // emit 側の失敗は握りつぶして本来のエラーを優先 [REH]
+      // Swallow emit-side failures and prefer the original error. [REH]
     }
     throw error;
   }
