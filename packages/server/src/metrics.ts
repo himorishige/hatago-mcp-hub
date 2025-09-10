@@ -6,9 +6,21 @@
  */
 
 import type { Hono } from 'hono';
-import type { IHub } from '@himorishige/hatago-hub';
-// NOTE: Use literal for workspace typecheck. Switch to HUB_EVENT_KEYS.toolCalled after next hub publish.
-const TOOL_CALLED = 'tool:called' as const;
+import type { HubEvent, IHub } from '@himorishige/hatago-hub';
+import * as HubExports from '@himorishige/hatago-hub';
+// Prepare for HUB_EVENT_KEYS availability while keeping workspace self‑contained. [CMV][PEC]
+const TOOL_CALLED: HubEvent = (() => {
+  try {
+    const maybe = (HubExports as Record<string, unknown>)['HUB_EVENT_KEYS'];
+    if (maybe && typeof maybe === 'object') {
+      const tk = (maybe as Record<string, unknown>)['toolCalled'];
+      if (typeof tk === 'string') return tk as HubEvent;
+    }
+  } catch {
+    // fallthrough
+  }
+  return 'tool:called';
+})();
 
 type Counters = {
   tool_calls_total: number;
