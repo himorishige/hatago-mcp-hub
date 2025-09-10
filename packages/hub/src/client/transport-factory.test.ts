@@ -49,7 +49,9 @@ describe('createTransportFactory', () => {
       const transport = await factory();
 
       // Verify StreamableHTTPClientTransport was used
-      const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
+      const { StreamableHTTPClientTransport } = await import(
+        '@modelcontextprotocol/sdk/client/streamableHttp.js'
+      );
       expect(StreamableHTTPClientTransport).toHaveBeenCalledWith(
         new URL(spec.url),
         expect.objectContaining({
@@ -79,7 +81,9 @@ describe('createTransportFactory', () => {
       const transport = await factory();
 
       // Verify StreamableHTTPClientTransport was used
-      const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
+      const { StreamableHTTPClientTransport } = await import(
+        '@modelcontextprotocol/sdk/client/streamableHttp.js'
+      );
       expect(StreamableHTTPClientTransport).toHaveBeenCalledWith(
         new URL(spec.url),
         expect.objectContaining({
@@ -114,14 +118,15 @@ describe('createTransportFactory', () => {
       );
 
       // Verify StreamableHTTPClientTransport was NOT used
-      const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
+      const { StreamableHTTPClientTransport } = await import(
+        '@modelcontextprotocol/sdk/client/streamableHttp.js'
+      );
       expect(StreamableHTTPClientTransport).not.toHaveBeenCalled();
 
       // Verify logger output
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        'Creating SSEClientTransport for test-server',
-        { url: spec.url }
-      );
+      expect(mockLogger.debug).toHaveBeenCalledWith('Creating SSEClientTransport for test-server', {
+        url: spec.url
+      });
 
       expect(transport).toEqual({ type: 'sse' });
     });
@@ -172,8 +177,12 @@ describe('createTransportFactory', () => {
       const factory = createTransportFactory('test-server', spec, mockLogger);
       await factory();
 
-      const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
-      const call = (StreamableHTTPClientTransport as MockedFunction<typeof StreamableHTTPClientTransport>).mock.calls[0];
+      const { StreamableHTTPClientTransport } = await import(
+        '@modelcontextprotocol/sdk/client/streamableHttp.js'
+      );
+      const call = (
+        StreamableHTTPClientTransport as MockedFunction<typeof StreamableHTTPClientTransport>
+      ).mock.calls[0];
 
       expect(call[1]).toEqual(
         expect.objectContaining({
