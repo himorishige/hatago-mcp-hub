@@ -33,6 +33,8 @@ Project layout:
   - Unit: `pnpm test:unit` (no process spawn, stable in CI)
   - E2E (spawn required): `pnpm test:e2e` (may need local env)
   - You can force‑skip spawn tests by setting `NO_SPAWN=1`.
+- Events: verify no hardcoded hub event names
+  - Quick check: `pnpm lint:events` (should print nothing for production sources)
 - Architecture: Keep modules small, typed, and reusable; colocate types near usage
 - Error handling: Prefer typed, explicit errors and helpful messages
 

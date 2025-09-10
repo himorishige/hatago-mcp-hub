@@ -5,16 +5,7 @@
  */
 
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
-
-// Fallback to literals if core export is not yet built in local dev/test. [REH][SF]
-const FALLBACK_RPC_NOTIFICATION = {
-  initialized: 'notifications/initialized',
-  cancelled: 'notifications/cancelled',
-  progress: 'notifications/progress',
-  tools_list_changed: 'notifications/tools/list_changed'
-} as const;
-const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
+import { RPC_NOTIFICATION } from '@himorishige/hatago-core';
 import type {
   JSONRPCMessage,
   JSONRPCNotification,

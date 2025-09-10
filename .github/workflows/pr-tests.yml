@@ -32,6 +32,9 @@ jobs:
             --filter @himorishige/hatago-test-fixtures \
             run build
 
+      - name: Lint hardcoded hub event names
+        run: pnpm lint:events:check
+
       - name: Run unit tests (hub only)
         run: |
           pnpm -r --filter @himorishige/hatago-hub run test:unit

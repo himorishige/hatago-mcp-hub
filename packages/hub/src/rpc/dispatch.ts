@@ -4,20 +4,7 @@
  */
 import type { HatagoHub } from '../hub.js';
 import type { RpcMethod } from '@himorishige/hatago-core';
-import { RPC_METHOD as CORE_RPC_METHOD } from '@himorishige/hatago-core';
-const FALLBACK_RPC_METHOD = {
-  initialize: 'initialize',
-  tools_list: 'tools/list',
-  tools_call: 'tools/call',
-  resources_list: 'resources/list',
-  resources_read: 'resources/read',
-  resources_templates_list: 'resources/templates/list',
-  prompts_list: 'prompts/list',
-  prompts_get: 'prompts/get',
-  ping: 'ping',
-  sampling_createMessage: 'sampling/createMessage'
-} as const;
-const RPC_METHOD = CORE_RPC_METHOD ?? FALLBACK_RPC_METHOD;
+import { RPC_METHOD } from '@himorishige/hatago-core';
 
 import {
   handleInitialize,

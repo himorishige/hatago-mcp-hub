@@ -13,14 +13,7 @@ import {
   ToolRegistry
 } from '@himorishige/hatago-runtime';
 import type { Tool } from '@himorishige/hatago-core';
-import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
-const FALLBACK_RPC_NOTIFICATION = {
-  initialized: 'notifications/initialized',
-  cancelled: 'notifications/cancelled',
-  progress: 'notifications/progress',
-  tools_list_changed: 'notifications/tools/list_changed'
-} as const;
-const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
+import { RPC_NOTIFICATION } from '@himorishige/hatago-core';
 import { StreamableHTTPTransport } from '@himorishige/hatago-transport';
 import * as ToolsApi from './api/tools.js';
 import * as ResourcesApi from './api/resources.js';

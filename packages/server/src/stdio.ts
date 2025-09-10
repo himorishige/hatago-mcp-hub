@@ -10,15 +10,8 @@ import type { HatagoConfig } from '@himorishige/hatago-core';
 import {
   HATAGO_PROTOCOL_VERSION,
   HATAGO_SERVER_INFO,
-  RPC_NOTIFICATION as CORE_RPC_NOTIFICATION
+  RPC_NOTIFICATION
 } from '@himorishige/hatago-core';
-const FALLBACK_RPC_NOTIFICATION = {
-  initialized: 'notifications/initialized',
-  cancelled: 'notifications/cancelled',
-  progress: 'notifications/progress',
-  tools_list_changed: 'notifications/tools/list_changed'
-} as const;
-const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
 import { createHub } from '@himorishige/hatago-hub/node';
 import type { Logger } from './logger.js';
 import { registerHubMetrics } from './metrics.js';
