@@ -169,5 +169,91 @@ describe('EventEmitter', () => {
       });
       expect(disconnectedHandler).toHaveBeenCalledWith({ serverId: 'test' });
     });
+
+    it('should handle tool:called event', () => {
+      const emitter = createEventEmitter<string, unknown>();
+      const handler = vi.fn();
+
+      emitter.on('tool:called', handler);
+      const payload = {
+        name: 'test_tool',
+        serverId: 'test-server',
+        publicName: 'test_tool',
+        result: { data: 'result' }
+      };
+      emitter.emit('tool:called', payload);
+
+      expect(handler).toHaveBeenCalledWith(payload);
+    });
+
+    it('should handle resource:registered event', () => {
+      const emitter = createEventEmitter<string, unknown>();
+      const handler = vi.fn();
+
+      emitter.on('resource:registered', handler);
+      const payload = {
+        serverId: 'test-server',
+        resource: {
+          uri: 'test://resource',
+          name: 'Test Resource',
+          description: 'A test resource',
+          mimeType: 'application/json'
+        }
+      };
+      emitter.emit('resource:registered', payload);
+
+      expect(handler).toHaveBeenCalledWith(payload);
+    });
+
+    it('should handle notification events', () => {
+      const emitter = createEventEmitter<string, unknown>();
+      const handler = vi.fn();
+
+      emitter.on('server:notification', handler);
+      const payload = {
+        serverId: 'test-server',
+        notification: {
+          method: 'notifications/progress',
+          params: {
+            progress: 50,
+            total: 100
+          }
+        }
+      };
+      emitter.emit('server:notification', payload);
+
+      expect(handler).toHaveBeenCalledWith(payload);
+    });
+
+    it('should handle prompt:got event', () => {
+      const emitter = createEventEmitter<string, unknown>();
+      const handler = vi.fn();
+
+      emitter.on('prompt:got', handler);
+      const payload = {
+        name: 'test_prompt',
+        args: { input: 'test' },
+        result: { message: 'prompt result' }
+      };
+      emitter.emit('prompt:got', payload);
+
+      expect(handler).toHaveBeenCalledWith(payload);
+    });
+
+    it('should handle tool:error event', () => {
+      const emitter = createEventEmitter<string, unknown>();
+      const handler = vi.fn();
+
+      emitter.on('tool:error', handler);
+      const payload = {
+        name: 'test_tool',
+        serverId: 'test-server',
+        error: new Error('Tool failed'),
+        duration: 100
+      };
+      emitter.emit('tool:error', payload);
+
+      expect(handler).toHaveBeenCalledWith(payload);
+    });
   });
 });
