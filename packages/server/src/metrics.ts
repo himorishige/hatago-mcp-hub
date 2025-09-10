@@ -7,7 +7,7 @@
 
 import type { Hono } from 'hono';
 import type { IHub } from '@himorishige/hatago-hub';
-// Use literal for workspace typecheck (avoid cross-package new export during dev)
+// NOTE: Use literal for workspace typecheck. Switch to HUB_EVENT_KEYS.toolCalled after next hub publish.
 const TOOL_CALLED = 'tool:called' as const;
 
 type Counters = {

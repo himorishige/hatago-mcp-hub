@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  unit:
+    name: Unit (no spawn)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,6 +32,37 @@ jobs:
             --filter @himorishige/hatago-test-fixtures \
             run build
 
-      - name: Run tests (hub, transport)
+      - name: Run unit tests (hub only)
         run: |
-          pnpm -r --filter @himorishige/hatago-hub --filter @himorishige/hatago-transport run test
+          pnpm -r --filter @himorishige/hatago-hub run test:unit
+
+  e2e:
+    name: E2E (spawn required)
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: true
+
+      - name: Build core deps for tests (core, runtime, test-fixtures)
+        run: |
+          pnpm -r \
+            --filter @himorishige/hatago-core \
+            --filter @himorishige/hatago-runtime \
+            --filter @himorishige/hatago-test-fixtures \
+            run build
+
+      - name: Run E2E tests (hub only)
+        run: |
+          pnpm -r --filter @himorishige/hatago-hub run test:e2e
