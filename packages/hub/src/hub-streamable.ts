@@ -68,9 +68,8 @@ export function createEventsEndpoint(hub: HatagoHub) {
     // SSE client connected: ${clientId}
 
     return streamSSE(c, async (stream) => {
-      // Register client with SSE manager (enhanced with stream support)
-      // Note: SSEManager expects WritableStreamDefaultWriter, but we pass null and use stream instead
-      sseManager.addClient(clientId, null as unknown as WritableStreamDefaultWriter, stream);
+      // Register client with SSE manager (framework stream only)
+      sseManager.addClient(clientId, null, stream);
 
       // Clean up on disconnect
       stream.onAbort(() => {

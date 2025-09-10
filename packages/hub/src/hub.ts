@@ -21,7 +21,7 @@ const FALLBACK_RPC_NOTIFICATION = {
   tools_list_changed: 'notifications/tools/list_changed'
 } as const;
 const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
-import { StreamableHTTPTransport, type ITransport } from '@himorishige/hatago-transport';
+import { StreamableHTTPTransport } from '@himorishige/hatago-transport';
 import * as ToolsApi from './api/tools.js';
 import * as ResourcesApi from './api/resources.js';
 import * as PromptsApi from './api/prompts.js';
@@ -37,14 +37,14 @@ import type {
   CallOptions,
   ConnectedServer,
   HubEvent,
-  HubEventData,
   HubEventHandler,
   HubOptions,
   ListOptions,
   ReadOptions,
   ServerSpec
 } from './types.js';
-import { createEventEmitter, type EventEmitter as HubEventEmitter } from './utils/events.js';
+import { createTypedEmitter, type TypedEmitter } from './utils/events.js';
+import type { HubEvents } from './events/hub-events.js';
 
 import { CapabilityRegistry } from './capability-registry.js';
 import { connectWithRetry, normalizeServerSpec } from './client/connector.js';
@@ -55,6 +55,7 @@ import {
   registerServerResources,
   registerServerPrompts
 } from './client/registrar.js';
+import { HUB_EVENT_KEYS } from './events/hub-events.js';
 // Internal tools removed. Keep minimal internal resources only. [SF]
 import type { Resource } from '@himorishige/hatago-core';
 
@@ -74,8 +75,8 @@ export class HatagoHub {
   protected servers = new Map<string, ConnectedServer>();
   protected clients = new Map<string, Client>();
 
-  // Event emitter (extracted)
-  private events: HubEventEmitter<HubEvent, unknown>;
+  // Event emitter (typed, internal)
+  private events: TypedEmitter<HubEvents>;
 
   // Logger
   protected logger: Logger;
@@ -132,8 +133,8 @@ export class HatagoHub {
 
     // Initialize logger
     this.logger = new Logger('[Hub]');
-    // Initialize event emitter
-    this.events = createEventEmitter<HubEvent, unknown>(this.logger);
+    // Initialize typed event emitter (internal only)
+    this.events = createTypedEmitter<HubEvents>(this.logger);
 
     // Initialize SSE manager
     this.sseManager = new SSEManager(this.logger);
@@ -200,7 +201,7 @@ export class HatagoHub {
 
     try {
       await this.connectServer(id, spec);
-      this.emit('server:connected', { serverId: id });
+      this.emit(HUB_EVENT_KEYS.serverConnected, { serverId: id });
     } catch (error) {
       const server = this.servers.get(id);
       if (server) {
@@ -211,7 +212,7 @@ export class HatagoHub {
           error: error instanceof Error ? error.message : String(error)
         });
       }
-      this.emit('server:error', { serverId: id, error });
+      this.emit(HUB_EVENT_KEYS.serverError, { serverId: id, error });
       throw error;
     }
 
@@ -262,7 +263,7 @@ export class HatagoHub {
       }
 
       this.servers.delete(id);
-      this.emit('server:disconnected', { serverId: id });
+      this.emit(HUB_EVENT_KEYS.serverDisconnected, { serverId: id });
     }
   }
 
@@ -291,7 +292,7 @@ export class HatagoHub {
     // Connect with retry logic
     const client = await connectWithRetry({
       id,
-      createTransport: createTransport as unknown as () => Promise<ITransport>,
+      createTransport,
       maxRetries: 3,
       connectTimeoutMs: spec.connectTimeout,
       logger: this.logger
@@ -304,7 +305,7 @@ export class HatagoHub {
     attachClientNotificationForwarder(
       {
         logger: this.logger,
-        emit: this.emit.bind(this),
+        emit: this.emitUntyped.bind(this),
         onNotification: this.onNotification?.bind(this),
         getStreamableTransport: this.getStreamableTransport.bind(this)
       },
@@ -323,12 +324,12 @@ export class HatagoHub {
     // Register tools using extracted registrar
     {
       const requestTimeoutMs = spec.timeout ?? this.options.defaultTimeout;
-      await registerServerTools(this as never, client, id, requestTimeoutMs);
+      await registerServerTools(this.createRegistrarHubCtx(), client, id, requestTimeoutMs);
     }
 
-    await registerServerResources(this as never, client, id);
+    await registerServerResources(this.createRegistrarHubCtx(), client, id);
 
-    await registerServerPrompts(this as never, client, id);
+    await registerServerPrompts(this.createRegistrarHubCtx(), client, id);
   }
 
   /**
@@ -426,9 +427,9 @@ export class HatagoHub {
           await this.streamableTransport.start();
           this.streamableTransport.onmessage = (message) => {
             void (async () => {
-              const result = await this.handleJsonRpcRequest(message as unknown as JSONRPCMessage);
-              if (result && this.streamableTransport) {
-                await this.streamableTransport.send(result as JSONRPCMessage);
+              const result = await this.handleJsonRpcRequest(message);
+              if (result && this.streamableTransport && this.isJsonRpcMessage(result)) {
+                await this.streamableTransport.send(result);
               }
             })();
           };
@@ -446,7 +447,10 @@ export class HatagoHub {
 
             // Check tag filtering
             if (this.options.tags && this.options.tags.length > 0) {
-              const serverTags = (serverConfig as unknown as { tags?: string[] }).tags ?? [];
+              const rawTags = (serverConfig as { tags?: unknown }).tags;
+              const serverTags = Array.isArray(rawTags)
+                ? rawTags.filter((t): t is string => typeof t === 'string')
+                : [];
               const hasMatchingTag = this.options.tags.some((tag) => serverTags.includes(tag));
 
               if (!hasMatchingTag) {
@@ -512,9 +516,9 @@ export class HatagoHub {
       await this.streamableTransport.start();
       this.streamableTransport.onmessage = (message) => {
         void (async () => {
-          const result = await this.handleJsonRpcRequest(message as unknown as JSONRPCMessage);
-          if (result && this.streamableTransport) {
-            await this.streamableTransport.send(result as JSONRPCMessage);
+          const result = await this.handleJsonRpcRequest(message);
+          if (result && this.streamableTransport && this.isJsonRpcMessage(result)) {
+            await this.streamableTransport.send(result);
           }
         })();
       };
@@ -652,8 +656,7 @@ export class HatagoHub {
     /**
      * List available tools
      */
-    list: (options?: ListOptions) =>
-      ToolsApi.listTools(this as unknown as ToolsApi.ToolsHub, options),
+    list: (options?: ListOptions) => ToolsApi.listTools(this.createToolsHubCtx(), options),
 
     /**
      * Call a tool
@@ -665,7 +668,7 @@ export class HatagoHub {
         progressToken?: string;
         progressCallback?: unknown;
       }
-    ) => ToolsApi.callTool(this as unknown as ToolsApi.ToolsHub, name, args, options)
+    ) => ToolsApi.callTool(this.createToolsHubCtx(), name, args, options)
   };
 
   /**
@@ -679,13 +682,13 @@ export class HatagoHub {
      * List available resources
      */
     list: (options?: ListOptions) =>
-      ResourcesApi.listResources(this as unknown as ResourcesApi.ResourcesHub, options),
+      ResourcesApi.listResources(this.createResourcesHubCtx(), options),
 
     /**
      * Read a resource
      */
     read: async (uri: string, options?: ReadOptions) =>
-      ResourcesApi.readResource(this as unknown as ResourcesApi.ResourcesHub, uri, options)
+      ResourcesApi.readResource(this.createResourcesHubCtx(), uri, options)
   };
 
   /**
@@ -698,20 +701,91 @@ export class HatagoHub {
     /**
      * List available prompts
      */
-    list: (options?: ListOptions) =>
-      PromptsApi.listPrompts(this as unknown as PromptsApi.PromptsHub, options),
+    list: (options?: ListOptions) => PromptsApi.listPrompts(this.createPromptsHubCtx(), options),
 
     /**
      * Get a prompt
      */
     get: async (name: string, args?: unknown) =>
-      PromptsApi.getPrompt(this as unknown as PromptsApi.PromptsHub, name, args)
+      PromptsApi.getPrompt(this.createPromptsHubCtx(), name, args)
   };
+
+  // --- internal lightweight adapters to avoid unsafe casts -----------------
+
+  private createToolsHubCtx(): ToolsApi.ToolsHub {
+    return {
+      servers: this.servers,
+      toolInvoker: this.toolInvoker,
+      options: {
+        defaultTimeout: this.options.defaultTimeout,
+        namingStrategy: this.options.namingStrategy,
+        separator: this.options.separator
+      },
+      emit: (event, data) => this.emitUntyped(event as HubEvent, data)
+    };
+  }
+
+  private createResourcesHubCtx(): ResourcesApi.ResourcesHub {
+    return {
+      servers: this.servers,
+      clients: this.clients,
+      resourceRegistry: this.resourceRegistry,
+      emit: (event, data) => this.emitUntyped(event as HubEvent, data),
+      logger: { error: (m: string, _d?: unknown) => this.logger.error(m) },
+      getServers: this.getServers.bind(this)
+    };
+  }
+
+  private createPromptsHubCtx(): PromptsApi.PromptsHub {
+    return {
+      servers: this.servers,
+      clients: this.clients,
+      promptRegistry: this.promptRegistry,
+      options: { separator: this.options.separator },
+      emit: (event, data) => this.emitUntyped(event as HubEvent, data)
+    };
+  }
+
+  private createRegistrarHubCtx() {
+    return {
+      logger: this.logger,
+      servers: this.servers,
+      emit: this.emitUntyped.bind(this),
+      toolRegistry: this.toolRegistry,
+      toolInvoker: this.toolInvoker,
+      resourceRegistry: this.resourceRegistry,
+      promptRegistry: this.promptRegistry,
+      capabilityRegistry: this.capabilityRegistry,
+      onNotification: this.onNotification?.bind(this)
+    };
+  }
+
+  // --- helpers --------------------------------------------------------------
+
+  // Minimal runtime guard to ensure we only forward well‑formed JSON‑RPC
+  // responses/notifications to StreamableHTTP transport. [REH]
+  // Keep local to avoid adding deps. [DM]
+  private static isJsonRpcMessageLike(obj: unknown): obj is JSONRPCMessage {
+    return (
+      typeof obj === 'object' && obj !== null && (obj as { jsonrpc?: unknown }).jsonrpc === '2.0'
+    );
+  }
+
+  // Instance alias for brevity in closures
+  private isJsonRpcMessage(obj: unknown): obj is JSONRPCMessage {
+    return HatagoHub.isJsonRpcMessageLike(obj);
+  }
+
+  // Public session helper used by HTTP handler
+  public async destroySession(id: string): Promise<void> {
+    await this.sessions.destroy(id);
+  }
 
   /**
    * Event handling
    */
   on(event: HubEvent, handler: HubEventHandler): void {
+    // Public IHub signatureは据え置き。内部は型付きで保持する。
     this.events.on(event, handler as (d: unknown) => void);
   }
 
@@ -719,8 +793,13 @@ export class HatagoHub {
     this.events.off(event, handler as (d: unknown) => void);
   }
 
-  private emit(event: HubEvent, data: unknown): void {
-    this.events.emit(event, data as HubEventData);
+  private emit<K extends keyof HubEvents & string>(event: K, data: HubEvents[K]): void {
+    this.events.emit(event, data);
+  }
+
+  // For untyped integrations (registrar/notifier adapters)
+  private emitUntyped(event: HubEvent, data: unknown): void {
+    this.events.emit(event as keyof HubEvents & string, data as never);
   }
 
   /**

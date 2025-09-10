@@ -3,6 +3,7 @@ import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { Logger } from '../logger.js';
 import type { HubEvent } from '../types.js';
 import type { StreamableHTTPTransport } from '@himorishige/hatago-transport';
+import { HUB_EVENT_KEYS } from '../events/hub-events.js';
 
 type NotifierHub = {
   logger: Logger;
@@ -33,6 +34,6 @@ export function attachClientNotificationForwarder(
       await transport.send(notification as JSONRPCMessage);
     }
 
-    hub.emit('server:notification', { serverId, notification });
+    hub.emit(HUB_EVENT_KEYS.serverNotification, { serverId, notification });
   };
 }

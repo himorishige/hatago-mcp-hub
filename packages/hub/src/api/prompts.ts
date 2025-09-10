@@ -2,6 +2,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { PromptRegistry } from '@himorishige/hatago-runtime';
 import type { ConnectedServer, ListOptions } from '../types.js';
 import { parseQualifiedName } from '../utils/naming.js';
+import { HUB_EVENT_KEYS } from '../events/hub-events.js';
 
 type Emit = (event: string, data: unknown) => void;
 
@@ -33,7 +34,7 @@ export async function getPrompt(hub: PromptsHub, name: string, args?: unknown) {
         name: promptName,
         arguments: args as { [x: string]: string } | undefined
       });
-      hub.emit('prompt:got', { name, args, result });
+      hub.emit(HUB_EVENT_KEYS.promptGot, { name, args, result });
       return result;
     }
   }

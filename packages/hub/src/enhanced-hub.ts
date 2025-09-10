@@ -311,7 +311,7 @@ export class EnhancedHatagoHub extends HatagoHub {
           : undefined
     };
 
-    this.logger.debug(`[Enhanced] Created spec for ${serverId}:`, spec as unknown as LogData);
+    this.logger.debug(`[Enhanced] Created spec for ${serverId}:`, spec as LogData);
 
     // Add server to hub
     await this.addServer(serverId, spec);

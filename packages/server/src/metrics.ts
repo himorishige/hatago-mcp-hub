@@ -7,6 +7,8 @@
 
 import type { Hono } from 'hono';
 import type { IHub } from '@himorishige/hatago-hub';
+// Use literal for workspace typecheck (avoid cross-package new export during dev)
+const TOOL_CALLED = 'tool:called' as const;
 
 type Counters = {
   tool_calls_total: number;
@@ -36,7 +38,7 @@ export function registerHubMetrics(hub: Pick<IHub, 'on'>): void {
   if (!enabled()) return;
 
   // Count tool calls and errors via hub event
-  hub.on('tool:called', (evt: unknown) => {
+  hub.on(TOOL_CALLED, (evt: unknown) => {
     counters.tool_calls_total++;
     const result = (evt as { result?: { isError?: boolean } }).result;
     if (result?.isError) {

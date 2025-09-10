@@ -97,6 +97,8 @@ export {
 } from './errors.js';
 // Export main class and types
 export { HatagoHub } from './hub.js';
+export { HUB_EVENT_KEYS } from './events/hub-events.js';
+export type { HubEvents } from './events/hub-events.js';
 // Export streamable HTTP helpers
 export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
 export { ActivationManager } from './mcp-server/activation-manager.js';

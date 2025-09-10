@@ -135,18 +135,22 @@ export function normalizeServerSpec(config: ServerConfig): ServerSpec {
     spec.connectTimeout = config.timeouts.connectMs;
     spec.keepAliveTimeout = config.timeouts.keepAliveMs;
   } else {
-    const hatagoOpts = config as unknown as {
-      hatagoOptions?: {
-        timeouts?: { timeout?: number };
-        reconnect?: boolean;
-        reconnectDelay?: number;
-      };
-      timeout?: number;
-    };
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    spec.timeout = hatagoOpts.hatagoOptions?.timeouts?.timeout || hatagoOpts.timeout;
-    spec.reconnect = hatagoOpts.hatagoOptions?.reconnect;
-    spec.reconnectDelay = hatagoOpts.hatagoOptions?.reconnectDelay;
+    const maybeHatago = (config as Record<string, unknown>).hatagoOptions;
+    if (typeof maybeHatago === 'object' && maybeHatago !== null) {
+      const t = (maybeHatago as Record<string, unknown>).timeouts;
+      const reconnect = (maybeHatago as Record<string, unknown>).reconnect;
+      const reconnectDelay = (maybeHatago as Record<string, unknown>).reconnectDelay;
+      if (typeof t === 'object' && t !== null) {
+        const timeout = (t as Record<string, unknown>).timeout;
+        if (typeof timeout === 'number') spec.timeout = timeout;
+      }
+      if (typeof reconnect === 'boolean') spec.reconnect = reconnect;
+      if (typeof reconnectDelay === 'number') spec.reconnectDelay = reconnectDelay;
+    }
+    const topTimeout = (config as Record<string, unknown>).timeout;
+    if (spec.timeout === undefined && typeof topTimeout === 'number') {
+      spec.timeout = topTimeout;
+    }
   }
 
   return spec;

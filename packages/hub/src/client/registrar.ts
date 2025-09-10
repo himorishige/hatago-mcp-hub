@@ -4,6 +4,7 @@ import type { Tool } from '@himorishige/hatago-core';
 import { RPC_NOTIFICATION } from '@himorishige/hatago-core';
 import type { Logger } from '../logger.js';
 import type { ConnectedServer, HubEvent } from '../types.js';
+import { HUB_EVENT_KEYS } from '../events/hub-events.js';
 import type { ToolRegistry } from '@himorishige/hatago-runtime';
 import type { ToolInvoker } from '@himorishige/hatago-runtime';
 import type { ResourceRegistry } from '@himorishige/hatago-runtime';
@@ -95,7 +96,9 @@ export async function registerServerTools(
       }
     }));
 
-    hub.toolRegistry.registerServerTools(serverId, toolsWithHandlers as unknown as Tool[]);
+    // toolsWithHandlers は Tool と互換の構造（handler 追加）だが、
+    // Registry は Tool を期待するため構造的部分型として登録する。
+    hub.toolRegistry.registerServerTools(serverId, toolsWithHandlers as Tool[]);
     const registeredTools = hub.toolRegistry.getServerTools(serverId);
 
     const server = hub.servers.get(serverId);
@@ -105,7 +108,7 @@ export async function registerServerTools(
       if (!registeredTool || !tool) continue;
       if (server) server.tools.push(registeredTool);
       hub.toolInvoker.registerHandler(registeredTool.name, tool.handler);
-      hub.emit('tool:registered', { serverId, tool: registeredTool });
+      hub.emit(HUB_EVENT_KEYS.toolRegistered, { serverId, tool: registeredTool });
     }
   } catch (error) {
     hub.logger.warn(`Failed to list tools for ${serverId}`, {
@@ -127,7 +130,7 @@ export async function registerServerResources(
     if (server) server.resources = resourceArray;
     hub.resourceRegistry.registerServerResources(serverId, resourceArray);
     for (const resource of resourceArray) {
-      hub.emit('resource:registered', { serverId, resource });
+      hub.emit(HUB_EVENT_KEYS.resourceRegistered, { serverId, resource });
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('-32601')) {
@@ -154,7 +157,7 @@ export async function registerServerPrompts(
     if (server) server.prompts = promptArray;
     hub.promptRegistry.registerServerPrompts(serverId, promptArray);
     for (const prompt of promptArray) {
-      hub.emit('prompt:registered', { serverId, prompt });
+      hub.emit(HUB_EVENT_KEYS.promptRegistered, { serverId, prompt });
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('-32601')) {

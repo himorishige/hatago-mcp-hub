@@ -12,6 +12,7 @@ export type ToolsHub = {
   };
   emit: (event: string, data: unknown) => void;
 };
+import { HUB_EVENT_KEYS } from '../events/hub-events.js';
 
 export function listTools(hub: ToolsHub, options?: ListOptions) {
   if (options?.serverId) {
@@ -43,7 +44,7 @@ export async function callTool(
       progressToken: options?.progressToken
     });
 
-    hub.emit('tool:called', { name, serverId, publicName, result });
+    hub.emit(HUB_EVENT_KEYS.toolCalled, { name, serverId, publicName, result });
     return result;
   } catch (error) {
     const payload = {
@@ -57,7 +58,7 @@ export async function callTool(
           : { message: String(error) }
     } as const;
     try {
-      hub.emit('tool:error', payload);
+      hub.emit(HUB_EVENT_KEYS.toolError, payload);
     } catch {
       // Swallow emit-side failures and prefer the original error. [REH]
     }

@@ -21,6 +21,39 @@ function makeHeaderFetch(headers?: Record<string, string>) {
   };
 }
 
+// Adapt SDK client transports to Hatago's minimal ITransport without casts. [REH][DM]
+type SdkClientTransport = {
+  send: (message: unknown) => Promise<void>;
+  start: () => Promise<void>;
+  close: () => Promise<void>;
+  ready?: () => Promise<boolean>;
+  onmessage?: (message: unknown) => void;
+  onerror?: (error: Error) => void;
+};
+
+function wrapSdkTransport(sdk: SdkClientTransport): ITransport {
+  return {
+    send: (m) => sdk.send(m),
+    onMessage: (handler) => {
+      sdk.onmessage = handler;
+    },
+    onError: (handler) => {
+      sdk.onerror = handler;
+    },
+    start: () => sdk.start(),
+    close: () => sdk.close(),
+    ready: () => (typeof sdk.ready === 'function' ? sdk.ready() : Promise.resolve(true))
+  };
+}
+
+function isSdkTransport(obj: unknown): obj is SdkClientTransport {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const o = obj as Record<string, unknown>;
+  return (
+    typeof o.send === 'function' && typeof o.start === 'function' && typeof o.close === 'function'
+  );
+}
+
 /**
  * Returns a factory that constructs the appropriate transport for a server spec. [SF][CA]
  */
@@ -43,23 +76,29 @@ export function createTransportFactory(
         command: spec.command,
         args: spec.args
       });
-      return new StdioClientTransport({
+      const sdk = new StdioClientTransport({
         command: spec.command,
         args: spec.args ?? [],
         env: spec.env,
         cwd: spec.cwd
-      }) as unknown as ITransport;
+      });
+      if (!isSdkTransport(sdk)) {
+        throw new Error('Incompatible StdioClientTransport implementation');
+      }
+      return wrapSdkTransport(sdk);
     }
 
     if (spec.url && (spec.type === 'sse' || spec.type === 'http')) {
       logger.debug(`Creating SSEClientTransport for ${id}`, { url: spec.url });
       // Use SSE client for both 'sse' and 'http' in hub
-      type TransportCtor = new (url: URL, options?: { fetch?: typeof fetch }) => ITransport;
       const { SSEClientTransport } = await import('@himorishige/hatago-transport');
-      const Ctor = SSEClientTransport as unknown as TransportCtor;
-      return new Ctor(new URL(spec.url), {
+      const sdk = new SSEClientTransport(new URL(spec.url), {
         fetch: makeHeaderFetch(spec.headers)
-      }) as unknown as ITransport;
+      });
+      if (!isSdkTransport(sdk)) {
+        throw new Error('Incompatible SSEClientTransport implementation');
+      }
+      return wrapSdkTransport(sdk);
     }
 
     if (spec.url && spec.type === 'streamable-http') {
@@ -67,11 +106,13 @@ export function createTransportFactory(
         '@modelcontextprotocol/sdk/client/streamableHttp.js'
       );
       logger.debug(`Creating StreamableHTTPClientTransport for ${id}`, { url: spec.url });
-      type StreamableCtor = new (url: URL, options?: { fetch?: typeof fetch }) => ITransport;
-      const StreamCtor = StreamableHTTPClientTransport as unknown as StreamableCtor;
-      return new StreamCtor(new URL(spec.url), {
+      const sdk = new StreamableHTTPClientTransport(new URL(spec.url), {
         fetch: makeHeaderFetch(spec.headers)
-      }) as unknown as ITransport;
+      });
+      if (!isSdkTransport(sdk)) {
+        throw new Error('Incompatible StreamableHTTPClientTransport implementation');
+      }
+      return wrapSdkTransport(sdk);
     }
 
     throw new Error(`Invalid server specification for ${id}`);

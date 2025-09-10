@@ -6,7 +6,7 @@ import type { Logger } from './logger.js';
 
 export type SSEClient = {
   id: string;
-  writer: WritableStreamDefaultWriter;
+  writer: WritableStreamDefaultWriter | null;
   closed: boolean;
   keepAliveInterval?: ReturnType<typeof setInterval>;
   stream?: unknown; // For framework-specific streams
@@ -35,7 +35,7 @@ export class SSEManager {
   /**
    * Add a new SSE client
    */
-  addClient(clientId: string, writer: WritableStreamDefaultWriter, stream?: unknown): void {
+  addClient(clientId: string, writer: WritableStreamDefaultWriter | null, stream?: unknown): void {
     // Set up keepalive interval
     const keepAliveInterval = setInterval(() => {
       void this.sendKeepAliveToClient(clientId);
@@ -127,9 +127,18 @@ export class SSEManager {
     }
 
     try {
-      const encoder = new TextEncoder();
       const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-      await client.writer.write(encoder.encode(message));
+      const streamWithWrite = client.stream as
+        | { write?: (data: string) => Promise<void> }
+        | undefined;
+      if (streamWithWrite?.write) {
+        await streamWithWrite.write(message);
+      } else if (client.writer) {
+        const encoder = new TextEncoder();
+        await client.writer.write(encoder.encode(message));
+      } else {
+        throw new Error('No available SSE output for client');
+      }
 
       this.logger.debug('[SSE] Event sent', { clientId, event });
     } catch (error) {
@@ -169,13 +178,19 @@ export class SSEManager {
 
     try {
       const streamWithWriteSSE = client.stream as
-        | { writeSSE?: (message: { comment: string }) => void }
+        | {
+            writeSSE?: (message: { comment: string }) => void;
+            write?: (data: string) => Promise<void>;
+          }
         | undefined;
       if (streamWithWriteSSE?.writeSSE) {
         // Framework-specific stream (e.g., Hono)
         streamWithWriteSSE.writeSSE({ comment: 'keepalive' });
+      } else if (streamWithWriteSSE?.write) {
+        await streamWithWriteSSE.write(':keepalive\n\n');
       } else {
         // Standard SSE stream
+        if (!client.writer) return;
         const encoder = new TextEncoder();
         const keepAlive = encoder.encode(':keepalive\n\n');
         await client.writer.write(keepAlive);

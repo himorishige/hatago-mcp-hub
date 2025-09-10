@@ -31,7 +31,7 @@ type JsonSchema = {
  * Convert Zod schema to JSON Schema (simplified)
  */
 export function zodToJsonSchema(schema: z.ZodObject<z.ZodRawShape>): JsonSchema {
-  const schemaWithDef = schema as unknown as { _def: ZodDefWithShape };
+  const schemaWithDef = schema as { _def: ZodDefWithShape };
   const shape = schemaWithDef._def.shape();
   const properties: Record<string, JsonSchemaProperty> = {};
   const required: string[] = [];

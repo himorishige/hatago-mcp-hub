@@ -1,6 +1,7 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ResourceRegistry } from '@himorishige/hatago-runtime';
 import type { ConnectedServer, ListOptions, ReadOptions } from '../types.js';
+import { HUB_EVENT_KEYS } from '../events/hub-events.js';
 
 export type ResourcesHub = {
   servers: Map<string, ConnectedServer>;
@@ -37,7 +38,7 @@ export async function readResource(hub: ResourcesHub, uri: string, options?: Rea
           error: s.error?.message ?? null
         }));
         const payload = { total: serverList.length, servers: serverList };
-        hub.emit('resource:read', { uri, serverId: '_internal', result: payload });
+        hub.emit(HUB_EVENT_KEYS.resourceRead, { uri, serverId: '_internal', result: payload });
         return { contents: [{ uri, text: JSON.stringify(payload, null, 2) }] };
       }
       throw new Error(`Unknown internal resource: ${uri}`);
@@ -47,7 +48,7 @@ export async function readResource(hub: ResourcesHub, uri: string, options?: Rea
     if (client) {
       try {
         const result = await client.readResource({ uri: resourceInfo.originalUri });
-        hub.emit('resource:read', { uri, serverId: resourceInfo.serverId, result });
+        hub.emit(HUB_EVENT_KEYS.resourceRead, { uri, serverId: resourceInfo.serverId, result });
         return result;
       } catch (error) {
         hub.logger.error(`Failed to read resource ${uri}`, {
@@ -64,7 +65,7 @@ export async function readResource(hub: ResourcesHub, uri: string, options?: Rea
     if (client) {
       try {
         const result = await client.readResource({ uri });
-        hub.emit('resource:read', { uri, serverId: options.serverId, result });
+        hub.emit(HUB_EVENT_KEYS.resourceRead, { uri, serverId: options.serverId, result });
         return result;
       } catch (error) {
         hub.logger.error(`Failed to read resource ${uri}`, {
