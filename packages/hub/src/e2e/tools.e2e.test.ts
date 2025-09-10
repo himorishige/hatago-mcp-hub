@@ -7,7 +7,10 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-describe('E2E: Tools', () => {
+const SKIP_E2E = process.env.NO_SPAWN === '1';
+const maybe = SKIP_E2E ? describe.skip : describe;
+
+maybe('E2E: Tools', () => {
   let fixturePath: string;
 
   beforeAll(() => {
