@@ -89,6 +89,7 @@ export type HubEvent =
   | 'server:notification'
   | 'tool:registered'
   | 'tool:called'
+  | 'tool:error'
   | 'resource:registered'
   | 'resource:read'
   | 'prompt:registered'
