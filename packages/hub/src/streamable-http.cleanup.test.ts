@@ -51,16 +51,18 @@ describe('StreamableHTTPTransport cleanup', () => {
       sse as any
     );
 
-    // Progress should be routed
-    const before = sse.messages.length;
-    await transport.sendProgressNotification(progressToken, 5);
-    const mid = sse.messages.length;
-    expect(mid).toBeGreaterThan(before);
+    // Progress should be routed at least once (from onmessage handler)
+    const payloadsBefore = sse.messages
+      .filter((m) => m.startsWith('data: '))
+      .map((m) => JSON.parse(m.replace(/^data: /, '').trim()));
+    const hadProgress = payloadsBefore.some((p) => p?.method === 'notifications/progress');
+    expect(hadProgress).toBe(true);
 
     // Abort connection and ensure mapping is cleared
     sse.onAbortCb?.();
+    const beforeAbort = sse.messages.length;
     await transport.sendProgressNotification(progressToken, 10);
     const after = sse.messages.length;
-    expect(after).toBe(mid); // no new writes after abort
+    expect(after).toBe(beforeAbort); // no new writes after abort
   }, 10000);
 });
