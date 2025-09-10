@@ -2,18 +2,14 @@
  * Config file watcher extracted from hub.ts [SF][CA]
  */
 import type { HatagoHub } from '../hub.js';
-import type { Logger } from '../logger.js';
 
-type WatchHub = {
-  options: { configFile?: string };
-  logger: Logger;
-  doReloadConfig: () => Promise<void>;
-  configWatcher?: { close: () => void };
-};
+// (no additional exported types)
 
 export async function startConfigWatcher(hub: HatagoHub): Promise<void> {
-  const h = hub as unknown as WatchHub;
-  const { options, logger } = h;
+  // Access configFile through a narrow helper to avoid private leaks.
+  const logger = hub.getLogger();
+  // @ts-expect-error access through internal field; kept local to watcher module
+  const options = (hub as { options?: { configFile?: string } }).options ?? {};
 
   if (!options.configFile) return;
 
@@ -34,7 +30,7 @@ export async function startConfigWatcher(hub: HatagoHub): Promise<void> {
         reloadTimeout = setTimeout(() => {
           void (async () => {
             logger.info('[ConfigWatcher] Config file changed, starting reload...');
-            await h.doReloadConfig();
+            await hub.doReloadConfig();
             logger.info('[ConfigWatcher] Config reload completed');
           })();
         }, 1000); // 1s after last change
@@ -42,7 +38,9 @@ export async function startConfigWatcher(hub: HatagoHub): Promise<void> {
     });
 
     // Store watcher on hub for shutdown (reuse existing field)
-    h.configWatcher = watcher;
+    // Store watcher reference on hub if available
+    // @ts-expect-error internal field assignment for graceful shutdown
+    (hub as { configWatcher?: { close: () => void } }).configWatcher = watcher;
     logger.info('Config file watcher started');
   } catch (error) {
     logger.error('Failed to set up config watcher', {

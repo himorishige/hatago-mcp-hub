@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.himorishige/hatago-mcp-hub",
+  "description": "An MCP server that provides [describe what your server does]",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/himorishige/hatago-mcp-hub",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "registry_base_url": "https://registry.npmjs.org",
+      "identifier": "@himorishige/hatago-mcp-hub",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environment_variables": [
+        {
+          "description": "Your API key for the service",
+          "is_required": true,
+          "format": "string",
+          "is_secret": true,
+          "name": "YOUR_API_KEY"
+        }
+      ]
+    }
+  ]
+}

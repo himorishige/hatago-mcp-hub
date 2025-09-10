@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { HatagoHub } from '../hub.js';
+import { setPlatform } from '@himorishige/hatago-runtime';
+import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 
 describe('HTTP handler (smoke)', () => {
   it('returns JSON-RPC error for unknown method', async () => {
+    setPlatform(createNodePlatform());
     const hub = new HatagoHub();
     const req = new Request('http://localhost/mcp', {
       method: 'POST',

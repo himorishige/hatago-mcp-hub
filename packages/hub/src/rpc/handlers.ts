@@ -30,55 +30,7 @@ const FALLBACK_RPC_METHOD = {
 } as const;
 const RPC_METHOD = CORE_RPC_METHOD ?? FALLBACK_RPC_METHOD;
 import type { LogData } from '@himorishige/hatago-core';
-import type { Logger } from '../logger.js';
-type HubCtx = {
-  logger: Logger;
-  capabilityRegistry: {
-    setClientCapabilities: (sessionId: string, caps: Record<string, unknown>) => void;
-  };
-  toolsetHash: string;
-  toolsetRevision: number;
-  calculateToolsetHash: () => Promise<string>;
-  tools: {
-    list: () => unknown[];
-    call: (
-      name: string,
-      args: unknown,
-      opts: { progressToken?: string; sessionId?: string }
-    ) => Promise<unknown>;
-  };
-  prompts: { list: () => unknown[]; get: (name: string, args?: unknown) => Promise<unknown> };
-  clients: Map<
-    string,
-    {
-      callTool: (
-        req: unknown,
-        _schema: undefined,
-        opts: { onprogress: (p: { progress?: number; total?: number; message?: string }) => void }
-      ) => Promise<unknown>;
-      request: (req: unknown, schema: unknown) => Promise<unknown>;
-    }
-  >;
-  options: { separator: string; defaultTimeout: number };
-  sseManager?: {
-    registerProgressToken: (token: string, sessionId: string) => void;
-    unregisterProgressToken: (token: string) => void;
-    sendProgress: (
-      token: string,
-      p: { progressToken: string; progress: number; total?: number; message?: string }
-    ) => void;
-  };
-  streamableTransport?: {
-    send: (m: unknown) => Promise<void>;
-    sendProgressNotification?: (
-      token: string | number,
-      progress: number,
-      total?: number,
-      message?: string
-    ) => Promise<void>;
-  };
-  onNotification?: (n: unknown) => Promise<void>;
-};
+// HubCtx への危険なキャストをやめ、HatagoHub の公開API/補助メソッドでアクセスする。
 
 type JSONRPCResponse = {
   jsonrpc: '2.0';
@@ -93,8 +45,7 @@ export function handleInitialize(
   id: string | number | null,
   sessionId?: string
 ): JSONRPCResponse {
-  const h = hub as unknown as HubCtx;
-  h.capabilityRegistry.setClientCapabilities(
+  hub.setClientCapabilities(
     sessionId ?? 'default',
     (params?.capabilities as Record<string, unknown>) ?? {}
   );
@@ -114,16 +65,13 @@ export async function handleToolsList(
   hub: HatagoHub,
   id: string | number | null
 ): Promise<JSONRPCResponse> {
-  const h = hub as unknown as HubCtx;
-  if (!h.toolsetHash) {
-    h.toolsetHash = await h.calculateToolsetHash();
-  }
+  const hash = await hub.getOrComputeToolsetHash();
   return {
     jsonrpc: '2.0',
     id: id as string | number,
     result: {
-      tools: h.tools.list(),
-      _meta: { toolset_hash: h.toolsetHash, revision: h.toolsetRevision }
+      tools: hub.tools.list(),
+      _meta: { toolset_hash: hash, revision: hub.getToolsetRevision() }
     }
   };
 }
@@ -134,8 +82,10 @@ export async function handleToolsCall(
   id: string | number | null,
   sessionId?: string
 ): Promise<JSONRPCResponse> {
-  const h = hub as unknown as HubCtx;
-  const { logger, streamableTransport, sseManager, clients, options, onNotification } = h;
+  const logger = hub.getLogger();
+  const streamableTransport = hub.getStreamableTransport();
+  const sseManager = hub.getSSEManager?.();
+  const onNotification = hub.onNotification;
 
   const progressToken = (params as { _meta?: { progressToken?: string | number } })?._meta
     ?.progressToken;
@@ -157,7 +107,7 @@ export async function handleToolsCall(
   let serverId: string | undefined;
   if (toolName) {
     const { parseQualifiedName } = await import('../utils/naming.js');
-    const parsed = parseQualifiedName(toolName, options.separator);
+    const parsed = parseQualifiedName(toolName, hub.getSeparator());
     serverId = parsed.serverId;
     toolName = parsed.name;
   }
@@ -166,13 +116,18 @@ export async function handleToolsCall(
     // Use direct client path whenever we know the server and a progressToken is present.
     // This ensures onprogress forwarding works in both STDIO and HTTP modes. [REH][SF]
     if (serverId && progressToken) {
-      const client = clients.get(serverId);
+      const client = hub.getClient(serverId);
       if (client) {
         const upstreamToken = `upstream-${Date.now()}`;
+        const rawArgs = (params as { arguments?: unknown })?.arguments;
+        const safeArgs =
+          rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs)
+            ? (rawArgs as Record<string, unknown>)
+            : undefined;
         const result = await client.callTool(
           {
             name: toolName,
-            arguments: (params as { arguments?: unknown })?.arguments,
+            arguments: safeArgs,
             _meta: { progressToken: upstreamToken }
           },
           undefined,
@@ -238,7 +193,7 @@ export async function handleToolsCall(
     }
 
     // Fallback to normal invoker path (with optional progress token passthrough)
-    const result = await h.tools.call(
+    const result = await hub.tools.call(
       (params as { name?: string; arguments?: unknown } | undefined)?.name as string,
       (params as { arguments?: unknown } | undefined)?.arguments,
       {
@@ -255,8 +210,7 @@ export async function handleToolsCall(
 }
 
 export function handlePromptsList(hub: HatagoHub, id: string | number | null): JSONRPCResponse {
-  const h = hub as unknown as HubCtx;
-  return { jsonrpc: '2.0', id: id as string | number, result: { prompts: h.prompts.list() } };
+  return { jsonrpc: '2.0', id: id as string | number, result: { prompts: hub.prompts.list() } };
 }
 
 export async function handlePromptsGet(
@@ -264,8 +218,7 @@ export async function handlePromptsGet(
   params: Record<string, unknown> | undefined,
   id: string | number | null
 ): Promise<JSONRPCResponse> {
-  const h = hub as unknown as HubCtx;
-  const prompt = await h.prompts.get(
+  const prompt = await hub.prompts.get(
     params?.name as string,
     (params as { arguments?: unknown } | undefined)?.arguments
   );
@@ -280,41 +233,25 @@ export async function handleResourcesTemplatesList(
   hub: HatagoHub,
   id: string | number | null
 ): Promise<JSONRPCResponse> {
-  const h = hub as unknown as HubCtx;
-  const logger = h.logger;
-  const clients = h.clients;
-  const separator = h.options.separator;
+  const logger = hub.getLogger();
+  const separator = hub.getSeparator();
   const { buildQualifiedName } = await import('../utils/naming.js');
 
   const allTemplates: unknown[] = [];
 
-  for (const [serverId, client] of clients.entries()) {
+  const servers = hub.getServers();
+  for (const s of servers) {
+    const serverId = s.id;
+    const client = hub.getClient(serverId);
     try {
       if (!client) continue;
 
-      const templatesResult = await (
-        client as unknown as {
-          request: (req: unknown, schema: unknown) => Promise<unknown>;
-        }
-      ).request({ method: RPC_METHOD.resources_templates_list, params: {} }, {
-        parse: (data: unknown) => data,
-        type: 'object',
-        properties: {
-          resourceTemplates: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                uriTemplate: { type: 'string' },
-                name: { type: 'string' },
-                description: { type: 'string' },
-                mimeType: { type: 'string' }
-              }
-            }
-          }
-        }
-      } as unknown);
-
+      // 型を固定せずに結果を受け取り、必要最小のプロパティだけ読む。[REH]
+      const templatesResult = await client.request(
+        { method: RPC_METHOD.resources_templates_list, params: {} },
+        // schema は型検証無し（SDK 側の互換性に委ねる）
+        undefined as never
+      );
       const result = templatesResult as { resourceTemplates?: unknown[] };
       if (result?.resourceTemplates) {
         const namespacedTemplates = result.resourceTemplates.map((template: unknown) => {
@@ -325,7 +262,7 @@ export async function handleResourcesTemplatesList(
             serverId
           };
         });
-        allTemplates.push(...(namespacedTemplates as unknown[]));
+        allTemplates.push(...namespacedTemplates);
       }
     } catch (error) {
       logger.debug(`Server ${serverId} doesn't support resource templates (expected)`, {
@@ -342,7 +279,7 @@ export async function handleResourcesTemplatesList(
 }
 
 export function handleResourcesList(hub: HatagoHub, id: string | number | null): JSONRPCResponse {
-  const resources = (hub as unknown as { resources: { list: () => unknown[] } }).resources.list();
+  const resources = hub.resources.list();
   return {
     jsonrpc: '2.0',
     id: id as string | number,
@@ -355,9 +292,9 @@ export async function handleResourcesRead(
   params: Record<string, unknown> | undefined,
   id: string | number | null
 ): Promise<JSONRPCResponse> {
-  const resource = await (
-    hub as unknown as { resources: { read: (uri: string) => Promise<unknown> } }
-  ).resources.read((params as { uri?: string } | undefined)?.uri as string);
+  const resource = await hub.resources.read(
+    (params as { uri?: string } | undefined)?.uri as string
+  );
   return {
     jsonrpc: '2.0',
     id: id as string | number,

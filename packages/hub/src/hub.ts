@@ -830,18 +830,37 @@ export class HatagoHub {
     return this.streamableTransport;
   }
 
-  /**
-   * Get toolset revision
-   */
-  getToolsetRevision(): number {
+  // --- Public helpers for internal handlers (no behavior change) -----------
+
+  public getLogger() {
+    return this.logger;
+  }
+
+  public setClientCapabilities(sessionId: string, caps: Record<string, unknown>): void {
+    this.capabilityRegistry.setClientCapabilities(sessionId, caps);
+  }
+
+  public getToolsetRevision(): number {
     return this.toolsetRevision;
   }
 
-  /**
-   * Get toolset hash
-   */
-  getToolsetHash(): string {
+  public getToolsetHash(): string {
     return this.toolsetHash;
+  }
+
+  public async getOrComputeToolsetHash(): Promise<string> {
+    if (!this.toolsetHash) {
+      this.toolsetHash = await this.calculateToolsetHash();
+    }
+    return this.toolsetHash;
+  }
+
+  public getClient(serverId: string): Client | undefined {
+    return this.clients.get(serverId);
+  }
+
+  public getSeparator(): string {
+    return this.options.separator;
   }
 
   /**

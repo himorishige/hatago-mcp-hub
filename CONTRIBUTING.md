@@ -30,8 +30,19 @@ Project layout:
 - Language: TypeScript (ESM), strict mode, avoid `any` and non‑null assertions
 - Style: ESLint + Prettier; single quotes; 2‑space indentation
 - Tests: co‑locate as `*.test.ts` near sources (Vitest)
+  - Unit: `pnpm test:unit` (no process spawn, stable in CI)
+  - E2E (spawn required): `pnpm test:e2e` (may need local env)
+  - You can force‑skip spawn tests by setting `NO_SPAWN=1`.
 - Architecture: Keep modules small, typed, and reusable; colocate types near usage
 - Error handling: Prefer typed, explicit errors and helpful messages
+
+### Events & Notifications (Hub internal)
+
+- Use `HUB_EVENT_KEYS` from `@himorishige/hatago-hub` instead of string literals
+- Inside the hub package, prefer the typed emitter (`TypedEmitter<HubEvents>`) for new code
+- Avoid `any` or `as unknown as`; add small adapters or narrow runtime checks instead
+
+Reference: `docs/internal/emitter-contract.md`
 
 ### RPC constants policy (methods/notifications)
 

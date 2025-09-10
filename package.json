@@ -12,6 +12,8 @@
     "build:hatago": "pnpm -r --filter './packages/*' run build",
     "build": "pnpm -r build",
     "test": "pnpm -r run test",
+    "test:unit": "pnpm -r --filter @himorishige/hatago-hub run test:unit",
+    "test:e2e": "pnpm -r --filter @himorishige/hatago-hub run test:e2e",
     "test:forks": "pnpm -r --filter @himorishige/hatago-* run test:forks",
     "serve:http": "pnpm -C packages/mcp-hub serve:http",
     "serve:stdio": "pnpm -C packages/mcp-hub serve:stdio",
