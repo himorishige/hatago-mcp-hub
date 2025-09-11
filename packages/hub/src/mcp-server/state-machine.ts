@@ -17,17 +17,16 @@ export type StateTransitionEvent = {
 };
 
 /**
- * Valid state transitions
+ * Valid state transitions (simplified)
+ * Note: IDLING/COOLDOWN have been removed from core types.
  */
 const VALID_TRANSITIONS: Record<ServerState, ServerState[]> = {
-  [ServerState.MANUAL]: [], // Cannot transition from manual
+  [ServerState.MANUAL]: [],
   [ServerState.INACTIVE]: [ServerState.ACTIVATING],
   [ServerState.ACTIVATING]: [ServerState.ACTIVE, ServerState.ERROR],
-  [ServerState.ACTIVE]: [ServerState.IDLING, ServerState.STOPPING, ServerState.ERROR],
-  [ServerState.IDLING]: [ServerState.ACTIVE, ServerState.STOPPING],
+  [ServerState.ACTIVE]: [ServerState.STOPPING, ServerState.ERROR],
   [ServerState.STOPPING]: [ServerState.INACTIVE, ServerState.ERROR],
-  [ServerState.ERROR]: [ServerState.COOLDOWN],
-  [ServerState.COOLDOWN]: [ServerState.INACTIVE]
+  [ServerState.ERROR]: [ServerState.INACTIVE]
 };
 
 /**
@@ -71,37 +70,19 @@ export class ServerStateMachine {
    * Transition to a new state
    * Returns a promise that resolves when transition is complete
    */
-  async transition(serverId: string, to: ServerState, reason?: string): Promise<void> {
+  transition(serverId: string, to: ServerState, reason?: string): Promise<void> {
     const from = this.getState(serverId);
 
     // Check if transition is valid
     if (!this.canTransition(from, to)) {
-      throw new Error(`Invalid state transition for ${serverId}: ${from} -> ${to}`);
+      return Promise.reject(
+        new Error(`Invalid state transition for ${serverId}: ${from} -> ${to}`)
+      );
     }
 
-    // Wait for any ongoing transition
-    const existing = this.transitions.get(serverId);
-    if (existing) {
-      await existing;
-      // Re-check state after waiting
-      const currentState = this.getState(serverId);
-      if (currentState !== from) {
-        throw new Error(
-          `State changed during transition wait: expected ${from}, got ${currentState}`
-        );
-      }
-    }
-
-    // Create transition promise
+    // Execute synchronously; keep transitions map for compatibility (no real async work)
     this.executeTransition(serverId, from, to, reason);
-    const transitionPromise = Promise.resolve();
-    this.transitions.set(serverId, transitionPromise);
-
-    try {
-      await transitionPromise;
-    } finally {
-      this.transitions.delete(serverId);
-    }
+    return Promise.resolve();
   }
 
   /**
@@ -161,7 +142,7 @@ export class ServerStateMachine {
    */
   isActive(serverId: string): boolean {
     const state = this.getState(serverId);
-    return state === ServerState.ACTIVE || state === ServerState.IDLING;
+    return state === ServerState.ACTIVE;
   }
 
   /**
@@ -169,11 +150,7 @@ export class ServerStateMachine {
    */
   canActivate(serverId: string): boolean {
     const state = this.getState(serverId);
-    return (
-      state === ServerState.INACTIVE ||
-      state === ServerState.COOLDOWN ||
-      state === ServerState.ERROR
-    );
+    return state === ServerState.INACTIVE || state === ServerState.ERROR;
   }
 
   /**

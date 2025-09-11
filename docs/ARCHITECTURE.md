@@ -360,11 +360,11 @@ interface Platform {
 
 ## Error Handling
 
-### Error Recovery
+### Error Recovery (Simplified)
 
-- Automatic retry with exponential backoff
-- Graceful degradation
-- Circuit breaker for failing servers
+- No automatic retries by default. Failed activations settle to `INACTIVE` immediately to keep the hub thin.
+- Clients or the hub may re‑attempt activation explicitly (e.g., on the next tool call for `onDemand` policy).
+- Graceful deactivation on errors where possible; transports are torn down deterministically.
 
 ### Error Format
 
@@ -417,6 +417,12 @@ interface Platform {
 4. Add tests
 
 ## Version History
+
+### v0.0.3 (Lifecycle Simplification — 2025‑09‑11)
+
+- Idle management simplified: single per‑server timer scheduled only when reference count drops to 0; stop when both `idleTimeoutMs` and `minLingerMs` conditions are satisfied.
+- Activation manager simplified: removed activation queues, history, and cooldown. Errors settle to `INACTIVE` without automatic retry.
+- State machine simplified: active lifecycle reduced to `INACTIVE → ACTIVATING → ACTIVE → STOPPING → INACTIVE` with `ERROR` as a transient state. `IDLING` and `COOLDOWN` were removed from core types; `MANUAL` remains only as a policy label.
 
 ### v0.0.2 (Current)
 
