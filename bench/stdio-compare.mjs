@@ -23,11 +23,11 @@ async function loadCoreConstants() {
     const ver = /export const HATAGO_VERSION\s*=\s*['"]([^'"]+)['"]/m.exec(text)?.[1];
     const proto = /export const HATAGO_PROTOCOL_VERSION\s*=\s*['"]([^'"]+)['"]/m.exec(text)?.[1];
     return {
-      version: ver ?? '0.0.9',
+      version: ver ?? '0.0.10',
       protocolVersion: proto ?? '2025-06-18'
     };
   } catch {
-    return { version: '0.0.9', protocolVersion: '2025-06-18' };
+    return { version: '0.0.10', protocolVersion: '2025-06-18' };
   }
 }
 

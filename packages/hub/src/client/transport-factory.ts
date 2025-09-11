@@ -61,7 +61,7 @@ export function createTransportFactory(
       }) as unknown as ITransport;
     }
 
-    if (spec.url && (spec.type === 'http' || !spec.type)) {
+    if (spec.url && (spec.type === 'http' || spec.type === 'streamable-http' || !spec.type)) {
       const { StreamableHTTPClientTransport } = await import(
         '@modelcontextprotocol/sdk/client/streamableHttp.js'
       );

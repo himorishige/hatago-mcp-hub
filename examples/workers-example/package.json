@@ -1,6 +1,6 @@
 {
   "name": "hatago-workers-example",
-  "version": "0.0.8",
+  "version": "0.0.10",
   "description": "Minimal Cloudflare Workers example for Hatago MCP Hub",
   "type": "module",
   "scripts": {
