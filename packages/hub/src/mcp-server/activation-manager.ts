@@ -1,6 +1,6 @@
 /**
- * Server activation manager with deduplication
- * Handles on-demand activation and concurrent call management
+ * Server activation manager (simplified)
+ * Minimal on-demand activation with lightweight deduplication
  */
 
 import type { ActivationPolicy } from '@himorishige/hatago-core';
@@ -58,10 +58,8 @@ export type ActivationResult = {
  */
 export class ActivationManager {
   private readonly stateMachine: ServerStateMachine;
-  private readonly activationQueue = new Map<string, Promise<ActivationResult>>();
   private readonly serverConfigs = new Map<string, ServerConfig>();
-  private readonly activationHistory = new Map<string, ActivationRequest[]>();
-  private readonly maxHistorySize = 100;
+  private readonly inflight = new Map<string, Promise<ActivationResult>>();
   private events: HubEventEmitter<string, unknown>;
 
   // Connection handlers (to be set by hub)
@@ -71,8 +69,7 @@ export class ActivationManager {
   constructor(stateMachine: ServerStateMachine) {
     this.events = createEventEmitter<string, unknown>();
     this.stateMachine = stateMachine;
-
-    // Listen to state changes
+    // Minimal pass-through of transitions for observability
     this.stateMachine.on('transition', (event) => {
       this.events.emit('state:changed', event);
     });
@@ -84,13 +81,8 @@ export class ActivationManager {
   registerServer(serverId: string, config: ServerConfig): void {
     this.serverConfigs.set(serverId, config);
 
-    // Initialize state based on activation policy
-    const policy = config.activationPolicy ?? 'manual';
-    if (policy === 'manual') {
-      this.stateMachine.setState(serverId, ServerState.MANUAL);
-    } else {
-      this.stateMachine.setState(serverId, ServerState.INACTIVE);
-    }
+    // Initialize as INACTIVE regardless of policy (policy handled at call sites)
+    this.stateMachine.setState(serverId, ServerState.INACTIVE);
   }
 
   /**
@@ -115,7 +107,7 @@ export class ActivationManager {
 
     switch (policy) {
       case 'always':
-        // Always servers activate on startup or dependency
+        // Activation is triggered by hub during startup only
         return source.type === 'startup' || source.type === 'dependency';
 
       case 'onDemand':
@@ -139,26 +131,15 @@ export class ActivationManager {
     source: ActivationRequest['source'],
     reason?: string
   ): Promise<ActivationResult> {
-    // Check if already activating
-    const existing = this.activationQueue.get(serverId);
-    if (existing) {
-      this.events.emit('activation:deduplicated', { serverId, source });
-      return existing;
-    }
+    // Deduplicate concurrent activations (lightweight)
+    const existing = this.inflight.get(serverId);
+    if (existing) return existing;
 
-    // Check current state
     const currentState = this.stateMachine.getState(serverId);
-
-    // Already active
     if (currentState === ServerState.ACTIVE) {
-      return {
-        success: true,
-        serverId,
-        state: currentState
-      };
+      return { success: true, serverId, state: currentState };
     }
 
-    // Check if activation is allowed
     if (!this.shouldActivate(serverId, source)) {
       return {
         success: false,
@@ -168,7 +149,6 @@ export class ActivationManager {
       };
     }
 
-    // Create activation request
     const request: ActivationRequest = {
       serverId,
       reason: reason ?? `Activated by ${source.type}`,
@@ -176,19 +156,12 @@ export class ActivationManager {
       timestamp: new Date().toISOString()
     };
 
-    // Record in history
-    this.recordActivation(request);
-
-    // Start activation with deduplication
-    const activationPromise = this.performActivation(serverId, request);
-    this.activationQueue.set(serverId, activationPromise);
-
+    const promise = this.performActivation(serverId, request);
+    this.inflight.set(serverId, promise);
     try {
-      const result = await activationPromise;
-      return result;
+      return await promise;
     } finally {
-      // Remove from queue after completion
-      this.activationQueue.delete(serverId);
+      this.inflight.delete(serverId);
     }
   }
 
@@ -200,75 +173,44 @@ export class ActivationManager {
     request: ActivationRequest
   ): Promise<ActivationResult> {
     const startTime = Date.now();
-
     try {
-      // Emit activation start
       this.events.emit('activation:start', request);
 
-      // Check if can activate
-      if (!this.stateMachine.canActivate(serverId)) {
-        const state = this.stateMachine.getState(serverId);
-
-        // Wait for cooldown if needed
-        if (state === ServerState.COOLDOWN) {
-          await this.waitForCooldown(serverId);
-        } else if (state === ServerState.ERROR) {
-          // Reset from error state
-          await this.stateMachine.transition(
-            serverId,
-            ServerState.COOLDOWN,
-            'Resetting from error'
-          );
-          await this.waitForCooldown(serverId);
-        } else {
-          throw new Error(`Cannot activate from state: ${state}`);
-        }
+      // Only allow from INACTIVE or ERROR
+      const state = this.stateMachine.getState(serverId);
+      if (state !== ServerState.INACTIVE && state !== ServerState.ERROR) {
+        throw new Error(`Cannot activate from state: ${state}`);
       }
 
-      // Transition to activating
+      if (state === ServerState.ERROR) {
+        // Reset to INACTIVE immediately
+        await this.stateMachine.transition(serverId, ServerState.INACTIVE, 'Reset from error');
+      }
+
       await this.stateMachine.transition(serverId, ServerState.ACTIVATING, request.reason);
 
-      // Connect to server
       if (this.connectHandler) {
         await this.connectHandler(serverId);
       }
 
-      // Transition to active
-      await this.stateMachine.transition(serverId, ServerState.ACTIVE, 'Successfully connected');
+      await this.stateMachine.transition(serverId, ServerState.ACTIVE, 'Connected');
 
-      // Emit success
       const duration = Date.now() - startTime;
-      this.events.emit('activation:success', {
-        serverId,
-        duration,
-        request
-      });
-
-      return {
-        success: true,
-        serverId,
-        state: ServerState.ACTIVE,
-        duration
-      };
+      this.events.emit('activation:success', { serverId, duration, request });
+      return { success: true, serverId, state: ServerState.ACTIVE, duration };
     } catch (error) {
-      // Transition to error
       await this.stateMachine.transition(
         serverId,
         ServerState.ERROR,
         error instanceof Error ? error.message : 'Activation failed'
       );
-
-      // Emit failure
-      this.events.emit('activation:failed', {
-        serverId,
-        error,
-        request
-      });
-
+      // Immediately settle to INACTIVE for simplicity
+      await this.stateMachine.transition(serverId, ServerState.INACTIVE, 'Error settled');
+      this.events.emit('activation:failed', { serverId, error, request });
       return {
         success: false,
         serverId,
-        state: ServerState.ERROR,
+        state: ServerState.INACTIVE,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
@@ -279,9 +221,7 @@ export class ActivationManager {
    */
   async deactivate(serverId: string, reason?: string): Promise<ActivationResult> {
     const currentState = this.stateMachine.getState(serverId);
-
-    // Check if can deactivate
-    if (currentState !== ServerState.ACTIVE && currentState !== ServerState.IDLING) {
+    if (currentState !== ServerState.ACTIVE) {
       return {
         success: false,
         serverId,
@@ -291,49 +231,28 @@ export class ActivationManager {
     }
 
     try {
-      // Transition to stopping
       await this.stateMachine.transition(
         serverId,
         ServerState.STOPPING,
         reason ?? 'Manual deactivation'
       );
-
-      // Disconnect from server
       if (this.disconnectHandler) {
         await this.disconnectHandler(serverId);
       }
-
-      // Transition to inactive
+      await this.stateMachine.transition(serverId, ServerState.INACTIVE, 'Disconnected');
+      this.events.emit('deactivation:success', { serverId });
+      return { success: true, serverId, state: ServerState.INACTIVE };
+    } catch (error) {
       await this.stateMachine.transition(
         serverId,
         ServerState.INACTIVE,
-        'Successfully disconnected'
+        'Deactivation failed, forcing inactive'
       );
-
-      this.events.emit('deactivation:success', { serverId });
-
-      return {
-        success: true,
-        serverId,
-        state: ServerState.INACTIVE
-      };
-    } catch (error) {
-      // Transition to error
-      await this.stateMachine.transition(
-        serverId,
-        ServerState.ERROR,
-        error instanceof Error ? error.message : 'Deactivation failed'
-      );
-
-      this.events.emit('deactivation:failed', {
-        serverId,
-        error
-      });
-
+      this.events.emit('deactivation:failed', { serverId, error });
       return {
         success: false,
         serverId,
-        state: ServerState.ERROR,
+        state: ServerState.INACTIVE,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
@@ -342,25 +261,7 @@ export class ActivationManager {
   /**
    * Activate all "always" servers
    */
-  async activateAlwaysServers(): Promise<Map<string, ActivationResult>> {
-    const results = new Map<string, ActivationResult>();
-
-    for (const [serverId, config] of this.serverConfigs) {
-      if (config.activationPolicy === 'always') {
-        const result = await this.activate(
-          serverId,
-          {
-            type: 'startup'
-          },
-          'Startup activation for always policy'
-        );
-
-        results.set(serverId, result);
-      }
-    }
-
-    return results;
-  }
+  // activateAlwaysServers removed (handled by hub startup)
 
   /**
    * Get server state
@@ -386,66 +287,28 @@ export class ActivationManager {
   /**
    * Get activation history
    */
-  getActivationHistory(serverId: string): ActivationRequest[] {
-    return this.activationHistory.get(serverId) ?? [];
+  getActivationHistory(_serverId: string): ActivationRequest[] {
+    // History removed; return empty for compatibility
+    return [];
   }
 
   /**
    * Wait for cooldown period
    */
-  private async waitForCooldown(serverId: string): Promise<void> {
-    const config = this.serverConfigs.get(serverId);
-    const cooldownMs = config?._lastError?.retryAfterMs ?? 5000;
-
-    await new Promise((resolve) => setTimeout(resolve, cooldownMs));
-
-    // Transition from cooldown to inactive
-    await this.stateMachine.transition(serverId, ServerState.INACTIVE, 'Cooldown period complete');
-  }
+  // waitForCooldown removed
 
   /**
    * Record activation in history
    */
-  private recordActivation(request: ActivationRequest): void {
-    const history = this.activationHistory.get(request.serverId) ?? [];
-    history.push(request);
-
-    // Keep only recent history
-    if (history.length > this.maxHistorySize) {
-      history.shift();
-    }
-
-    this.activationHistory.set(request.serverId, history);
-  }
+  // recordActivation removed (history not kept)
 
   /**
    * Handle server error
    */
-  async handleServerError(serverId: string, error: Error, retryAfterMs?: number): Promise<void> {
-    const config = this.serverConfigs.get(serverId);
-    if (config) {
-      config._lastError = {
-        message: error.message,
-        timestamp: new Date().toISOString(),
-        retryAfterMs: retryAfterMs ?? 5000
-      };
-    }
-
-    // Transition to error state
+  async handleServerError(serverId: string, error: Error): Promise<void> {
+    // Simplified: mark error then settle to inactive
     await this.stateMachine.transition(serverId, ServerState.ERROR, error.message);
-
-    // Auto-transition to cooldown
-    setTimeout(() => {
-      void (async () => {
-        if (this.stateMachine.getState(serverId) === ServerState.ERROR) {
-          await this.stateMachine.transition(
-            serverId,
-            ServerState.COOLDOWN,
-            'Entering cooldown after error'
-          );
-        }
-      })();
-    }, 1000);
+    await this.stateMachine.transition(serverId, ServerState.INACTIVE, 'Error handled');
   }
 
   /**
@@ -454,7 +317,7 @@ export class ActivationManager {
   async resetServer(serverId: string): Promise<void> {
     // Deactivate if active
     const state = this.stateMachine.getState(serverId);
-    if (state === ServerState.ACTIVE || state === ServerState.IDLING) {
+    if (state === ServerState.ACTIVE) {
       await this.deactivate(serverId, 'Reset requested');
     }
 
@@ -478,14 +341,9 @@ export class ActivationManager {
    */
   async shutdown(): Promise<void> {
     const activeServers = Array.from(this.serverConfigs.keys()).filter((id) => this.isActive(id));
-
-    // Deactivate all active servers
     await Promise.all(activeServers.map((id) => this.deactivate(id, 'System shutdown')));
-
-    // Clear all state
     this.stateMachine.resetAll();
-    this.activationQueue.clear();
-    this.activationHistory.clear();
+    this.inflight.clear();
   }
   // Lightweight on/off
   on(event: string, handler: (data: unknown) => void): void {

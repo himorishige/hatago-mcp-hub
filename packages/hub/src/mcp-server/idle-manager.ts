@@ -1,6 +1,11 @@
 /**
  * Idle management with reference counting
  * Tracks server usage and manages automatic shutdown
+ *
+ * Simplified design:
+ * - No periodic scan timer
+ * - Single scheduled timer per server when referenceCount becomes 0
+ * - Stop condition is evaluated once per schedule based on policy
  */
 
 import { createEventEmitter, type EventEmitter as HubEventEmitter } from '../utils/events.js';
@@ -16,10 +21,7 @@ export type ActivityData = {
   serverId: string;
   lastActivity: number;
   referenceCount: number;
-  activeSessions: Set<string>;
-  activeTools: Map<string, number>;
   startTime: number;
-  totalCalls: number;
 };
 
 /**
@@ -42,8 +44,6 @@ export class IdleManager {
   private readonly activationManager: ActivationManager;
   private readonly activities = new Map<string, ActivityData>();
   private readonly idlePolicies = new Map<string, IdlePolicy>();
-  private readonly checkInterval: number = 10000; // 10 seconds
-  private checkTimer?: NodeJS.Timeout;
   private readonly idleTimers = new Map<string, NodeJS.Timeout>();
   private events: HubEventEmitter<string, unknown>;
 
@@ -52,7 +52,7 @@ export class IdleManager {
     this.stateMachine = stateMachine;
     this.activationManager = activationManager;
 
-    // Listen to state changes
+    // Listen to state changes (initialize/clear activity lifecycle)
     this.stateMachine.on('state:ACTIVE', (data: unknown) => {
       const { serverId } = data as { serverId: string };
       this.initializeActivity(serverId);
@@ -81,12 +81,7 @@ export class IdleManager {
    * Start idle monitoring
    */
   start(): void {
-    if (this.checkTimer) return;
-
-    this.checkTimer = setInterval(() => {
-      this.checkAllServers();
-    }, this.checkInterval);
-
+    // No-op: periodic monitoring removed
     this.events.emit('monitoring:started', undefined);
   }
 
@@ -94,11 +89,6 @@ export class IdleManager {
    * Stop idle monitoring
    */
   stop(): void {
-    if (this.checkTimer) {
-      clearInterval(this.checkTimer);
-      this.checkTimer = undefined;
-    }
-
     // Clear all idle timers
     for (const timer of this.idleTimers.values()) {
       clearTimeout(timer);
@@ -120,20 +110,12 @@ export class IdleManager {
 
     // Update reference count
     activity.referenceCount++;
-    activity.activeSessions.add(sessionId);
-
-    if (toolName) {
-      const count = activity.activeTools.get(toolName) ?? 0;
-      activity.activeTools.set(toolName, count + 1);
-    }
 
     // Reset activity time based on policy
     if (resetTiming === 'onCallStart') {
       activity.lastActivity = Date.now();
       this.cancelIdleTimer(serverId);
     }
-
-    activity.totalCalls++;
 
     this.events.emit('activity:start', {
       serverId,
@@ -156,24 +138,13 @@ export class IdleManager {
     // Update reference count
     activity.referenceCount = Math.max(0, activity.referenceCount - 1);
 
-    if (toolName) {
-      const count = activity.activeTools.get(toolName) ?? 0;
-      if (count <= 1) {
-        activity.activeTools.delete(toolName);
-      } else {
-        activity.activeTools.set(toolName, count - 1);
-      }
-    }
-
     // Reset activity time based on policy
     if (resetTiming === 'onCallEnd') {
       activity.lastActivity = Date.now();
     }
 
     // Remove session if no more references
-    if (activity.referenceCount === 0) {
-      activity.activeSessions.delete(sessionId);
-    }
+    // (Sessions/tools tracking removed)
 
     this.events.emit('activity:end', {
       serverId,
@@ -182,9 +153,9 @@ export class IdleManager {
       referenceCount: activity.referenceCount
     });
 
-    // Schedule idle check if no references
+    // Schedule idle stop if no references
     if (activity.referenceCount === 0) {
-      this.scheduleIdleCheck(serverId);
+      this.scheduleIdleStop(serverId);
     }
   }
 
@@ -210,7 +181,7 @@ export class IdleManager {
     const state = this.stateMachine.getState(serverId);
 
     // Not active = not idle
-    if (state !== ServerState.ACTIVE && state !== ServerState.IDLING) {
+    if (state !== ServerState.ACTIVE) {
       return {
         serverId,
         isIdle: false,
@@ -245,7 +216,7 @@ export class IdleManager {
       };
     }
 
-    // No policy = never stop
+    // No policy = never stop (but report idle time)
     if (!policy) {
       return {
         serverId,
@@ -261,20 +232,10 @@ export class IdleManager {
     const idleTimeMs = now - activity.lastActivity;
     const runTimeMs = now - activity.startTime;
 
-    // Check minimum linger time
-    if (runTimeMs < (policy.minLingerMs ?? 30000)) {
-      return {
-        serverId,
-        isIdle: true,
-        idleTimeMs,
-        referenceCount: 0,
-        shouldStop: false,
-        reason: `Minimum linger time not met (${runTimeMs}ms < ${policy.minLingerMs}ms)`
-      };
-    }
-
-    // Check idle timeout
-    const shouldStop = idleTimeMs >= (policy.idleTimeoutMs ?? 300000);
+    // Compute stop condition: both minLinger and idleTimeout satisfied
+    const lingerOk = runTimeMs >= (policy.minLingerMs ?? 30000);
+    const idleOk = idleTimeMs >= (policy.idleTimeoutMs ?? 300000);
+    const shouldStop = lingerOk && idleOk;
 
     return {
       serverId,
@@ -283,8 +244,8 @@ export class IdleManager {
       referenceCount: 0,
       shouldStop,
       reason: shouldStop
-        ? `Idle timeout exceeded (${idleTimeMs}ms >= ${policy.idleTimeoutMs}ms)`
-        : `Within idle timeout (${idleTimeMs}ms < ${policy.idleTimeoutMs}ms)`
+        ? `Idle + linger satisfied (${idleTimeMs}ms idle, ${runTimeMs}ms runtime)`
+        : `Waiting conditions (idle:${idleOk}, linger:${lingerOk})`
     };
   }
 
@@ -315,10 +276,7 @@ export class IdleManager {
       serverId,
       lastActivity: now,
       referenceCount: 0,
-      activeSessions: new Set(),
-      activeTools: new Map(),
-      startTime: now,
-      totalCalls: 0
+      startTime: now
     });
 
     this.events.emit('activity:initialized', { serverId });
@@ -337,31 +295,39 @@ export class IdleManager {
   /**
    * Schedule idle check for a server
    */
-  private scheduleIdleCheck(serverId: string): void {
+  private scheduleIdleStop(serverId: string): void {
     const policy = this.idlePolicies.get(serverId);
-    if (!policy) return;
+    const activity = this.activities.get(serverId);
+    if (!policy || !activity) return;
 
-    // Cancel existing timer
+    // Cancel existing timer if any
     this.cancelIdleTimer(serverId);
 
-    // Schedule new check
+    const now = Date.now();
+    const idleElapsed = now - activity.lastActivity;
+    const runElapsed = now - activity.startTime;
+
+    const idleWait = Math.max((policy.idleTimeoutMs ?? 300000) - idleElapsed, 0);
+    const lingerWait = Math.max((policy.minLingerMs ?? 30000) - runElapsed, 0);
+    const waitMs = Math.max(idleWait, lingerWait);
+
+    if (waitMs === 0) {
+      // Conditions already satisfied, stop immediately
+      void this.handleIdleStop(serverId, this.checkIdle(serverId));
+      return;
+    }
+
     const timer = setTimeout(() => {
       void (async () => {
         const result = this.checkIdle(serverId);
-
         if (result.shouldStop) {
           await this.handleIdleStop(serverId, result);
-        } else if (result.isIdle) {
-          // Transition to idling state
-          const state = this.stateMachine.getState(serverId);
-          if (state === ServerState.ACTIVE) {
-            await this.stateMachine.transition(serverId, ServerState.IDLING, 'Server is idle');
-          }
         }
       })();
-    }, policy.idleTimeoutMs);
+    }, waitMs);
 
     this.idleTimers.set(serverId, timer);
+    this.events.emit('idle:scheduled', { serverId, waitMs });
   }
 
   /**
@@ -373,34 +339,7 @@ export class IdleManager {
       clearTimeout(timer);
       this.idleTimers.delete(serverId);
     }
-
-    // Transition back to active if idling
-    const state = this.stateMachine.getState(serverId);
-    if (state === ServerState.IDLING) {
-      this.stateMachine
-        .transition(serverId, ServerState.ACTIVE, 'Activity resumed')
-        .catch((err) => {
-          this.events.emit('error', err);
-        });
-    }
-  }
-
-  /**
-   * Check all servers for idle
-   */
-  private checkAllServers(): void {
-    for (const [serverId, activity] of this.activities) {
-      // Skip if has references
-      if (activity.referenceCount > 0) continue;
-
-      const result = this.checkIdle(serverId);
-
-      if (result.shouldStop) {
-        this.handleIdleStop(serverId, result).catch((err) => {
-          this.events.emit('error', err);
-        });
-      }
-    }
+    this.events.emit('idle:canceled', { serverId });
   }
 
   /**

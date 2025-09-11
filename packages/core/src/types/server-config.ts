@@ -21,14 +21,12 @@ export type ActivityReset = 'onCallStart' | 'onCallEnd';
  * Server state in the state machine
  */
 export enum ServerState {
-  MANUAL = 'manual', // Manual management (cannot auto-start)
+  MANUAL = 'manual', // Manual management (kept for policy labeling)
   INACTIVE = 'inactive', // Not running (can be activated)
   ACTIVATING = 'activating', // Starting up
   ACTIVE = 'active', // Running and ready
-  IDLING = 'idling', // Running but will stop soon
   STOPPING = 'stopping', // Shutting down
-  ERROR = 'error', // Error state
-  COOLDOWN = 'cooldown' // Waiting before retry
+  ERROR = 'error' // Error state
 }
 
 /**

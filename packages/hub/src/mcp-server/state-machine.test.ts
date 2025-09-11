@@ -22,7 +22,6 @@ describe('ServerStateMachine', () => {
     for (let i = 0; i < 120; i++) {
       await sm.transition('s1', ServerState.ACTIVATING);
       await sm.transition('s1', ServerState.ACTIVE);
-      await sm.transition('s1', ServerState.IDLING);
       await sm.transition('s1', ServerState.STOPPING);
       await sm.transition('s1', ServerState.INACTIVE);
     }
@@ -34,7 +33,7 @@ describe('ServerStateMachine', () => {
     const sm = new ServerStateMachine();
     sm.setState('s1', ServerState.INACTIVE);
     expect(sm.canActivate('s1')).toBe(true);
-    sm.setState('s1', ServerState.COOLDOWN);
+    sm.setState('s1', ServerState.ERROR);
     expect(sm.canActivate('s1')).toBe(true);
     sm.setState('s1', ServerState.ACTIVE);
     expect(sm.canActivate('s1')).toBe(false);
