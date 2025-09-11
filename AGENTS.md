@@ -236,20 +236,18 @@ server.registerTool('tool_name', { inputSchema: z.object({ p: z.string() }) }, h
   - 対象: `packages/mcp-hub` → `@himorishige/hatago-mcp-hub`
   - 事前手順: `pnpm -r build && pnpm -r test && pnpm -r typecheck`
   - 公開: `cd packages/mcp-hub && npm publish --access public`
-- 詳細な手順は `docs/release-guide.ja.md` を参照してください。
 
 ## ドキュメント方針
 
 - 基本は日本語の丁寧語で記載します（キャラクター口調は使用しません）。
-- 英語版が必要な場合は内容を揃えて併記します（例: `docs/release-guide.md`）。
+- 英語版が必要な場合は内容を揃えて併記します。
 - 見出しは簡潔にし、まず手順やコード例を提示します。
 
 関連ドキュメント（抜粋）:
 
-- アーキテクチャ: `docs/ARCHITECTURE.md`, `docs/hub-architecture-deep-dive.md`
-- 設定ガイド: `docs/configuration.md`, `docs/mcp-config-examples.md`
-- 比較/設計思想: `docs/comparison-cipher-hatago.md`
-- 進捗通知: `docs/PROGRESS_NOTIFICATIONS.md`
+- アーキテクチャ: `docs/ARCHITECTURE.md`, `docs/refactoring/hub-slim-plan.md`
+- 設定ガイド: `docs/configuration.md`
+- パッケージREADME: `packages/mcp-hub/README.md`
 - ユースケース: `docs/use-cases/team-development.md`
 
 ## OSS 必須ファイル（整備済み）
@@ -264,10 +262,9 @@ server.registerTool('tool_name', { inputSchema: z.object({ p: z.string() }) }, h
 
 ## 参考ドキュメント
 
-- アーキテクチャ: `docs/ARCHITECTURE.md`, `docs/hub-architecture-deep-dive.md`
-- 設定ガイド: `docs/configuration.md`, `docs/mcp-config-examples.md`
-- 進捗通知: `docs/PROGRESS_NOTIFICATIONS.md`
-- リリース運用: `docs/release-guide.ja.md` / `docs/release-guide.md`
+- アーキテクチャ: `docs/ARCHITECTURE.md`, `docs/refactoring/hub-slim-plan.md`
+- 設定ガイド: `docs/configuration.md`
+- ユースケース: `docs/use-cases/team-development.md`
 
 ## 環境依存ユーティリティの方針
 

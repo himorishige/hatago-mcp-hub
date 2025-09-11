@@ -23,7 +23,7 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 
 ### 🔌 Rich Connectivity
 
-- **Multi-Transport Support** - STDIO / HTTP / SSE / WebSocket
+- **Multi-Transport Support** - STDIO / HTTP / SSE
 - **Remote MCP Proxy** - Transparent connection to HTTP-based MCP servers
 - **NPX Server Integration** - Dynamic management of npm package MCP servers
 
@@ -499,7 +499,7 @@ hatago status
 ## 📚 Documentation
 
 - [Configuration Guide](./docs/configuration.md)
-- [Architecture Overview](./docs/architecture.md)
+- [Architecture Overview](./docs/ARCHITECTURE.md)
 - [API Reference](./docs/api.md)
 - [Team Development Use Cases](./docs/use-cases/team-development.md)
 

@@ -288,7 +288,7 @@ Example:
 - **Unified Interface**: Single endpoint for multiple MCP servers
 - **Tool Name Management**: Automatic collision avoidance with prefixing
 - **Session Management**: Independent sessions for multiple AI clients
-- **Multi-Transport**: STDIO, HTTP, SSE, WebSocket support
+- **Multi-Transport**: STDIO, HTTP, SSE support
 
 ### 🔄 Dynamic Updates
 

@@ -32,9 +32,9 @@ Hatago MCP Hub is a lightweight, modular hub server that manages multiple MCP (M
 │  ┌──────────────────────────────────────────────────┐  │
 │  │            Transport Layer                       │  │
 │  │                                                   │  │
-│  │  ┌──────┐ ┌──────┐ ┌─────┐ ┌──────────┐       │  │
-│  │  │STDIO │ │HTTP  │ │SSE  │ │WebSocket │       │  │
-│  │  └──────┘ └──────┘ └─────┘ └──────────┘       │  │
+│  │  ┌──────┐ ┌──────┐ ┌─────┐                 │  │
+│  │  │STDIO │ │HTTP  │ │SSE  │                 │  │
+│  │  └──────┘ └──────┘ └─────┘                 │  │
 │  └──────────────────────────────────────────────────┘  │
 └────────────────────┬────────────────────────────────────┘
                      │
@@ -87,7 +87,7 @@ hatago-mcp-hub/
 
 ### Hub (`packages/hub/src/hub.ts`)
 
-The central coordinator for all MCP operations. Simplified to ~500 lines from 1000+ lines.
+The central coordinator for all MCP operations. Thin orchestrator with responsibilities extracted into focused modules.
 
 **Key Responsibilities:**
 
@@ -175,11 +175,6 @@ Provides session isolation for multiple concurrent AI clients.
    - Server-Sent Events for streaming
    - Real-time notifications
    - Progress updates
-
-4. **WebSocket** (`packages/transport/src/websocket/`)
-   - Full-duplex communication
-   - Low-latency operations
-   - Real-time bidirectional messaging
 
 ## Configuration System
 
