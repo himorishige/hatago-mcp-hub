@@ -7,4 +7,5 @@ export { IdleManager } from './idle-manager.js';
 export { MetadataStore } from './metadata-store.js';
 export { AuditLogger } from './audit-logger.js';
 export type { StoredServerMetadata } from './metadata-store.js';
-// Other management components will be migrated in subsequent steps.
+// Ensure JS emission
+export const __hatago_mgmt_index = true;

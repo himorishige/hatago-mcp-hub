@@ -14,14 +14,17 @@ import {
 import { getPlatform, setPlatform } from '@himorishige/hatago-runtime';
 import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 import { HatagoHub } from './hub.js';
-import { ActivationManager as ExtActivationManager } from '@himorishige/hatago-hub-management';
-import { ServerStateMachine as LocalServerStateMachine } from './mcp-server/state-machine.js';
+import { ActivationManager as ExtActivationManager } from '@himorishige/hatago-hub-management/activation-manager.js';
+import { ServerStateMachine as LocalServerStateMachine } from '@himorishige/hatago-hub-management/state-machine.js';
 import type { ActivationManager as LocalActivationManager } from './mcp-server/activation-manager.js';
 import type { IdleManager as LocalIdleManager } from './mcp-server/idle-manager.js';
 import type { MetadataStore as LocalMetadataStore } from './mcp-server/metadata-store.js';
 import type { AuditLogger as LocalAuditLoggerType } from './security/audit-logger.js';
-import { IdleManager as ExtIdleManager } from '@himorishige/hatago-hub-management';
-import { MetadataStore, type StoredServerMetadata } from '@himorishige/hatago-hub-management';
+import { IdleManager as ExtIdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
+import {
+  MetadataStore,
+  type StoredServerMetadata
+} from '@himorishige/hatago-hub-management/metadata-store.js';
 import { AuditLogger as LocalAuditLogger } from './security/audit-logger.js';
 import type { CallOptions, HubOptions, ListOptions, ServerSpec } from './types.js';
 

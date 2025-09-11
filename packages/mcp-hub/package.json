@@ -53,6 +53,7 @@
     "lint": "eslint ./src"
   },
   "dependencies": {
+    "@himorishige/hatago-hub-management": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "hono": "^4.9.4",
     "commander": "^14.0.0"

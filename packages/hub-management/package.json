@@ -9,6 +9,26 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./state-machine.js": {
+      "import": "./dist/state-machine.js",
+      "types": "./dist/state-machine.d.ts"
+    },
+    "./activation-manager.js": {
+      "import": "./dist/activation-manager.js",
+      "types": "./dist/activation-manager.d.ts"
+    },
+    "./idle-manager.js": {
+      "import": "./dist/idle-manager.js",
+      "types": "./dist/idle-manager.d.ts"
+    },
+    "./metadata-store.js": {
+      "import": "./dist/metadata-store.js",
+      "types": "./dist/metadata-store.d.ts"
+    },
+    "./audit-logger.js": {
+      "import": "./dist/audit-logger.js",
+      "types": "./dist/audit-logger.d.ts"
     }
   },
   "files": [
