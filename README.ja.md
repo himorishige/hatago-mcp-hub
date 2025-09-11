@@ -23,7 +23,7 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 ### 🔌 豊富な接続性
 
-- **マルチトランスポート対応** - STDIO / HTTP / SSE / WebSocket
+- **マルチトランスポート対応** - STDIO / HTTP / SSE
 - **リモートMCPプロキシ** - HTTPベースのMCPサーバーへの透過的な接続
 - **NPXサーバー統合** - npmパッケージのMCPサーバーを動的に管理
 
@@ -389,7 +389,7 @@ HATAGO_METRICS=1 hatago serve --http --port 3535
 
 ### 🔧 開発者向け
 
-- [**アーキテクチャガイド**](docs/architecture.md) - システム設計とプラットフォーム抽象化
+- [**アーキテクチャガイド**](docs/ARCHITECTURE.md) - システム設計とプラットフォーム抽象化
 - [**チーム開発ユースケース**](docs/use-cases/team-development.md) - 継承機能を使ったチーム開発環境の構築
 
 ## 🏗️ アーキテクチャ

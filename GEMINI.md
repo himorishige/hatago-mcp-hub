@@ -10,7 +10,7 @@ The project is a TypeScript monorepo managed with `pnpm`. It is designed to be m
 
 Key features include:
 
-- **Multi-transport support:** STDIO, HTTP, SSE, and WebSockets.
+- **Multi-transport support:** STDIO, HTTP, and SSE.
 - **Dynamic server management:** Add, remove, and manage MCP servers on the fly.
 - **Hot-reloading:** Automatically reloads the configuration when the `hatago.config.json` file changes.
 - **Progress notifications:** Real-time progress updates for long-running operations.

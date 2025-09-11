@@ -1,28 +1,29 @@
-# @hatago/transport
+# @himorishige/hatago-transport
 
 Transport layer implementations for Hatago MCP Hub.
 
 ## Features
 
-- **STDIO Transport**: Standard input/output communication
-- **HTTP/SSE Transport**: HTTP with Server-Sent Events
-- **WebSocket Transport**: Real-time bidirectional communication
-- **Connection Management**: Robust connection handling with retry logic
+- **STDIO Client (Node.js)**: Process/stdio transport for local or NPX servers
+- **HTTP (StreamableHTTP) Server**: Server-side transport for JSON-RPC over HTTP with streaming
+- **SSE Client (re-export)**: Convenience re-export of MCP SDK's SSE client transport
+
+> Note: HTTP client transports are provided by the MCP SDK. This package focuses on server-side StreamableHTTP and stdio client for Node.js.
 
 ## Installation
 
 ```bash
-npm install @hatago/transport
+npm install @himorishige/hatago-transport
 ```
 
 ## Usage
 
-### STDIO Transport
+### STDIO Client (Node.js)
 
 ```typescript
-import { createStdioTransport } from '@hatago/transport';
+import { StdioClientTransport } from '@himorishige/hatago-transport/stdio';
 
-const transport = await createStdioTransport({
+const transport = new StdioClientTransport({
   command: 'node',
   args: ['./mcp-server.js'],
   env: process.env
@@ -31,48 +32,39 @@ const transport = await createStdioTransport({
 await transport.connect();
 ```
 
-### HTTP/SSE Transport
+### SSE Client (re-export)
 
 ```typescript
-import { createHttpTransport } from '@hatago/transport';
+import { SSEClientTransport } from '@himorishige/hatago-transport';
 
-const transport = createHttpTransport({
-  url: 'http://localhost:3000',
-  sessionId: 'my-session'
-});
-
+const transport = new SSEClientTransport(new URL('http://localhost:3000/sse'));
 await transport.connect();
 ```
 
-### WebSocket Transport
+### StreamableHTTP Server (for hubs)
 
 ```typescript
-import { createWebSocketTransport } from '@hatago/transport';
+import { StreamableHTTPTransport } from '@himorishige/hatago-transport';
 
-const transport = createWebSocketTransport({
-  url: 'ws://localhost:3000',
-  reconnect: true,
-  reconnectInterval: 5000
-});
+const http = new StreamableHTTPTransport({ enableJsonResponse: true });
+await http.start();
 
-await transport.connect();
+http.onmessage = async (message) => {
+  // handle JSON-RPC and respond using http.send(...)
+};
 ```
 
-## API
+## Types
 
-### Transport Interface
+This package exposes a minimal transport surface compatible with the MCP SDK.
 
-All transports implement the common `Transport` interface:
-
-```typescript
-interface Transport {
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  send(message: any): Promise<void>;
-  onMessage(handler: (message: any) => void): void;
-  onError(handler: (error: Error) => void): void;
-  onClose(handler: () => void): void;
-}
+```ts
+export type {
+  ITransport,
+  HttpTransportOptions,
+  WebSocketTransportOptions,
+  TransportOptions
+} from '@himorishige/hatago-transport';
 ```
 
 ## License

@@ -48,12 +48,12 @@ interface Platform {
 
 ### ランタイムケイパビリティ
 
-| ランタイム | ファイルシステム | 子プロセス | TCPソケット | WebSocket | MCP種別            |
-| ---------- | ---------------- | ---------- | ----------- | --------- | ------------------ |
-| Node.js    | ✅               | ✅         | ✅          | ✅        | local, npx, remote |
-| Workers    | ❌               | ❌         | ❌          | ✅        | remoteのみ         |
-| Deno       | ✅               | ✅         | ✅          | ✅        | local, npx, remote |
-| Bun        | ✅               | ✅         | ✅          | ✅        | local, npx, remote |
+| ランタイム | ファイルシステム | 子プロセス | TCPソケット | MCP種別            |
+| ---------- | ---------------- | ---------- | ----------- | ------------------ |
+| Node.js    | ✅               | ✅         | ✅          | local, npx, remote |
+| Workers    | ❌               | ❌         | ❌          | remoteのみ         |
+| Deno       | ✅               | ✅         | ✅          | local, npx, remote |
+| Bun        | ✅               | ✅         | ✅          | local, npx, remote |
 
 ### 実装状況
 
@@ -215,7 +215,7 @@ const hub = new McpHub(platform);
 ### リモートサーバー
 
 - **実行**: ネットワーク接続
-- **トランスポート**: HTTP/SSE/WebSocket
+- **トランスポート**: HTTP/SSE
 - **ユースケース**: クラウドホストのMCPサービス
 
 ## 設計原則

@@ -31,14 +31,15 @@ Hatago MCP Hub is a lightweight MCP (Model Context Protocol) hub server that man
 │   ├── server/         # Server implementation (@himorishige/hatago-server)
 │   │   ├── src/
 │   │   │   ├── index.ts      # API exports (startServer, generateDefaultConfig)
-│   │   │   ├── server.ts     # Main server implementation
+│   │   │   ├── http.ts       # HTTP mode
+│   │   │   ├── stdio.ts      # STDIO mode
 │   │   │   ├── config.ts     # Configuration management
 │   │   │   └── utils.ts      # Utilities
 │   │   └── package.json
 │   │
 │   ├── hub/            # Hub core (@himorishige/hatago-hub)
 │   │   ├── src/
-│   │   │   ├── hub.ts              # Main hub (~500 lines)
+│   │   │   ├── hub.ts              # Main hub (thin orchestrator)
 │   │   │   ├── types.ts            # Core types
 │   │   │   └── ...
 │   │   └── package.json
@@ -264,11 +265,6 @@ pnpm check  # Runs format + lint + typecheck
 ```
 
 ## Version History
-
-### v0.0.2 (Development)
-
-- Tag-based server filtering for profile management
-- Support for Japanese tags in configuration
 
 ### v0.0.2 (Current)
 

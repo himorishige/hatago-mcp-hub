@@ -127,7 +127,7 @@ Request → Cloudflare Worker
 - Progress通知のサポート
 - セッション状態の永続化（KV/Durable Objects）
 - 環境変数による動的設定
-- WebSocket/SSEによるリアルタイム通信
+- SSEによるリアルタイム通知
 
 ## 🐛 トラブルシューティング
 

@@ -95,4 +95,3 @@ In Node.js, all capabilities are available:
 - ✅ Local process spawning
 - ✅ File system access
 - ✅ Network requests
-- ✅ WebSocket connections
