@@ -51,9 +51,8 @@ export function createTransportFactory(
       }) as unknown as ITransport;
     }
 
-    if (spec.url && (spec.type === 'sse' || spec.type === 'http')) {
+    if (spec.url && spec.type === 'sse') {
       logger.debug(`Creating SSEClientTransport for ${id}`, { url: spec.url });
-      // Use SSE client for both 'sse' and 'http' in hub
       type TransportCtor = new (url: URL, options?: { fetch?: typeof fetch }) => ITransport;
       const { SSEClientTransport } = await import('@himorishige/hatago-transport');
       const Ctor = SSEClientTransport as unknown as TransportCtor;
@@ -62,7 +61,7 @@ export function createTransportFactory(
       }) as unknown as ITransport;
     }
 
-    if (spec.url && spec.type === 'streamable-http') {
+    if (spec.url && (spec.type === 'http' || !spec.type)) {
       const { StreamableHTTPClientTransport } = await import(
         '@modelcontextprotocol/sdk/client/streamableHttp.js'
       );
