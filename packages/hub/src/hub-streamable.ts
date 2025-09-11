@@ -3,31 +3,13 @@
  * Provides SSE-based progress notifications
  */
 
-import type { SSEStream } from '@himorishige/hatago-transport';
+// import of SSEStream not needed after extract
 import type { Context } from 'hono';
-import { streamSSE, type SSEStreamingApi } from 'hono/streaming';
+import { streamSSE } from 'hono/streaming';
 import type { HatagoHub } from './hub.js';
+import { createSSEAdapter } from './http/streamable-adapter.js';
 
-/**
- * Create SSE adapter for StreamableHTTP
- */
-function createSSEAdapter(stream: SSEStreamingApi): SSEStream {
-  return {
-    closed: false,
-    async write(data: string) {
-      if (!this.closed) {
-        await stream.write(data);
-      }
-    },
-    async close() {
-      this.closed = true;
-      await stream.close();
-    },
-    onAbort(callback: () => void) {
-      stream.onAbort(callback);
-    }
-  };
-}
+// Adapter extracted to http/streamable-adapter.ts [SF]
 
 /**
  * Handle SSE endpoint for StreamableHTTP

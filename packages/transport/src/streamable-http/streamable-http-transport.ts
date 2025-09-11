@@ -15,11 +15,11 @@ const FALLBACK_RPC_NOTIFICATION = {
   tools_list_changed: 'notifications/tools/list_changed'
 } as const;
 const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
-import type {
-  JSONRPCMessage,
-  JSONRPCNotification,
-  RequestId
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCMessage, JSONRPCNotification } from '@modelcontextprotocol/sdk/types.js';
+import type { SSEStream } from './session-map.js';
+import { SessionMaps } from './session-map.js';
+import { CleanupScheduler } from './gc.js';
+import { mapRequestsToStream, unmapRequests } from './progress-routing.js';
 import {
   isInitializeRequest,
   isJSONRPCError,
@@ -36,24 +36,11 @@ export type StreamableHTTPTransportOptions = {
   keepAliveMs?: number;
 };
 
-export type SSEStream = {
-  closed: boolean;
-  close: () => Promise<void>;
-  write: (data: string) => Promise<void>;
-  onAbort?: (callback: () => void) => void;
-};
-
-type StreamData = {
-  stream: SSEStream;
-  createdAt: number;
-  lastActivityAt?: number;
-  resolveResponse?: () => void;
-  keepaliveInterval?: ReturnType<typeof setInterval>;
-};
+// moved SSEStream/StreamData to session-map.ts
 
 export class StreamableHTTPTransport implements Transport {
   private started = false;
-  private initializedSessions = new Map<string, boolean>();
+  private maps = new SessionMaps();
   private sessionIdGenerator?: () => string;
   private onsessioninitialized?: (sessionId: string) => void;
   private onsessionclosed?: (sessionId: string) => void;
@@ -61,18 +48,15 @@ export class StreamableHTTPTransport implements Transport {
   private keepAliveMs = 30000;
 
   // Stream management
-  private streamMapping = new Map<string, StreamData>();
-  private requestToStreamMapping = new Map<RequestId, string>();
-  private requestResponseMap = new Map<RequestId, JSONRPCMessage>();
-  private progressTokenToStream = new Map<string | number, string>(); // progressToken -> streamId
-  private sessionIdToStream = new Map<string, string>(); // sessionId -> streamId
+  // moved to SessionMaps
+  private cleanup?: CleanupScheduler;
 
   // Cleanup settings
   private readonly maxMapSize = 1000;
   // Consider a stream stale only after prolonged inactivity.
   // Keep above keepAliveMs to avoid dropping active streams. [REH][SF]
   private readonly ttlMs = 120000;
-  private cleanupInterval?: ReturnType<typeof setInterval>;
+  private cleanupInterval?: ReturnType<typeof setInterval>; // kept for compatibility
 
   sessionId?: string;
   onclose?: () => void;
@@ -96,7 +80,8 @@ export class StreamableHTTPTransport implements Transport {
       throw new Error('Transport already started');
     }
     this.started = true;
-    this.startCleanupInterval();
+    this.cleanup = new CleanupScheduler(this.maps, this.ttlMs, this.maxMapSize);
+    this.cleanup.start();
   }
 
   async close(): Promise<void> {
@@ -105,7 +90,7 @@ export class StreamableHTTPTransport implements Transport {
     }
 
     // Close all streams
-    for (const [, streamData] of this.streamMapping.entries()) {
+    for (const [, streamData] of this.maps.streamMapping.entries()) {
       if (streamData.keepaliveInterval) {
         clearInterval(streamData.keepaliveInterval);
       }
@@ -113,17 +98,11 @@ export class StreamableHTTPTransport implements Transport {
     }
 
     // Clear maps
-    this.streamMapping.clear();
-    this.requestToStreamMapping.clear();
-    this.requestResponseMap.clear();
-    this.progressTokenToStream.clear();
-    this.sessionIdToStream.clear();
-    this.initializedSessions.clear();
+    this.maps.clearAll();
 
     // Stop cleanup interval
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-    }
+    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
+    this.cleanup?.stop();
 
     // Call session closed callback
     if (this.sessionId && this.onsessionclosed) {
@@ -152,15 +131,15 @@ export class StreamableHTTPTransport implements Transport {
     // Handle response messages
     if (isJSONRPCResponse(message) || isJSONRPCError(message)) {
       const requestId = message.id;
-      const streamId = this.requestToStreamMapping.get(requestId);
+      const streamId = this.maps.requestToStreamMapping.get(requestId);
       if (streamId) {
         await this.writeToStream(streamId, message, true);
         // Clean up mappings
-        this.requestToStreamMapping.delete(requestId);
-        this.requestResponseMap.delete(requestId);
+        this.maps.requestToStreamMapping.delete(requestId);
+        this.maps.requestResponseMap.delete(requestId);
       } else {
         // Store response for JSON response mode
-        this.requestResponseMap.set(requestId, message);
+        this.maps.requestResponseMap.set(requestId, message);
       }
     }
     // Handle notification messages
@@ -175,6 +154,28 @@ export class StreamableHTTPTransport implements Transport {
     }
   }
 
+  // --- compatibility accessors for tests and internal tooling [PEC] ---
+  // These mirror the previous private fields to keep `(transport as any).X`
+  // usages in tests working after internal refactor.
+  get streamMapping() {
+    return this.maps.streamMapping;
+  }
+  get requestToStreamMapping() {
+    return this.maps.requestToStreamMapping;
+  }
+  get requestResponseMap() {
+    return this.maps.requestResponseMap;
+  }
+  get progressTokenToStream() {
+    return this.maps.progressTokenToStream;
+  }
+  get sessionIdToStream() {
+    return this.maps.sessionIdToStream;
+  }
+  get initializedSessions() {
+    return this.maps.initializedSessions;
+  }
+
   // --- notification helpers ---------------------------------------------
 
   private async writeToStream(
@@ -182,7 +183,7 @@ export class StreamableHTTPTransport implements Transport {
     message: JSONRPCMessage,
     isResponse = false
   ): Promise<void> {
-    const streamData = this.streamMapping.get(streamId);
+    const streamData = this.maps.streamMapping.get(streamId);
     if (!streamData?.stream || streamData.stream.closed) return;
     try {
       await streamData.stream.write(`data: ${JSON.stringify(message)}\n\n`);
@@ -197,14 +198,14 @@ export class StreamableHTTPTransport implements Transport {
     token: string | number,
     message: JSONRPCMessage
   ): Promise<void> {
-    const streamId = this.progressTokenToStream.get(token);
+    const streamId = this.maps.progressTokenToStream.get(token);
     if (!streamId) return;
     await this.writeToStream(streamId, message, false);
   }
 
   private async broadcastNotification(message: JSONRPCMessage): Promise<void> {
     const tasks: Array<Promise<void>> = [];
-    for (const [streamId, streamData] of this.streamMapping.entries()) {
+    for (const [streamId, streamData] of this.maps.streamMapping.entries()) {
       if (!streamData.stream || streamData.stream.closed) continue;
       tasks.push(this.writeToStream(streamId, message, false));
     }
@@ -305,7 +306,7 @@ export class StreamableHTTPTransport implements Transport {
       void (async () => {
         try {
           await sseStream.write(':heartbeat\n\n');
-          const sd = this.streamMapping.get(streamId);
+          const sd = this.maps.streamMapping.get(streamId);
           if (sd) sd.lastActivityAt = Date.now();
         } catch {
           clearInterval(keepaliveInterval);
@@ -313,7 +314,7 @@ export class StreamableHTTPTransport implements Transport {
       })();
     }, this.keepAliveMs);
 
-    this.streamMapping.set(streamId, {
+    this.maps.streamMapping.set(streamId, {
       stream: sseStream,
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
@@ -323,7 +324,7 @@ export class StreamableHTTPTransport implements Transport {
   }
 
   private mapSessionToStream(sessionId: string, streamId: string): void {
-    this.sessionIdToStream.set(sessionId, streamId);
+    this.maps.sessionIdToStream.set(sessionId, streamId);
   }
 
   private attachSseCleanup(
@@ -333,20 +334,20 @@ export class StreamableHTTPTransport implements Transport {
   ): void {
     sseStream.onAbort?.(() => {
       clearInterval(keepaliveInterval);
-      this.streamMapping.delete(streamId);
+      this.maps.streamMapping.delete(streamId);
 
-      for (const [sid, sId] of this.sessionIdToStream.entries()) {
+      for (const [sid, sId] of this.maps.sessionIdToStream.entries()) {
         if (sId === streamId) {
-          this.sessionIdToStream.delete(sid);
+          this.maps.sessionIdToStream.delete(sid);
           break;
         }
       }
 
       const tokensToDelete: Array<string | number> = [];
-      for (const [token, sid] of this.progressTokenToStream.entries()) {
+      for (const [token, sid] of this.maps.progressTokenToStream.entries()) {
         if (sid === streamId) tokensToDelete.push(token);
       }
-      tokensToDelete.forEach((token) => this.progressTokenToStream.delete(token));
+      tokensToDelete.forEach((token) => this.maps.progressTokenToStream.delete(token));
     });
   }
 
@@ -420,7 +421,7 @@ export class StreamableHTTPTransport implements Transport {
       const sessionId =
         headers['mcp-session-id'] ?? this.sessionIdGenerator?.() ?? crypto.randomUUID();
       this.sessionId = sessionId;
-      this.initializedSessions.set(sessionId, true);
+      this.maps.initializedSessions.set(sessionId, true);
       this.onsessioninitialized?.(sessionId);
       return;
     }
@@ -428,8 +429,8 @@ export class StreamableHTTPTransport implements Transport {
     const sessionId = headers['mcp-session-id'];
     if (sessionId) {
       this.sessionId = sessionId;
-      if (!this.initializedSessions.has(sessionId)) {
-        this.initializedSessions.set(sessionId, true);
+      if (!this.maps.initializedSessions.has(sessionId)) {
+        this.maps.initializedSessions.set(sessionId, true);
         this.onsessioninitialized?.(sessionId);
       }
       return;
@@ -438,7 +439,7 @@ export class StreamableHTTPTransport implements Transport {
     if (!this.sessionId) {
       const newSessionId = this.sessionIdGenerator?.() ?? crypto.randomUUID();
       this.sessionId = newSessionId;
-      this.initializedSessions.set(newSessionId, true);
+      this.maps.initializedSessions.set(newSessionId, true);
       this.onsessioninitialized?.(newSessionId);
     }
   }
@@ -455,7 +456,7 @@ export class StreamableHTTPTransport implements Transport {
     );
     const isToolCall = messages.some((msg) => isJSONRPCRequest(msg) && msg.method === 'tools/call');
     const sessionId = headers['mcp-session-id'];
-    const existingStreamId = sessionId ? this.sessionIdToStream.get(sessionId) : undefined;
+    const existingStreamId = sessionId ? this.maps.sessionIdToStream.get(sessionId) : undefined;
     const useSSE = Boolean(
       (hasProgressToken || isToolCall) && headers.accept?.includes('text/event-stream')
     );
@@ -471,7 +472,7 @@ export class StreamableHTTPTransport implements Transport {
     const streamId = crypto.randomUUID();
 
     const responsePromise = new Promise<void>((resolve) => {
-      this.streamMapping.set(streamId, {
+      this.maps.streamMapping.set(streamId, {
         stream: sseStream,
         createdAt: Date.now(),
         lastActivityAt: Date.now(),
@@ -480,15 +481,7 @@ export class StreamableHTTPTransport implements Transport {
     });
 
     // Map requests to stream
-    for (const message of messages) {
-      if (isJSONRPCRequest(message)) {
-        this.requestToStreamMapping.set(message.id, streamId);
-        if (message.params?._meta?.progressToken) {
-          const streamIdToUse = existingStreamId ?? streamId;
-          this.progressTokenToStream.set(message.params._meta.progressToken, streamIdToUse);
-        }
-      }
-    }
+    mapRequestsToStream(this.maps, messages, streamId, existingStreamId);
 
     // Process
     for (const message of messages) this.onmessage?.(message);
@@ -508,15 +501,8 @@ export class StreamableHTTPTransport implements Transport {
         })}\n\n`
       );
     } finally {
-      this.streamMapping.delete(streamId);
-      for (const message of messages) {
-        if (isJSONRPCRequest(message)) {
-          this.requestToStreamMapping.delete(message.id);
-          if (message.params?._meta?.progressToken) {
-            this.progressTokenToStream.delete(message.params._meta.progressToken);
-          }
-        }
-      }
+      this.maps.streamMapping.delete(streamId);
+      unmapRequests(this.maps, messages);
     }
 
     return { status: 200 };
@@ -531,7 +517,7 @@ export class StreamableHTTPTransport implements Transport {
 
     for (const message of messages) {
       if (isJSONRPCRequest(message) && message.params?._meta?.progressToken && existingStreamId) {
-        this.progressTokenToStream.set(message.params._meta.progressToken, existingStreamId);
+        this.maps.progressTokenToStream.set(message.params._meta.progressToken, existingStreamId);
       }
 
       this.onmessage?.(message);
@@ -539,10 +525,10 @@ export class StreamableHTTPTransport implements Transport {
       if (isJSONRPCRequest(message)) {
         const startTime = Date.now();
         while (Date.now() - startTime < 30000) {
-          const response = this.requestResponseMap.get(message.id);
+          const response = this.maps.requestResponseMap.get(message.id);
           if (response) {
             responses.push(response);
-            this.requestResponseMap.delete(message.id);
+            this.maps.requestResponseMap.delete(message.id);
             break;
           }
           await new Promise((resolve) => setTimeout(resolve, 10));
@@ -566,9 +552,9 @@ export class StreamableHTTPTransport implements Transport {
   ): Promise<{ status: number }> {
     // Optional session validation - be permissive
     const sessionId = headers['mcp-session-id'];
-    if (sessionId && this.initializedSessions.has(sessionId)) {
+    if (sessionId && this.maps.initializedSessions.has(sessionId)) {
       // Clean up specific session
-      this.initializedSessions.delete(sessionId);
+      this.maps.initializedSessions.delete(sessionId);
       if (this.onsessionclosed) {
         this.onsessionclosed(sessionId);
       }
@@ -578,32 +564,8 @@ export class StreamableHTTPTransport implements Transport {
     return { status: 200 };
   }
 
-  private startCleanupInterval(): void {
-    this.cleanupInterval = setInterval(() => {
-      const now = Date.now();
-
-      // Clean up closed or truly idle streams only [REH]
-      for (const [streamId, streamData] of this.streamMapping.entries()) {
-        const idleFor = now - (streamData.lastActivityAt ?? streamData.createdAt);
-        if (streamData.stream.closed || idleFor > this.ttlMs) {
-          if (streamData.keepaliveInterval) {
-            clearInterval(streamData.keepaliveInterval);
-          }
-          this.streamMapping.delete(streamId);
-        }
-      }
-
-      // Clean up old sessions
-      if (this.initializedSessions.size > this.maxMapSize) {
-        const toDelete = this.initializedSessions.size - this.maxMapSize;
-        const iterator = this.initializedSessions.keys();
-        for (let i = 0; i < toDelete; i++) {
-          const key = iterator.next().value;
-          if (key) {
-            this.initializedSessions.delete(key);
-          }
-        }
-      }
-    }, 10000);
-  }
+  // startCleanupInterval removed in favor of CleanupScheduler (kept via constructor/start)
 }
+
+// Re-export SSEStream type for public API compatibility
+export type { SSEStream } from './session-map.js';
