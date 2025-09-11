@@ -14,11 +14,15 @@ import {
 import { getPlatform, setPlatform } from '@himorishige/hatago-runtime';
 import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 import { HatagoHub } from './hub.js';
-import { ActivationManager } from './mcp-server/activation-manager.js';
-import { IdleManager } from './mcp-server/idle-manager.js';
-import { MetadataStore, type StoredServerMetadata } from './mcp-server/metadata-store.js';
-import { ServerStateMachine } from './mcp-server/state-machine.js';
-import { AuditLogger } from './security/audit-logger.js';
+import { ActivationManager as ExtActivationManager } from '@himorishige/hatago-hub-management';
+import { ServerStateMachine as LocalServerStateMachine } from './mcp-server/state-machine.js';
+import type { ActivationManager as LocalActivationManager } from './mcp-server/activation-manager.js';
+import type { IdleManager as LocalIdleManager } from './mcp-server/idle-manager.js';
+import type { MetadataStore as LocalMetadataStore } from './mcp-server/metadata-store.js';
+import type { AuditLogger as LocalAuditLoggerType } from './security/audit-logger.js';
+import { IdleManager as ExtIdleManager } from '@himorishige/hatago-hub-management';
+import { MetadataStore, type StoredServerMetadata } from '@himorishige/hatago-hub-management';
+import { AuditLogger as LocalAuditLogger } from './security/audit-logger.js';
 import type { CallOptions, HubOptions, ListOptions, ServerSpec } from './types.js';
 
 // Extended types for our management features
@@ -70,11 +74,11 @@ export type EnhancedHubOptions = HubOptions & {
  */
 export class EnhancedHatagoHub extends HatagoHub {
   // Management components
-  private stateMachine?: ServerStateMachine;
-  private activationManager?: ActivationManager;
-  private idleManager?: IdleManager;
-  private metadataStore?: MetadataStore;
-  private auditLogger?: AuditLogger;
+  private stateMachine?: LocalServerStateMachine;
+  private activationManager?: LocalActivationManager;
+  private idleManager?: LocalIdleManager;
+  private metadataStore?: LocalMetadataStore;
+  private auditLogger?: LocalAuditLoggerType;
 
   // Configuration
   private config: HatagoConfig = {
@@ -155,30 +159,44 @@ export class EnhancedHatagoHub extends HatagoHub {
   private initializeManagement(): void {
     const configFile = this.configPath ?? '';
 
-    // Initialize state machine
-    this.stateMachine = new ServerStateMachine();
+    // Initialize state machine (typed constructor indirection for lint safety)
+    const StateMachineCtor: new () => LocalServerStateMachine = LocalServerStateMachine;
+    this.stateMachine = new StateMachineCtor();
 
-    // Initialize activation manager
-    this.activationManager = new ActivationManager(this.stateMachine);
+    // Initialize activation manager (external impl; typed via constructor alias)
+    const ActivationCtor: new (sm: LocalServerStateMachine) => LocalActivationManager =
+      ExtActivationManager as unknown as new (
+        sm: LocalServerStateMachine
+      ) => LocalActivationManager;
+    this.activationManager = new ActivationCtor(this.stateMachine);
     this.activationManager.setHandlers(
-      async (serverId) => this.handleServerActivation(serverId),
-      async (serverId) => this.handleServerDeactivation(serverId)
+      async (serverId: string) => this.handleServerActivation(serverId),
+      async (serverId: string) => this.handleServerDeactivation(serverId)
     );
 
     // Initialize idle manager if enabled
     if (this.enhancedOptions.enableIdleManagement !== false) {
-      this.idleManager = new IdleManager(this.stateMachine, this.activationManager);
+      const IdleCtor: new (
+        sm: LocalServerStateMachine,
+        am: LocalActivationManager
+      ) => LocalIdleManager = ExtIdleManager as unknown as new (
+        sm: LocalServerStateMachine,
+        am: LocalActivationManager
+      ) => LocalIdleManager;
+      this.idleManager = new IdleCtor(this.stateMachine, this.activationManager);
       this.idleManager.start();
     }
 
-    // Initialize metadata store
-    this.metadataStore = new MetadataStore(configFile);
+    // Initialize metadata store via typed constructor alias
+    const MetadataCtor: new (p: string, autoSave?: boolean) => LocalMetadataStore =
+      MetadataStore as unknown as new (p: string, autoSave?: boolean) => LocalMetadataStore;
+    this.metadataStore = new MetadataCtor(configFile);
 
     // Initialize security components
     // File guard initialization removed - unused feature
 
     if (this.enhancedOptions.enableAudit !== false) {
-      this.auditLogger = new AuditLogger(configFile);
+      this.auditLogger = new LocalAuditLogger(configFile);
     }
 
     // Management server initialization removed - using base class _internal tools instead
@@ -210,10 +228,9 @@ export class EnhancedHatagoHub extends HatagoHub {
       this.logger.info('Configuration loaded', {
         serverCount: this.getServerCount()
       });
-    } catch (error) {
-      this.logger.error('Failed to load configuration', {
-        error: error instanceof Error ? error.message : String(error)
-      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.error('Failed to load configuration', { error: msg });
     }
   }
 
@@ -267,10 +284,9 @@ export class EnhancedHatagoHub extends HatagoHub {
           if (!result.success) {
             throw new Error(result.error ?? 'Activation failed');
           }
-        } catch (error) {
-          this.logger.error(`Failed to auto-start server ${serverId}`, {
-            error: error instanceof Error ? error.message : String(error)
-          });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          this.logger.error(`Failed to auto-start server ${serverId}`, { error: msg });
         }
       })();
     }, 1000);
@@ -387,7 +403,7 @@ export class EnhancedHatagoHub extends HatagoHub {
       if (!this.activationManager.isActive(serverId)) {
         // Check metadata for cached tool definition
         const cachedTools = this.metadataStore.getTools(serverId);
-        const hasTool = cachedTools?.some((t) => t.name === name);
+        const hasTool = cachedTools?.some((t: Tool) => t.name === name);
 
         if (hasTool) {
           // Activate server on-demand
@@ -481,10 +497,9 @@ export class EnhancedHatagoHub extends HatagoHub {
       }
 
       this.logger.info('Configuration reloaded successfully');
-    } catch (error) {
-      this.logger.error('Failed to reload configuration', {
-        error: error instanceof Error ? error.message : String(error)
-      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.error('Failed to reload configuration', { error: msg });
     }
   }
 

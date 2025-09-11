@@ -1,0 +1,41 @@
+{
+  "name": "@himorishige/hatago-hub-management",
+  "version": "0.0.10",
+  "description": "Management extensions for Hatago Hub (activation/idle/metadata/audit)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "format": "prettier --write ./src",
+    "lint": "eslint ./src"
+  },
+  "dependencies": {
+    "@himorishige/hatago-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true,
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "license": "MIT"
+}

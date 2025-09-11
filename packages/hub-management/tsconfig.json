@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "module": "ESNext",
+    "target": "ES2020",
+    "moduleResolution": "Bundler",
+    "composite": true,
+    "strict": true,
+    "noEmit": false,
+    "types": [],
+    "skipLibCheck": true,
+    "paths": {
+      "@himorishige/hatago-core": ["../core/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
