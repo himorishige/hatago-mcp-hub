@@ -463,3 +463,7 @@ export class AuditLogger {
     return rows.join('\n');
   }
 }
+/**
+ * @deprecated Use '@himorishige/hatago-hub-management/audit-logger.js'.
+ * This in-repo implementation is retained for backward compatibility only.
+ */

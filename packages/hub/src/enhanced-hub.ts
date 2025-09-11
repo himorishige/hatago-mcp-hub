@@ -19,13 +19,13 @@ import { ServerStateMachine as LocalServerStateMachine } from '@himorishige/hata
 import type { ActivationManager as LocalActivationManager } from './mcp-server/activation-manager.js';
 import type { IdleManager as LocalIdleManager } from './mcp-server/idle-manager.js';
 import type { MetadataStore as LocalMetadataStore } from './mcp-server/metadata-store.js';
-import type { AuditLogger as LocalAuditLoggerType } from './security/audit-logger.js';
+import { AuditLogger as ExtAuditLogger } from '@himorishige/hatago-hub-management/audit-logger.js';
 import { IdleManager as ExtIdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
 import {
   MetadataStore,
   type StoredServerMetadata
 } from '@himorishige/hatago-hub-management/metadata-store.js';
-import { AuditLogger as LocalAuditLogger } from './security/audit-logger.js';
+// Local AuditLogger no longer used at runtime; kept for backward compatibility via index exports
 import type { CallOptions, HubOptions, ListOptions, ServerSpec } from './types.js';
 
 // Extended types for our management features
@@ -81,7 +81,7 @@ export class EnhancedHatagoHub extends HatagoHub {
   private activationManager?: LocalActivationManager;
   private idleManager?: LocalIdleManager;
   private metadataStore?: LocalMetadataStore;
-  private auditLogger?: LocalAuditLoggerType;
+  private auditLogger?: ExtAuditLogger;
 
   // Configuration
   private config: HatagoConfig = {
@@ -199,7 +199,14 @@ export class EnhancedHatagoHub extends HatagoHub {
     // File guard initialization removed - unused feature
 
     if (this.enhancedOptions.enableAudit !== false) {
-      this.auditLogger = new LocalAuditLogger(configFile);
+      const AuditCtor: new (
+        p: string,
+        opts?: { maxFileSize?: number; rotationCount?: number }
+      ) => ExtAuditLogger = ExtAuditLogger as unknown as new (
+        p: string,
+        opts?: { maxFileSize?: number; rotationCount?: number }
+      ) => ExtAuditLogger;
+      this.auditLogger = new AuditCtor(configFile);
     }
 
     // Management server initialization removed - using base class _internal tools instead

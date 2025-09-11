@@ -12,7 +12,8 @@ export default defineConfig({
   env: {
     HATAGO_BUILD_TARGET: 'node'
   },
-  external: ['node:*', '@himorishige/hatago-hub-management'],
+  // Bundle internal workspace packages (hub, server, management); keep Node builtins external
+  external: ['node:*'],
   esbuildOptions: {
     banner: {
       js: '#!/usr/bin/env node'

@@ -402,3 +402,7 @@ export class IdleManager {
     this.events.off(event, handler);
   }
 }
+/**
+ * @deprecated Use '@himorishige/hatago-hub-management/idle-manager.js'.
+ * This in-repo implementation is retained for backward compatibility only.
+ */
