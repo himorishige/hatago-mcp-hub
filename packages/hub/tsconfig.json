@@ -10,6 +10,7 @@
   "references": [
     { "path": "../core" },
     { "path": "../runtime" },
-    { "path": "../transport" }
+    { "path": "../transport" },
+    { "path": "../hub-management" }
   ]
 }

@@ -5,13 +5,8 @@
  * This is the preferred mode for Claude Code integration.
  */
 
-import { once } from 'node:events';
 import type { HatagoConfig } from '@himorishige/hatago-core';
-import {
-  HATAGO_PROTOCOL_VERSION,
-  HATAGO_SERVER_INFO,
-  RPC_NOTIFICATION as CORE_RPC_NOTIFICATION
-} from '@himorishige/hatago-core';
+import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
 const FALLBACK_RPC_NOTIFICATION = {
   initialized: 'notifications/initialized',
   cancelled: 'notifications/cancelled',
@@ -22,6 +17,9 @@ const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
 import { createHub } from '@himorishige/hatago-hub/node';
 import type { Logger } from './logger.js';
 import { registerHubMetrics } from './metrics.js';
+import { sendMessage } from './stdio/writer.js';
+import { processMessage as dispatchMessage } from './stdio/dispatcher.js';
+import { createLineBuffer, type LineBuffer } from './stdio/parser.js';
 
 /**
  * Start the MCP server in STDIO mode
@@ -78,7 +76,7 @@ export async function startStdio(
 
   const flushPending = async () => {
     for (const msg of pendingRequests.splice(0)) {
-      const response = await processMessage(hub, msg, logger);
+      const response = await dispatchMessage(hub, msg, logger);
       if (response) {
         await sendMessage(response, logger, isShuttingDown);
       }
@@ -117,8 +115,9 @@ export async function startStdio(
 
     try {
       await hub.stop();
-    } catch (error) {
-      logger.error('Error during hub shutdown:', error);
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      logger.error('Error during hub shutdown:', err);
     }
 
     process.exit(0);
@@ -131,118 +130,85 @@ export async function startStdio(
     void shutdown('SIGTERM');
   });
 
-  // Handle STDIO input with proper buffering
-  let buffer = '';
-  let lastMessageTime = Date.now();
-  const MESSAGE_TIMEOUT = 60000; // 60 seconds timeout for incomplete messages
+  // NDJSON line buffer (keep original 60s timeout)
+  const lineBuffer: LineBuffer = createLineBuffer({
+    logger,
+    timeoutMs: 60000,
+    onLine: async (line: string) => {
+      // Preserve original per-line handling
+      try {
+        const message = JSON.parse(line) as unknown;
+        if (!message || typeof message !== 'object') {
+          await sendMessage(
+            {
+              jsonrpc: '2.0',
+              error: {
+                code: -32600,
+                message: 'Invalid Request',
+                data: 'Request must be an object'
+              },
+              id: (message as Record<string, unknown>)?.id ?? null
+            },
+            logger,
+            isShuttingDown
+          );
+          return;
+        }
 
-  // Periodic cleanup for incomplete messages
-  const timeoutCheck = setInterval(() => {
-    if (buffer.length > 0 && Date.now() - lastMessageTime > MESSAGE_TIMEOUT) {
-      logger.warn('Clearing incomplete message buffer after timeout');
-      buffer = '';
+        const msg = message as Record<string, unknown>;
+        if (!msg.method && !msg.result && !msg.error) {
+          await sendMessage(
+            {
+              jsonrpc: '2.0',
+              error: {
+                code: -32600,
+                message: 'Invalid Request',
+                data: 'Missing required fields'
+              },
+              id: msg.id ?? null
+            },
+            logger,
+            isShuttingDown
+          );
+          return;
+        }
+
+        logger.debug('Received:', message);
+
+        if (!hubReady && shouldWaitForHub(msg.method)) {
+          pendingRequests.push(msg);
+          return;
+        }
+
+        const response = await dispatchMessage(hub, msg, logger);
+        if (response) {
+          await sendMessage(response, logger, isShuttingDown);
+        }
+      } catch (e) {
+        const err = e instanceof Error ? e : new Error(String(e));
+        logger.error('Failed to parse message:', err, 'Line:', line);
+        await sendMessage(
+          {
+            jsonrpc: '2.0',
+            error: {
+              code: -32700,
+              message: 'Parse error',
+              data: err.message ?? 'Invalid JSON'
+            },
+            id: null
+          },
+          logger,
+          isShuttingDown
+        );
+      }
     }
-  }, 10000); // Check every 10 seconds
-
-  // Cleanup interval on shutdown
-  process.on('exit', () => {
-    clearInterval(timeoutCheck);
   });
 
   // IMPORTANT: Set up STDIO message handler BEFORE starting hub
   // This ensures we don't miss any messages that arrive immediately after startup
   process.stdin.on('data', (chunk: Buffer) => {
-    void (async () => {
-      // Don't process new data during shutdown
-      if (isShuttingDown) {
-        return;
-      }
-
-      lastMessageTime = Date.now();
-      // Append new data to buffer
-      buffer += chunk.toString();
-
-      // Process all complete messages (newline-delimited)
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
-
-      for (const line of lines) {
-        if (!line.trim()) continue; // Skip empty lines
-
-        try {
-          const message = JSON.parse(line) as unknown;
-
-          // Validate JSON-RPC structure
-          if (!message || typeof message !== 'object') {
-            await sendMessage(
-              {
-                jsonrpc: '2.0',
-                error: {
-                  code: -32600,
-                  message: 'Invalid Request',
-                  data: 'Request must be an object'
-                },
-                id: (message as Record<string, unknown>)?.id ?? null
-              },
-              logger,
-              isShuttingDown
-            );
-            continue;
-          }
-
-          // Check for required fields
-          const msg = message as Record<string, unknown>;
-          if (!msg.method && !msg.result && !msg.error) {
-            await sendMessage(
-              {
-                jsonrpc: '2.0',
-                error: {
-                  code: -32600,
-                  message: 'Invalid Request',
-                  data: 'Missing required fields'
-                },
-                id: msg.id ?? null
-              },
-              logger,
-              isShuttingDown
-            );
-            continue;
-          }
-
-          logger.debug('Received:', message);
-
-          // If hub isn't ready yet, buffer tools/resources/prompts requests
-          if (!hubReady && shouldWaitForHub(msg.method)) {
-            pendingRequests.push(msg);
-            continue;
-          }
-
-          // Process message through hub
-          const response = await processMessage(hub, msg, logger);
-
-          if (response) {
-            await sendMessage(response, logger, isShuttingDown);
-          }
-        } catch (error) {
-          logger.error('Failed to parse message:', error, 'Line:', line);
-
-          // Send parse error response
-          await sendMessage(
-            {
-              jsonrpc: '2.0',
-              error: {
-                code: -32700,
-                message: 'Parse error',
-                data: error instanceof Error ? error.message : 'Invalid JSON'
-              },
-              id: null
-            },
-            logger,
-            isShuttingDown
-          );
-        }
-      }
-    })();
+    if (isShuttingDown) return;
+    void lineBuffer.onData(chunk);
   });
 
   // Handle stdin errors
@@ -274,116 +240,9 @@ export async function startStdio(
   await flushPending();
 
   logger.info('Hatago MCP Hub started in STDIO mode');
-}
 
-/**
- * Send a message over STDIO with newline delimiter
- */
-async function sendMessage(
-  message: unknown,
-  logger: Logger,
-  isShuttingDown = false
-): Promise<void> {
-  // Don't send messages during shutdown
-  if (isShuttingDown) {
-    return;
-  }
-
-  const body = `${JSON.stringify(message)}\n`;
-
-  // Log what we're sending at debug level
-  logger.debug('Sending message:', JSON.stringify(message));
-
-  try {
-    // Write JSON message with newline
-    if (!process.stdout.write(body)) {
-      await once(process.stdout, 'drain');
-    }
-  } catch (error) {
-    if ((error as { code?: string }).code === 'EPIPE') {
-      logger.info('STDOUT pipe closed');
-      process.exit(0);
-    } else {
-      logger.error('Failed to send message:', error);
-    }
-  }
-}
-
-/**
- * Process incoming MCP message
- */
-async function processMessage(
-  hub: unknown,
-  message: Record<string, unknown>,
-  logger: Logger
-): Promise<unknown> {
-  const { method, params, id } = message;
-  void params; // Currently unused but kept for future use
-
-  try {
-    // Handle different MCP methods
-    switch (method) {
-      case 'initialize':
-        return {
-          jsonrpc: '2.0',
-          id: id as string | number | null,
-          result: {
-            protocolVersion: HATAGO_PROTOCOL_VERSION,
-            capabilities: {
-              tools: {},
-              resources: {},
-              prompts: {}
-            },
-            serverInfo: {
-              ...HATAGO_SERVER_INFO
-            }
-          }
-        };
-
-      case RPC_NOTIFICATION.initialized:
-      case RPC_NOTIFICATION.cancelled:
-      case RPC_NOTIFICATION.progress:
-        // These are notifications, no response needed
-        return null;
-
-      case 'tools/list':
-      case 'tools/call':
-      case 'resources/list':
-      case 'resources/read':
-      case 'resources/templates/list':
-      case 'prompts/list':
-      case 'prompts/get':
-        // Forward to hub's JSON-RPC handler
-        return await (
-          hub as { handleJsonRpcRequest: (b: unknown) => Promise<unknown> }
-        ).handleJsonRpcRequest(message);
-
-      default:
-        // If it's a notification (no id), don't return an error
-        if (id === undefined) {
-          logger.debug(`Unknown notification: ${method}`);
-          return null;
-        }
-        // For requests, return method not found error
-        return {
-          jsonrpc: '2.0',
-          id: id as string | number | null,
-          error: {
-            code: -32601,
-            message: 'Method not found',
-            data: { method }
-          }
-        };
-    }
-  } catch (error) {
-    return {
-      jsonrpc: '2.0',
-      id: id as string | number | null,
-      error: {
-        code: -32603,
-        message: 'Internal error',
-        data: error instanceof Error ? error.message : String(error)
-      }
-    };
-  }
+  // Ensure the interval stops on process exit
+  process.on('exit', () => {
+    lineBuffer.stop();
+  });
 }

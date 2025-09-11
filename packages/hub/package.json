@@ -44,6 +44,7 @@
     "@himorishige/hatago-core": "workspace:*",
     "@himorishige/hatago-runtime": "workspace:*",
     "@himorishige/hatago-transport": "workspace:*",
+    "@himorishige/hatago-hub-management": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "diff": "^8.0.2",
     "hono": "^4.9.4",
