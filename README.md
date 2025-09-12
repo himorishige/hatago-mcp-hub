@@ -75,9 +75,9 @@ Extracted modules for thin hub:
 - HTTP handler: `packages/hub/src/http/handler.ts`
 - Config reload/watch: `packages/hub/src/config/reload.ts`, `packages/hub/src/config/watch.ts`
 
-## 🧭 Management Components (PR6)
+## 🧭 Management Components
 
-Management components have been externalized to `@himorishige/hatago-hub-management`. Legacy internals under `@himorishige/hatago-hub/(mcp-server|security)` are deprecated (Phase 1), default-disabled (Phase 2), and removed with thin error stubs (Phase 3). Cleanup of ambient types happens in Phase 4.
+Management components are available in `@himorishige/hatago-hub-management`. Import directly from that package when you need lifecycle, idle control, audit logging, or metadata features.
 
 ### Import migration
 
@@ -89,31 +89,7 @@ Management components have been externalized to `@himorishige/hatago-hub-managem
 + import { IdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
 ```
 
-Codemod (no deps):
-
-```bash
-# dry-run
-DRY_RUN=1 node scripts/codemod/legacy-imports.mjs <paths...>
-
-# apply
-node scripts/codemod/legacy-imports.mjs <paths...>
-```
-
-### Legacy controls (env)
-
-```bash
-# Block legacy imports (CI/tests)
-HATAGO_NO_LEGACY=1   # alias: HATAGO_LEGACY_BLOCK=1
-
-# Hide one-line CLI notice
-HATAGO_NO_DEPRECATION_BANNER=1
-
-# Phase 2 preview: default-disable legacy, opt-in to re-enable
-HATAGO_PHASE2=1
-HATAGO_ENABLE_LEGACY=1
-```
-
-See: `docs/refactoring/pr6-legacy-removal-phase1.md` / `phase2.md` / `phase3.md` / `phase4.md`.
+Codemod (optional): `node scripts/codemod/legacy-imports.mjs <paths...>`
 
 ## 📦 Installation
 
