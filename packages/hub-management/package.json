@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-hub-management",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Management extensions for Hatago Hub (activation/idle/metadata/audit)",
   "type": "module",
   "main": "./dist/index.js",
