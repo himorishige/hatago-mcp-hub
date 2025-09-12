@@ -2,9 +2,9 @@
  * Init command - Initialize Hatago configuration
  */
 
-import { existsSync, writeFileSync } from 'node:fs';
 import { generateDefaultConfig } from '@himorishige/hatago-server';
 import type { Command } from 'commander';
+import { existsSync, writeFileSync } from 'node:fs';
 
 type InitOptions = {
   config?: string;
@@ -51,7 +51,7 @@ export function setupInitCommand(program: Command): void {
               mcpServers: {
                 hatago: {
                   command: 'npx',
-                  args: ['@himorishige/hatago-cli', 'serve', '--stdio', '--config', configPath]
+                  args: ['@himorishige/hatago-mcp-hub', 'serve', '--stdio', '--config', configPath]
                 }
               }
             },
