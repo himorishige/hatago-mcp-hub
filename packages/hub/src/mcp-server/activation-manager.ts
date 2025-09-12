@@ -1,10 +1,7 @@
-// v0.3.0 Breaking: legacy path removed.
+// v0.0.12 Breaking: legacy path removed.
 // Thin stub that throws on import with migration hint. [PEC][SD]
-const MSG = [
-  'Removed in v0.3.0: @himorishige/hatago-hub/mcp-server/activation-manager',
-  'Use @himorishige/hatago-hub-management/activation-manager.js instead.',
-  '— v0.3.0 で旧パスは削除されました。移行先: @himorishige/hatago-hub-management/activation-manager.js'
-].join(' ');
+const MSG =
+  'Removed in v0.0.12: @himorishige/hatago-hub/mcp-server/activation-manager. Use @himorishige/hatago-hub-management/activation-manager.js instead.';
 
 throw new Error(MSG);
 

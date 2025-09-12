@@ -1,9 +1,6 @@
-// v0.3.0 Breaking: legacy path removed.
-const MSG = [
-  'Removed in v0.3.0: @himorishige/hatago-hub/mcp-server/idle-manager',
-  'Use @himorishige/hatago-hub-management/idle-manager.js instead.',
-  '— v0.3.0 で旧パスは削除されました。移行先: @himorishige/hatago-hub-management/idle-manager.js'
-].join(' ');
+// v0.0.12 Breaking: legacy path removed.
+const MSG =
+  'Removed in v0.0.12: @himorishige/hatago-hub/mcp-server/idle-manager. Use @himorishige/hatago-hub-management/idle-manager.js instead.';
 
 throw new Error(MSG);
 
