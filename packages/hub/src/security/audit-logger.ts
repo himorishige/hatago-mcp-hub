@@ -467,3 +467,5 @@ export class AuditLogger {
  * @deprecated Use '@himorishige/hatago-hub-management/audit-logger.js'.
  * This in-repo implementation is retained for backward compatibility only.
  */
+import { reportLegacyUsage } from '../utils/legacy-guard.js';
+reportLegacyUsage('security', 'audit-logger');

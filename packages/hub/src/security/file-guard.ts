@@ -329,3 +329,5 @@ export class FileAccessGuard {
     return this.configFilePath;
   }
 }
+import { reportLegacyUsage } from '../utils/legacy-guard.js';
+reportLegacyUsage('security', 'file-guard');

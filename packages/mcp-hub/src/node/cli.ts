@@ -265,6 +265,18 @@ program
         }
       }
 
+      // Phase 1: short deprecation banner (once per process) unless silenced. [PEC][SD]
+      if (!opts.quiet) {
+        const noBanner =
+          process.env.HATAGO_NO_DEPRECATION_BANNER === '1' ||
+          process.env.HATAGO_NO_DEPRECATION_BANNER?.toLowerCase() === 'true';
+        if (!noBanner) {
+          console.error(
+            '⚠️  PR6 Phase 1: legacy internals (mcp-server/*, security/*) are soft-deprecated. Set HATAGO_NO_LEGACY=1 to block, or HATAGO_NO_DEPRECATION_BANNER=1 to hide this notice.'
+          );
+        }
+      }
+
       // Preflight: STDIO requires a config file. Check existence and fail immediately.
       if (mode === 'stdio') {
         const pathToCheck = opts.config ?? './hatago.config.json';

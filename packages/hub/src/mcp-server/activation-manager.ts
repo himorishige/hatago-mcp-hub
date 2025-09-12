@@ -357,3 +357,5 @@ export class ActivationManager {
  * @deprecated Use '@himorishige/hatago-hub-management/activation-manager.js'.
  * This in-repo implementation is retained for backward compatibility only.
  */
+import { reportLegacyUsage } from '../utils/legacy-guard.js';
+reportLegacyUsage('mcp-server', 'activation-manager');

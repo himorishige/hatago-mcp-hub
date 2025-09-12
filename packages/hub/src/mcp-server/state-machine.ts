@@ -197,3 +197,5 @@ export class ServerStateMachine {
     this.events.off(event, handler);
   }
 }
+import { reportLegacyUsage } from '../utils/legacy-guard.js';
+reportLegacyUsage('mcp-server', 'state-machine');
