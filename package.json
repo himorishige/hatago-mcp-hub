@@ -16,7 +16,8 @@
     "serve:http": "pnpm -C packages/mcp-hub serve:http",
     "serve:stdio": "pnpm -C packages/mcp-hub serve:stdio",
     "bench:empty": "node bench/stdio-compare.mjs --config bench/configs/hatago-empty.config.json --npm 0.0.10 --iters 200",
-    "bench:fixture": "node bench/stdio-compare.mjs --config bench/configs/hatago-fixture.config.json --npm 0.0.10 --iters 200"
+    "bench:fixture": "node bench/stdio-compare.mjs --config bench/configs/hatago-fixture.config.json --npm 0.0.10 --iters 200",
+    "codemod:legacy": "node scripts/codemod/legacy-imports.mjs ."
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",

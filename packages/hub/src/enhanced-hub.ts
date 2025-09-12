@@ -15,17 +15,17 @@ import { getPlatform, setPlatform } from '@himorishige/hatago-runtime';
 import { createNodePlatform } from '@himorishige/hatago-runtime/platform/node';
 import { HatagoHub } from './hub.js';
 import { ActivationManager as ExtActivationManager } from '@himorishige/hatago-hub-management/activation-manager.js';
-import { ServerStateMachine as LocalServerStateMachine } from '@himorishige/hatago-hub-management/state-machine.js';
-import type { ActivationManager as LocalActivationManager } from './mcp-server/activation-manager.js';
-import type { IdleManager as LocalIdleManager } from './mcp-server/idle-manager.js';
-import type { MetadataStore as LocalMetadataStore } from './mcp-server/metadata-store.js';
+import { ServerStateMachine as MgmtServerStateMachine } from '@himorishige/hatago-hub-management/state-machine.js';
+import type { ActivationManager as MgmtActivationManager } from '@himorishige/hatago-hub-management/activation-manager.js';
+import type { IdleManager as MgmtIdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
+import type { MetadataStore as MgmtMetadataStore } from '@himorishige/hatago-hub-management/metadata-store.js';
 import { AuditLogger as ExtAuditLogger } from '@himorishige/hatago-hub-management/audit-logger.js';
 import { IdleManager as ExtIdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
 import {
   MetadataStore,
   type StoredServerMetadata
 } from '@himorishige/hatago-hub-management/metadata-store.js';
-// Local AuditLogger no longer used at runtime; kept for backward compatibility via index exports
+// AuditLogger is provided by external management package.
 import type { CallOptions, HubOptions, ListOptions, ServerSpec } from './types.js';
 
 // Extended types for our management features
@@ -77,10 +77,10 @@ export type EnhancedHubOptions = HubOptions & {
  */
 export class EnhancedHatagoHub extends HatagoHub {
   // Management components
-  private stateMachine?: LocalServerStateMachine;
-  private activationManager?: LocalActivationManager;
-  private idleManager?: LocalIdleManager;
-  private metadataStore?: LocalMetadataStore;
+  private stateMachine?: MgmtServerStateMachine;
+  private activationManager?: MgmtActivationManager;
+  private idleManager?: MgmtIdleManager;
+  private metadataStore?: MgmtMetadataStore;
   private auditLogger?: ExtAuditLogger;
 
   // Configuration
@@ -163,14 +163,12 @@ export class EnhancedHatagoHub extends HatagoHub {
     const configFile = this.configPath ?? '';
 
     // Initialize state machine (typed constructor indirection for lint safety)
-    const StateMachineCtor: new () => LocalServerStateMachine = LocalServerStateMachine;
+    const StateMachineCtor: new () => MgmtServerStateMachine = MgmtServerStateMachine;
     this.stateMachine = new StateMachineCtor();
 
     // Initialize activation manager (external impl; typed via constructor alias)
-    const ActivationCtor: new (sm: LocalServerStateMachine) => LocalActivationManager =
-      ExtActivationManager as unknown as new (
-        sm: LocalServerStateMachine
-      ) => LocalActivationManager;
+    const ActivationCtor: new (sm: MgmtServerStateMachine) => MgmtActivationManager =
+      ExtActivationManager as unknown as new (sm: MgmtServerStateMachine) => MgmtActivationManager;
     this.activationManager = new ActivationCtor(this.stateMachine);
     this.activationManager.setHandlers(
       async (serverId: string) => this.handleServerActivation(serverId),
@@ -180,19 +178,19 @@ export class EnhancedHatagoHub extends HatagoHub {
     // Initialize idle manager if enabled
     if (this.enhancedOptions.enableIdleManagement !== false) {
       const IdleCtor: new (
-        sm: LocalServerStateMachine,
-        am: LocalActivationManager
-      ) => LocalIdleManager = ExtIdleManager as unknown as new (
-        sm: LocalServerStateMachine,
-        am: LocalActivationManager
-      ) => LocalIdleManager;
+        sm: MgmtServerStateMachine,
+        am: MgmtActivationManager
+      ) => MgmtIdleManager = ExtIdleManager as unknown as new (
+        sm: MgmtServerStateMachine,
+        am: MgmtActivationManager
+      ) => MgmtIdleManager;
       this.idleManager = new IdleCtor(this.stateMachine, this.activationManager);
       this.idleManager.start();
     }
 
     // Initialize metadata store via typed constructor alias
-    const MetadataCtor: new (p: string, autoSave?: boolean) => LocalMetadataStore =
-      MetadataStore as unknown as new (p: string, autoSave?: boolean) => LocalMetadataStore;
+    const MetadataCtor: new (p: string, autoSave?: boolean) => MgmtMetadataStore =
+      MetadataStore as unknown as new (p: string, autoSave?: boolean) => MgmtMetadataStore;
     this.metadataStore = new MetadataCtor(configFile);
 
     // Initialize security components

@@ -11,7 +11,7 @@ import { warnOnce } from './once-logger.js';
 
 const logger = new Logger('[Hub][Legacy]');
 
-function migrationHint(subsystem: 'mcp-server' | 'security', moduleName: string): string {
+function migrationHint(_subsystem: 'mcp-server' | 'security', moduleName: string): string {
   // Map legacy module to new package path. [SD]
   // Keep flat mapping for now; refine in Phase 3 when stubs land.
   return `@himorishige/hatago-hub-management/${moduleName}.js`;

@@ -229,3 +229,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `docs/refactoring/pr6-legacy-removal-phase1.md` and updated configuration guide with legacy controls. [SD]
 - Added `docs/refactoring/pr6-legacy-removal-phase2.md` describing default-disable and opt-in flags. [SD]
+
+### Breaking (v0.3.0 planned)
+
+- PR6 Phase 3: Remove legacy internals from `@himorishige/hatago-hub`.
+  - Physical removal of `mcp-server/*` and `security/*` implementations; thin error stubs remain and throw on import with migration hints. [PEC]
+  - Remove root value exports of legacy classes from `@himorishige/hatago-hub` (type-only aliases may remain until Phase 4). [ISA]
+  - Provide codemod: `node scripts/codemod/legacy-imports.mjs <paths...>` to migrate imports to `@himorishige/hatago-hub-management/*`. [SD]
+
+### Cleanup (v0.4.0 planned)
+
+- PR6 Phase 4: Remove ambient legacy types and aliases from `@himorishige/hatago-hub` entry; delete temporary ambient mappings; purge legacy refs from docs/templates. [ISA]

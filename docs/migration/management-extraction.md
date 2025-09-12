@@ -9,7 +9,7 @@ Hatago Hub management components have been externalized into `@himorishige/hatag
   - `@himorishige/hatago-hub-management/metadata-store.js`
   - `@himorishige/hatago-hub-management/audit-logger.js`
 
-In-repo counterparts under `@himorishige/hatago-hub` remain for backwards compatibility but are deprecated.
+As of PR6 Phase 3 (planned v0.3.0), in-repo counterparts under `@himorishige/hatago-hub` have been removed and replaced with thin error stubs that throw on import with migration hints.
 
 ## Rationale
 
@@ -20,6 +20,7 @@ This reduces the Hub runtime to a thinner relay and isolates stateful management
 1. Add dependency: `pnpm add @himorishige/hatago-hub-management`.
 2. Switch imports to the package subpaths listed above.
 3. Build order (monorepo): hub-management → hub → mcp-hub.
+4. Optional: run codemod `node scripts/codemod/legacy-imports.mjs <paths...>` to update imports automatically.
 
 ## Notes
 

@@ -75,6 +75,46 @@ await hub.stop();
 - HTTP ハンドラ: `packages/hub/src/http/handler.ts`
 - 設定のリロード/監視: `packages/hub/src/config/reload.ts`, `packages/hub/src/config/watch.ts`
 
+## 🧭 管理コンポーネントの外出し（PR6）
+
+管理系（ライフサイクル、監査ログ、アイドル制御など）は `@himorishige/hatago-hub-management` に外出しされています。`@himorishige/hatago-hub/(mcp-server|security)` 配下は段階的に廃止（Phase 1: 警告、Phase 2: 既定で無効、Phase 3: 削除＋薄いスタブ、Phase 4: 型の整理）となります。
+
+### インポート移行例
+
+```diff
+- import { ActivationManager } from '@himorishige/hatago-hub';
++ import { ActivationManager } from '@himorishige/hatago-hub-management/activation-manager.js';
+
+- import { IdleManager } from '@himorishige/hatago-hub/mcp-server/idle-manager.js';
++ import { IdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
+```
+
+Codemod（依存なし）:
+
+```bash
+# ドライラン
+DRY_RUN=1 node scripts/codemod/legacy-imports.mjs <paths...>
+
+# 反映
+node scripts/codemod/legacy-imports.mjs <paths...>
+```
+
+### レガシー制御（環境変数）
+
+```bash
+# 旧パスの読み込みをブロック（CI/テスト向け）
+HATAGO_NO_LEGACY=1   # エイリアス: HATAGO_LEGACY_BLOCK=1
+
+# CLIの1行告知を非表示
+HATAGO_NO_DEPRECATION_BANNER=1
+
+# Phase 2 プレビュー: 既定で無効化し、必要時のみ再有効化
+HATAGO_PHASE2=1
+HATAGO_ENABLE_LEGACY=1
+```
+
+詳細: `docs/refactoring/pr6-legacy-removal-phase1.md` / `phase2.md` / `phase3.md` / `phase4.md`
+
 ## 📦 インストール
 
 ```bash
