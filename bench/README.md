@@ -22,7 +22,7 @@ Usage:
 ```bash
 node bench/stdio-compare.mjs \
   --config /absolute/path/to/hatago.config.json \
-  --npm 0.0.10 \
+  --npm 0.0.11 \
   --iters 200 \
   [--env-file /path/to/.env]
 ```
@@ -62,11 +62,11 @@ Example calls
 
 ```bash
 # Pure hub (no servers)
-node bench/stdio-compare.mjs --config bench/configs/hatago-empty.config.json --npm 0.0.10 --iters 200
+node bench/stdio-compare.mjs --config bench/configs/hatago-empty.config.json --npm 0.0.11 --iters 200
 
 # Deterministic (local fixture)
-node bench/stdio-compare.mjs --config bench/configs/hatago-fixture.config.json --npm 0.0.10 --iters 200
+node bench/stdio-compare.mjs --config bench/configs/hatago-fixture.config.json --npm 0.0.11 --iters 200
 
 # Realistic (npx everything)
-node bench/stdio-compare.mjs --config bench/configs/hatago-everything.config.json --npm 0.0.10 --iters 200
+node bench/stdio-compare.mjs --config bench/configs/hatago-everything.config.json --npm 0.0.11 --iters 200
 ```

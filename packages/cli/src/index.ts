@@ -4,10 +4,10 @@
  * Hatago CLI - Command-line interface for Hatago MCP Hub
  */
 
+import { Command } from 'commander';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Command } from 'commander';
 import { setupConfigCommand } from './commands/config.js';
 import { setupInitCommand } from './commands/init.js';
 import { setupMcpCommand } from './commands/mcp.js';
@@ -26,7 +26,7 @@ const program = new Command();
 
 program
   .name('hatago')
-  .description('Hatago MCP Hub - Multi-runtime MCP Hub server')
+  .description('Hatago MCP Hub - Unified MCP Hub server')
   .version(packageJson.version)
   .option('-v, --verbose', 'verbose output')
   .option('-q, --quiet', 'quiet output');

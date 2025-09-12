@@ -22,7 +22,7 @@ export function setupServeCommand(program: Command): void {
     .description('Start the MCP Hub server')
     .option('-m, --mode <mode>', 'server mode (stdio or http)', 'stdio')
     .option('-c, --config <path>', 'path to configuration file')
-    .option('-p, --port <port>', 'port to listen on (http mode)', '3929')
+    .option('-p, --port <port>', 'port to listen on (http mode)', '3535')
     .option('-h, --host <host>', 'host to bind to (http mode)', '127.0.0.1')
     .option('--stdio', 'use STDIO transport (default)')
     .option('--http', 'use HTTP transport')
