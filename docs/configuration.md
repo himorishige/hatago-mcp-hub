@@ -391,6 +391,23 @@ Environment variables can be used in:
 }
 ```
 
+### Legacy Controls (PR6 Phase 1)
+
+During Phase 1 of PR6, legacy internals from `@himorishige/hatago-hub` can be controlled via environment variables:
+
+```bash
+# Block legacy module imports (mcp-server/*, security/*)
+HATAGO_NO_LEGACY=1   # alias: HATAGO_LEGACY_BLOCK=1
+
+# Hide the one-line CLI notice in `hatago serve`
+HATAGO_NO_DEPRECATION_BANNER=1
+
+# Silence per-module deprecation warnings (default is warn-once)
+HATAGO_LEGACY_SILENCE=1
+```
+
+See `docs/refactoring/pr6-legacy-removal-phase1.md` for details and migration guidance.
+
 ## Configuration Examples
 
 ### Minimal Configuration

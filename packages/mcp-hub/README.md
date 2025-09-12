@@ -11,6 +11,10 @@ Unified MCP (Model Context Protocol) Hub for managing multiple MCP servers. Work
 > # Throw on legacy module imports (mcp-server/*, security/*)
 > HATAGO_NO_LEGACY=1   # alias: HATAGO_LEGACY_BLOCK=1
 >
+> # Phase 2 preview: default-disable legacy internals; opt-in to re-enable
+> HATAGO_PHASE2=1
+> HATAGO_ENABLE_LEGACY=1   # temporary opt-in when Phase 2 is active
+>
 > # Hide the one-line CLI notice on 'hatago serve'
 > HATAGO_NO_DEPRECATION_BANNER=1
 >

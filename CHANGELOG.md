@@ -210,3 +210,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Node.js 20+ (full support)
 - Cloudflare Workers (remote servers only)
 - Bun/Deno (work in progress)
+
+## [Unreleased]
+
+### Added
+
+- PR6 Phase 1: Soft deprecation for legacy internals in `@himorishige/hatago-hub` (`mcp-server/*`, `security/*`). Warns once per process on legacy imports. [REH][SF]
+- CLI: One-line deprecation banner on `hatago serve` (silence with `HATAGO_NO_DEPRECATION_BANNER=1`). [SD]
+
+- PR6 Phase 2 (preview): Default-disable legacy internals behind `HATAGO_PHASE2=1`; allow temporary opt-in via `HATAGO_ENABLE_LEGACY=1`. Detailed docs added. [PEC]
+
+### Environment
+
+- `HATAGO_NO_LEGACY=1` (alias: `HATAGO_LEGACY_BLOCK=1`) blocks legacy imports for CI/tests; `HATAGO_LEGACY_SILENCE=1` silences per-module warnings. [TDT][CMV]
+- `HATAGO_PHASE2=1` enables Phase 2 behavior pre-release; `HATAGO_ENABLE_LEGACY=1` temporarily allows legacy during Phase 2. [CMV]
+
+### Docs
+
+- Added `docs/refactoring/pr6-legacy-removal-phase1.md` and updated configuration guide with legacy controls. [SD]
+- Added `docs/refactoring/pr6-legacy-removal-phase2.md` describing default-disable and opt-in flags. [SD]

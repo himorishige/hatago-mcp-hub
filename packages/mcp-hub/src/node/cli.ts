@@ -271,9 +271,18 @@ program
           process.env.HATAGO_NO_DEPRECATION_BANNER === '1' ||
           process.env.HATAGO_NO_DEPRECATION_BANNER?.toLowerCase() === 'true';
         if (!noBanner) {
-          console.error(
-            '⚠️  PR6 Phase 1: legacy internals (mcp-server/*, security/*) are soft-deprecated. Set HATAGO_NO_LEGACY=1 to block, or HATAGO_NO_DEPRECATION_BANNER=1 to hide this notice.'
-          );
+          const phase2 =
+            process.env.HATAGO_PHASE2 === '1' ||
+            process.env.HATAGO_PHASE2?.toLowerCase() === 'true';
+          if (phase2) {
+            console.error(
+              '⚠️  PR6 Phase 2: legacy internals are disabled by default. Set HATAGO_ENABLE_LEGACY=1 to temporarily allow. Docs: docs/refactoring/pr6-legacy-removal-phase2.md'
+            );
+          } else {
+            console.error(
+              '⚠️  PR6 Phase 1: legacy internals (mcp-server/*, security/*) are soft-deprecated. Set HATAGO_NO_LEGACY=1 to block, or HATAGO_NO_DEPRECATION_BANNER=1 to hide this notice.'
+            );
+          }
         }
       }
 
