@@ -59,9 +59,9 @@ External packages (server/test-utils) use a thin `IHub` interface to avoid tight
 import type { IHub } from '@himorishige/hatago-hub';
 import { createHub } from '@himorishige/hatago-hub/node';
 
-const hub = createHub({
+const hub: IHub = createHub({
   preloadedConfig: { data: { version: 1, mcpServers: {} } }
-}) as unknown as IHub;
+}) as IHub;
 await hub.start();
 hub.on('tool:called', (evt) => {
   /* metrics, logs */
@@ -75,21 +75,20 @@ Extracted modules for thin hub:
 - HTTP handler: `packages/hub/src/http/handler.ts`
 - Config reload/watch: `packages/hub/src/config/reload.ts`, `packages/hub/src/config/watch.ts`
 
-## 🧭 Management Components
+## 📁 Project Structure
 
-Management components are available in `@himorishige/hatago-hub-management`. Import directly from that package when you need lifecycle, idle control, audit logging, or metadata features.
-
-### Import migration
-
-```diff
-- import { ActivationManager } from '@himorishige/hatago-hub';
-+ import { ActivationManager } from '@himorishige/hatago-hub-management/activation-manager.js';
-
-- import { IdleManager } from '@himorishige/hatago-hub/mcp-server/idle-manager.js';
-+ import { IdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
 ```
-
-Codemod (optional): `node scripts/codemod/legacy-imports.mjs <paths...>`
+packages/
+├── mcp-hub/        # Main npm package (@himorishige/hatago-mcp-hub)
+├── server/         # Server implementation (@himorishige/hatago-server)
+├── hub/            # Hub core (@himorishige/hatago-hub)
+├── core/           # Shared types (@himorishige/hatago-core)
+├── runtime/        # Runtime components (@himorishige/hatago-runtime)
+├── transport/      # Transport layer (@himorishige/hatago-transport)
+├── cli/            # CLI tools (@himorishige/hatago-cli)
+├── hub-management/ # Management components (@himorishige/hatago-hub-management)
+└── test-fixtures/  # Test utilities
+```
 
 ## 📦 Installation
 
@@ -169,7 +168,7 @@ command = "npx"
 args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
 ```
 
-#### StreamableHTTP Mode
+#### HTTP Mode
 
 ##### Claude Code / Gemini CLI
 

@@ -59,9 +59,9 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 import type { IHub } from '@himorishige/hatago-hub';
 import { createHub } from '@himorishige/hatago-hub/node';
 
-const hub = createHub({
+const hub: IHub = createHub({
   preloadedConfig: { data: { version: 1, mcpServers: {} } }
-}) as unknown as IHub;
+}) as IHub;
 await hub.start();
 hub.on('tool:called', (evt) => {
   /* 計測やログなど */
@@ -120,7 +120,7 @@ npx @himorishige/hatago-mcp-hub init
 
 # モード指定での生成
 npx @himorishige/hatago-mcp-hub init --mode stdio  # STDIOモード
-npx @himorishige/hatago-mcp-hub init --mode http   # StreamableHTTPモード
+npx @himorishige/hatago-mcp-hub init --mode http   # HTTPモード
 ```
 
 ### STDIOモードでの設定例
@@ -156,7 +156,7 @@ command = "npx"
 args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "/path/to/hatago.config.json"]
 ```
 
-### StreamableHTTPモードでの設定例
+### HTTPモードでの設定例
 
 #### HTTPモード起動
 
@@ -180,7 +180,7 @@ hatago serve --http --config /path/to/hatago.config.json
 
 #### Codex CLI
 
-2026年8月現在、Codex CLIはSTDIOモードのみサポートのため、[mcp-remote](https://github.com/geelen/mcp-remote)を使用
+2025年9月現在、Codex CLIはSTDIOモードのみサポートのため、[mcp-remote](https://github.com/geelen/mcp-remote)を使用
 
 `~/.codex/config.toml`に以下を追加：
 
@@ -421,7 +421,7 @@ hatago-mcp-hub/
 │   ├── runtime/        # セッション、レジストリ、ルーター
 │   ├── transport/      # トランスポート実装
 │   ├── hub/            # Hubコア実装
-│   └── cli/            # CLIコマンド（開発中）
+│   └── cli/            # CLIコマンド
 └── schemas/            # JSON Schema定義
 ```
 
@@ -459,7 +459,7 @@ hatago-mcp-hub/
 Hatagoは、プラットフォーム抽象化レイヤーにより複数のJavaScriptランタイムをサポート：
 
 - **Node.js** - フル機能（ローカル/NPX/リモートサーバー）
-- **Cloudflare Workers** - リモートサーバーのみ（KVストレージ）
+- **Cloudflare Workers** - リモートサーバーのみ
 - **Deno** - WIP
 - **Bun** - WIP
 
@@ -510,7 +510,7 @@ npx . serve --http --watch
 - `@himorishige/hatago-core` - 共通型定義とインターフェース
 - `@himorishige/hatago-runtime` - ランタイムコンポーネント
 - `@himorishige/hatago-transport` - トランスポート層実装
-- `@himorishige/hatago-cli` - CLIツール（開発中）
+- `@himorishige/hatago-cli` - CLIツール
 
 ## 📝 ライセンス
 
