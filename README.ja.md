@@ -75,6 +75,22 @@ await hub.stop();
 - HTTP ハンドラ: `packages/hub/src/http/handler.ts`
 - 設定のリロード/監視: `packages/hub/src/config/reload.ts`, `packages/hub/src/config/watch.ts`
 
+## 🧭 管理コンポーネントの外出し
+
+管理系（ライフサイクル、監査ログ、アイドル制御など）は `@himorishige/hatago-hub-management` に分離済み。必要に応じて当該パッケージから直接 import する。
+
+### インポート移行例
+
+```diff
+- import { ActivationManager } from '@himorishige/hatago-hub';
++ import { ActivationManager } from '@himorishige/hatago-hub-management/activation-manager.js';
+
+- import { IdleManager } from '@himorishige/hatago-hub/mcp-server/idle-manager.js';
++ import { IdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
+```
+
+Codemod（任意）: `node scripts/codemod/legacy-imports.mjs <paths...>`
+
 ## 📦 インストール
 
 ```bash

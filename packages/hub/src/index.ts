@@ -101,17 +101,7 @@ export { HatagoHub } from './hub.js';
 export { createEventsEndpoint, handleMCPEndpoint, handleSSEEndpoint } from './hub-streamable.js';
 // SPI for external management package
 export * from './api/management-spi.js';
-export { ActivationManager } from './mcp-server/activation-manager.js';
-export { IdleManager } from './mcp-server/idle-manager.js';
-export { MetadataStore } from './mcp-server/metadata-store.js';
-// Export management components
-export { ServerStateMachine } from './mcp-server/state-machine.js';
-// Type-only aliases to prepare externalization without runtime changes [PEC]
-export type { ServerStateMachine as ManagementServerStateMachine } from './mcp-server/state-machine.js';
-export type { ActivationManager as ManagementActivationManager } from './mcp-server/activation-manager.js';
-export type { IdleManager as ManagementIdleManager } from './mcp-server/idle-manager.js';
-export { AuditLogger } from './security/audit-logger.js';
-export { FileAccessGuard } from './security/file-guard.js';
+// Phase 4: remove ambient legacy type aliases
 export type {
   CallOptions,
   ConnectedServer,

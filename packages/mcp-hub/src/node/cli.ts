@@ -265,6 +265,8 @@ program
         }
       }
 
+      // PR6 migration banner removed after Phase 4 cleanup. [PEC]
+
       // Preflight: STDIO requires a config file. Check existence and fail immediately.
       if (mode === 'stdio') {
         const pathToCheck = opts.config ?? './hatago.config.json';

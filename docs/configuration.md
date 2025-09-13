@@ -391,6 +391,10 @@ Environment variables can be used in:
 }
 ```
 
+### Management Components
+
+Management components are available under `@himorishige/hatago-hub-management/*`. Import from that package when you need lifecycle, idle control, audit logging, or metadata features.
+
 ## Configuration Examples
 
 ### Minimal Configuration

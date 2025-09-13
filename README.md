@@ -75,6 +75,22 @@ Extracted modules for thin hub:
 - HTTP handler: `packages/hub/src/http/handler.ts`
 - Config reload/watch: `packages/hub/src/config/reload.ts`, `packages/hub/src/config/watch.ts`
 
+## 🧭 Management Components
+
+Management components are available in `@himorishige/hatago-hub-management`. Import directly from that package when you need lifecycle, idle control, audit logging, or metadata features.
+
+### Import migration
+
+```diff
+- import { ActivationManager } from '@himorishige/hatago-hub';
++ import { ActivationManager } from '@himorishige/hatago-hub-management/activation-manager.js';
+
+- import { IdleManager } from '@himorishige/hatago-hub/mcp-server/idle-manager.js';
++ import { IdleManager } from '@himorishige/hatago-hub-management/idle-manager.js';
+```
+
+Codemod (optional): `node scripts/codemod/legacy-imports.mjs <paths...>`
+
 ## 📦 Installation
 
 ### Quick Start (No Installation)
