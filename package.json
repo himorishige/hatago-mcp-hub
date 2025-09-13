@@ -15,8 +15,8 @@
     "test:forks": "pnpm -r --filter @himorishige/hatago-* run test:forks",
     "serve:http": "pnpm -C packages/mcp-hub serve:http",
     "serve:stdio": "pnpm -C packages/mcp-hub serve:stdio",
-    "bench:empty": "node bench/stdio-compare.mjs --config bench/configs/hatago-empty.config.json --npm 0.0.11 --iters 200",
-    "bench:fixture": "node bench/stdio-compare.mjs --config bench/configs/hatago-fixture.config.json --npm 0.0.11 --iters 200"
+    "bench:empty": "node bench/stdio-compare.mjs --config bench/configs/hatago-empty.config.json --npm 0.0.12 --iters 200",
+    "bench:fixture": "node bench/stdio-compare.mjs --config bench/configs/hatago-fixture.config.json --npm 0.0.12 --iters 200"
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
