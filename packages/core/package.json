@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-core",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Core types and protocol definitions for Hatago MCP Hub",
   "type": "module",
   "sideEffects": false,

@@ -28,6 +28,7 @@ if (publishData.dependencies) {
   const filteredDeps = {};
   for (const [name, version] of Object.entries(publishData.dependencies)) {
     // Keep only non-workspace dependencies
+    // All @himorishige/* packages are bundled by tsdown
     if (!name.startsWith('@himorishige/')) {
       filteredDeps[name] = version;
     }

@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-cli",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "CLI for Hatago MCP Hub",
   "type": "module",
   "main": "./dist/index.js",

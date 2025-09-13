@@ -12,7 +12,7 @@ export default defineConfig({
   env: {
     HATAGO_BUILD_TARGET: 'node'
   },
-  // Bundle all workspace packages, only keep Node builtins and external dependencies external
+  // Bundle all workspace packages, only keep Node builtins and external npm packages
   external: ['node:*', '@modelcontextprotocol/sdk', 'hono', 'commander'],
   esbuildOptions: {
     banner: {
