@@ -3,7 +3,7 @@
  * Only essential retry functionality, no complex state management
  */
 
-export { simpleRetry, withTimeout } from './simple-retry.js';
+// export { simpleRetry, withTimeout } from './simple-retry.js';  // Using thin implementation instead
 
 // Legacy exports (deprecated - will be removed in next major version)
 export {
@@ -16,7 +16,7 @@ export {
 
 export {
   type ClassifiedError,
-  classifyError,
+  // classifyError,  // Using thin implementation instead
   ErrorSeverity,
   ErrorType
 } from './error-classifier.js';
