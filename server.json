@@ -19,5 +19,11 @@
         "type": "stdio"
       }
     }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "http://localhost:3535/mcp"
+    }
   ]
 }
