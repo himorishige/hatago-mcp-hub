@@ -15,7 +15,11 @@ import type {
   StreamChunk,
   ThinTransportOptions
 } from './thin-facade.js';
-import type { JSONRPCRequest, JSONRPCNotification } from '@modelcontextprotocol/sdk/types.js';
+import type {
+  JSONRPCRequest,
+  JSONRPCNotification,
+  JSONRPCMessage
+} from '@modelcontextprotocol/sdk/types.js';
 import { StreamableHTTPTransport } from './streamable-http/streamable-http-transport.js';
 import type { SSEStream } from './streamable-http/index.js';
 
@@ -25,23 +29,19 @@ import type { SSEStream } from './streamable-http/index.js';
 export class RelayTransport implements ThinHttpTransport {
   private transport: StreamableHTTPTransport;
 
-  // Compatibility properties
-  public onmessage?: (message: unknown) => void;
-  public onerror?: (error: Error) => void;
-  public onclose?: () => void;
-
   constructor(options: ThinTransportOptions = {}) {
     this.transport = new StreamableHTTPTransport({
       sessionIdGenerator: () => options.sessionId ?? crypto.randomUUID()
     });
+  }
 
-    // Forward onmessage to underlying transport
-    Object.defineProperty(this, 'onmessage', {
-      get: () => this.transport.onmessage,
-      set: (handler: ((message: unknown) => void) | undefined) => {
-        this.transport.onmessage = handler;
-      }
-    });
+  // Simple property forwarding
+  get onmessage() {
+    return this.transport.onmessage as ((message: unknown) => void) | undefined;
+  }
+
+  set onmessage(handler: ((message: unknown) => void) | undefined) {
+    this.transport.onmessage = handler as ((message: JSONRPCMessage) => void) | undefined;
   }
 
   // Method overloads for send
