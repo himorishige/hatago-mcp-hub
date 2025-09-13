@@ -1,4 +1,4 @@
-name: PR Tests (hub + transport)
+name: PR Tests (hub packages)
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -23,14 +23,22 @@ jobs:
           version: 9
           run_install: true
 
-      - name: Build core deps for tests (core, runtime, test-fixtures)
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Build core deps for tests
         run: |
-          pnpm -r \
-            --filter @himorishige/hatago-core \
-            --filter @himorishige/hatago-runtime \
-            --filter @himorishige/hatago-test-fixtures \
+          pnpm \
+            --filter "./packages/**" \
+            --filter "./apps/**" \
             run build
 
-      - name: Run tests (hub, transport)
+      - name: Run linter
+        run: pnpm lint
+
+      - name: Run type check
+        run: pnpm typecheck
+
+      - name: Run tests
         run: |
-          pnpm -r --filter @himorishige/hatago-hub --filter @himorishige/hatago-transport run test
+          pnpm -r test
