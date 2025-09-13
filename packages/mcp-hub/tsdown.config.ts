@@ -12,8 +12,8 @@ export default defineConfig({
   env: {
     HATAGO_BUILD_TARGET: 'node'
   },
-  // Bundle internal workspace packages; keep Node builtins and @himorishige packages external
-  external: ['node:*', '@himorishige/hatago-core'],
+  // Bundle all workspace packages, only keep Node builtins and external dependencies external
+  external: ['node:*', '@modelcontextprotocol/sdk', 'hono', 'commander'],
   esbuildOptions: {
     banner: {
       js: '#!/usr/bin/env node'
