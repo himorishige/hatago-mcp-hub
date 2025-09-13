@@ -3,11 +3,11 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { 
-  LOG_LEVELS, 
-  type Logger, 
-  type LogLevel, 
-  SilentLogger, 
+import {
+  LOG_LEVELS,
+  type Logger,
+  type LogLevel,
+  SilentLogger,
   shouldLog,
   createLogger,
   createSilentLogger,

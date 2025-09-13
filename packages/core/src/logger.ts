@@ -70,30 +70,30 @@ function formatLogMessage(
   json?: boolean
 ): string {
   const timestamp = new Date().toISOString();
-  
+
   if (json) {
     const record: LogData = {
       time: timestamp,
       level,
       prefix,
       msg: msg ?? (typeof obj === 'string' ? obj : undefined),
-      data: msg ? obj : (typeof obj === 'string' ? undefined : obj)
+      data: msg ? obj : typeof obj === 'string' ? undefined : obj
     };
     // Remove undefined values
-    Object.keys(record).forEach(key => {
+    Object.keys(record).forEach((key) => {
       if (record[key] === undefined) {
         delete record[key];
       }
     });
     return JSON.stringify(record);
   }
-  
+
   // Text format
   const levelStr = level.toUpperCase();
   const prefixStr = prefix ? ` ${prefix}` : '';
   const messageStr = msg ?? (typeof obj === 'string' ? obj : JSON.stringify(obj));
   const dataStr = msg && obj && typeof obj !== 'string' ? ` ${JSON.stringify(obj)}` : '';
-  
+
   return `[${timestamp}] [${levelStr}]${prefixStr} ${messageStr}${dataStr}`;
 }
 
@@ -105,16 +105,16 @@ export function createLogger(options: LoggerOptions = {}): Logger {
   const prefix = options.prefix ?? '';
   const json = options.json ?? false;
   const output = options.output ?? defaultOutput;
-  
+
   const log = (logLevel: LogLevel, obj: unknown, msg?: string): void => {
     if (!shouldLog(level, logLevel)) {
       return;
     }
-    
+
     const message = formatLogMessage(logLevel, obj, msg, prefix, json);
     output(message);
   };
-  
+
   return {
     level,
     error: (obj: unknown, msg?: string) => log('error', obj, msg),
@@ -122,10 +122,11 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     info: (obj: unknown, msg?: string) => log('info', obj, msg),
     debug: (obj: unknown, msg?: string) => log('debug', obj, msg),
     trace: (obj: unknown, msg?: string) => log('trace', obj, msg),
-    child: (childPrefix: string) => createLogger({
-      ...options,
-      prefix: prefix ? `${prefix}[${childPrefix}]` : `[${childPrefix}]`
-    })
+    child: (childPrefix: string) =>
+      createLogger({
+        ...options,
+        prefix: prefix ? `${prefix}[${childPrefix}]` : `[${childPrefix}]`
+      })
   };
 }
 
