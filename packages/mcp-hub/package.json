@@ -1,5 +1,6 @@
 {
   "name": "@himorishige/hatago-mcp-hub",
+  "mcpName": "io.github.himorishige/hatago-mcp-hub",
   "version": "0.0.11",
   "description": "Unified MCP Hub for managing multiple Model Context Protocol servers",
   "type": "module",
