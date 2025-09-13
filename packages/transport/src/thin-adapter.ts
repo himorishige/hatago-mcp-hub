@@ -36,6 +36,11 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
   private transport: StreamableHTTPTransport;
   private debug: boolean;
 
+  // Additional properties for compatibility
+  public onmessage?: (message: unknown) => void;
+  public onerror?: (error: Error) => void;
+  public onclose?: () => void;
+
   constructor(options: ThinTransportOptions = {}) {
     this.debug = options.debug ?? false;
 
@@ -43,6 +48,34 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
     this.transport = new StreamableHTTPTransport({
       sessionIdGenerator: () => options.sessionId ?? crypto.randomUUID()
     });
+
+    // Forward onmessage to underlying transport
+    Object.defineProperty(this, 'onmessage', {
+      get: () => this.transport.onmessage,
+      set: (handler) => {
+        this.transport.onmessage = handler;
+      }
+    });
+
+    // Store original send method
+    const originalSend = this.send.bind(this);
+
+    // Override send to handle both ThinHttpRequest and JSONRPCMessage
+    this.send = async (arg: any): Promise<any> => {
+      if (arg && typeof arg === 'object' && 'jsonrpc' in arg) {
+        // JSONRPCMessage - forward to transport
+        if (this.debug) {
+          console.error('[ThinAdapter] Forwarding JSONRPCMessage to transport.send');
+        }
+        return this.transport.send(arg);
+      } else {
+        // ThinHttpRequest - use original implementation
+        if (this.debug) {
+          console.error('[ThinAdapter] Using original send for ThinHttpRequest');
+        }
+        return originalSend(arg);
+      }
+    };
 
     if (this.debug) {
       console.error('[ThinAdapter] Created with options:', options);
@@ -152,6 +185,92 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
     }
     await this.transport.close();
   }
+
+  // Compatibility methods for StreamableHTTPTransport interface
+  async start(): Promise<void> {
+    console.error('[ThinAdapter] start() called - starting underlying transport');
+    // Start the underlying StreamableHTTPTransport
+    await this.transport.start();
+    console.error('[ThinAdapter] transport.start() completed');
+  }
+
+  setKeepAliveMs(ms: number): void {
+    if (this.debug) {
+      console.error('[ThinAdapter] setKeepAliveMs() called with:', ms);
+    }
+    // Thin implementation doesn't manage keep-alive
+  }
+
+  async sendProgressNotification(
+    progressToken: string | number,
+    progress: number,
+    total?: number,
+    message?: string
+  ): Promise<void> {
+    if (this.debug) {
+      console.error(
+        '[ThinAdapter] sendProgressNotification:',
+        progressToken,
+        progress,
+        total,
+        message
+      );
+    }
+
+    // Delegate directly to StreamableHTTPTransport's sendProgressNotification
+    // with the correct signature
+    await (this.transport as any).sendProgressNotification(progressToken, progress, total, message);
+  }
+
+  // Handle HTTP requests (compatibility with StreamableHTTPTransport)
+  async handleHttpRequest(
+    method: string,
+    headers: Record<string, string>,
+    body?: string | unknown,
+    sseStream?: any
+  ): Promise<{ status: number; headers: Record<string, string>; body?: unknown }> {
+    if (this.debug) {
+      console.error('[ThinAdapter] handleHttpRequest called:', {
+        method,
+        hasBody: !!body,
+        bodyType: typeof body
+      });
+    }
+
+    // Delegate to the actual StreamableHTTPTransport
+    // StreamableHTTPTransport expects body as unknown (already parsed)
+    let parsedBody: unknown;
+    if (body !== undefined) {
+      if (typeof body === 'string') {
+        try {
+          parsedBody = JSON.parse(body);
+        } catch {
+          // If parsing fails, pass as-is
+          parsedBody = body;
+        }
+      } else {
+        // Already an object
+        parsedBody = body;
+      }
+    }
+
+    const result = await this.transport.handleHttpRequest(method, headers, parsedBody, sseStream);
+
+    // StreamableHTTPTransport may return undefined for SSE responses
+    if (!result) {
+      return {
+        status: 200,
+        headers: {},
+        body: undefined
+      };
+    }
+
+    return {
+      status: result.status,
+      headers: result.headers || {},
+      body: result.body
+    };
+  }
 }
 
 /**
@@ -216,11 +335,14 @@ export function createThinHttpTransportWithAdapter(
   const useThinImplementation = process.env.HATAGO_THIN_TRANSPORT === 'true';
 
   if (useThinImplementation) {
-    // TODO: Return actual thin implementation in Phase 2
-    console.error('[ThinAdapter] Thin implementation not ready, using adapter');
+    // Use the StreamableHttpAdapter which is our thin implementation
+    console.error('[ThinAdapter] Using thin implementation (StreamableHttpAdapter)');
+    const adapter = new StreamableHttpAdapter({ ...options, debug: true });
+    return adapter;
   }
 
-  // Phase 1: Always use adapter
+  // Fallback: Use adapter without debug
+  console.error('[ThinAdapter] Using standard adapter (HATAGO_THIN_TRANSPORT not set)');
   return new StreamableHttpAdapter(options);
 }
 

@@ -7,6 +7,9 @@
 
 import type { ToolCallResult } from '@himorishige/hatago-core';
 
+// Re-export for compatibility wrapper
+export type { ToolCallResult };
+
 /**
  * Tool handler function type
  */

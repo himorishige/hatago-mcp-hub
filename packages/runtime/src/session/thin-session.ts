@@ -175,6 +175,7 @@ export function createThinSessionManager(ttlSeconds = 3600): {
   create: (id: string) => Session;
   get: (id: string) => Session | undefined;
   delete: (id: string) => void;
+  destroy: (id: string) => void; // Alias for delete (compatibility)
   list: () => Session[];
   count: () => number;
   clear: () => void;
@@ -199,6 +200,10 @@ export function createThinSessionManager(ttlSeconds = 3600): {
     },
 
     delete: (id: string): void => {
+      store = deleteSession(store, id);
+    },
+
+    destroy: (id: string): void => {
       store = deleteSession(store, id);
     },
 

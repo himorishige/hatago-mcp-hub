@@ -7,7 +7,9 @@
 
 import { createThinSessionManager } from './session/thin-session.js';
 import { createThinRegistryManager } from './registry/thin-registry.js';
+import { createCompatibleThinRegistry } from './registry/thin-registry-compat.js';
 import { createThinToolInvoker } from './tool-invoker/thin-invoker.js';
+import { createCompatibleThinToolInvoker } from './tool-invoker/thin-invoker-compat.js';
 import { createThinRouter } from './router/thin-router.js';
 
 // Session management - thin implementations
@@ -42,6 +44,12 @@ export {
   type ThinPromptStore
 } from './registry/thin-registry.js';
 
+// Registry compatibility
+export {
+  createCompatibleThinRegistry,
+  type CompatibleThinRegistry
+} from './registry/thin-registry-compat.js';
+
 // Tool invocation
 export {
   createHandlerRegistry,
@@ -57,6 +65,12 @@ export {
   type InvocationResult,
   type HandlerRegistry
 } from './tool-invoker/thin-invoker.js';
+
+// Tool invoker compatibility
+export {
+  createCompatibleThinToolInvoker,
+  type CompatibleThinToolInvoker
+} from './tool-invoker/thin-invoker-compat.js';
 
 // Error handling
 export {
@@ -108,10 +122,13 @@ export function createThinRuntime(
 ): ThinRuntime {
   // Import thin implementations
   const sessionManager = createThinSessionManager(options.sessionTtlSeconds);
-  const registryManager = createThinRegistryManager();
-  const toolInvoker = createThinToolInvoker({
+  // Use compatible registry for backward compatibility
+  const registryManager = createCompatibleThinRegistry();
+  // Use compatible tool invoker with registry reference
+  const toolInvoker = createCompatibleThinToolInvoker({
     timeout: options.toolTimeout,
-    maxConcurrency: options.maxConcurrency
+    maxConcurrency: options.maxConcurrency,
+    toolRegistry: registryManager // Provide registry for listTools()
   });
   const router = createThinRouter();
 
@@ -119,10 +136,10 @@ export function createThinRuntime(
     // Session operations
     sessions: sessionManager,
 
-    // Registry operations
+    // Registry operations with compatibility
     registry: registryManager,
 
-    // Tool operations
+    // Tool operations with compatibility
     tools: toolInvoker,
 
     // Routing operations
