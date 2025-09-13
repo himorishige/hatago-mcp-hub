@@ -7,7 +7,20 @@ import {
   TimeoutError,
   SessionError,
   UnsupportedFeatureError,
-  toHatagoError
+  toHatagoError,
+  // New functional API
+  createHatagoError,
+  toHatagoErrorType,
+  toError,
+  isConfigError,
+  isTransportError,
+  isToolInvocationError,
+  isTimeoutError,
+  isSessionError,
+  isUnsupportedFeatureError,
+  isInternalError,
+  isUnknownError,
+  type HatagoErrorType
 } from './errors.js';
 
 describe('Errors', () => {
@@ -280,6 +293,145 @@ describe('Errors', () => {
         const str = error2.toString();
         expect(str).toContain('Error 2');
       }).not.toThrow();
+    });
+  });
+});
+
+describe('Functional Error API', () => {
+  describe('createHatagoError', () => {
+    it('should create config error', () => {
+      const error = createHatagoError('config', 'Configuration is invalid', {
+        data: { field: 'port' }
+      });
+
+      expect(error.kind).toBe('config');
+      expect(error.message).toBe('Configuration is invalid');
+      expect(error.data).toEqual({ field: 'port' });
+      expect(isConfigError(error)).toBe(true);
+    });
+
+    it('should create transport error', () => {
+      const error = createHatagoError('transport', 'Connection failed');
+
+      expect(error.kind).toBe('transport');
+      expect(error.message).toBe('Connection failed');
+      expect(isTransportError(error)).toBe(true);
+    });
+
+    it('should create timeout error with extra field', () => {
+      const error = createHatagoError('timeout', 'Operation timed out', {
+        timeoutMs: 5000
+      });
+
+      expect(error.kind).toBe('timeout');
+      expect(error.message).toBe('Operation timed out');
+      if (error.kind === 'timeout') {
+        expect(error.timeoutMs).toBe(5000);
+      }
+      expect(isTimeoutError(error)).toBe(true);
+    });
+
+    it('should create session error with sessionId', () => {
+      const error = createHatagoError('session', 'Session expired', {
+        sessionId: 'abc123'
+      });
+
+      expect(error.kind).toBe('session');
+      if (error.kind === 'session') {
+        expect(error.sessionId).toBe('abc123');
+      }
+      expect(isSessionError(error)).toBe(true);
+    });
+  });
+
+  describe('Type guards', () => {
+    const errors: HatagoErrorType[] = [
+      createHatagoError('config', 'config error'),
+      createHatagoError('transport', 'transport error'),
+      createHatagoError('tool_invocation', 'tool error'),
+      createHatagoError('timeout', 'timeout error'),
+      createHatagoError('session', 'session error'),
+      createHatagoError('unsupported_feature', 'feature error'),
+      createHatagoError('internal', 'internal error'),
+      createHatagoError('unknown', 'unknown error')
+    ];
+
+    it('should correctly identify error types', () => {
+      expect(isConfigError(errors[0])).toBe(true);
+      expect(isTransportError(errors[1])).toBe(true);
+      expect(isToolInvocationError(errors[2])).toBe(true);
+      expect(isTimeoutError(errors[3])).toBe(true);
+      expect(isSessionError(errors[4])).toBe(true);
+      expect(isUnsupportedFeatureError(errors[5])).toBe(true);
+      expect(isInternalError(errors[6])).toBe(true);
+      expect(isUnknownError(errors[7])).toBe(true);
+    });
+
+    it('should return false for wrong types', () => {
+      const configError = createHatagoError('config', 'test');
+      expect(isTransportError(configError)).toBe(false);
+      expect(isTimeoutError(configError)).toBe(false);
+      expect(isSessionError(configError)).toBe(false);
+    });
+  });
+
+  describe('toError', () => {
+    it('should convert HatagoErrorType to Error', () => {
+      const hatagoError = createHatagoError('config', 'Config invalid', {
+        cause: new Error('Original'),
+        data: { test: true }
+      });
+
+      const error = toError(hatagoError);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toBe('Config invalid');
+      expect(error.name).toBe('HatagoError:config');
+      expect(error.cause).toBeInstanceOf(Error);
+      expect((error.cause as Error).message).toBe('Original');
+    });
+  });
+
+  describe('toHatagoErrorType', () => {
+    it('should return HatagoErrorType unchanged', () => {
+      const error = createHatagoError('config', 'test');
+      expect(toHatagoErrorType(error)).toBe(error);
+    });
+
+    it('should convert legacy HatagoError class', () => {
+      const legacyError = new HatagoError('Legacy error', 'CONFIG_ERROR', {
+        data: { legacy: true }
+      });
+
+      const error = toHatagoErrorType(legacyError);
+
+      expect(error.kind).toBe('config');
+      expect(error.message).toBe('Legacy error');
+      expect(error.data).toEqual({ legacy: true });
+    });
+
+    it('should detect error type from message patterns', () => {
+      const timeoutError = toHatagoErrorType(new Error('Connection timeout'));
+      expect(timeoutError.kind).toBe('timeout');
+      expect(timeoutError.message).toBe('Connection timeout');
+
+      const transportError = toHatagoErrorType(new Error('Transport layer failed'));
+      expect(transportError.kind).toBe('transport');
+      expect(transportError.message).toBe('Transport layer failed');
+
+      const configError = toHatagoErrorType(new Error('Invalid config file'));
+      expect(configError.kind).toBe('config');
+      expect(configError.message).toBe('Invalid config file');
+    });
+
+    it('should handle unknown error types', () => {
+      const stringError = toHatagoErrorType('string error');
+      expect(stringError.kind).toBe('unknown');
+      expect(stringError.message).toBe('string error');
+
+      const numberError = toHatagoErrorType(123);
+      expect(numberError.kind).toBe('unknown');
+      expect(numberError.message).toBe('123');
     });
   });
 });

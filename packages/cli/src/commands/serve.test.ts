@@ -69,7 +69,7 @@ describe('setupServeCommand', () => {
       expect(startServer).toHaveBeenCalledWith({
         mode: 'stdio',
         config: undefined,
-        port: 3929,
+        port: 3535,
         host: '127.0.0.1',
         logLevel: 'info',
         verbose: undefined,
