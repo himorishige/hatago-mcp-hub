@@ -27,3 +27,36 @@ export type { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdi
 export type { SSEStream, StreamableHTTPTransportOptions } from './streamable-http/index.js';
 // StreamableHTTP Transport
 export { StreamableHTTPTransport } from './streamable-http/index.js';
+
+// Thin facade - new lightweight transport interface
+export type {
+  ThinHttpTransport,
+  ThinHttpRequest,
+  ThinHttpResponse,
+  StreamChunk,
+  ThinJsonRpcTransport,
+  ThinTransportOptions
+} from './thin-facade.js';
+
+// Relay Transport - lightweight transport implementation
+export {
+  RelayTransport,
+  RelayJsonRpcTransport,
+  createRelayHttpTransport,
+  createRelayJsonRpcTransport
+} from './relay-transport.js';
+
+// Tracing utilities
+export {
+  generateCorrelationId,
+  createTraceContext,
+  startSpan,
+  endSpan,
+  TraceLogger,
+  traceLogger,
+  withTracing,
+  addCorrelationHeader,
+  extractCorrelationId,
+  type TraceContext,
+  type TraceSpan
+} from './tracing.js';

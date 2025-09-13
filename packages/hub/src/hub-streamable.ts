@@ -31,7 +31,12 @@ export function handleSSEEndpoint(hub: HatagoHub, c: Context) {
     });
 
     // Handle through StreamableHTTP
-    await transport.handleHttpRequest('GET', headers, undefined, sseStream);
+    await transport.handleHttpRequest(
+      'GET',
+      headers as Record<string, string>,
+      undefined,
+      sseStream
+    );
 
     // Keep connection alive
     await new Promise(() => {}); // Never resolves
@@ -70,6 +75,7 @@ export function createEventsEndpoint(hub: HatagoHub) {
  * Handle MCP endpoint with StreamableHTTP support
  */
 export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
+  console.error('[handleMCPEndpoint] Called with method:', c.req.method, 'path:', c.req.path);
   const transport = hub.getStreamableTransport();
   if (!transport) {
     // Fallback to original implementation
@@ -129,7 +135,12 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
         });
 
         // Handle through StreamableHTTP
-        const result = await transport.handleHttpRequest('POST', headers, body, sseStream);
+        const result = await transport.handleHttpRequest(
+          'POST',
+          headers as Record<string, string>,
+          body,
+          sseStream
+        );
 
         const resultBody = result?.body;
         if (resultBody) {
@@ -147,7 +158,11 @@ export async function handleMCPEndpoint(hub: HatagoHub, c: Context) {
       headers[key] = value;
     });
 
-    const result = await transport.handleHttpRequest('POST', headers, body);
+    const result = await transport.handleHttpRequest(
+      'POST',
+      headers as Record<string, string>,
+      body
+    );
 
     if (result) {
       // Set response headers

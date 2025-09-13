@@ -159,6 +159,15 @@ Provides session isolation for multiple concurrent AI clients.
 
 ## Transport Layer
 
+### Core Implementation: RelayTransport
+
+The transport layer now uses `RelayTransport` as the default implementation, providing a thin wrapper around the MCP SDK's `StreamableHTTPTransport`. This follows Hatago's philosophy of "thin, transparent, relay without judgment".
+
+**Key Files:**
+
+- `packages/transport/src/relay-transport.ts` - Main RelayTransport implementation
+- `packages/transport/src/thin-facade.ts` - Thin transport interfaces
+
 ### Supported Transports
 
 1. **STDIO** (`packages/transport/src/stdio/`)
@@ -166,10 +175,11 @@ Provides session isolation for multiple concurrent AI clients.
    - Newline-delimited JSON (MCP standard)
    - Bidirectional communication
 
-2. **HTTP** (`packages/transport/src/http/`)
-   - StreamableHTTP for Claude Code
+2. **HTTP/StreamableHTTP** (via `RelayTransport`)
+   - Uses RelayTransport wrapping StreamableHTTPTransport
    - RESTful endpoints for debugging
    - Session management via headers
+   - Transparent request/response relay
 
 3. **SSE** (`packages/transport/src/sse/`)
    - Server-Sent Events for streaming

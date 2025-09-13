@@ -10,7 +10,9 @@ import {
   type ResourceRegistry,
   SessionManager,
   ToolInvoker,
-  ToolRegistry
+  ToolRegistry,
+  createThinRuntime,
+  useThinRuntime
 } from '@himorishige/hatago-runtime';
 import type { Tool } from '@himorishige/hatago-core';
 import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
@@ -21,7 +23,8 @@ const FALLBACK_RPC_NOTIFICATION = {
   tools_list_changed: 'notifications/tools/list_changed'
 } as const;
 const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
-import { StreamableHTTPTransport, type ITransport } from '@himorishige/hatago-transport';
+import type { RelayTransport } from '@himorishige/hatago-transport';
+import { type ITransport, createRelayHttpTransport } from '@himorishige/hatago-transport';
 import * as ToolsApi from './api/tools.js';
 import * as ResourcesApi from './api/resources.js';
 import * as PromptsApi from './api/prompts.js';
@@ -84,7 +87,7 @@ export class HatagoHub {
   private sseManager: SSEManager;
 
   // StreamableHTTP Transport
-  private streamableTransport?: StreamableHTTPTransport;
+  private streamableTransport?: RelayTransport;
 
   // Notification Manager removed from base hub
 
@@ -138,41 +141,58 @@ export class HatagoHub {
     // Initialize SSE manager
     this.sseManager = new SSEManager(this.logger);
 
-    // Initialize components
-    this.sessions = new SessionManager(this.options.sessionTTL);
-    this.toolRegistry = new ToolRegistry({
-      namingConfig: {
-        strategy: this.options.namingStrategy,
-        separator: this.options.separator
-      }
-    });
-    this.toolInvoker = new ToolInvoker(
-      this.toolRegistry,
-      {
-        timeout: this.options.defaultTimeout
-      },
-      this.sseManager
-    );
-    this.resourceRegistry = createResourceRegistry();
-    this.promptRegistry = createPromptRegistry();
-    this.capabilityRegistry = new CapabilityRegistry();
+    // Check if thin runtime should be used
+    if (useThinRuntime()) {
+      this.logger.info('Using thin runtime implementation');
+      const thinRuntime = createThinRuntime({
+        sessionTtlSeconds: this.options.sessionTTL,
+        toolTimeout: this.options.defaultTimeout
+      });
 
-    // Initialize StreamableHTTP Transport only when enabled
-    if (this.options.enableStreamableTransport) {
-      this.streamableTransport = new StreamableHTTPTransport({
-        sessionIdGenerator: () => crypto.randomUUID(),
-        enableJsonResponse: true,
-        onsessioninitialized: (sessionId) => {
-          this.logger.debug('[Hub] Session initialized via StreamableHTTP', {
-            sessionId
-          });
-        },
-        onsessionclosed: (sessionId) => {
-          this.logger.debug('[Hub] Session closed via StreamableHTTP', {
-            sessionId
-          });
+      // Use thin implementations with proper compatibility
+      this.sessions = thinRuntime.sessions as unknown as SessionManager;
+      this.toolRegistry = thinRuntime.registry as unknown as ToolRegistry; // Now includes getServerTools
+      this.toolInvoker = thinRuntime.tools as unknown as ToolInvoker;
+
+      // Debug: Check if listTools exists
+      this.logger.debug('Thin toolInvoker methods:', {
+        hasListTools:
+          'listTools' in this.toolInvoker &&
+          typeof (this.toolInvoker as { listTools?: unknown }).listTools === 'function',
+        hasRegisterHandler: typeof this.toolInvoker.registerHandler === 'function',
+        hasCallTool: typeof this.toolInvoker.callTool === 'function',
+        hasUnregisterHandler: typeof this.toolInvoker.unregisterHandler === 'function'
+      });
+      this.resourceRegistry = createResourceRegistry();
+      this.promptRegistry = createPromptRegistry();
+    } else {
+      // Initialize components with thick implementations
+      this.sessions = new SessionManager(this.options.sessionTTL);
+      this.toolRegistry = new ToolRegistry({
+        namingConfig: {
+          strategy: this.options.namingStrategy,
+          separator: this.options.separator
         }
       });
+      this.toolInvoker = new ToolInvoker(
+        this.toolRegistry,
+        {
+          timeout: this.options.defaultTimeout
+        },
+        this.sseManager
+      );
+      this.resourceRegistry = createResourceRegistry();
+      this.promptRegistry = createPromptRegistry();
+    }
+    this.capabilityRegistry = new CapabilityRegistry();
+
+    // Initialize RelayTransport when enabled
+    if (this.options.enableStreamableTransport) {
+      this.logger.info('Using RelayTransport implementation');
+      this.streamableTransport = createRelayHttpTransport({
+        sessionId: crypto.randomUUID(),
+        debug: false
+      }) as RelayTransport;
     }
   }
 
@@ -323,6 +343,12 @@ export class HatagoHub {
     // Register tools using extracted registrar
     {
       const requestTimeoutMs = spec.timeout ?? this.options.defaultTimeout;
+      this.logger.debug('Before registerServerTools - checking toolInvoker:', {
+        hasListTools:
+          'listTools' in this.toolInvoker &&
+          typeof (this.toolInvoker as { listTools?: unknown }).listTools === 'function',
+        toolInvokerType: this.toolInvoker?.constructor?.name || 'unknown'
+      });
       await registerServerTools(this as never, client, id, requestTimeoutMs);
     }
 
@@ -406,29 +432,45 @@ export class HatagoHub {
 
         // Apply global timeouts to ToolInvoker default timeout if provided
         if (config.timeouts?.requestMs && Number.isFinite(config.timeouts.requestMs)) {
-          // Recreate ToolInvoker with new default timeout before connecting servers
-          this.toolInvoker = new ToolInvoker(
-            this.toolRegistry,
-            {
-              timeout: config.timeouts.requestMs
-            },
-            this.sseManager
-          );
-          // Also reflect to options for consistency
-          this.options.defaultTimeout = config.timeouts.requestMs;
+          // Check if we're using thin runtime
+          if (useThinRuntime()) {
+            // For thin runtime, just update the timeout option
+            // The thin implementation uses this via options.toolTimeout
+            this.options.defaultTimeout = config.timeouts.requestMs;
+          } else {
+            // Recreate ToolInvoker with new default timeout before connecting servers
+            this.toolInvoker = new ToolInvoker(
+              this.toolRegistry,
+              {
+                timeout: config.timeouts.requestMs
+              },
+              this.sseManager
+            );
+            // Also reflect to options for consistency
+            this.options.defaultTimeout = config.timeouts.requestMs;
+          }
         }
 
         // Apply keepAliveMs to StreamableHTTP transport and start it
+        this.logger.debug('[Hub] Checking streamableTransport before start', {
+          hasTransport: !!this.streamableTransport
+        });
         if (this.streamableTransport) {
           if (config.timeouts?.keepAliveMs && Number.isFinite(config.timeouts.keepAliveMs)) {
             this.streamableTransport.setKeepAliveMs(config.timeouts.keepAliveMs);
           }
+          this.logger.debug('[Hub] Calling streamableTransport.start()');
           await this.streamableTransport.start();
+          this.logger.debug('[Hub] streamableTransport.start() completed');
           this.streamableTransport.onmessage = (message) => {
             void (async () => {
-              const result = await this.handleJsonRpcRequest(message as unknown as JSONRPCMessage);
+              const result = await this.handleJsonRpcRequest(message as JSONRPCMessage);
               if (result && this.streamableTransport) {
-                await this.streamableTransport.send(result as JSONRPCMessage);
+                // RelayTransport has overloaded send method that accepts JSONRPCMessage
+                const transport = this.streamableTransport as RelayTransport & {
+                  send(message: JSONRPCMessage): Promise<void>;
+                };
+                await transport.send(result as JSONRPCMessage);
               }
             })();
           };
@@ -492,7 +534,8 @@ export class HatagoHub {
           });
         } else {
           this.logger.error('Failed to load config file', {
-            error: errorMessage
+            error: errorMessage,
+            stack: error instanceof Error ? error.stack : undefined
           });
         }
         throw error;
@@ -512,9 +555,13 @@ export class HatagoHub {
       await this.streamableTransport.start();
       this.streamableTransport.onmessage = (message) => {
         void (async () => {
-          const result = await this.handleJsonRpcRequest(message as unknown as JSONRPCMessage);
+          const result = await this.handleJsonRpcRequest(message as JSONRPCMessage);
           if (result && this.streamableTransport) {
-            await this.streamableTransport.send(result as JSONRPCMessage);
+            // RelayTransport has overloaded send method that accepts JSONRPCMessage
+            const transport = this.streamableTransport as RelayTransport & {
+              send(message: JSONRPCMessage): Promise<void>;
+            };
+            await transport.send(result as JSONRPCMessage);
           }
         })();
       };
@@ -570,6 +617,14 @@ export class HatagoHub {
    * Send tools/list_changed notification
    */
   private async sendToolListChangedNotification(): Promise<void> {
+    // Debug: Check toolInvoker before using it
+    this.logger.debug('sendToolListChangedNotification - toolInvoker check:', {
+      hasListTools:
+        'listTools' in this.toolInvoker &&
+        typeof (this.toolInvoker as { listTools?: unknown }).listTools === 'function',
+      toolInvokerType: this.toolInvoker?.constructor?.name || 'unknown'
+    });
+
     this.toolsetRevision++;
     this.toolsetHash = await this.calculateToolsetHash();
 
@@ -595,7 +650,11 @@ export class HatagoHub {
     // Send to StreamableHTTP clients
     if (this.streamableTransport) {
       try {
-        await this.streamableTransport.send(notification);
+        // RelayTransport has overloaded send method that accepts notifications
+        const transport = this.streamableTransport as RelayTransport & {
+          send(notification: { jsonrpc: '2.0'; method: string; params: unknown }): Promise<void>;
+        };
+        await transport.send(notification);
       } catch (error) {
         this.logger.warn('[Hub] Failed to send notification to client', {
           error: error instanceof Error ? error.message : String(error)
@@ -747,7 +806,7 @@ export class HatagoHub {
   /**
    * Get StreamableHTTP Transport
    */
-  getStreamableTransport(): StreamableHTTPTransport | undefined {
+  getStreamableTransport(): RelayTransport | undefined {
     return this.streamableTransport;
   }
 

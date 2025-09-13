@@ -522,6 +522,10 @@ MIT License
 - [Model Context Protocol SDK](https://github.com/modelcontextprotocol) - MCPプロトコルの設計と実装
 - すべてのコントリビューターとユーザーの皆様
 
+## 📋 更新履歴
+
+詳細な変更履歴は[CHANGELOG.md](./CHANGELOG.md)をご覧ください。
+
 ---
 
 <div align="center">

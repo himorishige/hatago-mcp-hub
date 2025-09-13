@@ -2,13 +2,13 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { Logger } from '../logger.js';
 import type { HubEvent } from '../types.js';
-import type { StreamableHTTPTransport } from '@himorishige/hatago-transport';
+import type { RelayTransport } from '@himorishige/hatago-transport';
 
 type NotifierHub = {
   logger: Logger;
   emit: (event: HubEvent, data: unknown) => void;
   onNotification?: (n: JSONRPCMessage) => Promise<void>;
-  getStreamableTransport: () => StreamableHTTPTransport | undefined;
+  getStreamableTransport: () => RelayTransport | undefined;
 };
 
 export function attachClientNotificationForwarder(
@@ -30,7 +30,12 @@ export function attachClientNotificationForwarder(
 
     const transport = hub.getStreamableTransport();
     if (transport) {
-      await transport.send(notification as JSONRPCMessage);
+      // RelayTransport has overloaded send method that accepts JSONRPCMessage
+      type TransportWithSend = {
+        send(message: JSONRPCMessage): Promise<void>;
+      };
+      const typedTransport = transport as unknown as TransportWithSend;
+      await typedTransport.send(notification as JSONRPCMessage);
     }
 
     hub.emit('server:notification', { serverId, notification });
