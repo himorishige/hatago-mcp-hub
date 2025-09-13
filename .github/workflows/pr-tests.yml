@@ -26,14 +26,14 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Run linter
-        run: pnpm lint
-
       - name: Build core deps for tests
         run: |
           pnpm \
             --filter "./packages/**" \
             run build
+
+      - name: Run linter
+        run: pnpm lint
 
       - name: Run type check
         run: pnpm typecheck
