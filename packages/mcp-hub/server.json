@@ -7,13 +7,13 @@
     "url": "https://github.com/himorishige/hatago-mcp-hub",
     "source": "github"
   },
-  "version": "0.0.12",
+  "version": "0.0.13",
   "packages": [
     {
       "registry_type": "npm",
       "registry_base_url": "https://registry.npmjs.org",
       "identifier": "@himorishige/hatago-mcp-hub",
-      "version": "0.0.12",
+      "version": "0.0.13",
       "runtime_hint": "npx",
       "transport": {
         "type": "stdio"

@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-test-fixtures",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "type": "module",
   "private": true,
   "scripts": {
