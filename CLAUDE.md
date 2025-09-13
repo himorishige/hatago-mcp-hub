@@ -260,29 +260,9 @@ pnpm test
 # Type checking
 pnpm typecheck
 
-# Linting & formatting
-pnpm check  # Runs format + lint + typecheck
+# Linting
+pnpm lint
 ```
-
-## Version History
-
-### v0.0.2 (Current)
-
-- Tag-based server filtering (OR logic)
-- Support for Japanese tags
-- CLI --tags option for server grouping
-- Backward compatibility maintained
-
-### v0.0.1
-
-- Simplified architecture (38+ files removed)
-- Core functionality focus (~500 lines hub)
-- Full MCP compliance
-- Multi-transport support (STDIO, HTTP, SSE)
-- Hot reload capability
-- Progress notification forwarding
-- Internal management tools
-- Environment variable expansion
 
 ## Hatago Design Philosophy
 

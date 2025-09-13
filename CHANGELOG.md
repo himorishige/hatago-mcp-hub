@@ -5,6 +5,21 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - Development
+
+### Changed
+
+- Transport Layer: RelayTransport is now the default implementation, replacing direct StreamableHTTPTransport usage [SF][DM]
+- Architecture: Removed all feature flags (HATAGO_THIN_TRANSPORT, HATAGO_THIN_RUNTIME) - thin implementations are now standard [SF]
+- Type Safety: Improved type definitions and removed unsafe `as any` casts where possible [CA][ISA]
+
+### Technical Improvements
+
+- Renamed `thin-adapter.ts` to `relay-transport.ts` for clarity
+- Renamed `StreamableHttpAdapter` class to `RelayTransport`
+- Fixed method overloads in RelayTransport for proper JSONRPC message handling
+- Resolved all lint errors without using eslint-disable comments [CA]
+
 ## [0.0.9] - 2025-09-06
 
 ### Added
