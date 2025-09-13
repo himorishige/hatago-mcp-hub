@@ -92,10 +92,30 @@ jobs:
 
       - name: Verify publication
         run: |
-          # Wait a moment for npm registry to update
-          sleep 5
+          echo "📦 Package published: @himorishige/hatago-mcp-hub@${{ steps.extract_version.outputs.version }}"
+          echo ""
+          echo "Waiting for npm registry to update (this may take a few minutes)..."
 
-          # Verify the package is available
-          npm view @himorishige/hatago-mcp-hub@${{ steps.extract_version.outputs.version }} version
+          # Try to verify with retries (npm registry can take time to update)
+          MAX_RETRIES=6
+          RETRY_COUNT=0
+          SLEEP_TIME=10
 
-          echo "🎉 Package successfully published and verified!"
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if npm view @himorishige/hatago-mcp-hub@${{ steps.extract_version.outputs.version }} version 2>/dev/null; then
+              echo "✅ Package verified on npm registry!"
+              exit 0
+            fi
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "  Attempt $RETRY_COUNT/$MAX_RETRIES: Package not yet available, waiting ${SLEEP_TIME}s..."
+              sleep $SLEEP_TIME
+            fi
+          done
+
+          echo "⚠️ Could not verify package on npm registry after $MAX_RETRIES attempts."
+          echo "  This is normal - npm registry can take several minutes to update."
+          echo "  The package was successfully uploaded and will be available soon."
+          echo ""
+          echo "  You can check manually at: https://www.npmjs.com/package/@himorishige/hatago-mcp-hub/v/${{ steps.extract_version.outputs.version }}"
