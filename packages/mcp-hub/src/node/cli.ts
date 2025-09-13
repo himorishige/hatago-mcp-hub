@@ -6,7 +6,7 @@
  * Provides subcommands for server management and configuration.
  */
 
-import { startServer, generateDefaultConfig } from '../../../server/src/index.js';
+import { startServer, generateDefaultConfig } from '@himorishige/hatago-server';
 import { Command } from 'commander';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
