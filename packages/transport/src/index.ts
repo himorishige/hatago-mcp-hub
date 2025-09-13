@@ -39,24 +39,7 @@ export type {
 } from './thin-facade.js';
 
 // Relay Transport - lightweight transport implementation
-export {
-  RelayTransport,
-  RelayJsonRpcTransport,
-  createRelayHttpTransport,
-  createRelayJsonRpcTransport
-} from './relay-transport.js';
+export { RelayTransport, createRelayHttpTransport } from './relay-transport.js';
 
-// Tracing utilities
-export {
-  generateCorrelationId,
-  createTraceContext,
-  startSpan,
-  endSpan,
-  TraceLogger,
-  traceLogger,
-  withTracing,
-  addCorrelationHeader,
-  extractCorrelationId,
-  type TraceContext,
-  type TraceSpan
-} from './tracing.js';
+// JSON-RPC Transport adapter
+export { RelayJsonRpcTransport, createRelayJsonRpcTransport } from './relay-jsonrpc-transport.js';
