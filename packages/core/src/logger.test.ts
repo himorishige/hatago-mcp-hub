@@ -3,7 +3,16 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { LOG_LEVELS, type Logger, type LogLevel, SilentLogger, shouldLog } from './logger.js';
+import { 
+  LOG_LEVELS, 
+  type Logger, 
+  type LogLevel, 
+  SilentLogger, 
+  shouldLog,
+  createLogger,
+  createSilentLogger,
+  type LoggerOptions
+} from './logger.js';
 
 describe('LOG_LEVELS', () => {
   it('should have correct numeric values', () => {
@@ -191,5 +200,111 @@ describe('LogLevel types', () => {
     for (const level of validLevels) {
       expect(LOG_LEVELS).toHaveProperty(level);
     }
+  });
+});
+
+describe('createLogger', () => {
+  it('should create a logger with default options', () => {
+    const logger = createLogger();
+    expect(logger.level).toBe('info');
+    expect(logger.error).toBeDefined();
+    expect(logger.warn).toBeDefined();
+    expect(logger.info).toBeDefined();
+    expect(logger.debug).toBeDefined();
+    expect(logger.trace).toBeDefined();
+    expect(logger.child).toBeDefined();
+  });
+
+  it('should respect log level configuration', () => {
+    const output = vi.fn();
+    const logger = createLogger({ level: 'warn', output });
+
+    logger.error('error message');
+    logger.warn('warn message');
+    logger.info('info message');
+    logger.debug('debug message');
+
+    expect(output).toHaveBeenCalledTimes(2); // error and warn only
+  });
+
+  it('should format messages correctly in text mode', () => {
+    const output = vi.fn();
+    const logger = createLogger({ output, json: false });
+
+    logger.info('test message');
+
+    expect(output).toHaveBeenCalledTimes(1);
+    const call = output.mock.calls[0][0];
+    expect(call).toContain('[INFO]');
+    expect(call).toContain('test message');
+  });
+
+  it('should format messages correctly in JSON mode', () => {
+    const output = vi.fn();
+    const logger = createLogger({ output, json: true });
+
+    logger.info('test message');
+
+    expect(output).toHaveBeenCalledTimes(1);
+    const call = output.mock.calls[0][0];
+    const parsed = JSON.parse(call);
+    expect(parsed.level).toBe('info');
+    expect(parsed.msg).toBe('test message');
+  });
+
+  it('should handle objects and messages separately', () => {
+    const output = vi.fn();
+    const logger = createLogger({ output, json: true });
+
+    logger.info({ key: 'value' }, 'message text');
+
+    expect(output).toHaveBeenCalledTimes(1);
+    const call = output.mock.calls[0][0];
+    const parsed = JSON.parse(call);
+    expect(parsed.msg).toBe('message text');
+    expect(parsed.data).toEqual({ key: 'value' });
+  });
+
+  it('should support prefix', () => {
+    const output = vi.fn();
+    const logger = createLogger({ output, prefix: '[TEST]', json: false });
+
+    logger.info('test message');
+
+    expect(output).toHaveBeenCalledTimes(1);
+    const call = output.mock.calls[0][0];
+    expect(call).toContain('[TEST]');
+  });
+
+  it('should create child loggers with combined prefix', () => {
+    const output = vi.fn();
+    const parent = createLogger({ output, prefix: '[PARENT]', json: false });
+    const child = parent.child?.('CHILD');
+
+    child?.info('test message');
+
+    expect(output).toHaveBeenCalledTimes(1);
+    const call = output.mock.calls[0][0];
+    expect(call).toContain('[PARENT][CHILD]');
+  });
+});
+
+describe('createSilentLogger', () => {
+  it('should create a silent logger', () => {
+    const logger = createSilentLogger();
+    expect(logger.level).toBe('silent');
+  });
+
+  it('should not output anything', () => {
+    const output = vi.fn();
+    const logger = createLogger({ level: 'silent', output });
+
+    logger.error('error');
+    logger.warn('warn');
+    logger.info('info');
+    logger.debug('debug');
+    logger.trace('trace');
+
+    expect(output).not.toHaveBeenCalled();
   });
 });
