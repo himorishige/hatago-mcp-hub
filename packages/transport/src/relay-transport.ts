@@ -1,8 +1,8 @@
 /**
- * Thin Adapter for StreamableHTTPTransport
+ * Relay Transport for Hatago MCP Hub
  *
- * Phase 1 implementation: Delegates to existing thick implementation
- * This allows gradual migration without breaking existing functionality
+ * Lightweight transport that relays requests through StreamableHTTPTransport
+ * while maintaining a thin interface for better architecture alignment
  */
 
 import type {
@@ -29,10 +29,14 @@ import {
 } from './tracing.js';
 
 /**
- * Adapter that wraps existing StreamableHTTPTransport
- * Provides thin interface while delegating to thick implementation
+ * Relay Transport implementation
+ * Transparently relays requests while maintaining minimal overhead
  */
-export class StreamableHttpAdapter implements ThinHttpTransport {
+export class RelayTransport implements ThinHttpTransport {
+  // Method overloads for send
+  send(request: ThinHttpRequest): Promise<ThinHttpResponse>;
+  send(message: JSONRPCRequest | JSONRPCNotification): Promise<void>;
+  send(arg: unknown): Promise<unknown>;
   private transport: StreamableHTTPTransport;
   private debug: boolean;
 
@@ -57,32 +61,23 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
       }
     });
 
-    // Store original send method
-    const originalSend = this.send.bind(this);
-
-    // Override send to handle both ThinHttpRequest and JSONRPCMessage
-    this.send = async (arg: any): Promise<any> => {
-      if (arg && typeof arg === 'object' && 'jsonrpc' in arg) {
-        // JSONRPCMessage - forward to transport
-        if (this.debug) {
-          console.error('[ThinAdapter] Forwarding JSONRPCMessage to transport.send');
-        }
-        return this.transport.send(arg);
-      } else {
-        // ThinHttpRequest - use original implementation
-        if (this.debug) {
-          console.error('[ThinAdapter] Using original send for ThinHttpRequest');
-        }
-        return originalSend(arg);
-      }
-    };
-
     if (this.debug) {
-      console.error('[ThinAdapter] Created with options:', options);
+      console.error('[RelayTransport] Created with options:', options);
     }
   }
 
-  async send(request: ThinHttpRequest): Promise<ThinHttpResponse> {
+  async send(
+    request: ThinHttpRequest | JSONRPCRequest | JSONRPCNotification
+  ): Promise<ThinHttpResponse | void> {
+    // Handle JSONRPCMessage
+    if (request && typeof request === 'object' && 'jsonrpc' in request) {
+      if (this.debug) {
+        console.error('[RelayTransport] Forwarding JSONRPCMessage to transport.send');
+      }
+      return this.transport.send(request as unknown);
+    }
+
+    // Handle ThinHttpRequest
     // Create trace context
     const context = createTraceContext();
     const span = startSpan('send', {
@@ -91,7 +86,7 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
     });
 
     if (this.debug) {
-      console.error('[ThinAdapter] send:', request.method, request.path);
+      console.error('[RelayTransport] send:', request.method, request.path);
     }
 
     // Add correlation ID to headers
@@ -120,10 +115,7 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
         // Delegate to existing transport for POST/DELETE
         result = await this.transport.handleHttpRequest(
           tracedRequest.method,
-          {
-            ...tracedRequest.headers,
-            'x-session-id': tracedRequest.sessionId
-          },
+          tracedRequest.headers,
           tracedRequest.body
         );
       }
@@ -142,7 +134,7 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
       });
 
       if (this.debug) {
-        console.error('[ThinAdapter] response:', response.status);
+        console.error('[RelayTransport] response:', response.status);
       }
 
       return response;
@@ -158,7 +150,7 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
 
   async *stream(request: ThinHttpRequest): AsyncIterable<StreamChunk> {
     if (this.debug) {
-      console.error('[ThinAdapter] stream:', request.method, request.path);
+      console.error('[RelayTransport] stream:', request.method, request.path);
     }
 
     // For now, convert single response to stream
@@ -181,22 +173,22 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
 
   async close(): Promise<void> {
     if (this.debug) {
-      console.error('[ThinAdapter] closing');
+      console.error('[RelayTransport] closing');
     }
     await this.transport.close();
   }
 
   // Compatibility methods for StreamableHTTPTransport interface
   async start(): Promise<void> {
-    console.error('[ThinAdapter] start() called - starting underlying transport');
+    console.error('[RelayTransport] start() called - starting underlying transport');
     // Start the underlying StreamableHTTPTransport
     await this.transport.start();
-    console.error('[ThinAdapter] transport.start() completed');
+    console.error('[RelayTransport] transport.start() completed');
   }
 
   setKeepAliveMs(ms: number): void {
     if (this.debug) {
-      console.error('[ThinAdapter] setKeepAliveMs() called with:', ms);
+      console.error('[RelayTransport] setKeepAliveMs() called with:', ms);
     }
     // Thin implementation doesn't manage keep-alive
   }
@@ -209,7 +201,7 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
   ): Promise<void> {
     if (this.debug) {
       console.error(
-        '[ThinAdapter] sendProgressNotification:',
+        '[RelayTransport] sendProgressNotification:',
         progressToken,
         progress,
         total,
@@ -219,7 +211,7 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
 
     // Delegate directly to StreamableHTTPTransport's sendProgressNotification
     // with the correct signature
-    await (this.transport as any).sendProgressNotification(progressToken, progress, total, message);
+    await (this.transport as unknown).sendProgressNotification(progressToken, progress, total, message);
   }
 
   // Handle HTTP requests (compatibility with StreamableHTTPTransport)
@@ -227,10 +219,10 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
     method: string,
     headers: Record<string, string>,
     body?: string | unknown,
-    sseStream?: any
+    sseStream?: unknown
   ): Promise<{ status: number; headers: Record<string, string>; body?: unknown }> {
     if (this.debug) {
-      console.error('[ThinAdapter] handleHttpRequest called:', {
+      console.error('[RelayTransport] handleHttpRequest called:', {
         method,
         hasBody: !!body,
         bodyType: typeof body
@@ -276,7 +268,7 @@ export class StreamableHttpAdapter implements ThinHttpTransport {
 /**
  * JSON-RPC adapter using thin HTTP transport
  */
-export class ThinJsonRpcAdapter implements ThinJsonRpcTransport {
+export class RelayJsonRpcTransport implements ThinJsonRpcTransport {
   private httpTransport: ThinHttpTransport;
   private notificationHandlers: Array<(notification: JSONRPCNotification) => void> = [];
 
@@ -326,32 +318,18 @@ export class ThinJsonRpcAdapter implements ThinJsonRpcTransport {
 }
 
 /**
- * Factory function with feature flag support
+ * Create Relay HTTP Transport
  */
-export function createThinHttpTransportWithAdapter(
-  options: ThinTransportOptions = {}
-): ThinHttpTransport {
-  // Feature flag: Use thin implementation when ready
-  const useThinImplementation = process.env.HATAGO_THIN_TRANSPORT === 'true';
-
-  if (useThinImplementation) {
-    // Use the StreamableHttpAdapter which is our thin implementation
-    console.error('[ThinAdapter] Using thin implementation (StreamableHttpAdapter)');
-    const adapter = new StreamableHttpAdapter({ ...options, debug: true });
-    return adapter;
-  }
-
-  // Fallback: Use adapter without debug
-  console.error('[ThinAdapter] Using standard adapter (HATAGO_THIN_TRANSPORT not set)');
-  return new StreamableHttpAdapter(options);
+export function createRelayHttpTransport(options: ThinTransportOptions = {}): ThinHttpTransport {
+  return new RelayTransport(options);
 }
 
 /**
- * Create JSON-RPC transport with adapter
+ * Create Relay JSON-RPC Transport
  */
-export function createThinJsonRpcTransportWithAdapter(
+export function createRelayJsonRpcTransport(
   options: ThinTransportOptions = {}
 ): ThinJsonRpcTransport {
-  const httpTransport = createThinHttpTransportWithAdapter(options);
-  return new ThinJsonRpcAdapter(httpTransport, options);
+  const httpTransport = createRelayHttpTransport(options);
+  return new RelayJsonRpcTransport(httpTransport, options);
 }

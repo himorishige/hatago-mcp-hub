@@ -38,13 +38,13 @@ export type {
   ThinTransportOptions
 } from './thin-facade.js';
 
-// Thin adapter - migration path from thick to thin
+// Relay Transport - lightweight transport implementation
 export {
-  StreamableHttpAdapter,
-  ThinJsonRpcAdapter,
-  createThinHttpTransportWithAdapter,
-  createThinJsonRpcTransportWithAdapter
-} from './thin-adapter.js';
+  RelayTransport,
+  RelayJsonRpcTransport,
+  createRelayHttpTransport,
+  createRelayJsonRpcTransport
+} from './relay-transport.js';
 
 // Tracing utilities
 export {

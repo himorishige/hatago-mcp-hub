@@ -13,13 +13,13 @@ import type {
   StreamChunk,
   ThinJsonRpcTransport
 } from './thin-facade.js';
-import { StreamableHttpAdapter, ThinJsonRpcAdapter } from './thin-adapter.js';
+import { RelayTransport, RelayJsonRpcTransport } from './relay-transport.js';
 
 describe('ThinHttpTransport Contract Tests', () => {
   let transport: ThinHttpTransport;
 
   beforeEach(() => {
-    transport = new StreamableHttpAdapter({ debug: false });
+    transport = new RelayTransport({ debug: false });
   });
 
   afterEach(async () => {
@@ -224,8 +224,8 @@ describe('ThinJsonRpcTransport Contract Tests', () => {
   let jsonRpcTransport: ThinJsonRpcTransport;
 
   beforeEach(() => {
-    httpTransport = new StreamableHttpAdapter();
-    jsonRpcTransport = new ThinJsonRpcAdapter(httpTransport);
+    httpTransport = new RelayTransport();
+    jsonRpcTransport = new RelayJsonRpcTransport(httpTransport);
   });
 
   afterEach(async () => {
@@ -285,25 +285,5 @@ describe('ThinJsonRpcTransport Contract Tests', () => {
       // Contract: Handlers can be registered
       expect(() => jsonRpcTransport.onNotification(handler)).not.toThrow();
     });
-  });
-});
-
-describe('Feature Flag Contract', () => {
-  it('should respect HATAGO_THIN_TRANSPORT flag', () => {
-    const originalEnv = process.env.HATAGO_THIN_TRANSPORT;
-
-    // Test with flag disabled (default)
-    process.env.HATAGO_THIN_TRANSPORT = 'false';
-    const transport1 = new StreamableHttpAdapter();
-    expect(transport1).toBeInstanceOf(StreamableHttpAdapter);
-
-    // Test with flag enabled (future)
-    process.env.HATAGO_THIN_TRANSPORT = 'true';
-    const transport2 = new StreamableHttpAdapter();
-    // For now, still returns adapter
-    expect(transport2).toBeInstanceOf(StreamableHttpAdapter);
-
-    // Restore
-    process.env.HATAGO_THIN_TRANSPORT = originalEnv;
   });
 });

@@ -25,7 +25,7 @@ export function createCompatibleThinToolInvoker(
   options: {
     timeout?: number;
     maxConcurrency?: number;
-    toolRegistry?: any; // Reference to tool registry for listTools
+    toolRegistry?: unknown; // Reference to tool registry for listTools
   } = {}
 ) {
   let registry = createHandlerRegistry();
@@ -80,7 +80,7 @@ export function createCompatibleThinToolInvoker(
         }
       }
 
-      return await pipeline(
+      return pipeline(
         registry,
         { toolName, args, timeout: options.timeout },
         progressCallback

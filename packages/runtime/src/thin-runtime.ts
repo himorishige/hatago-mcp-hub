@@ -6,9 +6,9 @@
  */
 
 import { createThinSessionManager } from './session/thin-session.js';
-import { createThinRegistryManager } from './registry/thin-registry.js';
+import type { createThinRegistryManager } from './registry/thin-registry.js';
 import { createCompatibleThinRegistry } from './registry/thin-registry-compat.js';
-import { createThinToolInvoker } from './tool-invoker/thin-invoker.js';
+import type { createThinToolInvoker } from './tool-invoker/thin-invoker.js';
 import { createCompatibleThinToolInvoker } from './tool-invoker/thin-invoker-compat.js';
 import { createThinRouter } from './router/thin-router.js';
 
