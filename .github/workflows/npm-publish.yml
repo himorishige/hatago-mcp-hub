@@ -1,0 +1,101 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: true
+
+      - name: Build packages
+        run: |
+          pnpm \
+            --filter "./packages/**" \
+            run build
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          # Remove 'v' prefix from tag
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - name: Validate version match
+        run: |
+          # Read version from package.json
+          PACKAGE_VERSION=$(node -p "require('./packages/mcp-hub/package.json').version")
+          TAG_VERSION="${{ steps.extract_version.outputs.version }}"
+
+          echo "Package version: $PACKAGE_VERSION"
+          echo "Tag version: $TAG_VERSION"
+
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "   Package: $PACKAGE_VERSION"
+            echo "   Tag: $TAG_VERSION"
+            exit 1
+          fi
+
+          echo "✅ Version match confirmed"
+
+      - name: Check if prerelease
+        id: check_prerelease
+        run: |
+          if [[ "${{ steps.extract_version.outputs.version }}" =~ -(alpha|beta|rc|pre) ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "tag=next" >> $GITHUB_OUTPUT
+            echo "📦 Prerelease detected, will publish with --tag next"
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "tag=latest" >> $GITHUB_OUTPUT
+            echo "📦 Stable release, will publish with --tag latest"
+          fi
+
+      - name: Publish to npm
+        run: |
+          cd packages/mcp-hub
+
+          # Check if this version is already published
+          if npm view @himorishige/hatago-mcp-hub@${{ steps.extract_version.outputs.version }} version 2>/dev/null; then
+            echo "⚠️ Version ${{ steps.extract_version.outputs.version }} already published, skipping"
+            exit 0
+          fi
+
+          # Publish with appropriate tag
+          npm publish --tag ${{ steps.check_prerelease.outputs.tag }}
+
+          echo "✅ Successfully published @himorishige/hatago-mcp-hub@${{ steps.extract_version.outputs.version }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify publication
+        run: |
+          # Wait a moment for npm registry to update
+          sleep 5
+
+          # Verify the package is available
+          npm view @himorishige/hatago-mcp-hub@${{ steps.extract_version.outputs.version }} version
+
+          echo "🎉 Package successfully published and verified!"
