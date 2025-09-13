@@ -19,10 +19,7 @@ import {
   getResource,
   createThinPromptStore,
   registerPrompts,
-  getAllPrompts,
-  type ThinToolStore,
-  type ThinResourceStore,
-  type ThinPromptStore
+  getAllPrompts
 } from './thin-registry.js';
 
 /**

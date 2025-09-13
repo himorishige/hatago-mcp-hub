@@ -19,6 +19,7 @@ import type {
   JSONRPCNotification
 } from '@modelcontextprotocol/sdk/types.js';
 import { StreamableHTTPTransport } from './streamable-http/streamable-http-transport.js';
+import type { SSEStream } from './streamable-http/index.js';
 
 import {
   createTraceContext,
@@ -33,10 +34,6 @@ import {
  * Transparently relays requests while maintaining minimal overhead
  */
 export class RelayTransport implements ThinHttpTransport {
-  // Method overloads for send
-  send(request: ThinHttpRequest): Promise<ThinHttpResponse>;
-  send(message: JSONRPCRequest | JSONRPCNotification): Promise<void>;
-  send(arg: unknown): Promise<unknown>;
   private transport: StreamableHTTPTransport;
   private debug: boolean;
 
@@ -56,7 +53,7 @@ export class RelayTransport implements ThinHttpTransport {
     // Forward onmessage to underlying transport
     Object.defineProperty(this, 'onmessage', {
       get: () => this.transport.onmessage,
-      set: (handler) => {
+      set: (handler: ((message: unknown) => void) | undefined) => {
         this.transport.onmessage = handler;
       }
     });
@@ -66,6 +63,9 @@ export class RelayTransport implements ThinHttpTransport {
     }
   }
 
+  // Method overloads for send
+  send(request: ThinHttpRequest): Promise<ThinHttpResponse>;
+  send(message: JSONRPCRequest | JSONRPCNotification): Promise<void>;
   async send(
     request: ThinHttpRequest | JSONRPCRequest | JSONRPCNotification
   ): Promise<ThinHttpResponse | void> {
@@ -74,7 +74,7 @@ export class RelayTransport implements ThinHttpTransport {
       if (this.debug) {
         console.error('[RelayTransport] Forwarding JSONRPCMessage to transport.send');
       }
-      return this.transport.send(request as unknown);
+      return this.transport.send(request);
     }
 
     // Handle ThinHttpRequest
@@ -210,8 +210,17 @@ export class RelayTransport implements ThinHttpTransport {
     }
 
     // Delegate directly to StreamableHTTPTransport's sendProgressNotification
-    // with the correct signature
-    await (this.transport as unknown).sendProgressNotification(progressToken, progress, total, message);
+    // StreamableHTTPTransport has this method but it's not in the Transport interface
+    await (
+      this.transport as StreamableHTTPTransport & {
+        sendProgressNotification: (
+          progressToken: string | number,
+          progress: number,
+          total?: number,
+          message?: string
+        ) => Promise<void>;
+      }
+    ).sendProgressNotification(progressToken, progress, total, message);
   }
 
   // Handle HTTP requests (compatibility with StreamableHTTPTransport)
@@ -219,7 +228,7 @@ export class RelayTransport implements ThinHttpTransport {
     method: string,
     headers: Record<string, string>,
     body?: string | unknown,
-    sseStream?: unknown
+    sseStream?: SSEStream
   ): Promise<{ status: number; headers: Record<string, string>; body?: unknown }> {
     if (this.debug) {
       console.error('[RelayTransport] handleHttpRequest called:', {
@@ -259,7 +268,7 @@ export class RelayTransport implements ThinHttpTransport {
 
     return {
       status: result.status,
-      headers: result.headers || {},
+      headers: result.headers ?? {},
       body: result.body
     };
   }

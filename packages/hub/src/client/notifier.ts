@@ -30,7 +30,12 @@ export function attachClientNotificationForwarder(
 
     const transport = hub.getStreamableTransport();
     if (transport) {
-      await (transport as unknown).send(notification as JSONRPCMessage);
+      // RelayTransport has overloaded send method that accepts JSONRPCMessage
+      type TransportWithSend = {
+        send(message: JSONRPCMessage): Promise<void>;
+      };
+      const typedTransport = transport as unknown as TransportWithSend;
+      await typedTransport.send(notification as JSONRPCMessage);
     }
 
     hub.emit('server:notification', { serverId, notification });

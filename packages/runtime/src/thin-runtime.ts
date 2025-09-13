@@ -6,9 +6,7 @@
  */
 
 import { createThinSessionManager } from './session/thin-session.js';
-import type { createThinRegistryManager } from './registry/thin-registry.js';
 import { createCompatibleThinRegistry } from './registry/thin-registry-compat.js';
-import type { createThinToolInvoker } from './tool-invoker/thin-invoker.js';
 import { createCompatibleThinToolInvoker } from './tool-invoker/thin-invoker-compat.js';
 import { createThinRouter } from './router/thin-router.js';
 
@@ -103,8 +101,8 @@ export {
  */
 export type ThinRuntime = {
   sessions: ReturnType<typeof createThinSessionManager>;
-  registry: ReturnType<typeof createThinRegistryManager>;
-  tools: ReturnType<typeof createThinToolInvoker>;
+  registry: ReturnType<typeof createCompatibleThinRegistry>;
+  tools: ReturnType<typeof createCompatibleThinToolInvoker>;
   router: ReturnType<typeof createThinRouter>;
   stop: () => void;
 };

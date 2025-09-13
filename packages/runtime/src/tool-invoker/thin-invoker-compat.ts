@@ -9,11 +9,9 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import {
   createHandlerRegistry,
   registerHandler,
-  invokeTool,
   createToolPipeline,
   createConcurrencyLimiter,
   type ThinToolHandler,
-  type HandlerRegistry,
   type ToolCallResult
 } from './thin-invoker.js';
 
@@ -21,11 +19,15 @@ import {
  * Create a compatible thin tool invoker with all expected methods
  * This bridges the gap between the old class-based API and new functional API
  */
+type ToolRegistry = {
+  getAllTools(): Tool[];
+};
+
 export function createCompatibleThinToolInvoker(
   options: {
     timeout?: number;
     maxConcurrency?: number;
-    toolRegistry?: unknown; // Reference to tool registry for listTools
+    toolRegistry?: ToolRegistry; // Reference to tool registry for listTools
   } = {}
 ) {
   let registry = createHandlerRegistry();
@@ -56,7 +58,7 @@ export function createCompatibleThinToolInvoker(
     },
 
     callTool: async (
-      sessionId: string, // May be ignored in thin implementation
+      _sessionId: string, // May be ignored in thin implementation
       toolName: string,
       args: unknown,
       context?: {
@@ -80,17 +82,13 @@ export function createCompatibleThinToolInvoker(
         }
       }
 
-      return pipeline(
-        registry,
-        { toolName, args, timeout: options.timeout },
-        progressCallback
-      );
+      return pipeline(registry, { toolName, args, timeout: options.timeout }, progressCallback);
     },
 
     // List all available tools
     // This requires access to the tool registry
     listTools: (): Tool[] => {
-      if (options.toolRegistry && typeof options.toolRegistry.getAllTools === 'function') {
+      if (options.toolRegistry) {
         return options.toolRegistry.getAllTools();
       }
       // Return empty array if no registry available

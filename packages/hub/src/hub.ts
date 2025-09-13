@@ -23,13 +23,8 @@ const FALLBACK_RPC_NOTIFICATION = {
   tools_list_changed: 'notifications/tools/list_changed'
 } as const;
 const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
-import type {
-  RelayTransport
-} from '@himorishige/hatago-transport';
-import {
-  type ITransport,
-  createRelayHttpTransport
-} from '@himorishige/hatago-transport';
+import type { RelayTransport } from '@himorishige/hatago-transport';
+import { type ITransport, createRelayHttpTransport } from '@himorishige/hatago-transport';
 import * as ToolsApi from './api/tools.js';
 import * as ResourcesApi from './api/resources.js';
 import * as PromptsApi from './api/prompts.js';
@@ -155,13 +150,15 @@ export class HatagoHub {
       });
 
       // Use thin implementations with proper compatibility
-      this.sessions = thinRuntime.sessions as unknown;
-      this.toolRegistry = thinRuntime.registry as unknown; // Now includes getServerTools
-      this.toolInvoker = thinRuntime.tools as unknown;
+      this.sessions = thinRuntime.sessions as unknown as SessionManager;
+      this.toolRegistry = thinRuntime.registry as unknown as ToolRegistry; // Now includes getServerTools
+      this.toolInvoker = thinRuntime.tools as unknown as ToolInvoker;
 
       // Debug: Check if listTools exists
       this.logger.debug('Thin toolInvoker methods:', {
-        hasListTools: typeof (this.toolInvoker as unknown).listTools === 'function',
+        hasListTools:
+          'listTools' in this.toolInvoker &&
+          typeof (this.toolInvoker as { listTools?: unknown }).listTools === 'function',
         hasRegisterHandler: typeof this.toolInvoker.registerHandler === 'function',
         hasCallTool: typeof this.toolInvoker.callTool === 'function',
         hasUnregisterHandler: typeof this.toolInvoker.unregisterHandler === 'function'
@@ -195,7 +192,7 @@ export class HatagoHub {
       this.streamableTransport = createRelayHttpTransport({
         sessionId: crypto.randomUUID(),
         debug: false
-      }) as unknown;
+      }) as RelayTransport;
     }
   }
 
@@ -347,7 +344,9 @@ export class HatagoHub {
     {
       const requestTimeoutMs = spec.timeout ?? this.options.defaultTimeout;
       this.logger.debug('Before registerServerTools - checking toolInvoker:', {
-        hasListTools: typeof (this.toolInvoker as unknown).listTools === 'function',
+        hasListTools:
+          'listTools' in this.toolInvoker &&
+          typeof (this.toolInvoker as { listTools?: unknown }).listTools === 'function',
         toolInvokerType: this.toolInvoker?.constructor?.name || 'unknown'
       });
       await registerServerTools(this as never, client, id, requestTimeoutMs);
@@ -467,7 +466,11 @@ export class HatagoHub {
             void (async () => {
               const result = await this.handleJsonRpcRequest(message as JSONRPCMessage);
               if (result && this.streamableTransport) {
-                await (this.streamableTransport as unknown).send(result as JSONRPCMessage);
+                // RelayTransport has overloaded send method that accepts JSONRPCMessage
+                const transport = this.streamableTransport as RelayTransport & {
+                  send(message: JSONRPCMessage): Promise<void>;
+                };
+                await transport.send(result as JSONRPCMessage);
               }
             })();
           };
@@ -554,7 +557,11 @@ export class HatagoHub {
         void (async () => {
           const result = await this.handleJsonRpcRequest(message as JSONRPCMessage);
           if (result && this.streamableTransport) {
-            await (this.streamableTransport as unknown).send(result as JSONRPCMessage);
+            // RelayTransport has overloaded send method that accepts JSONRPCMessage
+            const transport = this.streamableTransport as RelayTransport & {
+              send(message: JSONRPCMessage): Promise<void>;
+            };
+            await transport.send(result as JSONRPCMessage);
           }
         })();
       };
@@ -612,7 +619,9 @@ export class HatagoHub {
   private async sendToolListChangedNotification(): Promise<void> {
     // Debug: Check toolInvoker before using it
     this.logger.debug('sendToolListChangedNotification - toolInvoker check:', {
-      hasListTools: typeof (this.toolInvoker as unknown).listTools === 'function',
+      hasListTools:
+        'listTools' in this.toolInvoker &&
+        typeof (this.toolInvoker as { listTools?: unknown }).listTools === 'function',
       toolInvokerType: this.toolInvoker?.constructor?.name || 'unknown'
     });
 
@@ -641,7 +650,11 @@ export class HatagoHub {
     // Send to StreamableHTTP clients
     if (this.streamableTransport) {
       try {
-        await (this.streamableTransport as unknown).send(notification);
+        // RelayTransport has overloaded send method that accepts notifications
+        const transport = this.streamableTransport as RelayTransport & {
+          send(notification: { jsonrpc: '2.0'; method: string; params: unknown }): Promise<void>;
+        };
+        await transport.send(notification);
       } catch (error) {
         this.logger.warn('[Hub] Failed to send notification to client', {
           error: error instanceof Error ? error.message : String(error)
