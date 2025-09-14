@@ -7,4 +7,4 @@
 export { isTransientError } from './error-classifier.js';
 
 // Simple retry mechanisms
-export { retry, retryOnce, simpleRetry, withRetry, withTimeout } from './simple-retry.js';
+export { retryOnce, simpleRetry, withTimeout } from './simple-retry.js';

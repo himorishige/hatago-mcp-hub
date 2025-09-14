@@ -150,86 +150,54 @@ export function toError(hatagoError: HatagoErrorType): Error {
 }
 
 /**
- * Base error class for all Hatago errors (deprecated, use createHatagoError)
- * @deprecated Use createHatagoError and HatagoErrorType instead
+ * Error classes for backward compatibility
+ * These are simple Error subclasses without the deprecated HatagoError base
  */
-export class HatagoError extends Error {
-  public readonly code: string;
-  public readonly cause?: unknown;
-  public readonly data?: unknown;
-
-  constructor(
-    message: string,
-    code: string,
-    options?: {
-      cause?: unknown;
-      data?: unknown;
-    }
-  ) {
+export class ConfigError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
     super(message);
-    this.name = this.constructor.name;
-    this.code = code;
-    this.cause = options?.cause;
-    this.data = options?.data;
-
-    // Maintains proper stack trace for where our error was thrown (only available on V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
+    this.name = 'ConfigError';
+    if (options?.cause) this.cause = options.cause;
   }
 }
 
-/**
- * Configuration error
- */
-export class ConfigError extends HatagoError {
-  constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, 'CONFIG_ERROR', options);
+export class TransportError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'TransportError';
+    if (options?.cause) this.cause = options.cause;
   }
 }
 
-/**
- * Transport error
- */
-export class TransportError extends HatagoError {
-  constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, 'TRANSPORT_ERROR', options);
+export class ToolInvocationError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'ToolInvocationError';
+    if (options?.cause) this.cause = options.cause;
   }
 }
 
-/**
- * Tool invocation error
- */
-export class ToolInvocationError extends HatagoError {
-  constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, 'TOOL_INVOCATION_ERROR', options);
+export class TimeoutError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'TimeoutError';
+    if (options?.cause) this.cause = options.cause;
   }
 }
 
-/**
- * Timeout error
- */
-export class TimeoutError extends HatagoError {
-  constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, 'TIMEOUT_ERROR', options);
+export class SessionError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'SessionError';
+    if (options?.cause) this.cause = options.cause;
   }
 }
 
-/**
- * Session error
- */
-export class SessionError extends HatagoError {
-  constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, 'SESSION_ERROR', options);
-  }
-}
-
-/**
- * Unsupported feature error
- */
-export class UnsupportedFeatureError extends HatagoError {
-  constructor(message: string, options?: { cause?: unknown; data?: unknown }) {
-    super(message, 'UNSUPPORTED_FEATURE', options);
+export class UnsupportedFeatureError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'UnsupportedFeatureError';
+    if (options?.cause) this.cause = options.cause;
   }
 }
 
@@ -245,23 +213,24 @@ export function toHatagoErrorType(error: unknown): HatagoErrorType {
     }
   }
 
-  // If it's a legacy HatagoError class
-  if (error instanceof HatagoError) {
-    const codeToKind: Record<string, HatagoErrorType['kind']> = {
-      CONFIG_ERROR: 'config',
-      TRANSPORT_ERROR: 'transport',
-      TOOL_INVOCATION_ERROR: 'tool_invocation',
-      TIMEOUT_ERROR: 'timeout',
-      SESSION_ERROR: 'session',
-      UNSUPPORTED_FEATURE: 'unsupported_feature',
-      INTERNAL_ERROR: 'internal',
-      UNKNOWN_ERROR: 'unknown'
-    };
-
-    return createHatagoError(codeToKind[error.code] ?? 'unknown', error.message, {
-      cause: error.cause,
-      data: error.data
-    });
+  // Check for specific error classes
+  if (error instanceof ConfigError) {
+    return createHatagoError('config', error.message, { cause: error });
+  }
+  if (error instanceof TransportError) {
+    return createHatagoError('transport', error.message, { cause: error });
+  }
+  if (error instanceof ToolInvocationError) {
+    return createHatagoError('tool_invocation', error.message, { cause: error });
+  }
+  if (error instanceof TimeoutError) {
+    return createHatagoError('timeout', error.message, { cause: error });
+  }
+  if (error instanceof SessionError) {
+    return createHatagoError('session', error.message, { cause: error });
+  }
+  if (error instanceof UnsupportedFeatureError) {
+    return createHatagoError('unsupported_feature', error.message, { cause: error });
   }
 
   if (error instanceof Error) {
@@ -284,53 +253,4 @@ export function toHatagoErrorType(error: unknown): HatagoErrorType {
 
   // Unknown error type
   return createHatagoError('unknown', String(error), { cause: error });
-}
-
-/**
- * Convert any error to HatagoError (deprecated)
- * @deprecated Use toHatagoErrorType instead
- */
-export function toHatagoError(error: unknown): HatagoError {
-  // Return HatagoError instances as-is
-  if (error instanceof HatagoError) {
-    return error;
-  }
-
-  const errorType = toHatagoErrorType(error);
-
-  // Map to the appropriate error class
-  switch (errorType.kind) {
-    case 'config':
-      return new ConfigError(errorType.message, { cause: errorType.cause, data: errorType.data });
-    case 'transport':
-      return new TransportError(errorType.message, {
-        cause: errorType.cause,
-        data: errorType.data
-      });
-    case 'tool_invocation':
-      return new ToolInvocationError(errorType.message, {
-        cause: errorType.cause,
-        data: errorType.data
-      });
-    case 'timeout':
-      return new TimeoutError(errorType.message, { cause: errorType.cause, data: errorType.data });
-    case 'session':
-      return new SessionError(errorType.message, { cause: errorType.cause, data: errorType.data });
-    case 'unsupported_feature':
-      return new UnsupportedFeatureError(errorType.message, {
-        cause: errorType.cause,
-        data: errorType.data
-      });
-    case 'internal':
-      return new HatagoError(errorType.message, 'INTERNAL_ERROR', {
-        cause: errorType.cause,
-        data: errorType.data
-      });
-    case 'unknown':
-    default:
-      return new HatagoError(errorType.message, 'UNKNOWN_ERROR', {
-        cause: errorType.cause,
-        data: errorType.data
-      });
-  }
 }

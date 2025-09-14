@@ -11,15 +11,11 @@ export type ResourcesHub = {
   getServers: () => ConnectedServer[];
 };
 
-export function listResources(hub: ResourcesHub, options?: ListOptions) {
-  if (options?.serverId) {
-    const server = hub.servers.get(options.serverId);
-    return server?.resources ?? [];
-  }
+export function listResources(hub: ResourcesHub, _options?: ListOptions) {
   return hub.resourceRegistry.getAllResources();
 }
 
-export async function readResource(hub: ResourcesHub, uri: string, options?: ReadOptions) {
+export async function readResource(hub: ResourcesHub, uri: string, _options?: ReadOptions) {
   // Check for internal resource first
   if (uri === 'hatago://servers') {
     const serverList = hub.getServers().map((s) => ({
@@ -50,23 +46,6 @@ export async function readResource(hub: ResourcesHub, uri: string, options?: Rea
       } catch (error) {
         hub.logger.error(`Failed to read resource ${uri}`, {
           serverId: resourceInfo.serverId,
-          error: error instanceof Error ? error.message : String(error)
-        });
-        throw error;
-      }
-    }
-  }
-
-  if (options?.serverId) {
-    const client = hub.clients.get(options.serverId);
-    if (client) {
-      try {
-        const result = await client.readResource({ uri });
-        hub.emit('resource:read', { uri, serverId: options.serverId, result });
-        return result;
-      } catch (error) {
-        hub.logger.error(`Failed to read resource ${uri}`, {
-          serverId: options.serverId,
           error: error instanceof Error ? error.message : String(error)
         });
         throw error;

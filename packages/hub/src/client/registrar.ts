@@ -8,7 +8,7 @@ import type { ToolRegistry } from '@himorishige/hatago-runtime';
 import type { ToolInvoker } from '@himorishige/hatago-runtime';
 import type { ResourceRegistry } from '@himorishige/hatago-runtime';
 import type { PromptRegistry } from '@himorishige/hatago-runtime';
-import type { CapabilityRegistry } from '../capability-registry.js';
+import type { ICapabilityRegistry } from '../capability-registry.js';
 
 type RegistrarHub = {
   logger: Logger;
@@ -18,7 +18,7 @@ type RegistrarHub = {
   toolInvoker: ToolInvoker;
   resourceRegistry: ResourceRegistry;
   promptRegistry: PromptRegistry;
-  capabilityRegistry: CapabilityRegistry;
+  capabilityRegistry: ICapabilityRegistry;
   onNotification?: (n: JSONRPCMessage) => Promise<void>;
 };
 

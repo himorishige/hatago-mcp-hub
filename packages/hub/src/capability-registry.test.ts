@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { CapabilityRegistry } from './capability-registry.js';
+import { createCapabilityRegistry } from './capability-registry.js';
 
 type ClientCaps = { sampling?: boolean; tools?: Record<string, unknown> };
 
 describe('CapabilityRegistry', () => {
   it('tracks server capability support and client caps generically', () => {
-    const reg = new CapabilityRegistry<ClientCaps>();
+    const reg = createCapabilityRegistry<ClientCaps>();
 
     // server capability
     reg.markServerCapability('s1', 'resources/list', 'supported');
