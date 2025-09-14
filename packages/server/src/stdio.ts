@@ -27,7 +27,6 @@ import { createLineBuffer, type LineBuffer } from './stdio/parser.js';
 export async function startStdio(
   config: { path?: string; data: HatagoConfig },
   logger: Logger,
-  watchConfig = false,
   tags?: string[]
 ): Promise<void> {
   // Ensure stdout is for protocol only
@@ -37,9 +36,8 @@ export async function startStdio(
   let isShuttingDown = false;
 
   // Create hub instance
-  logger.debug('[STDIO] Creating hub with config watch', {
-    configFile: config.path,
-    watchConfig
+  logger.debug('[STDIO] Creating hub', {
+    configFile: config.path
   });
   // If the config file does not exist, do not pass `configFile`.
   // Otherwise Hub.start() will try to reload from disk and cause ENOENT.
@@ -47,7 +45,7 @@ export async function startStdio(
   const hub = createHub({
     configFile: maybeExists ? config.path : undefined,
     preloadedConfig: { path: config.path, data: config.data },
-    watchConfig,
+
     tags,
     enableStreamableTransport: false
   });

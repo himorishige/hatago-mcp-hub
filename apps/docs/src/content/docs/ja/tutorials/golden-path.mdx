@@ -58,7 +58,7 @@ npm install --save-dev @himorishige/hatago-mcp-hub
 # package.jsonにスクリプトを追加
 
 npm pkg set scripts.mcp="hatago serve"
-npm pkg set scripts.mcp:dev="hatago serve --tags dev --watch"
+npm pkg set scripts.mcp:dev="nodemon --exec 'hatago serve --tags dev' --watch hatago.config.json"
 npm pkg set scripts.mcp:prod="hatago serve --tags production"
 
 ```
@@ -80,7 +80,7 @@ pnpm add -D @himorishige/hatago-mcp-hub
 
 # package.jsonにスクリプトを追加
 pnpm pkg set scripts.mcp="hatago serve"
-pnpm pkg set scripts.mcp:dev="hatago serve --tags dev --watch"
+pnpm pkg set scripts.mcp:dev="nodemon --exec 'hatago serve --tags dev' --watch hatago.config.json"
 pnpm pkg set scripts.mcp:prod="hatago serve --tags production"
 ````
 

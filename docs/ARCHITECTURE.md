@@ -102,7 +102,7 @@ The central coordinator for all MCP operations. Thin orchestrator with responsib
 - Tool name collision avoidance via prefixing
 - Dynamic tool list updates
 - Progress notification forwarding
-- Hot reload support
+- Configuration updates require restart (use nodemon/PM2 for auto-reload)
 
 ### Refactor Overview (2025-09-07)
 
@@ -112,7 +112,6 @@ To keep the hub thin, several responsibilities were extracted into focused modul
 - Extracted modules (hub remains an orchestrator):
   - `src/rpc/handlers.ts` – JSON‑RPC methods (initialize, tools, resources, prompts, ping)
   - `src/http/handler.ts` – HTTP request handler (POST/DELETE)
-  - `src/config/reload.ts` & `src/config/watch.ts` – Config reload + file watcher
 - Removed internal complexity from the base hub:
   - Sampling bridge, startup tools/list wait, simple SSE GET fallback, base-hub notifications
 
@@ -235,12 +234,15 @@ Claude Code compatible syntax:
 
 ## Key Features
 
-### Hot Reload & Configuration Watching
+### Configuration Updates
 
-- File system watching with 1-second debounce
-- Graceful server reconnection
-- Session preservation during reload
-- `notifications/tools/list_changed` notification
+Since v0.0.14, built-in configuration watching has been removed for simplicity:
+
+- Configuration changes require server restart
+- Use external tools for auto-restart:
+  - `nodemon --exec "hatago serve" --watch hatago.config.json`
+  - `pm2 start "hatago serve" --watch hatago.config.json`
+- Clients receive `tools/list_changed` notification after restart
 
 ### Progress Notification Forwarding
 
@@ -341,6 +343,13 @@ interface Platform {
 
 ## Performance Optimizations
 
+### v0.0.14 Improvements
+
+- **8.44x faster startup**: 85.66ms → 10.14ms
+- **17% smaller package**: 1.04MB → 854KB (181KB reduction)
+- **Simplified architecture**: Removed EnhancedHub and management layers
+- **Trade-off**: Built-in config watching removed (use nodemon/PM2 instead)
+
 ### Resource Management
 
 - Lazy server initialization
@@ -425,8 +434,8 @@ interface Platform {
 
 ### v0.0.3 (Lifecycle Simplification — 2025‑09‑11)
 
-- Idle management simplified: single per‑server timer scheduled only when reference count drops to 0; stop when both `idleTimeoutMs` and `minLingerMs` conditions are satisfied.
-- Activation manager simplified: removed activation queues, history, and cooldown. Errors settle to `INACTIVE` without automatic retry.
+- Connection management simplified: direct connection without queues or complex retry logic
+- Removed components (v0.0.14): EnhancedHub, activation manager, idle manager, state machines, config watcher
 - State machine simplified: active lifecycle reduced to `INACTIVE → ACTIVATING → ACTIVE → STOPPING → INACTIVE` with `ERROR` as a transient state. `IDLING` and `COOLDOWN` were removed from core types; `MANUAL` remains only as a policy label.
 
 ### v0.0.2 (Current)

@@ -34,7 +34,6 @@ export type HubOptions = {
   configFile?: string;
   /** Preloaded configuration data. Takes precedence over configFile when provided. */
   preloadedConfig?: { path?: string; data: HatagoConfig } | undefined;
-  watchConfig?: boolean; // Enable config file watching
   sessionTTL?: number;
   defaultTimeout?: number;
   namingStrategy?: 'none' | 'namespace' | 'prefix';

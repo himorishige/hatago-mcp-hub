@@ -21,7 +21,7 @@ type HttpOptions = {
   host: string;
   port: number;
   logger: Logger;
-  watchConfig?: boolean;
+
   tags?: string[];
 };
 
@@ -29,7 +29,7 @@ type HttpOptions = {
  * Start the MCP server in HTTP mode
  */
 export async function startHttp(options: HttpOptions): Promise<void> {
-  const { config, host, port, logger, watchConfig = false, tags } = options;
+  const { config, host, port, logger, tags } = options;
 
   // Create hub instance
   // If the config file does not exist, do not pass `configFile`.
@@ -37,7 +37,7 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   const hub = createHub({
     configFile: maybeExists ? config.path : undefined,
     preloadedConfig: { path: config.path, data: config.data },
-    watchConfig,
+
     tags
   });
   await hub.start();

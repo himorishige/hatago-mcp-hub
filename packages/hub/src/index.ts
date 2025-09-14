@@ -5,23 +5,14 @@
  * tools, and resources.
  */
 
-import type { EnhancedHubOptions } from './enhanced-hub.js';
-import { EnhancedHatagoHub } from './enhanced-hub.js';
 import { HatagoHub } from './hub.js';
 import type { HubOptions, ServerSpec } from './types.js';
 
 /**
  * Create a new Hatago Hub instance
- * If a configFile is provided, creates an EnhancedHatagoHub with management features
+ * Always uses the basic Hub for simplicity and performance
  */
-export function createHub(options?: HubOptions | EnhancedHubOptions): HatagoHub {
-  // Use EnhancedHatagoHub when config is provided (file or preloaded)
-  const hasEnhanced = Boolean(
-    (options as EnhancedHubOptions)?.configFile ?? (options as EnhancedHubOptions)?.preloadedConfig
-  );
-  if (hasEnhanced) {
-    return new EnhancedHatagoHub(options as EnhancedHubOptions);
-  }
+export function createHub(options?: HubOptions): HatagoHub {
   return new HatagoHub(options);
 }
 
@@ -82,9 +73,7 @@ export function sseServer(
   ];
 }
 
-export type { EnhancedHubOptions } from './enhanced-hub.js';
-// Export enhanced hub with management features
-export { EnhancedHatagoHub } from './enhanced-hub.js';
+// EnhancedHub has been removed for simplicity and performance
 // Export error classes
 export {
   ConfigError,

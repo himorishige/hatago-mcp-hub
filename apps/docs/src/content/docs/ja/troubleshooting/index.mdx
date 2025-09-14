@@ -316,13 +316,17 @@ Hatagoは自動的にサーバーIDをプレフィックスとして追加しま
 #### 解決方法
 
 <Steps>
-1. **ホットリロードを有効化**
+1. **外部ツールでホットリロード（v0.0.14以降）**
    ```bash
-   hatago serve --watch
+   # nodemonを使用
+   npx nodemon --exec "hatago serve" --watch hatago.config.json
+   
+   # PM2を使用
+   pm2 start "hatago serve" --watch hatago.config.json
    ```
 
 2. **手動で反映**
-   変更を即時反映したい場合は `--watch` を有効化して起動し、または一度再起動します。
+   設定変更後、サーバーを再起動します。
 
 3. **サーバーを再起動**
    ```bash
@@ -333,8 +337,15 @@ Hatagoは自動的にサーバーIDをプレフィックスとして追加しま
 
 #### 再発防止
 
-- `--watch`フラグをデフォルトで使用
+- nodemonやPM2を開発環境で使用
 - package.jsonのスクリプトに追加
+  ```json
+  {
+    "scripts": {
+      "mcp:dev": "nodemon --exec 'hatago serve' --watch hatago.config.json"
+    }
+  }
+  ```
 </details>
 
 ### 8. ポートが使用中

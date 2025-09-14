@@ -117,7 +117,7 @@ hatago serve --tags "$TAGS" --verbose
 ```json
 {
   "scripts": {
-    "mcp:dev": "hatago serve --tags development,local --watch",
+    "mcp:dev": "nodemon --exec 'hatago serve --tags development,local' --watch hatago.config.json",
     "mcp:staging": "hatago serve --tags staging --verbose",
     "mcp:prod": "hatago serve --tags production"
   }
@@ -143,7 +143,7 @@ hatago serve --tags "$TAGS" --verbose
    cat hatago.config.json | jq '.mcpServers | to_entries[] | {name: .key, tags: .value.tags}'
    ```
 2. Check typos and case mismatches
-3. Run with `--verbose` and watch which servers are activated
+3. Run with `--verbose` and observe which servers are activated
 </Steps>
 
 ### Unexpected servers started

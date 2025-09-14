@@ -38,12 +38,25 @@ Start the hub.
 ```bash
 hatago serve --stdio --config ./hatago.config.json  # STDIO
 hatago serve --http                                 # HTTP
-hatago serve --watch                                # hot‑reload
+# Hot reload using external tools (v0.0.14+)
+npx nodemon --exec "hatago serve" --watch hatago.config.json
 hatago serve --tags dev,api                         # tag filter
 hatago serve --verbose                              # verbose logs
 ```
 
-Options: `--stdio|--http`, `--config`, `--host`, `--port`, `--tags`, `--watch`, `--verbose|--quiet`
+Options: `--stdio|--http`, `--config`, `--host`, `--port`, `--tags`, `--verbose|--quiet`
+
+## Auto-reload Configuration (v0.0.14+)
+
+Built-in config watching was removed in v0.0.14 for performance improvements. Use external tools for auto-reload:
+
+```bash
+# Using nodemon
+npx nodemon --exec "hatago serve" --watch hatago.config.json
+
+# Using PM2
+pm2 start "hatago serve" --watch hatago.config.json
+```
 
 ## Client examples
 

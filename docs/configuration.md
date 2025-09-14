@@ -498,20 +498,25 @@ Management components are available under `@himorishige/hatago-hub-management/*`
 }
 ```
 
-## Hot Reload
+## Auto-reload Configuration Changes
 
-Configuration hot-reload can be enabled via the `--watch` flag:
+Since v0.0.14, the built-in --watch flag has been removed for simplicity.
+For auto-reload functionality, use external process managers:
 
 ```bash
-hatago serve --watch
+# Using nodemon
+npm install -g nodemon
+nodemon --exec "hatago serve --http" --watch hatago.config.json
+
+# Using PM2
+npm install -g pm2
+pm2 start "hatago serve --http" --name hatago --watch hatago.config.json
 ```
 
-When enabled:
+When using these tools:
 
-- Configuration file is monitored for changes
-- Changes are detected with a 1-second debounce
-- Servers are gracefully reconnected on changes
-- Active sessions are preserved when possible
+- Configuration changes trigger server restart
+- Servers are reconnected after restart
 - `notifications/tools/list_changed` is sent to clients
 
 ## Server Types

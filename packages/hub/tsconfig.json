@@ -3,14 +3,14 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "composite": true
+    "composite": true,
+    "emitDeclarationOnly": false
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"],
   "references": [
     { "path": "../core" },
     { "path": "../runtime" },
-    { "path": "../transport" },
-    { "path": "../hub-management" }
+    { "path": "../transport" }
   ]
 }

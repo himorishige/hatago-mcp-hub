@@ -91,8 +91,8 @@ HTTP モードの追加オプション（計測/ログ）:
 - 初期化: `npx @himorishige/hatago-mcp-hub init`
 - 起動（STDIO, 推奨・要 config）: `hatago serve --stdio --config ./hatago.config.json`
 - 起動（HTTP, デバッグ向け）: `hatago serve --http`
-- 設定監視: `hatago serve --watch`
 - 詳細ログ: `hatago serve --verbose`
+- 設定の自動リロード（外部ツール使用）: `nodemon --exec "hatago serve" --watch hatago.config.json`
 - タグによる起動フィルタ: `hatago serve --tags dev,test`（OR 条件／日本語タグ可）
 
 内部リソース（最小構成）:

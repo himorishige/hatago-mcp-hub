@@ -154,7 +154,11 @@ hatago serve --stdio --config ./hatago.config.json --verbose
 ## Hot reload
 
 ```bash
-hatago serve --watch
+# Auto-reload with external tools (v0.0.14+)
+npx nodemon --exec "hatago serve" --watch hatago.config.json
+
+# Or use PM2
+pm2 start "hatago serve" --watch hatago.config.json
 ```
 
 On change: reload config, reconnect servers, notify clients.

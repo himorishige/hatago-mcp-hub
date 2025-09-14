@@ -193,7 +193,11 @@ npx @himorishige/hatago-mcp-hub init
     詳細なログが必要な場合： ```bash npx @himorishige/hatago-mcp-hub serve --verbose ```
   </TabItem>
   <TabItem label="設定の自動リロード">
-    設定ファイルの変更を監視： ```bash npx @himorishige/hatago-mcp-hub serve --watch ```
+    設定ファイルの自動リロード（v0.0.14以降は外部ツールを使用）： 
+    ```bash 
+    # nodemonを使用
+    npx nodemon --exec "npx @himorishige/hatago-mcp-hub serve" --watch hatago.config.json 
+    ```
   </TabItem>
 </Tabs>
 

@@ -105,7 +105,6 @@ hatago init --mode http  # Create config for debugging
 hatago serve             # Start server in STDIO mode
 hatago serve --stdio     # Explicit STDIO mode
 hatago serve --http      # HTTP mode for debugging
-hatago serve --watch     # Enable hot reload
 hatago serve --verbose   # Debug logging
 hatago serve --tags dev,test  # Filter servers by tags
 ```
@@ -151,7 +150,7 @@ Claude Code compatible syntax:
 
 ### Key Features
 
-- **Hot Reload**: Config watching with 1-second debounce
+- **Configuration Updates**: Manual restart required (use nodemon/PM2 for auto-restart)
 - **Progress Notifications**: Transparent forwarding from child servers
 - **Tool Collision Avoidance**: Automatic prefixing with server ID
 - **Session Management**: Independent sessions per client
@@ -433,7 +432,9 @@ The tag filtering feature was implemented with:
 1. **Environment variable not found**: Export variable or use default syntax
 2. **Server connection failed**: Check URL, credentials, network
 3. **Tool name collision**: Hub automatically prefixes with server ID
-4. **Hot reload not working**: Ensure `--watch` flag is used
+4. **Auto-reload not working**: Use nodemon or PM2 for watching config changes
+   - `nodemon --exec "hatago serve" --watch hatago.config.json`
+   - `pm2 start "hatago serve" --watch hatago.config.json`
 
 ### Debug Mode
 

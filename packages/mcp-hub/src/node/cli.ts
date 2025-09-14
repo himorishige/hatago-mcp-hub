@@ -217,7 +217,6 @@ program
   .option('-h, --host <host>', 'Host for HTTP mode', '127.0.0.1')
   .option('--verbose', 'Enable verbose logging')
   .option('--quiet', 'Minimize output')
-  .option('--watch', 'Watch configuration file for changes')
   .option('--tags <tags>', 'Filter servers by tags (comma-separated)')
   .option('--env-file <path...>', 'Load environment variables from file(s) before start')
   .option('--env-override', 'Override existing environment variables from env-file(s)')
@@ -230,7 +229,6 @@ program
         host?: string;
         verbose?: boolean;
         quiet?: boolean;
-        watch?: boolean;
         tags?: string;
         envFile?: string | string[];
         envOverride?: boolean;
@@ -293,7 +291,6 @@ program
         logLevel,
         verbose: opts.verbose,
         quiet: opts.quiet,
-        watchConfig: opts.watch,
         tags
       });
     } catch (error) {

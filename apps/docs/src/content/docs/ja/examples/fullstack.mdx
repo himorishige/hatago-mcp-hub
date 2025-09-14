@@ -36,7 +36,11 @@ manual: true
 ## 起動
 
 ```bash
-hatago serve --tags dev --watch
+# nodemonで自動リロード
+npx nodemon --exec "hatago serve --tags dev" --watch hatago.config.json
+
+# または手動起動
+hatago serve --tags dev
 ```
 
 ## ヒント

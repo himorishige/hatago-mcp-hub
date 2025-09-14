@@ -2,7 +2,6 @@
  * HatagoHub - User-friendly facade for MCP Hub
  */
 
-import type { FSWatcher } from 'node:fs';
 import {
   createPromptRegistry,
   createResourceRegistry,
@@ -89,16 +88,13 @@ export class HatagoHub {
 
   // Notification Manager removed from base hub
 
-  // Config file watcher
-  private configWatcher?: FSWatcher;
-
   // Sampling bridge removed
 
   // Options
   protected options: {
     configFile: string;
     preloadedConfig?: { path?: string; data: object };
-    watchConfig: boolean;
+
     sessionTTL: number;
     defaultTimeout: number;
     namingStrategy: 'none' | 'namespace' | 'prefix';
@@ -122,7 +118,7 @@ export class HatagoHub {
     this.options = {
       configFile: options.configFile ?? '',
       preloadedConfig: options.preloadedConfig ?? undefined,
-      watchConfig: options.watchConfig ?? false,
+
       sessionTTL: options.sessionTTL ?? 3600,
       defaultTimeout: options.defaultTimeout ?? 30000,
       namingStrategy: options.namingStrategy ?? 'namespace',
@@ -505,15 +501,6 @@ export class HatagoHub {
         }
         throw error;
       }
-
-      // Set up config file watching if enabled
-      this.logger.info('[Hub] Config watch mode', {
-        watchConfig: this.options.watchConfig
-      });
-      if (this.options.watchConfig) {
-        const { startConfigWatcher } = await import('./config/watch.js');
-        await startConfigWatcher(this);
-      }
     }
     // No config file case: start StreamableHTTP transport with defaults
     else if (this.streamableTransport) {
@@ -637,11 +624,6 @@ export class HatagoHub {
    */
   async stop(): Promise<void> {
     // Stop config watcher if exists
-    if (this.configWatcher) {
-      this.configWatcher.close();
-      this.configWatcher = undefined;
-    }
-
     // Disconnect all servers
     for (const [id, client] of this.clients) {
       try {
@@ -792,19 +774,6 @@ export class HatagoHub {
   /**
    * Reload configuration (public wrapper)
    */
-  async doReloadConfig(): Promise<void> {
-    const { reloadConfig } = await import('./config/reload.js');
-    const ctx = {
-      options: this.options,
-      logger: this.logger,
-      servers: this.servers,
-      removeServer: this.removeServer.bind(this),
-      addServer: this.addServer.bind(this),
-      sendToolListChangedNotification: this.sendToolListChangedNotification.bind(this)
-    };
-    return reloadConfig(ctx);
-  }
-
   /**
    * Handle HTTP request for MCP protocol
    * This is designed to work with Hono or any similar framework

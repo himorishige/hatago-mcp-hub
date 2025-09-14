@@ -40,7 +40,6 @@ Hatago Hub を起動します。
 <Code code={`${ServeCommands.basic}                # 既定（STDIO）`} lang="bash" />
 <Code code={`${ServeCommands.stdio}                # 明示的に STDIO`} lang="bash" />
 <Code code={`${ServeCommands.http}                 # HTTP モード`} lang="bash" />
-<Code code={`${ServeCommands.watch}                # 設定のホットリロード`} lang="bash" />
 <Code code={`${ServeCommands.verbose}              # 詳細ログ`} lang="bash" />
 <Code code={`${ServeCommands.tags}                 # タグでサーバーを選別`} lang="bash" />
 
@@ -49,8 +48,26 @@ Hatago Hub を起動します。
 - `-h, --host <host>`       : HTTP のホスト（既定: `127.0.0.1`）
 - `-p, --port <port>`       : HTTP のポート（既定: `3535`）
 - `--tags <a,b,c>`          : タグで有効化するサーバーを絞り込み
-- `--watch`                 : 設定ファイルを監視して自動リロード
 - `--verbose` / `--quiet`   : ログ出力の詳細度
+
+## 設定ファイルの自動リロード（v0.0.14以降）
+
+v0.0.14からは、パフォーマンス向上のため組み込みの設定監視機能を削除しました。設定の自動リロードが必要な場合は、以下の外部ツールを使用してください：
+
+### nodemonを使用
+```bash
+npx nodemon --exec "hatago serve" --watch hatago.config.json
+```
+
+### PM2を使用
+```bash
+pm2 start "hatago serve" --watch hatago.config.json
+```
+
+### タグ付きの例
+```bash
+npx nodemon --exec "hatago serve --tags dev" --watch hatago.config.json
+```
 
 <Tabs>
   <TabItem label="Claude Code / Gemini CLI">

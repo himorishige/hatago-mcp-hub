@@ -58,11 +58,11 @@ npx @himorishige/hatago-mcp-hub serve
 npx @himorishige/hatago-mcp-hub serve --config hatago.config.json
 ```
 
-For development, you can run the server in watch mode to automatically restart it when files change:
+For development, you can use nodemon to automatically restart when files change:
 
 ```bash
-# From the root directory
-npx . serve --http --watch
+# Using nodemon for auto-restart
+npx nodemon --exec "hatago serve --http" --watch hatago.config.json
 
 # Or from the package directory
 cd packages/mcp-hub

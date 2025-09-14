@@ -164,12 +164,9 @@ async function main() {
     // Determine mode (default: stdio for Claude Code compatibility)
     const mode = args.flags.stdio ? 'stdio' : args.flags.http ? 'http' : 'stdio';
 
-    // Get watch flag
-    const watchConfig = args.flags.watch as boolean;
-
     if (mode === 'stdio') {
       logger.debug('Starting in STDIO mode');
-      await startStdio(config, logger, watchConfig);
+      await startStdio(config, logger);
     } else {
       const host = (args.flags.host as string) ?? process.env.HATAGO_HOST ?? '127.0.0.1';
       const port = Number(args.flags.port ?? process.env.HATAGO_PORT ?? 3535);
@@ -179,8 +176,7 @@ async function main() {
         config,
         host,
         port,
-        logger,
-        watchConfig
+        logger
       });
     }
   } catch (error) {
