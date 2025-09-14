@@ -37,9 +37,7 @@ export type {
   ThinTransportOptions
 } from './relay-transport.js';
 
-export type {
-  ThinJsonRpcTransport
-} from './relay-jsonrpc-transport.js';
+export type { ThinJsonRpcTransport } from './relay-jsonrpc-transport.js';
 
 // Relay Transport - lightweight transport implementation
 export { RelayTransport, createRelayHttpTransport } from './relay-transport.js';
