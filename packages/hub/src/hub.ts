@@ -28,7 +28,7 @@ import * as PromptsApi from './api/prompts.js';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ServerConfig } from '@himorishige/hatago-core/schemas';
 import { type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-// import { UnsupportedFeatureError } from './errors.js'; // moved to transport-factory
+import { createHatagoError, toError } from './errors.js';
 import { Logger } from './logger.js';
 // Notifications are handled outside base hub (Enhanced only)
 import { SSEManager } from './sse-manager.js';
@@ -46,7 +46,7 @@ import type {
 } from './types.js';
 import { createEventEmitter, type EventEmitter as HubEventEmitter } from './utils/events.js';
 
-import { CapabilityRegistry } from './capability-registry.js';
+import { createCapabilityRegistry } from './capability-registry.js';
 import { connectWithRetry, normalizeServerSpec } from './client/connector.js';
 import { createTransportFactory } from './client/transport-factory.js';
 import { attachClientNotificationForwarder } from './client/notifier.js';
@@ -68,7 +68,7 @@ export class HatagoHub {
   protected toolInvoker: ToolInvoker;
   protected resourceRegistry: ResourceRegistry;
   protected promptRegistry: PromptRegistry;
-  protected capabilityRegistry: CapabilityRegistry;
+  protected capabilityRegistry: ReturnType<typeof createCapabilityRegistry>;
 
   // Server management
   protected servers = new Map<string, ConnectedServer>();
@@ -147,7 +147,7 @@ export class HatagoHub {
     );
     this.resourceRegistry = createResourceRegistry();
     this.promptRegistry = createPromptRegistry();
-    this.capabilityRegistry = new CapabilityRegistry();
+    this.capabilityRegistry = createCapabilityRegistry();
 
     // Initialize RelayTransport when enabled
     if (this.options.enableStreamableTransport) {
@@ -168,7 +168,7 @@ export class HatagoHub {
     options?: { suppressToolListNotification?: boolean }
   ): Promise<this> {
     if (this.servers.has(id)) {
-      throw new Error(`Server ${id} already exists`);
+      throw toError(createHatagoError('internal', `Server ${id} already exists`));
     }
 
     // Store server info

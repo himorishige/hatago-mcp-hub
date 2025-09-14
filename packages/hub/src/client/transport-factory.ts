@@ -2,7 +2,7 @@ import type { ITransport } from '@himorishige/hatago-transport';
 import type { Logger } from '../logger.js';
 import type { ServerSpec } from '../types.js';
 import { getPlatform } from '@himorishige/hatago-runtime';
-import { UnsupportedFeatureError } from '../errors.js';
+import { UnsupportedFeatureError, createHatagoError, toError } from '../errors.js';
 
 // Build a header-injecting fetch wrapper for remote transports. [REH][SF]
 function makeHeaderFetch(headers?: Record<string, string>) {
@@ -73,6 +73,6 @@ export function createTransportFactory(
       }) as unknown as ITransport;
     }
 
-    throw new Error(`Invalid server specification for ${id}`);
+    throw toError(createHatagoError('config', `Invalid server specification for ${id}`));
   };
 }

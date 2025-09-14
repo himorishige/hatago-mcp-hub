@@ -54,8 +54,6 @@ export type CallOptions = {
   timeout?: number;
   /** Session ID for multi-client support */
   sessionId?: string;
-  /** @deprecated Use appropriate server routing instead */
-  serverId?: string;
   signal?: AbortSignal;
 };
 
@@ -66,8 +64,6 @@ export type ReadOptions = {
   timeout?: number;
   /** Session ID for multi-client support */
   sessionId?: string;
-  /** @deprecated Use appropriate server routing instead */
-  serverId?: string;
   signal?: AbortSignal;
 };
 

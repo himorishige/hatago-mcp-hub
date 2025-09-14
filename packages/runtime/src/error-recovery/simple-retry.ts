@@ -75,7 +75,3 @@ export async function withTimeout<T>(fn: () => Promise<T>, timeoutMs: number): P
     )
   ]);
 }
-
-// Legacy exports for compatibility - will be removed in next major version
-export { simpleRetry as retry };
-export { retryOnce as withRetry };

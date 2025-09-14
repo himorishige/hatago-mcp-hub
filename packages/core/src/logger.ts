@@ -136,19 +136,3 @@ export function createLogger(options: LoggerOptions = {}): Logger {
 export function createSilentLogger(): Logger {
   return createLogger({ level: 'silent' });
 }
-
-/**
- * No-op logger for silent mode (deprecated, use createSilentLogger)
- * @deprecated Use createSilentLogger instead
- */
-export class SilentLogger implements Logger {
-  level: LogLevel = 'silent';
-  error(): void {}
-  warn(): void {}
-  info(): void {}
-  debug(): void {}
-  trace(): void {}
-  child(): Logger {
-    return this;
-  }
-}

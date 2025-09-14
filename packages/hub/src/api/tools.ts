@@ -28,7 +28,7 @@ export async function callTool(
   options?: CallOptions & { progressToken?: string; progressCallback?: unknown }
 ) {
   const parsed = parseQualifiedName(name, hub.options.separator);
-  const serverId = options?.serverId ?? parsed.serverId;
+  const serverId = parsed.serverId;
   const toolName = parsed.name;
   const publicName = buildPublicToolName(
     serverId,

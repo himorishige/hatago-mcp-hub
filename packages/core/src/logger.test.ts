@@ -7,7 +7,6 @@ import {
   LOG_LEVELS,
   type Logger,
   type LogLevel,
-  SilentLogger,
   shouldLog,
   createLogger,
   createSilentLogger,
@@ -85,76 +84,6 @@ describe('shouldLog', () => {
     expect(shouldLog('silent', 'info')).toBe(false);
     expect(shouldLog('silent', 'debug')).toBe(false);
     expect(shouldLog('silent', 'trace')).toBe(false);
-  });
-});
-
-describe('SilentLogger', () => {
-  it('should have silent level', () => {
-    const logger = new SilentLogger();
-    expect(logger.level).toBe('silent');
-  });
-
-  it('should not output anything', () => {
-    const logger = new SilentLogger();
-    const consoleSpy = {
-      error: vi.spyOn(console, 'error').mockImplementation(() => {}),
-      warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
-      info: vi.spyOn(console, 'info').mockImplementation(() => {}),
-      debug: vi.spyOn(console, 'debug').mockImplementation(() => {}),
-      log: vi.spyOn(console, 'log').mockImplementation(() => {})
-    };
-
-    logger.error('Error message');
-    logger.warn('Warning message');
-    logger.info('Info message');
-    logger.debug('Debug message');
-    logger.trace('Trace message');
-
-    expect(consoleSpy.error).not.toHaveBeenCalled();
-    expect(consoleSpy.warn).not.toHaveBeenCalled();
-    expect(consoleSpy.info).not.toHaveBeenCalled();
-    expect(consoleSpy.debug).not.toHaveBeenCalled();
-    expect(consoleSpy.log).not.toHaveBeenCalled();
-
-    // Restore spies
-    Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
-  });
-
-  it('should handle objects and messages', () => {
-    const logger = new SilentLogger();
-
-    // Should not throw
-    expect(() => {
-      logger.error({ error: 'data' }, 'Error occurred');
-      logger.warn({ warning: 'data' }, 'Warning message');
-      logger.info({ info: 'data' }, 'Info message');
-      logger.debug({ debug: 'data' }, 'Debug message');
-      logger.trace({ trace: 'data' }, 'Trace message');
-    }).not.toThrow();
-  });
-
-  it('should return itself when creating child', () => {
-    const logger = new SilentLogger();
-    const child = logger.child('[child]');
-
-    expect(child).toBe(logger);
-    expect(child.level).toBe('silent');
-  });
-
-  it('should handle various input types', () => {
-    const logger = new SilentLogger();
-
-    // Should not throw with various types
-    expect(() => {
-      logger.error('string');
-      logger.error(123);
-      logger.error(true);
-      logger.error(null);
-      logger.error(undefined);
-      logger.error({ complex: { nested: 'object' } });
-      logger.error(['array', 'of', 'items']);
-      logger.error(new Error('Error object'));
-    }).not.toThrow();
   });
 });
 

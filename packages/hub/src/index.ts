@@ -77,12 +77,10 @@ export function sseServer(
 // Export error classes
 export {
   ConfigError,
-  HatagoError,
   SessionError,
   TimeoutError,
   ToolInvocationError,
-  TransportError,
-  toHatagoError
+  TransportError
 } from './errors.js';
 // Export main class and types
 export { HatagoHub } from './hub.js';
