@@ -5,13 +5,39 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Development
+## [0.0.14] - 2025-09-14
+
+### Performance Improvements
+
+- **8.44x faster startup**: 85.66ms → 10.14ms
+- **17% package size reduction**: 1.04MB → 854KB (181KB saved)
+- **Simplified architecture**: Removed EnhancedHub and management layers
+
+### Breaking Changes
+
+- **Removed built-in config watching**: `--watch` flag no longer available
+  - Use external tools like nodemon or PM2 for auto-reload
+  - See MIGRATION.md for detailed migration guide
 
 ### Changed
 
-- Transport Layer: RelayTransport is now the default implementation, replacing direct StreamableHTTPTransport usage [SF][DM]
-- Architecture: Removed all feature flags (HATAGO_THIN_TRANSPORT, HATAGO_THIN_RUNTIME) - thin implementations are now standard [SF]
-- Type Safety: Improved type definitions and removed unsafe `as any` casts where possible [CA][ISA]
+- Hub: Simplified to basic implementation without state machines [SF]
+- Architecture: Removed activation manager, idle manager, metadata store [DM]
+- Performance: Direct server management without abstraction layers [PA]
+- Transport Layer: RelayTransport is now the default implementation [SF][DM]
+- Architecture: Removed all feature flags (HATAGO_THIN_TRANSPORT, HATAGO_THIN_RUNTIME) [SF]
+- Type Safety: Improved type definitions and removed unsafe `as any` casts [CA][ISA]
+
+### Added
+
+- MIGRATION.md: Comprehensive migration guide from v0.0.13 [SD]
+- PERFORMANCE.md: Detailed performance benchmarks and improvements [SD]
+- Documentation: Updated all docs to reflect removed features [SD]
+
+### Fixed
+
+- MDX build errors in documentation site
+- Removed problematic HotReloadAlternatives export
 
 ### Technical Improvements
 
