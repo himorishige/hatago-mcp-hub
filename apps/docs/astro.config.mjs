@@ -23,7 +23,7 @@ export default defineConfig({
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/himorishige/hatago-hub'
+          href: 'https://github.com/himorishige/hatago-mcp-hub'
         }
       ],
       sidebar: [
@@ -88,11 +88,11 @@ export default defineConfig({
             en: 'Reference'
           },
           collapsed: true,
-          items: ['reference/config', 'reference/api']
+          items: ['reference/config', 'reference/api', 'reference/docs-map']
         }
       ],
       editLink: {
-        baseUrl: 'https://github.com/himorishige/hatago-hub/edit/main/apps/docs/'
+        baseUrl: 'https://github.com/himorishige/hatago-mcp-hub/edit/main/apps/docs/'
       },
       customCss: ['./src/styles/custom.css']
     })

@@ -142,9 +142,9 @@ yarn add -D @himorishige/hatago-mcp-hub
 
 <Steps>
 1. **設定ファイル編集**
-   ```json title="hatago-config.json"
+   ```json
    {
-     "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
+     "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
      "version": 1,
      "logLevel": "info",
      "mcpServers": {
@@ -154,7 +154,7 @@ yarn add -D @himorishige/hatago-mcp-hub
          "cwd": ".",
          "tags": ["dev", "local", "filesystem"],
          "env": {
-           "NODE_ENV": "${NODE_ENV:-development}"
+          "NODE_ENV": "\\${NODE_ENV:-development}"
          }
        }
      }
@@ -193,7 +193,7 @@ yarn add -D @himorishige/hatago-mcp-hub
 
 <Steps>
 1. **マルチ環境設定**
-   ```json title="hatago-config.json" ins={10-26}
+   ```json title="hatago-config.json" ins="10-26"
    {
      "mcpServers": {
        "filesystem-local": {
@@ -378,7 +378,7 @@ flowchart TD
 
 3. **READMEに手順追加**
 
-   ```markdown title="README.md" ins={5-15}
+   ```markdown title="README.md" ins="5-15"
    ## MCP Hub Setup
 
    1. Install dependencies: `npm install`
@@ -443,5 +443,5 @@ flowchart TD
 
 <Aside type="tip">
   **サポート**: 問題が解決しない場合は[GitHub
-  Issues](https://github.com/himorishige/hatago-hub/issues)で質問してください。
+  Issues](https://github.com/himorishige/hatago-mcp-hub/issues)で質問してください。
 </Aside>

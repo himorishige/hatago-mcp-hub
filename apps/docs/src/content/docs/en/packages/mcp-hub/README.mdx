@@ -8,7 +8,7 @@ lang: en
 # @himorishige/hatago-mcp-hub
 
 [![npm](https://img.shields.io/npm/v/@himorishige/hatago-mcp-hub?logo=npm&color=cb0000)](https://www.npmjs.com/package/@himorishige/hatago-mcp-hub)
-[![GitHub Release](https://img.shields.io/github/v/release/himorishige/hatago-hub?display_name=tag&sort=semver)](https://github.com/himorishige/hatago-hub/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/himorishige/hatago-mcp-hub?display_name=tag&sort=semver)](https://github.com/himorishige/hatago-mcp-hub/releases)
 
 Unified MCP Hub for managing multiple MCP servers. Works with Claude Code, Codex CLI, Cursor, Windsurf, VS Code.
 
@@ -38,7 +38,7 @@ hatago serve [--stdio|--http] [-c path] [-h host] [-p port] [--tags a,b] [--verb
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
   "mcpServers": {
@@ -72,4 +72,3 @@ await startServer({ mode: 'stdio', config: './hatago.config.json' });
 ## License
 
 MIT
-

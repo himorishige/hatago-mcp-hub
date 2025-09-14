@@ -39,14 +39,14 @@ echo "OPENAI_API_KEY=your-openai-key" >> .env
 echo "API_TOKEN=your-api-token" >> .env`;
 
 export const DockerCommands = `# Dockerイメージのビルド
-docker build -t hatago-hub .
+docker build -t hatago .
 
 # コンテナの起動
 
 docker run -it \\
 -v $(pwd)/hatago-config.json:/app/hatago-config.json \\
   -e GITHUB_TOKEN=$GITHUB_TOKEN \\
-hatago-hub
+hatago
 
 # docker-composeを使用
 
@@ -69,7 +69,7 @@ pnpm test
 
 # 特定のパッケージのテスト
 
-pnpm -F @himorishige/hatago-hub test
+pnpm -F @himorishige/hatago-mcp-hub test
 
 # ウォッチモードでテスト
 
