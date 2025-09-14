@@ -111,6 +111,26 @@ If you need configuration hot-reload without external tools:
    });
    ```
 
+## v0.0.12 → v0.0.13
+
+### Major Refactoring
+
+- **Hub Simplification**: Extracted complex logic into focused modules
+- **Management Extraction**: State machines and managers moved to separate package
+- **Configuration Inheritance**: Added `extends` field for config composition
+
+### What Changed
+
+1. **Simplified Hub Core**
+   - Hub is now a thin orchestrator
+   - Logic extracted to: `rpc/handlers.ts`, `http/handler.ts`
+   - Cleaner integration boundaries
+
+2. **Removed Features**
+   - Sampling bridge (MCP sampling proxying)
+   - 3-second startup wait for tools/list
+   - Simple SSE GET fallback
+
 ## Need Help?
 
 - [GitHub Issues](https://github.com/himorishige/hatago-mcp-hub/issues)

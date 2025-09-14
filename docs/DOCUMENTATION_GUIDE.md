@@ -11,11 +11,12 @@ This document defines the documentation strategy for the Hatago MCP Hub project,
   - README.md must include frontmatter metadata
   - Package-specific guides and examples
 
-- **Top-level Guides**: `apps/docs/src/content/docs/`
+- **Top-level Guides**: `docs/`
   - Hand-written conceptual documentation
-  - Getting started guides
-  - Architecture overviews
-  - Migration guides
+  - Getting started guides (README.md, README.ja.md)
+  - Architecture overviews (docs/ARCHITECTURE.md)
+  - Migration guides (MIGRATION.md)
+  - Performance documentation (docs/PERFORMANCE.md)
 
 - **API Reference**: Auto-generated from TypeScript source
   - Source: TSDoc comments in `packages/*/src/**/*.ts`
@@ -32,18 +33,18 @@ This document defines the documentation strategy for the Hatago MCP Hub project,
 ### Collection Scripts
 
 - **Purpose**: Normalize and collect documentation from packages
-- **Location**: `tools/scripts/collect-docs.ts`
+- **Location**: `tools/scripts/collect-docs.ts` (planned)
 - **Process**:
   1. Read all `packages/*/README.md` and `packages/*/docs/**/*`
   2. Add/validate frontmatter
   3. Fix relative links
-  4. Copy to `apps/docs/src/content/docs/[locale]/packages/`
+  4. Generate unified documentation site (future)
 
 ### API Documentation Generation
 
 - **Tool**: TypeDoc with markdown plugin
 - **Source**: TypeScript source files with TSDoc comments
-- **Output**: `apps/docs/src/content/docs/[locale]/reference/api/`
+- **Output**: `docs/api/` (generated, not committed)
 - **Timing**: Build-time generation (not committed)
 
 ### Configuration Reference Generation
