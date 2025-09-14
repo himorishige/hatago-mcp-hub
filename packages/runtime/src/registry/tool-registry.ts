@@ -4,45 +4,21 @@ import {
   clearRegistry,
   clearServerTools,
   createRegistry,
-  detectCollisions,
   getServerTools,
-  getStats,
   getToolByName,
   registerServerTools,
   type ToolRegistryState
 } from './tool-registry-functional.js';
-import type { ToolNamingConfig, ToolNamingStrategy } from './types.js';
-
-// Tool name collision information
-export type ToolCollision = {
-  toolName: string;
-  serverIds: string[];
-};
-
-// Tool registry options
-export type ToolRegistryOptions = {
-  namingConfig: ToolNamingConfig;
-};
 
 /**
- * Tool Registry - Tool name management and collision avoidance
- * Uses underscore (_) internally for Claude Code compatibility
- *
- * This is now a thin adapter over the functional core
+ * Tool Registry - Simplified tool name management
+ * Always uses serverId_toolName format
  */
 export class ToolRegistry {
   private state: ToolRegistryState;
 
-  constructor(
-    options: ToolRegistryOptions = {
-      namingConfig: {
-        strategy: 'namespace',
-        separator: '_',
-        format: '{serverId}_{toolName}'
-      }
-    }
-  ) {
-    this.state = createRegistry(options.namingConfig);
+  constructor() {
+    this.state = createRegistry();
   }
 
   /**
@@ -107,23 +83,6 @@ export class ToolRegistry {
   }
 
   /**
-   * Detect tool name collisions
-   */
-  detectCollisions(): ToolCollision[] {
-    const collisions = detectCollisions(this.state);
-    const result: ToolCollision[] = [];
-
-    for (const [toolName, serverIds] of collisions) {
-      result.push({
-        toolName,
-        serverIds
-      });
-    }
-
-    return result;
-  }
-
-  /**
    * Get tool count
    */
   getToolCount(): number {
@@ -143,20 +102,15 @@ export class ToolRegistry {
   getDebugInfo(): {
     totalTools: number;
     totalServers: number;
-    collisions: ToolCollision[];
-    namingStrategy: ToolNamingStrategy;
     tools: Array<{
       publicName: string;
       serverId: string;
       originalName: string;
     }>;
   } {
-    const stats = getStats(this.state);
     return {
-      totalTools: stats.totalTools,
-      totalServers: stats.serverCount,
-      collisions: this.detectCollisions(),
-      namingStrategy: this.state.namingConfig.strategy,
+      totalTools: this.state.tools.size,
+      totalServers: this.state.serverTools.size,
       tools: Array.from(this.state.tools.entries()).map(([publicName, metadata]) => ({
         publicName,
         serverId: metadata.serverId,

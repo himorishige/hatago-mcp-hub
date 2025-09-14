@@ -1,455 +1,245 @@
 /**
- * Tests for McpRouter - Tool, Resource, and Prompt routing
+ * Tests for simplified McpRouter
  */
 
-import type { Prompt, Resource, Tool } from '@himorishige/hatago-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { McpRouter } from './router.js';
-import type {
-  PromptRegistryInterface,
-  ResourceRegistryInterface,
-  ToolRegistryInterface
-} from './router-types.js';
+import { PromptRegistry } from '../registry/prompt-registry.js';
+import { ResourceRegistry } from '../registry/resource-registry.js';
+import { ToolRegistry } from '../registry/tool-registry.js';
+import { McpRouter, createRouter } from './router.js';
 
 describe('McpRouter', () => {
+  let toolRegistry: ToolRegistry;
+  let resourceRegistry: ResourceRegistry;
+  let promptRegistry: PromptRegistry;
   let router: McpRouter;
-  let toolRegistry: ToolRegistryInterface;
-  let resourceRegistry: ResourceRegistryInterface;
-  let promptRegistry: PromptRegistryInterface;
 
   beforeEach(() => {
-    // Create mock registries
-    toolRegistry = {
-      registerServerTools: vi.fn(),
-      resolveTool: vi.fn(),
-      getAllTools: vi.fn(() => []),
-      getServerTools: vi.fn(() => []),
-      unregisterServerTools: vi.fn(),
-      unregisterAllTools: vi.fn(),
-      clear: vi.fn()
-    };
-
-    resourceRegistry = {
-      registerServerResources: vi.fn(),
-      resolveResource: vi.fn(),
-      getAllResources: vi.fn(() => []),
-      getServerResources: vi.fn(() => []),
-      unregisterServerResources: vi.fn(),
-      unregisterAllResources: vi.fn(),
-      clear: vi.fn()
-    };
-
-    promptRegistry = {
-      registerServerPrompts: vi.fn(),
-      resolvePrompt: vi.fn(),
-      getAllPrompts: vi.fn(() => []),
-      getServerPrompts: vi.fn(() => []),
-      unregisterServerPrompts: vi.fn(),
-      unregisterAllPrompts: vi.fn(),
-      clear: vi.fn()
-    };
-
+    toolRegistry = new ToolRegistry();
+    resourceRegistry = new ResourceRegistry();
+    promptRegistry = new PromptRegistry();
     router = new McpRouter(toolRegistry, resourceRegistry, promptRegistry);
   });
 
   describe('Tool Routing', () => {
-    it('should route tool to correct server', () => {
-      const mockTool: Tool = {
-        name: 'test_tool',
-        description: 'Test tool',
-        inputSchema: {
-          type: 'object',
-          properties: {}
+    beforeEach(() => {
+      // Register test tools
+      toolRegistry.registerServerTools('server1', [
+        {
+          name: 'echo',
+          description: 'Echo tool',
+          inputSchema: { type: 'object' }
+        },
+        {
+          name: 'calculator',
+          description: 'Math tool',
+          inputSchema: { type: 'object' }
         }
-      };
+      ]);
 
-      const mockTarget = {
+      toolRegistry.registerServerTools('server2', [
+        {
+          name: 'fetch',
+          description: 'Fetch tool',
+          inputSchema: { type: 'object' }
+        }
+      ]);
+    });
+
+    it('should route tool to correct server', () => {
+      const result = router.routeTool('server1_echo');
+      expect(result).toEqual({
         serverId: 'server1',
-        tool: mockTool
-      };
-
-      vi.mocked(toolRegistry.resolveTool).mockReturnValue(mockTarget);
-
-      const result = router.routeTool('server1_test_tool');
-
-      expect(result.found).toBe(true);
-      expect(result.target).toEqual(mockTarget);
-      expect(result.error).toBeUndefined();
-      expect(result.metadata?.resolvedBy).toBe('toolRegistry');
+        originalName: 'echo'
+      });
     });
 
-    it('should return not found for unknown tool', () => {
-      vi.mocked(toolRegistry.resolveTool).mockReturnValue(null);
-
+    it('should return undefined for unknown tool', () => {
       const result = router.routeTool('unknown_tool');
-
-      expect(result.found).toBe(false);
-      expect(result.target).toBeNull();
-      expect(result.error).toContain('Tool not found');
+      expect(result).toBeUndefined();
     });
 
-    it('should enable debug logging when context debug is true', () => {
-      const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    it('should route tools from different servers', () => {
+      const result1 = router.routeTool('server1_calculator');
+      expect(result1).toEqual({
+        serverId: 'server1',
+        originalName: 'calculator'
+      });
 
-      router.routeTool('test_tool', { debug: true });
+      const result2 = router.routeTool('server2_fetch');
+      expect(result2).toEqual({
+        serverId: 'server2',
+        originalName: 'fetch'
+      });
+    });
 
-      expect(consoleSpy).toHaveBeenCalledWith('[McpRouter] Routing tool: test_tool');
-
-      consoleSpy.mockRestore();
+    it('should get all tools', () => {
+      const tools = router.getAllTools();
+      expect(tools).toHaveLength(3);
+      expect(tools.map((t) => t.name)).toEqual([
+        'server1_echo',
+        'server1_calculator',
+        'server2_fetch'
+      ]);
     });
   });
 
   describe('Resource Routing', () => {
-    it('should route resource to correct server', () => {
-      const mockResource: Resource = {
-        uri: 'file:///test.txt',
-        name: 'Test Resource'
-      };
+    beforeEach(() => {
+      // Register test resources
+      resourceRegistry.registerServerResources('server1', [
+        {
+          uri: 'file:///path/to/file1',
+          name: 'File 1',
+          mimeType: 'text/plain'
+        },
+        {
+          uri: 'https://example.com/api',
+          name: 'API Resource',
+          mimeType: 'application/json'
+        }
+      ]);
 
-      const mockTarget = {
-        serverId: 'server1',
-        resource: mockResource
-      };
-
-      vi.mocked(resourceRegistry.resolveResource).mockReturnValue(mockTarget);
-
-      const result = router.routeResource('file:///test.txt');
-
-      expect(result.found).toBe(true);
-      expect(result.target).toEqual(mockTarget);
-      expect(result.error).toBeUndefined();
-      expect(result.metadata?.resolvedBy).toBe('resourceRegistry');
+      resourceRegistry.registerServerResources('server2', [
+        {
+          uri: 'memory://data',
+          name: 'Memory Data',
+          mimeType: 'application/octet-stream'
+        }
+      ]);
     });
 
-    it('should return not found for unknown resource', () => {
-      vi.mocked(resourceRegistry.resolveResource).mockReturnValue(null);
+    it('should route resource to correct server', () => {
+      const result = router.routeResource('file:///path/to/file1');
+      expect(result).toEqual({
+        serverId: 'server1',
+        originalUri: 'file:///path/to/file1'
+      });
+    });
 
+    it('should return undefined for unknown resource', () => {
       const result = router.routeResource('unknown://resource');
+      expect(result).toBeUndefined();
+    });
 
-      expect(result.found).toBe(false);
-      expect(result.target).toBeNull();
-      expect(result.error).toContain('Resource not found');
+    it('should route resources from different servers', () => {
+      const result1 = router.routeResource('https://example.com/api');
+      expect(result1).toEqual({
+        serverId: 'server1',
+        originalUri: 'https://example.com/api'
+      });
+
+      const result2 = router.routeResource('memory://data');
+      expect(result2).toEqual({
+        serverId: 'server2',
+        originalUri: 'memory://data'
+      });
+    });
+
+    it('should get all resources', () => {
+      const resources = router.getAllResources();
+      expect(resources).toHaveLength(3);
+      expect(resources.map((r) => r.uri)).toEqual([
+        'file:///path/to/file1',
+        'https://example.com/api',
+        'memory://data'
+      ]);
     });
   });
 
   describe('Prompt Routing', () => {
+    beforeEach(() => {
+      // Register test prompts
+      promptRegistry.registerServerPrompts('server1', [
+        {
+          name: 'greeting',
+          description: 'Generate greeting'
+        },
+        {
+          name: 'summary',
+          description: 'Generate summary'
+        }
+      ]);
+
+      promptRegistry.registerServerPrompts('server2', [
+        {
+          name: 'translate',
+          description: 'Translate text'
+        }
+      ]);
+    });
+
     it('should route prompt to correct server', () => {
-      const mockPrompt: Prompt = {
-        name: 'test_prompt',
-        description: 'Test prompt'
-      };
-
-      const mockTarget = {
+      const result = router.routePrompt('server1_greeting');
+      expect(result).toEqual({
         serverId: 'server1',
-        prompt: mockPrompt
-      };
-
-      vi.mocked(promptRegistry.resolvePrompt).mockReturnValue(mockTarget);
-
-      const result = router.routePrompt('server1_test_prompt');
-
-      expect(result.found).toBe(true);
-      expect(result.target).toEqual(mockTarget);
-      expect(result.error).toBeUndefined();
-      expect(result.metadata?.resolvedBy).toBe('promptRegistry');
+        originalName: 'greeting'
+      });
     });
 
-    it('should return not found for unknown prompt', () => {
-      vi.mocked(promptRegistry.resolvePrompt).mockReturnValue(null);
-
+    it('should return undefined for unknown prompt', () => {
       const result = router.routePrompt('unknown_prompt');
-
-      expect(result.found).toBe(false);
-      expect(result.target).toBeNull();
-      expect(result.error).toContain('Prompt not found');
-    });
-  });
-
-  describe('Get All Methods', () => {
-    it('should get all tools', () => {
-      const mockTools: Tool[] = [
-        { name: 'tool1', description: 'Tool 1', inputSchema: {} },
-        { name: 'tool2', description: 'Tool 2', inputSchema: {} }
-      ];
-
-      vi.mocked(toolRegistry.getAllTools).mockReturnValue(mockTools);
-
-      const tools = router.getAllTools();
-
-      expect(tools).toEqual(mockTools);
-      expect(toolRegistry.getAllTools).toHaveBeenCalled();
+      expect(result).toBeUndefined();
     });
 
-    it('should get all resources', () => {
-      const mockResources: Resource[] = [
-        { uri: 'file:///1.txt', name: 'Resource 1' },
-        { uri: 'file:///2.txt', name: 'Resource 2' }
-      ];
+    it('should route prompts from different servers', () => {
+      const result1 = router.routePrompt('server1_summary');
+      expect(result1).toEqual({
+        serverId: 'server1',
+        originalName: 'summary'
+      });
 
-      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(mockResources);
-
-      const resources = router.getAllResources();
-
-      expect(resources).toEqual(mockResources);
-      expect(resourceRegistry.getAllResources).toHaveBeenCalled();
+      const result2 = router.routePrompt('server2_translate');
+      expect(result2).toEqual({
+        serverId: 'server2',
+        originalName: 'translate'
+      });
     });
 
     it('should get all prompts', () => {
-      const mockPrompts: Prompt[] = [
-        { name: 'prompt1', description: 'Prompt 1' },
-        { name: 'prompt2', description: 'Prompt 2' }
-      ];
-
-      vi.mocked(promptRegistry.getAllPrompts).mockReturnValue(mockPrompts);
-
       const prompts = router.getAllPrompts();
-
-      expect(prompts).toEqual(mockPrompts);
-      expect(promptRegistry.getAllPrompts).toHaveBeenCalled();
+      expect(prompts).toHaveLength(3);
+      expect(prompts.map((p) => p.name)).toEqual([
+        'server1_greeting',
+        'server1_summary',
+        'server2_translate'
+      ]);
     });
   });
 
-  describe('Get Server-specific Items', () => {
-    it('should get tools for specific server', () => {
-      const mockTools: Tool[] = [
-        { name: 'server1_tool', description: 'Server 1 Tool', inputSchema: {} }
-      ];
-
-      vi.mocked(toolRegistry.getServerTools).mockReturnValue(mockTools);
-
-      const tools = router.getServerTools('server1');
-
-      expect(tools).toEqual(mockTools);
-      expect(toolRegistry.getServerTools).toHaveBeenCalledWith('server1');
+  describe('Public Name Generation', () => {
+    it('should generate public name with underscore separator', () => {
+      const publicName = router.generatePublicName('my-server', 'my-tool');
+      expect(publicName).toBe('my-server_my-tool');
     });
 
-    it('should get resources for specific server', () => {
-      const mockResources: Resource[] = [{ uri: 'server1://resource', name: 'Server 1 Resource' }];
-
-      vi.mocked(resourceRegistry.getServerResources).mockReturnValue(mockResources);
-
-      const resources = router.getServerResources('server1');
-
-      expect(resources).toEqual(mockResources);
-      expect(resourceRegistry.getServerResources).toHaveBeenCalledWith('server1');
+    it('should replace dots with underscores', () => {
+      const publicName = router.generatePublicName('server.name', 'tool.name');
+      expect(publicName).toBe('server_name_tool_name');
     });
 
-    it('should get prompts for specific server', () => {
-      const mockPrompts: Prompt[] = [{ name: 'server1_prompt', description: 'Server 1 Prompt' }];
-
-      vi.mocked(promptRegistry.getServerPrompts).mockReturnValue(mockPrompts);
-
-      const prompts = router.getServerPrompts('server1');
-
-      expect(prompts).toEqual(mockPrompts);
-      expect(promptRegistry.getServerPrompts).toHaveBeenCalledWith('server1');
+    it('should handle special characters', () => {
+      const publicName = router.generatePublicName('server-1', 'tool_2');
+      expect(publicName).toBe('server-1_tool_2');
     });
   });
 
-  describe('Name Generation and Parsing', () => {
-    it('should generate public name with namespace strategy', () => {
-      const publicName = router.generatePublicName('server1', 'tool_name');
-      expect(publicName).toBe('server1_tool_name');
+  describe('Factory Function', () => {
+    it('should create router instance', () => {
+      const newRouter = createRouter(toolRegistry, resourceRegistry, promptRegistry);
+      expect(newRouter).toBeInstanceOf(McpRouter);
     });
 
-    it('should generate public name with custom separator', () => {
-      router.updateConfig({ separator: '__' });
-      const publicName = router.generatePublicName('server1', 'tool_name');
-      expect(publicName).toBe('server1__tool_name');
-    });
+    it('should create functional router', () => {
+      const newRouter = createRouter(toolRegistry, resourceRegistry, promptRegistry);
 
-    it('should parse public name with namespace', () => {
-      const parsed = router.parsePublicName('server1_tool_name');
-      expect(parsed).toEqual({
-        serverId: 'server1',
-        originalName: 'tool_name'
+      toolRegistry.registerServerTools('test', [{ name: 'tool', inputSchema: { type: 'object' } }]);
+
+      const result = newRouter.routeTool('test_tool');
+      expect(result).toEqual({
+        serverId: 'test',
+        originalName: 'tool'
       });
-    });
-
-    it('should parse public name without namespace', () => {
-      const parsed = router.parsePublicName('simplename');
-      expect(parsed).toEqual({
-        originalName: 'simplename'
-      });
-    });
-  });
-
-  describe('Grouping by Server', () => {
-    it('should group tools by server', () => {
-      const mockTools: Tool[] = [
-        { name: 'server1_tool1', description: 'Tool 1', inputSchema: {} },
-        { name: 'server1_tool2', description: 'Tool 2', inputSchema: {} },
-        { name: 'server2_tool1', description: 'Tool 3', inputSchema: {} }
-      ];
-
-      vi.mocked(toolRegistry.getAllTools).mockReturnValue(mockTools);
-
-      const grouped = router.groupToolsByServer();
-
-      expect(grouped.size).toBe(2);
-      expect(grouped.get('server1')).toHaveLength(2);
-      expect(grouped.get('server2')).toHaveLength(1);
-    });
-
-    it('should group resources by server', () => {
-      const mockResources: Resource[] = [
-        { uri: 'server1_resource1', name: 'Resource 1' },
-        { uri: 'server2_resource1', name: 'Resource 2' },
-        { uri: 'server2_resource2', name: 'Resource 3' }
-      ];
-
-      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(mockResources);
-
-      const grouped = router.groupResourcesByServer();
-
-      expect(grouped.size).toBe(2);
-      expect(grouped.get('server1')).toHaveLength(1);
-      expect(grouped.get('server2')).toHaveLength(2);
-    });
-
-    it('should group prompts by server', () => {
-      const mockPrompts: Prompt[] = [
-        { name: 'server1_prompt1', description: 'Prompt 1' },
-        { name: 'server1_prompt2', description: 'Prompt 2' },
-        { name: 'server1_prompt3', description: 'Prompt 3' }
-      ];
-
-      vi.mocked(promptRegistry.getAllPrompts).mockReturnValue(mockPrompts);
-
-      const grouped = router.groupPromptsByServer();
-
-      expect(grouped.size).toBe(1);
-      expect(grouped.get('server1')).toHaveLength(3);
-    });
-  });
-
-  describe('Statistics', () => {
-    it('should return statistics about registered items', () => {
-      const mockTools: Tool[] = [
-        { name: 'server1_tool1', description: 'Tool 1', inputSchema: {} },
-        { name: 'server2_tool1', description: 'Tool 2', inputSchema: {} }
-      ];
-
-      const mockResources: Resource[] = [
-        { uri: 'server1_resource1', name: 'Resource 1' },
-        { uri: 'server3_resource1', name: 'Resource 2' }
-      ];
-
-      const mockPrompts: Prompt[] = [{ name: 'server2_prompt1', description: 'Prompt 1' }];
-
-      vi.mocked(toolRegistry.getAllTools).mockReturnValue(mockTools);
-      vi.mocked(resourceRegistry.getAllResources).mockReturnValue(mockResources);
-      vi.mocked(promptRegistry.getAllPrompts).mockReturnValue(mockPrompts);
-
-      const stats = router.getStatistics();
-
-      expect(stats.tools).toBe(2);
-      expect(stats.resources).toBe(2);
-      expect(stats.prompts).toBe(1);
-      expect(stats.servers.size).toBe(3);
-      expect(stats.servers.has('server1')).toBe(true);
-      expect(stats.servers.has('server2')).toBe(true);
-      expect(stats.servers.has('server3')).toBe(true);
-    });
-
-    it('should return stats with metrics', () => {
-      const stats = router.getStats();
-
-      expect(stats).toHaveProperty('tools');
-      expect(stats).toHaveProperty('resources');
-      expect(stats).toHaveProperty('prompts');
-      expect(stats).toHaveProperty('servers');
-      expect(stats).toHaveProperty('metrics');
-      expect(stats.metrics).toEqual({
-        requestCount: 0,
-        averageResponseTime: 0,
-        errorRate: 0
-      });
-    });
-  });
-
-  describe('Configuration Management', () => {
-    it('should update router configuration', () => {
-      router.updateConfig({
-        namingStrategy: 'flat',
-        separator: '__',
-        debug: true
-      });
-
-      const config = router.getNamingConfig();
-
-      expect(config.namingStrategy).toBe('flat');
-      expect(config.separator).toBe('__');
-      expect(config.debug).toBe(true);
-    });
-
-    it('should update naming configuration', () => {
-      router.updateNamingConfig({ separator: '::' });
-
-      const config = router.getNamingConfig();
-      expect(config.separator).toBe('::');
-    });
-  });
-
-  describe('Functional Routing Approach', () => {
-    it('should route tool with functional approach', () => {
-      const mockTarget = {
-        serverId: 'server1',
-        tool: { name: 'test', description: 'Test', inputSchema: {} }
-      };
-
-      vi.mocked(toolRegistry.resolveTool).mockReturnValue(mockTarget);
-
-      const result = router.routeWithFunctionalApproach('server1_test', 'tool');
-
-      expect(result.found).toBe(true);
-      expect(result.target).toEqual(mockTarget);
-    });
-
-    it('should route resource with functional approach', () => {
-      const mockTarget = {
-        serverId: 'server1',
-        resource: { uri: 'test://uri', name: 'Test' }
-      };
-
-      vi.mocked(resourceRegistry.resolveResource).mockReturnValue(mockTarget);
-
-      const result = router.routeWithFunctionalApproach('test://uri', 'resource');
-
-      expect(result.found).toBe(true);
-      expect(result.target).toEqual(mockTarget);
-    });
-
-    it('should route prompt with functional approach', () => {
-      const mockTarget = {
-        serverId: 'server1',
-        prompt: { name: 'test', description: 'Test' }
-      };
-
-      vi.mocked(promptRegistry.resolvePrompt).mockReturnValue(mockTarget);
-
-      const result = router.routeWithFunctionalApproach('server1_test', 'prompt');
-
-      expect(result.found).toBe(true);
-      expect(result.target).toEqual(mockTarget);
-    });
-
-    it('should return error for unknown type', () => {
-      const result = router.routeWithFunctionalApproach('test', 'unknown' as any);
-
-      expect(result.found).toBe(false);
-      expect(result.error).toContain('Unknown type');
-    });
-  });
-
-  describe('Metrics', () => {
-    it('should reset metrics', () => {
-      router.resetMetrics();
-
-      const metrics = router.getMetrics();
-      expect(metrics.requestCount).toBe(0);
-      expect(metrics.averageResponseTime).toBe(0);
-      expect(metrics.errorRate).toBe(0);
     });
   });
 });

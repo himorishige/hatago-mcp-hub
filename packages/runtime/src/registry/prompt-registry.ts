@@ -89,7 +89,7 @@ export class PromptRegistry {
   /**
    * Get a prompt by name
    */
-  getPrompt(name: string): Prompt | undefined {
+  getPrompt(name: string): PromptInfo | undefined {
     return this.prompts.get(name);
   }
 

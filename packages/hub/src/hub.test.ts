@@ -158,7 +158,7 @@ describe('HatagoHub (Node.js)', () => {
       const resources = resourceRegistry.getAllResources();
       expect(resources).toHaveLength(1);
       expect(resources[0].uri).toBe('file:///test.txt'); // URI is not namespaced
-      expect(resources[0].name).toContain('test-server'); // Name is namespaced
+      expect(resources[0].name).toBe('Test File'); // Name is preserved
     });
   });
 

@@ -137,12 +137,7 @@ export class HatagoHub {
 
     // Initialize components with standard implementations
     this.sessions = new SessionManager(this.options.sessionTTL);
-    this.toolRegistry = new ToolRegistry({
-      namingConfig: {
-        strategy: this.options.namingStrategy,
-        separator: this.options.separator
-      }
-    });
+    this.toolRegistry = new ToolRegistry();
     this.toolInvoker = new ToolInvoker(
       this.toolRegistry,
       {

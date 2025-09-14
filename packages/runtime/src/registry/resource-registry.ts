@@ -1,211 +1,148 @@
+/**
+ * Simplified ResourceRegistry - class-based implementation
+ * Resources are stored by original URI (not namespaced)
+ * First server wins for duplicate URIs
+ */
+
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
-import { createNamingFunction, createParsingFunction } from '../utils/naming-strategy.js';
-import type { ToolNamingConfig } from './types.js';
 
-export type ResourceMetadata = Resource & {
+/**
+ * Resource metadata stored in registry
+ */
+type ResourceMetadata = Resource & {
   serverId: string;
   originalUri: string;
-};
-
-export type ResourceResolveResult = {
-  serverId: string;
-  originalUri: string;
-  publicUri: string;
-};
-
-export type ResourceRegistryOptions = {
-  namingConfig?: ToolNamingConfig;
-};
-
-export type ResourceRegistry = {
-  registerServerResources: (serverId: string, resources: Resource[]) => void;
-  clearServerResources: (serverId: string) => void;
-  resolveResource: (publicUri: string) => ResourceResolveResult | null;
-  getServerResources: (serverId: string) => Resource[];
-  getAllResources: () => Resource[];
-  getResourceCollisions: () => Map<string, string[]>;
-  getResourceCount: () => number;
-  clear: () => void;
 };
 
 /**
- * Create a resource registry for managing resources from multiple MCP servers
- * Using functional factory pattern for better adherence to Hatago principles
+ * Registry for managing resources from multiple servers
  */
-export function createResourceRegistry(options: ResourceRegistryOptions = {}): ResourceRegistry {
-  // Private state managed through closure
-  const resources = new Map<string, ResourceMetadata[]>();
-  const serverResources = new Map<string, Set<string>>();
-  const namingConfig: ToolNamingConfig = options.namingConfig ?? {
-    strategy: 'namespace',
-    separator: '_',
-    format: '{server}{separator}{tool}'
-  };
-
-  // Create naming functions
-  const generatePublicUri = createNamingFunction(namingConfig);
-  createParsingFunction(namingConfig); // Currently unused but kept for future use
-
-  /**
-   * Clear resources for a specific server
-   */
-  function clearServerResources(serverId: string): void {
-    const existingUris = serverResources.get(serverId);
-    if (existingUris) {
-      for (const uri of existingUris) {
-        const resourceList = resources.get(uri);
-        if (resourceList) {
-          const filtered = resourceList.filter((r) => r.serverId !== serverId);
-          if (filtered.length > 0) {
-            resources.set(uri, filtered);
-          } else {
-            resources.delete(uri);
-          }
-        }
-      }
-      serverResources.delete(serverId);
-    }
-  }
+export class ResourceRegistry {
+  private resources = new Map<string, ResourceMetadata>();
+  private serverResources = new Map<string, Set<string>>();
 
   /**
    * Register resources from a server
    */
-  function registerServerResources(serverId: string, newResources: Resource[]): void {
-    // Clear existing resources
-    clearServerResources(serverId);
+  registerServerResources(serverId: string, resources: Resource[]): void {
+    // Clear existing resources for this server
+    this.clearServerResources(serverId);
 
-    // Register new resources
+    // Track resource URIs for this server
     const resourceUris = new Set<string>();
-    for (const resource of newResources) {
-      // Keep original URI, only namespace the name
-      const namespacedName = resource.name
-        ? generatePublicUri(serverId, resource.name)
-        : resource.name;
-      const metadata: ResourceMetadata = {
-        ...resource,
-        name: namespacedName,
-        uri: resource.uri, // Keep original URI
-        serverId,
-        originalUri: resource.uri
-      };
 
-      // URI-based management - use original URI as key
-      const existing = resources.get(resource.uri) ?? [];
-      existing.push(metadata);
-      resources.set(resource.uri, existing);
-      resourceUris.add(resource.uri);
+    for (const resource of resources) {
+      // Use original URI as key (not namespaced)
+      const uri = resource.uri;
+
+      // Only register if URI not already taken (first server wins)
+      if (!this.resources.has(uri)) {
+        const metadata: ResourceMetadata = {
+          ...resource,
+          serverId,
+          originalUri: resource.uri
+        };
+
+        this.resources.set(uri, metadata);
+      }
+
+      resourceUris.add(uri);
     }
 
-    serverResources.set(serverId, resourceUris);
+    // Track which resources belong to this server
+    this.serverResources.set(serverId, resourceUris);
   }
 
   /**
-   * Resolve a URI to server and original URI
+   * Clear all resources from a server
    */
-  function resolveResource(uri: string): ResourceResolveResult | null {
-    const resourceList = resources.get(uri);
-    if (!resourceList || resourceList.length === 0) {
-      return null;
+  clearServerResources(serverId: string): void {
+    const resourceUris = this.serverResources.get(serverId);
+    if (!resourceUris) {
+      return;
     }
 
-    // Return the first resource (in case of collisions)
-    const resource = resourceList[0];
-    if (!resource) {
-      return null;
+    for (const uri of resourceUris) {
+      // Only delete if this server owns the resource
+      const resource = this.resources.get(uri);
+      if (resource && resource.serverId === serverId) {
+        this.resources.delete(uri);
+      }
     }
-    return {
-      serverId: resource.serverId,
-      originalUri: resource.originalUri,
-      publicUri: uri
-    };
+
+    this.serverResources.delete(serverId);
   }
 
   /**
-   * Get resources for a specific server
+   * Get all resources
    */
-  function getServerResources(serverId: string): Resource[] {
-    const uris = serverResources.get(serverId);
-    if (!uris) {
-      return [];
-    }
+  getAllResources(): Resource[] {
+    return Array.from(this.resources.values()).map(
+      ({ serverId: _serverId, originalUri: _originalUri, ...resource }) => resource
+    );
+  }
+
+  /**
+   * Get a resource by URI
+   */
+  getResource(uri: string): ResourceMetadata | undefined {
+    return this.resources.get(uri);
+  }
+
+  /**
+   * Get all resources from a specific server
+   */
+  getServerResources(serverId: string): Resource[] {
+    const resourceUris = this.serverResources.get(serverId);
+    if (!resourceUris) return [];
 
     const result: Resource[] = [];
-    for (const uri of uris) {
-      const resourceList = resources.get(uri);
-      if (resourceList) {
-        const serverResource = resourceList.find((r) => r.serverId === serverId);
-        if (serverResource) {
-          // Return without serverId and originalUri metadata
-          const { serverId, originalUri, ...resource } = serverResource;
-          void serverId; // Explicitly ignore
-          void originalUri; // Explicitly ignore
-          result.push(resource);
-        }
+    for (const uri of resourceUris) {
+      const resource = this.resources.get(uri);
+      if (resource && resource.serverId === serverId) {
+        const { serverId: _serverId, originalUri: _originalUri, ...rest } = resource;
+        void _serverId;
+        void _originalUri;
+        result.push(rest);
       }
     }
-
     return result;
-  }
-
-  /**
-   * Get all resources from all servers
-   */
-  function getAllResources(): Resource[] {
-    const allResources: Resource[] = [];
-    const seen = new Set<string>();
-
-    for (const [uri, resourceList] of resources) {
-      if (!seen.has(uri) && resourceList.length > 0) {
-        seen.add(uri);
-        // Return the first resource for each URI (in case of collisions)
-        const firstResource = resourceList[0];
-        if (firstResource) {
-          const { serverId, originalUri, ...resource } = firstResource;
-          void serverId; // Explicitly ignore
-          void originalUri; // Explicitly ignore
-          allResources.push(resource);
-        }
-      }
-    }
-
-    return allResources;
-  }
-
-  /**
-   * Get resource collisions (URIs with multiple servers)
-   */
-  function getResourceCollisions(): Map<string, string[]> {
-    const collisions = new Map<string, string[]>();
-
-    for (const [uri, resourceList] of resources) {
-      if (resourceList.length > 1) {
-        const serverIds = [...new Set(resourceList.map((r) => r.serverId))];
-        if (serverIds.length > 1) {
-          collisions.set(uri, serverIds);
-        }
-      }
-    }
-
-    return collisions;
   }
 
   /**
    * Clear all resources
    */
-  function clear(): void {
-    resources.clear();
-    serverResources.clear();
+  clear(): void {
+    this.resources.clear();
+    this.serverResources.clear();
   }
 
-  // Return the public interface
-  return {
-    registerServerResources,
-    clearServerResources,
-    resolveResource,
-    getServerResources,
-    getAllResources,
-    getResourceCollisions,
-    getResourceCount: () => resources.size,
-    clear
-  };
+  /**
+   * Get resource count
+   */
+  getResourceCount(): number {
+    return this.resources.size;
+  }
+
+  /**
+   * Resolve resource to get server ID and original URI
+   */
+  resolveResource(uri: string): { serverId: string; originalUri: string } | null {
+    const metadata = this.resources.get(uri);
+    if (!metadata) {
+      return null;
+    }
+
+    return {
+      serverId: metadata.serverId,
+      originalUri: metadata.originalUri
+    };
+  }
+}
+
+/**
+ * Create a new resource registry instance
+ */
+export function createResourceRegistry(): ResourceRegistry {
+  return new ResourceRegistry();
 }

@@ -41,13 +41,13 @@ describe('E2E: Tools', () => {
         const tools = hub.tools.list();
 
         // Should have all registered tools with server prefix
-        expect(tools.some((t) => t.name === 'test__echo')).toBe(true);
-        expect(tools.some((t) => t.name === 'test__echo_object')).toBe(true);
-        expect(tools.some((t) => t.name === 'test__slow')).toBe(true);
-        expect(tools.some((t) => t.name === 'test__fail')).toBe(true);
+        expect(tools.some((t) => t.name === 'test_echo')).toBe(true);
+        expect(tools.some((t) => t.name === 'test_echo_object')).toBe(true);
+        expect(tools.some((t) => t.name === 'test_slow')).toBe(true);
+        expect(tools.some((t) => t.name === 'test_fail')).toBe(true);
 
         // Check tool structure
-        const echoTool = tools.find((t) => t.name === 'test__echo');
+        const echoTool = tools.find((t) => t.name === 'test_echo');
         expect(echoTool).toBeDefined();
         expect(echoTool?.description).toBe('Echo the input text');
         expect(echoTool?.inputSchema).toBeDefined();
@@ -78,8 +78,8 @@ describe('E2E: Tools', () => {
         const tools = hub.tools.list();
 
         // Both servers have echo tool, should be prefixed differently
-        expect(tools.some((t) => t.name === 'server1__echo')).toBe(true);
-        expect(tools.some((t) => t.name === 'server2__echo')).toBe(true);
+        expect(tools.some((t) => t.name === 'server1_echo')).toBe(true);
+        expect(tools.some((t) => t.name === 'server2_echo')).toBe(true);
 
         // No unprefixed tools
         expect(tools.some((t) => t.name === 'echo')).toBe(false);
@@ -104,7 +104,7 @@ describe('E2E: Tools', () => {
           args: [fixturePath, '--echo']
         });
 
-        const result = await hub.tools.call('test__echo', { text: 'Hello, World!' });
+        const result = await hub.tools.call('test_echo', { text: 'Hello, World!' });
 
         expect(result.content).toHaveLength(1);
         expect(result.content[0].type).toBe('text');
@@ -136,7 +136,7 @@ describe('E2E: Tools', () => {
           nested: { key: 'value' }
         };
 
-        const result = await hub.tools.call('test__echo_object', testData);
+        const result = await hub.tools.call('test_echo_object', testData);
 
         expect(result.content).toHaveLength(1);
         expect(result.content[0].type).toBe('text');
@@ -163,7 +163,7 @@ describe('E2E: Tools', () => {
         });
 
         const startTime = Date.now();
-        const result = await hub.tools.call('test__slow', { delay: 500 });
+        const result = await hub.tools.call('test_slow', { delay: 500 });
         const endTime = Date.now();
 
         expect(result.content[0].text).toBe('Delayed for 500ms');
@@ -187,7 +187,7 @@ describe('E2E: Tools', () => {
           args: [fixturePath, '--fail']
         });
 
-        const result = await hub.tools.call('test__fail', { message: 'Custom error message' });
+        const result = await hub.tools.call('test_fail', { message: 'Custom error message' });
 
         expect(result.isError).toBe(true);
         expect(result.content[0].type).toBe('text');
@@ -211,7 +211,7 @@ describe('E2E: Tools', () => {
           args: [fixturePath, '--echo']
         });
 
-        const result = await hub.tools.call('test__nonexistent', {});
+        const result = await hub.tools.call('test_nonexistent', {});
 
         expect(result.isError).toBe(true);
         expect(result.content[0].type).toBe('text');
@@ -239,10 +239,10 @@ describe('E2E: Tools', () => {
 
         // Execute multiple tools in parallel
         const promises = [
-          hub.tools.call('test__echo', { text: 'call-1' }),
-          hub.tools.call('test__echo', { text: 'call-2' }),
-          hub.tools.call('test__slow', { delay: 100 }),
-          hub.tools.call('test__echo', { text: 'call-3' })
+          hub.tools.call('test_echo', { text: 'call-1' }),
+          hub.tools.call('test_echo', { text: 'call-2' }),
+          hub.tools.call('test_slow', { delay: 100 }),
+          hub.tools.call('test_echo', { text: 'call-3' })
         ];
 
         const results = await Promise.all(promises);

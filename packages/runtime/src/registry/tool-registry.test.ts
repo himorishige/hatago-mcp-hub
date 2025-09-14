@@ -10,13 +10,7 @@ describe('ToolRegistry', () => {
   let registry: ToolRegistry;
 
   beforeEach(() => {
-    registry = new ToolRegistry({
-      namingConfig: {
-        strategy: 'namespace',
-        separator: '_',
-        format: '{serverId}_{toolName}'
-      }
-    });
+    registry = new ToolRegistry();
   });
 
   describe('Tool Registration', () => {
@@ -191,73 +185,8 @@ describe('ToolRegistry', () => {
     });
   });
 
-  describe('Name Collision Detection', () => {
-    it('should detect no collisions with unique names', () => {
-      const server1Tools: Tool[] = [
-        {
-          name: 'unique1',
-          inputSchema: { type: 'object' }
-        }
-      ];
-
-      const server2Tools: Tool[] = [
-        {
-          name: 'unique2',
-          inputSchema: { type: 'object' }
-        }
-      ];
-
-      registry.registerServerTools('server1', server1Tools);
-      registry.registerServerTools('server2', server2Tools);
-
-      const collisions = registry.detectCollisions();
-      expect(collisions).toEqual([]);
-    });
-
-    it('should detect collisions with same tool names', () => {
-      const server1Tools: Tool[] = [
-        {
-          name: 'echo',
-          inputSchema: { type: 'object' }
-        },
-        {
-          name: 'process',
-          inputSchema: { type: 'object' }
-        }
-      ];
-
-      const server2Tools: Tool[] = [
-        {
-          name: 'echo', // Collision!
-          inputSchema: { type: 'object' }
-        },
-        {
-          name: 'unique',
-          inputSchema: { type: 'object' }
-        }
-      ];
-
-      const server3Tools: Tool[] = [
-        {
-          name: 'echo', // Another collision!
-          inputSchema: { type: 'object' }
-        }
-      ];
-
-      registry.registerServerTools('server1', server1Tools);
-      registry.registerServerTools('server2', server2Tools);
-      registry.registerServerTools('server3', server3Tools);
-
-      const collisions = registry.detectCollisions();
-      expect(collisions).toHaveLength(1);
-      expect(collisions[0]).toMatchObject({
-        toolName: 'echo',
-        serverIds: expect.arrayContaining(['server1', 'server2', 'server3'])
-      });
-    });
-
-    it('should handle namespace strategy correctly', () => {
-      // With namespace strategy, public names should be prefixed
+  describe('Tool Naming', () => {
+    it('should always use serverId_toolName format', () => {
       const tools: Tool[] = [
         {
           name: 'test',
@@ -351,52 +280,6 @@ describe('ToolRegistry', () => {
       registry.clearServerTools('server1');
       expect(registry.getToolCount()).toBe(1);
       expect(registry.getServerCount()).toBe(1);
-    });
-  });
-
-  describe('Custom Naming Strategies', () => {
-    it('should support simple naming strategy', () => {
-      const simpleRegistry = new ToolRegistry({
-        namingConfig: {
-          strategy: 'none',
-          separator: '-'
-        }
-      });
-
-      const tools: Tool[] = [
-        {
-          name: 'my_tool',
-          inputSchema: { type: 'object' }
-        }
-      ];
-
-      simpleRegistry.registerServerTools('server', tools);
-
-      const allTools = simpleRegistry.getAllTools();
-      // None strategy just uses the original name
-      expect(allTools[0].name).toBe('my_tool');
-    });
-
-    it('should support custom separator', () => {
-      const customRegistry = new ToolRegistry({
-        namingConfig: {
-          strategy: 'namespace',
-          separator: '-',
-          format: '{serverId}-{toolName}'
-        }
-      });
-
-      const tools: Tool[] = [
-        {
-          name: 'tool',
-          inputSchema: { type: 'object' }
-        }
-      ];
-
-      customRegistry.registerServerTools('server', tools);
-
-      const allTools = customRegistry.getAllTools();
-      expect(allTools[0].name).toBe('server-tool');
     });
   });
 

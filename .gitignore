@@ -28,3 +28,4 @@ pnpm-debug.log*
 /.mc2.json
 /.mcp.json
 /claude-with-everything.config.json
+/hatago.config-test.json

@@ -56,7 +56,7 @@ export async function retryOnce<T>(
       // Small delay with jitter (100-150ms)
       const delay = (options?.delayMs ?? 100) + Math.random() * 50;
       await new Promise((resolve) => setTimeout(resolve, delay));
-      return await fn();
+      return fn();
     }
     throw error;
   }
