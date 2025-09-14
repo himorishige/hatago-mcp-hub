@@ -16,7 +16,7 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 
 ## ✨ Features
 
-### 🚀 Performance (v0.0.15)
+### 🚀 Performance (v0.0.14)
 
 - **8.44x Faster Startup** - 85.66ms → 10.14ms
 - **17% Smaller Package** - 1.04MB → 854KB
@@ -427,7 +427,7 @@ Use `--env-file <path...>` to load variables before config parsing. This helps r
 - Paths: relative to CWD, `~/` expanded to home.
 - Precedence: files are applied in the given order; existing `process.env` keys are preserved unless `--env-override` is provided.
 
-## ✨ Performance Improvements (v0.0.15)
+## ✨ Performance Improvements (v0.0.14)
 
 - **8.44x faster startup**: 85.66ms → 10.14ms
 - **17% smaller package**: 1.04MB → 854KB (181KB reduction)
