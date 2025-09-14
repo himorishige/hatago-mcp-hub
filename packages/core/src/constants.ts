@@ -13,7 +13,7 @@ export const HATAGO_SERVER_NAME = 'hatago-mcp-hub' as const;
  * Hatago version string.
  * NOTE: This should be updated by release tooling.
  */
-export const HATAGO_VERSION = '0.0.13' as const;
+export const HATAGO_VERSION = '0.0.14' as const;
 
 /** serverInfo payload used in initialize responses */
 export const HATAGO_SERVER_INFO = {

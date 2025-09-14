@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-runtime",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "Runtime components for Hatago MCP Hub - session, registry, router, and retry management",
   "type": "module",
   "sideEffects": false,
