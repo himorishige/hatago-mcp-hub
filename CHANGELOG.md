@@ -5,6 +5,28 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.15] - 2025-09-14
+
+### Changed
+
+- **Registry & Router Simplification**: Major refactoring aligned with Hatago's "thin implementation" philosophy
+  - ToolRegistry: 65% code reduction (361→128 lines)
+  - Router: 69% code reduction (333→102 lines)
+  - ResourceRegistry: 17% code reduction (178→147 lines)
+- **Naming Strategy**: Simplified to single `serverId_toolName` format
+  - Removed 6 complex naming strategies (none, prefix, suffix, namespace, custom, hybrid)
+  - Collision handling now uses first-come-first-served approach
+- **Architecture**: Removed unused files and complex abstractions
+  - Deleted router-functional.ts, router-types.ts, types.ts, naming-strategy.ts
+  - Total ~1000 lines of code removed
+
+### Technical Improvements
+
+- Simplified tool name generation to basic prefixing
+- Removed statistics and metrics tracking from Router
+- Changed ResourceRegistry from factory pattern to class-based
+- All 402 tests passing after refactoring
+
 ## [0.0.14] - 2025-09-14
 
 ### Performance Improvements

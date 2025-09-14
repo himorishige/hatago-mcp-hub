@@ -45,7 +45,7 @@ app.get('/health', (c) => {
 app.get('/', (c) => {
   return c.json({
     name: 'Hatago MCP Hub - Simple Worker',
-    version: '0.0.14',
+    version: '0.0.15',
     description: 'Minimal MCP Hub server running on Cloudflare Workers',
     endpoints: {
       '/': 'This information',

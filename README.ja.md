@@ -16,7 +16,7 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 ## ✨ 特徴
 
-### 🚀 パフォーマンス (v0.0.14)
+### 🚀 パフォーマンス (v0.0.15)
 
 - **8.44倍高速な起動** - 85.66ms → 10.14ms
 - **17%小さいパッケージ** - 1.04MB → 854KB
@@ -521,7 +521,7 @@ npx . serve --http
 
 ### 設定ファイルの自動リロード（代替案）
 
-v0.0.14以降、--watchフラグは削除されました。代わりに以下の方法を使用してください：
+v0.0.15以降、--watchフラグは削除されました。代わりに以下の方法を使用してください：
 
 ```bash
 # nodemonを使用
@@ -531,7 +531,7 @@ nodemon --exec "hatago serve --stdio --config ./hatago.config.json" --watch hata
 pm2 start "hatago serve --stdio --config ./hatago.config.json" --watch hatago.config.json
 ```
 
-## ✨ パフォーマンス改善 (v0.0.14)
+## ✨ パフォーマンス改善 (v0.0.15)
 
 - **起動時間が8.44倍高速化**: 85.66ms → 10.14ms
 - **パッケージサイズ17%削減**: 1.04MB → 854KB (181KB削減)
