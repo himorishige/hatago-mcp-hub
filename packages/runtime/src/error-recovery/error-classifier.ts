@@ -9,7 +9,8 @@
 export function isTransientError(error: unknown): boolean {
   if (!error) return false;
 
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
 
   // Network and timeout errors are typically transient
   return (
