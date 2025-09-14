@@ -147,7 +147,7 @@ async callTool(name: string, args: unknown) {
 
 1. **Configuration Hot Reload**
    - Removed: Built-in file watching
-   - Alternative: Use nodemon/PM2
+   - Alternative: See `docs/configuration.md#auto-reload-configuration-changes`
    - Benefit: -50KB package size, simpler code
 
 2. **Automatic Retry Logic**
@@ -183,11 +183,7 @@ async callTool(name: string, args: unknown) {
    }
    ```
 
-3. **External Process Management**: Use PM2 for production
-   ```bash
-   pm2 start "hatago serve" --name hatago
-   pm2 monit # Monitor performance
-   ```
+3. **External Process Management**: Use a supervisor in production (see `docs/configuration.md#auto-reload-configuration-changes`).
 
 ### For Developers
 

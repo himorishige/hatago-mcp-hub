@@ -88,6 +88,8 @@ hatago serve --http --env-file ./local.env --env-override
 
 ## Usage with MCP Clients
 
+> Terminology: In this document, "HTTP mode" refers to the MCP SDK's StreamableHTTP transport. We mention "StreamableHTTP" only once here for clarity; elsewhere we say "HTTP mode". [ISA]
+
 ### STDIO Mode
 
 #### Claude Code, Gemini CLI
@@ -121,7 +123,7 @@ command = "npx"
 args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "./hatago.config.json"]
 ```
 
-### StreamableHTTP Mode
+### HTTP Mode (StreamableHTTP transport)
 
 #### Claude Code, Gemini CLI
 
@@ -291,7 +293,7 @@ Example:
 
 ### 🔄 Dynamic Updates
 
-- **Configuration**: Requires restart (use nodemon/PM2 for auto-restart)
+- **Configuration**: Requires restart (use nodemon/PM2 for auto-restart; see Operations in `docs/configuration.md`)
 - **Tool List Updates**: Dynamic tool registration with `notifications/tools/list_changed`
 - **Progress Notifications**: Real-time operation updates from child servers
 

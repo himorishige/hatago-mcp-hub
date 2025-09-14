@@ -72,4 +72,4 @@ const connectionType: ConnectionType = 'local';
 
 ## License
 
-MIT
+MIT License
