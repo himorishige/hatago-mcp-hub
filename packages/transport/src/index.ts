@@ -28,15 +28,18 @@ export type { SSEStream, StreamableHTTPTransportOptions } from './streamable-htt
 // StreamableHTTP Transport
 export { StreamableHTTPTransport } from './streamable-http/index.js';
 
-// Thin facade - new lightweight transport interface
+// Transport types - moved from thin-facade (deleted for simplicity)
 export type {
   ThinHttpTransport,
   ThinHttpRequest,
   ThinHttpResponse,
   StreamChunk,
-  ThinJsonRpcTransport,
   ThinTransportOptions
-} from './thin-facade.js';
+} from './relay-transport.js';
+
+export type {
+  ThinJsonRpcTransport
+} from './relay-jsonrpc-transport.js';
 
 // Relay Transport - lightweight transport implementation
 export { RelayTransport, createRelayHttpTransport } from './relay-transport.js';
