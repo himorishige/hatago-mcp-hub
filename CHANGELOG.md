@@ -5,6 +5,20 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.16] - 2025-09-14
+
+### Changed
+
+- Error handling overhaul across Hub/Runtime modules.
+  - Replace legacy `HatagoError` base with clearer domain errors (e.g., `ConfigError`, `TransportError`) and adapt helpers to them
+  - Unify structured error creation (`createHatagoError`, `toError`) in prompts/resources/connect-with-retry/transport‑factory/hub
+  - Improve server spec validation and missing‑server reporting with consistent, typed errors
+  - Registrar updated to new `ICapabilityRegistry` interface; imports/exports cleaned up
+
+### Removed
+
+- Deprecated `SilentLogger` class and its tests.
+
 ## [0.0.15] - 2025-09-14
 
 ### Changed
