@@ -7,15 +7,25 @@
 import type {
   ThinHttpTransport,
   ThinHttpRequest,
-  ThinTransportOptions,
-  ThinJsonRpcTransport
-} from './thin-facade.js';
+  ThinTransportOptions
+} from './relay-transport.js';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
   JSONRPCNotification
 } from '@modelcontextprotocol/sdk/types.js';
 import { createRelayHttpTransport } from './relay-transport.js';
+
+/**
+ * JSON-RPC Transport built on thin HTTP
+ * Minimal wrapper for MCP protocol compliance
+ */
+export type ThinJsonRpcTransport = {
+  request(message: JSONRPCRequest): Promise<JSONRPCResponse>;
+  notify(message: JSONRPCNotification): Promise<void>;
+  onNotification(handler: (notification: JSONRPCNotification) => void): void;
+  close(): Promise<void>;
+};
 
 /**
  * JSON-RPC adapter using thin HTTP transport

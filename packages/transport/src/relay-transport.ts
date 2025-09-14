@@ -8,13 +8,61 @@
  * - Don't thicken, stay thin
  */
 
-import type {
-  ThinHttpTransport,
-  ThinHttpRequest,
-  ThinHttpResponse,
-  StreamChunk,
-  ThinTransportOptions
-} from './thin-facade.js';
+// Type definitions moved from thin-facade.ts (deleted for simplicity)
+// Following Hatago philosophy: "Don't add, remove"
+
+/**
+ * Minimal HTTP request representation
+ */
+export type ThinHttpRequest = {
+  method: 'GET' | 'POST' | 'DELETE';
+  path: string;
+  headers?: Record<string, string>;
+  body?: string;
+  sessionId?: string;
+};
+
+/**
+ * Minimal HTTP response representation
+ */
+export type ThinHttpResponse = {
+  status: number;
+  headers?: Record<string, string>;
+  body?: string;
+};
+
+/**
+ * Stream chunk for SSE/streaming responses
+ */
+export type StreamChunk = {
+  data: string;
+  event?: string;
+  id?: string;
+};
+
+/**
+ * Thin HTTP Transport Interface
+ *
+ * Core principle: Pure relay without judgment
+ * - No retry logic (handled by policy layer)
+ * - No error transformation (pass through as-is)
+ * - No data processing (transparent relay)
+ */
+export type ThinHttpTransport = {
+  send(request: ThinHttpRequest): Promise<ThinHttpResponse>;
+  stream(request: ThinHttpRequest): AsyncIterable<StreamChunk>;
+  close(): Promise<void>;
+};
+
+/**
+ * Transport options - minimal configuration
+ */
+export type ThinTransportOptions = {
+  baseUrl?: string;
+  sessionId?: string;
+  headers?: Record<string, string>;
+  debug?: boolean;
+};
 import type {
   JSONRPCRequest,
   JSONRPCNotification,
