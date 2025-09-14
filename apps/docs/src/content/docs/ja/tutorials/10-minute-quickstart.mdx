@@ -49,7 +49,7 @@ npx @himorishige/hatago-mcp-hub init
 
 ## ⚙️ 設定作成（2分）
 
-`init`コマンドを実行すると、対話型で設定を作成できます：
+`init` は「モードの選択」だけを尋ねる。サンプルサーバーの自動選択や `.mcp.json` の生成は行わない。サーバー追加は後続の手順で自分で編集する。 [ISA]
 
 <Steps>
 1. **モードを選択**
@@ -60,21 +60,9 @@ npx @himorishige/hatago-mcp-hub init
    ```
    Claude Codeなら`stdio`を選びます。
 
-2. **サンプルサーバーを選択**
-
-   ```
-   ? Select sample servers: (Space to select, Enter to confirm)
-   ❯ ◉ filesystem - Browse and read files
-     ◯ github - GitHub API access
-     ◯ memory - Persistent memory storage
-   ```
-
-   試したいサーバーをスペースキーで選択します。
-
-3. **設定ファイルの作成確認**
+2. **設定ファイルの作成確認**
    ```
    ✅ Created hatago.config.json
-   ✅ Created .mcp.json (for Claude Code)
    ```
 </Steps>
 
@@ -97,13 +85,13 @@ npx @himorishige/hatago-mcp-hub init
 
 ## 🔌 Claude Codeとの接続（2分）
 
-### 自動設定の場合
+### 事前準備
 
-`init`コマンドで`.mcp.json`が自動生成されています。Claude Codeを再起動するだけで接続完了です。
+`.mcp.json` をプロジェクトルートに作成する（`init` は作らない）。保存後、VS Code の「Developer: Reload Window」で再読み込み。
 
-### 手動設定の場合
+### 手動設定
 
-プロジェクトルートに`.mcp.json`を作成：
+プロジェクトルートに `.mcp.json` を作成：
 
 ```json
 {

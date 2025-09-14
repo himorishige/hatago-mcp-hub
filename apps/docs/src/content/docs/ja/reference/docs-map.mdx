@@ -1,0 +1,40 @@
+---
+title: ドキュメントマップ
+description: Hatago の正典と導線を一覧化
+manual: true
+---
+
+## 言語方針
+
+- レポジトリ内の既定言語は英語。
+- 日本語はこのサイト（既定）と `README.ja.md` を正典にする。
+
+## 正典（Single Source of Truth）
+
+- ユーザーガイド（詳細）: [Packages › @himorishige/hatago-mcp-hub](/ja/packages/mcp-hub/README/)
+- 設定ガイド: [Reference › Config](/ja/reference/config/)
+- アーキテクチャ: [Explanation › Architecture](/ja/explanation/architecture/)
+- データフロー: [Explanation › Data Flow](/ja/explanation/data-flow/)
+- チュートリアル: [Tutorials](/ja/tutorials/)
+- How-to 集: [How-to ガイド](/ja/how-to/)
+
+補足（レポジトリ内ドキュメント）:
+
+- パフォーマンス: `docs/PERFORMANCE.md`
+- 変更履歴・移行: `CHANGELOG.md`, `MIGRATION.md`
+
+## よく使う導線
+
+- クイックスタート: [はじめに › Quick Start](/ja/getting-started/quick-start/)
+- インストール: [はじめに › Installation](/ja/getting-started/installation/)
+- タグで起動を絞る: [How-to › Tag Filtering](/ja/how-to/tag-filtering/)
+- リモートMCP接続: [How-to › Remote Servers](/ja/how-to/remote-servers/)
+- CLI 一覧: [Reference › CLI](/ja/reference/cli/)
+- 設定の自動リロード: [Reference › Config](/ja/reference/config/#auto-reload-configuration-changes)
+
+## 運用（Auto-reload / 監視）
+
+- 設定の自動リロード（nodemon/PM2）: [Reference › Config](/ja/reference/config/#auto-reload-configuration-changes)
+- メトリクス: HTTP モードで `/metrics`（環境変数 `HATAGO_METRICS=1`）
+
+このページはメンテナ向けの目次だ。新しいページを追加/移動したら、ここも更新しておくと迷子にならない。

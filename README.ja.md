@@ -14,6 +14,12 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 [Zenn: Hatago MCP Hub で始めるマルチMCP運用 - ひとつの設定で全部つながる](https://zenn.dev/himorishige/articles/introduce-hatago-mcp-hub)
 
+## ドキュメント
+
+- ドキュメントIndex: [docs/README.md](./docs/README.md)
+- ドキュメントサイト（日本語）https://hatago.dev/ja/
+- ドキュメントサイト（英語）https://hatago.dev/en/
+
 ## ✨ 特徴
 
 ### 🚀 パフォーマンス (v0.0.14)

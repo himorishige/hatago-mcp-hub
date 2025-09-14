@@ -316,7 +316,7 @@ Hatagoは自動的にサーバーIDをプレフィックスとして追加しま
 #### 解決方法
 
 <Steps>
-1. **外部ツールでホットリロード（v0.0.14以降）**
+1. **外部ツールでホットリロード（v0.0.14以降）** — 手順の詳細は [Reference › Config](/ja/reference/config/#auto-reload-configuration-changes)
    ```bash
    # nodemonを使用
    npx nodemon --exec "hatago serve" --watch hatago.config.json
@@ -337,7 +337,7 @@ Hatagoは自動的にサーバーIDをプレフィックスとして追加しま
 
 #### 再発防止
 
-- nodemonやPM2を開発環境で使用
+- 開発環境では nodemon や PM2 を活用し、詳細手順は [Reference › Config](/ja/reference/config/#auto-reload-configuration-changes) を参照
 - package.jsonのスクリプトに追加
   ```json
   {
@@ -502,9 +502,9 @@ DEBUG=* hatago serve --verbose
 
 問題が解決しない場合は：
 
-1. [GitHub Issues](https://github.com/himorishige/hatago-hub/issues)で既存の問題を検索
+1. [GitHub Issues](https://github.com/himorishige/hatago-mcp-hub/issues)で既存の問題を検索
 2. 新しいIssueを作成（エラーログを含めてください）
-3. [Discussions](https://github.com/himorishige/hatago-hub/discussions)で質問
+3. [Discussions](https://github.com/himorishige/hatago-mcp-hub/discussions)で質問
 
 ---
 

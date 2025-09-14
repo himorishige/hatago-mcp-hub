@@ -39,7 +39,7 @@ npx @himorishige/hatago-mcp-hub init
 
 ## ⚙️ Create Config (2 min)
 
-The `init` command walks you through an interactive setup.
+The `init` command asks only for the integration mode. It does not install or select sample servers for you. You'll edit the config to add servers in the next step. [ISA]
 
 <Steps>
 1. Select mode
@@ -49,13 +49,10 @@ The `init` command walks you through an interactive setup.
      http (for debugging)
    ```
 
-2. Pick sample servers (e.g. filesystem)
-
-3. Confirm files were created
-   ```
-   ✅ Created hatago.config.json
-   ✅ Created .mcp.json (for Claude Code)
-   ```
+2. Confirm file was created
+    ```
+    ✅ Created hatago.config.json
+    ```
 </Steps>
 
 <Aside type="tip" title="Minimal config">
@@ -76,8 +73,8 @@ In a hurry? Save this as `hatago.config.json`:
 
 ## 🔌 Connect with Claude Code (2 min)
 
-### If auto‑generated
-`.mcp.json` is already created by `init`. Restart Claude Code.
+### Prepare Claude Code
+Create `.mcp.json` in your project (the `init` command does not create this file):
 
 ### Manual setup
 
@@ -97,6 +94,8 @@ In a hurry? Save this as `hatago.config.json`:
   }
 }
 ```
+
+Restart Claude Code (Reload Window) after saving.
 
 ## ✅ Verify (2 min)
 

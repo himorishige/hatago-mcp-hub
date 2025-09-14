@@ -1,13 +1,13 @@
-# @hatago/cli
+# @himorishige/hatago-cli
 
 Command-line interface for Hatago MCP Hub.
 
 ## Installation
 
 ```bash
-npm install -g @hatago/cli
+npm install -g @himorishige/hatago-cli
 # or
-npx @hatago/cli
+npx @himorishige/hatago-cli
 ```
 
 ## Usage
@@ -114,4 +114,4 @@ Configuration files are stored in `~/.hatago/`:
 
 ## License
 
-Apache-2.0
+MIT License

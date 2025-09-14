@@ -12,7 +12,7 @@ Hatago uses a JSON config file (`hatago.config.json`).
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
   "mcpServers": {}
@@ -73,3 +73,16 @@ Hatago uses a JSON config file (`hatago.config.json`).
 hatago serve --tags dev,test
 ```
 
+<a id="auto-reload-configuration-changes"></a>
+
+## Auto-reload Configuration Changes
+
+Built-in watching was removed for simplicity. For auto-reload use a supervisor:
+
+```bash
+# nodemon
+npx nodemon --exec "hatago serve --http" --watch hatago.config.json
+
+# PM2
+pm2 start "hatago serve --http" --name hatago --watch hatago.config.json
+```

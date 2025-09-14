@@ -1,4 +1,4 @@
-# @hatago/server
+# @himorishige/hatago-server
 
 NPX-ready MCP Hub server for Claude Code and other AI assistants.
 

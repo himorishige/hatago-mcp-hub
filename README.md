@@ -6,11 +6,17 @@
 [![GitHub Release](https://img.shields.io/github/v/release/himorishige/hatago-mcp-hub?display_name=tag&sort=semver)](https://github.com/himorishige/hatago-mcp-hub/releases)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/himorishige/hatago-mcp-hub)
 
-> **Hatago (旅籠)** - Traditional Japanese inn from the Edo period that provided lodging for travelers. A relay point connecting modern AI tools with MCP servers.
+> Hatago (旅籠) — A relay point connecting modern AI tools with MCP servers.
 
 ## Overview
 
-Hatago MCP Hub is a lightweight hub server that provides unified management for multiple MCP (Model Context Protocol) servers. It enables centralized access to various MCP servers from development tools like Claude Code, Codex CLI, Cursor, Windsurf, and VS Code.
+Hatago MCP Hub is a lightweight hub that unifies access to multiple MCP (Model Context Protocol) servers from tools like Claude Code, Codex CLI, Cursor, Windsurf, and VS Code.
+
+## Documentation
+
+- Docs index: `docs/README.md`
+- Canonical CLI & Hub guide: `packages/mcp-hub/README.md`
+- Public docs site (JA default): https://hatago.dev/ja/ — English: https://hatago.dev/en/
 
 [Dev.to: Getting Started with Multi-MCP Using Hatago MCP Hub — One Config to Connect Them All](https://dev.to/himorishige/getting-started-with-multi-mcp-using-hatago-mcp-hub-one-config-to-connect-them-all-2bjp)
 

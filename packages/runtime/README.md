@@ -1,4 +1,4 @@
-# @hatago/runtime
+# @himorishige/hatago-runtime
 
 Runtime components for Hatago MCP Hub - session, registry, router, and retry management.
 
@@ -9,7 +9,7 @@ This package provides the core runtime functionality needed to build MCP Hub ser
 ## Installation
 
 ```bash
-npm install @hatago/runtime
+npm install @himorishige/hatago-runtime
 ```
 
 ## Features
@@ -41,7 +41,7 @@ npm install @hatago/runtime
 ## Usage
 
 ```typescript
-import { SessionManager } from '@hatago/runtime';
+import { SessionManager } from '@himorishige/hatago-runtime';
 
 const sessionManager = new SessionManager(3600); // 1 hour TTL
 const session = await sessionManager.createSession('session-id');
@@ -49,9 +49,9 @@ const session = await sessionManager.createSession('session-id');
 
 ## Dependencies
 
-- `@hatago/core` - Core type definitions
+- `@himorishige/hatago-core` - Core type definitions
 - `@modelcontextprotocol/sdk` - MCP SDK
 
 ## License
 
-MIT
+MIT License

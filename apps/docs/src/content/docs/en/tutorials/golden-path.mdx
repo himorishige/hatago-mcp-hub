@@ -41,6 +41,24 @@ Set up Hatago MCP Hub inside an existing Node.js project and reach a practical, 
    ```
 </Steps>
 
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "version": 1,
+  "logLevel": "info",
+  "mcpServers": {
+    "filesystem-local": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./src"],
+      "cwd": ".",
+      "tags": ["dev", "local", "filesystem"],
+      "env": { "NODE_ENV": "\\${NODE_ENV:-development}" }
+    }
+  }
+}
+```
+
+
 ## 🚀 Step 1: Install (2 min)
 
 <Tabs>
@@ -101,23 +119,7 @@ Set up Hatago MCP Hub inside an existing Node.js project and reach a practical, 
 ## 📦 Step 3: First server (5 min)
 
 <Steps>
-1. Edit config
-   ```json title="hatago-config.json"
-   {
-     "$schema": "https://raw.githubusercontent.com/himorishige/hatago-hub/main/schemas/config.schema.json",
-     "version": 1,
-     "logLevel": "info",
-     "mcpServers": {
-       "filesystem-local": {
-         "command": "npx",
-         "args": ["-y", "@modelcontextprotocol/server-filesystem", "./src"],
-         "cwd": ".",
-         "tags": ["dev", "local", "filesystem"],
-         "env": { "NODE_ENV": "${NODE_ENV:-development}" }
-       }
-     }
-   }
-   ```
+1. Edit config (see sample below)
 2. Run
    ```bash
    npm run mcp:dev
@@ -132,7 +134,7 @@ Set up Hatago MCP Hub inside an existing Node.js project and reach a practical, 
 
 Add dev/mock/prod servers and start with tags.
 
-```json title="hatago-config.json" ins={10-26}
+```json title="hatago-config.json" ins="10-26"
 {
   "mcpServers": {
     "filesystem-local": {
@@ -149,7 +151,7 @@ Add dev/mock/prod servers and start with tags.
     "production-api": {
       "url": "https://api.production.example.com/mcp",
       "type": "http",
-      "headers": { "Authorization": "Bearer ${PROD_API_TOKEN}" },
+      "headers": { "Authorization": "Bearer \${PROD_API_TOKEN}" },
       "tags": ["production", "api", "remote"],
       "disabled": false
     }
@@ -227,7 +229,7 @@ Common fixes:
    cp .env.local .env.example
    ```
 3. README snippet
-   ```markdown title="README.md" ins={5-15}
+   ```markdown title="README.md" ins="5-15"
    ## MCP Hub Setup
    1. Install deps: `npm install`
    2. Copy config: `cp hatago-config.example.json hatago-config.json`
@@ -257,5 +259,5 @@ Common fixes:
 ---
 
 <Aside type="tip">
-  Need help? Open an issue on GitHub: https://github.com/himorishige/hatago-hub/issues
+  Need help? Open an issue on GitHub: https://github.com/himorishige/hatago-mcp-hub/issues
  </Aside>

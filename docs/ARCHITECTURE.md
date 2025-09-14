@@ -102,7 +102,7 @@ The central coordinator for all MCP operations. Thin orchestrator with responsib
 - Tool name collision avoidance via simple `serverId_toolName` prefixing
 - Dynamic tool list updates
 - Progress notification forwarding
-- Configuration updates require restart (use nodemon/PM2 for auto-reload)
+- Configuration updates require restart; for auto-reload, see the Operations section in `docs/configuration.md#auto-reload-configuration-changes`.
 
 ### Refactor Overview (2025-09-07)
 
@@ -158,9 +158,11 @@ Provides session isolation for multiple concurrent AI clients.
 
 ## Transport Layer
 
+> Terminology: In this repository, "HTTP mode" refers to the MCP SDK's StreamableHTTP transport. We only spell out "StreamableHTTP" in this section for precision; elsewhere we simply say "HTTP mode". [ISA]
+
 ### Core Implementation: RelayTransport
 
-The transport layer now uses `RelayTransport` as the default implementation, providing a thin wrapper around the MCP SDK's `StreamableHTTPTransport`. This follows Hatago's philosophy of "thin, transparent, relay without judgment".
+The transport layer now uses `RelayTransport` as the default implementation, providing a thin wrapper around the MCP SDK's StreamableHTTP transport (`StreamableHTTPTransport`). This follows Hatago's philosophy of "thin, transparent, relay without judgment".
 
 **Key Files:**
 
@@ -239,9 +241,7 @@ Claude Code compatible syntax:
 Since v0.0.14, built-in configuration watching has been removed for simplicity:
 
 - Configuration changes require server restart
-- Use external tools for auto-restart:
-  - `nodemon --exec "hatago serve" --watch hatago.config.json`
-  - `pm2 start "hatago serve" --watch hatago.config.json`
+- For auto-reload using external tools, see `docs/configuration.md#auto-reload-configuration-changes`.
 - Clients receive `tools/list_changed` notification after restart
 
 ### Progress Notification Forwarding
@@ -348,7 +348,7 @@ interface Platform {
 - **8.44x faster startup**: 85.66ms → 10.14ms
 - **17% smaller package**: 1.04MB → 854KB (181KB reduction)
 - **Simplified architecture**: Removed EnhancedHub and management layers
-- **Trade-off**: Built-in config watching removed (use nodemon/PM2 instead)
+- **Trade-off**: Built-in config watching removed (see `docs/configuration.md#auto-reload-configuration-changes`).
 
 ### Resource Management
 
