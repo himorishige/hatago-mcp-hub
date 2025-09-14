@@ -99,7 +99,7 @@ The central coordinator for all MCP operations. Thin orchestrator with responsib
 
 **Key Features:**
 
-- Tool name collision avoidance via prefixing
+- Tool name collision avoidance via simple `serverId_toolName` prefixing
 - Dynamic tool list updates
 - Progress notification forwarding
 - Configuration updates require restart (use nodemon/PM2 for auto-reload)
@@ -143,8 +143,8 @@ Provides session isolation for multiple concurrent AI clients.
 #### Tool Registry (`packages/runtime/src/tool-registry.ts`)
 
 - Manages tool definitions
-- Handles namespace prefixing for collision avoidance
-- Supports dynamic tool updates
+- Simple `serverId_toolName` prefixing (e.g., `server1_echo`)
+- First-come-first-served collision handling
 
 #### Resource Registry (`packages/runtime/src/resource-registry.ts`)
 
@@ -431,6 +431,16 @@ interface Platform {
 4. Add tests
 
 ## Version History
+
+### v0.0.15 (Registry & Router Simplification — 2025‑09‑14)
+
+- **Major refactoring**: Aligned with Hatago's "thin implementation" philosophy
+- **ToolRegistry**: 65% code reduction (361→128 lines), removed 6 complex naming strategies
+- **Router**: 69% code reduction (333→102 lines), removed statistics and metrics
+- **ResourceRegistry**: 17% code reduction (178→147 lines), simplified to class-based
+- **Naming strategy**: Single `serverId_toolName` format only
+- **Collision handling**: Simple first-come-first-served approach
+- **Total impact**: ~1000 lines removed, all 402 tests passing
 
 ### v0.0.3 (Lifecycle Simplification — 2025‑09‑11)
 

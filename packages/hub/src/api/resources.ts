@@ -41,7 +41,6 @@ export async function readResource(hub: ResourcesHub, uri: string, options?: Rea
   const resourceInfo = hub.resourceRegistry.resolveResource(uri);
 
   if (resourceInfo) {
-
     const client = hub.clients.get(resourceInfo.serverId);
     if (client) {
       try {
