@@ -42,7 +42,3 @@ export * from './router/index.js';
 export * from './session/index.js';
 // Tool Invoker
 export * from './tool-invoker/index.js';
-
-// Thin runtime - lightweight functional implementations
-// Note: Import these directly from './thin-runtime.js' to avoid naming conflicts
-export { createLeanRuntime, useLeanRuntime, type LeanRuntime } from './lean-runtime.js';

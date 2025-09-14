@@ -10,9 +10,7 @@ import {
   type ResourceRegistry,
   SessionManager,
   ToolInvoker,
-  ToolRegistry,
-  createLeanRuntime,
-  useLeanRuntime
+  ToolRegistry
 } from '@himorishige/hatago-runtime';
 import type { Tool } from '@himorishige/hatago-core';
 import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
@@ -141,49 +139,23 @@ export class HatagoHub {
     // Initialize SSE manager
     this.sseManager = new SSEManager(this.logger);
 
-    // Check if thin runtime should be used
-    if (useLeanRuntime()) {
-      this.logger.info('Using lean runtime implementation');
-      const leanRuntime = createLeanRuntime({
-        sessionTtlSeconds: this.options.sessionTTL,
-        toolTimeout: this.options.defaultTimeout
-      });
-
-      // Use thin implementations with proper compatibility
-      this.sessions = leanRuntime.sessions as unknown as SessionManager;
-      this.toolRegistry = leanRuntime.registry as unknown as ToolRegistry; // Now includes getServerTools
-      this.toolInvoker = leanRuntime.tools as unknown as ToolInvoker;
-
-      // Debug: Check if listTools exists
-      this.logger.debug('Thin toolInvoker methods:', {
-        hasListTools:
-          'listTools' in this.toolInvoker &&
-          typeof (this.toolInvoker as { listTools?: unknown }).listTools === 'function',
-        hasRegisterHandler: typeof this.toolInvoker.registerHandler === 'function',
-        hasCallTool: typeof this.toolInvoker.callTool === 'function',
-        hasUnregisterHandler: typeof this.toolInvoker.unregisterHandler === 'function'
-      });
-      this.resourceRegistry = createResourceRegistry();
-      this.promptRegistry = createPromptRegistry();
-    } else {
-      // Initialize components with thick implementations
-      this.sessions = new SessionManager(this.options.sessionTTL);
-      this.toolRegistry = new ToolRegistry({
-        namingConfig: {
-          strategy: this.options.namingStrategy,
-          separator: this.options.separator
-        }
-      });
-      this.toolInvoker = new ToolInvoker(
-        this.toolRegistry,
-        {
-          timeout: this.options.defaultTimeout
-        },
-        this.sseManager
-      );
-      this.resourceRegistry = createResourceRegistry();
-      this.promptRegistry = createPromptRegistry();
-    }
+    // Initialize components with standard implementations
+    this.sessions = new SessionManager(this.options.sessionTTL);
+    this.toolRegistry = new ToolRegistry({
+      namingConfig: {
+        strategy: this.options.namingStrategy,
+        separator: this.options.separator
+      }
+    });
+    this.toolInvoker = new ToolInvoker(
+      this.toolRegistry,
+      {
+        timeout: this.options.defaultTimeout
+      },
+      this.sseManager
+    );
+    this.resourceRegistry = createResourceRegistry();
+    this.promptRegistry = createPromptRegistry();
     this.capabilityRegistry = new CapabilityRegistry();
 
     // Initialize RelayTransport when enabled
@@ -432,23 +404,16 @@ export class HatagoHub {
 
         // Apply global timeouts to ToolInvoker default timeout if provided
         if (config.timeouts?.requestMs && Number.isFinite(config.timeouts.requestMs)) {
-          // Check if we're using thin runtime
-          if (useLeanRuntime()) {
-            // For thin runtime, just update the timeout option
-            // The thin implementation uses this via options.toolTimeout
-            this.options.defaultTimeout = config.timeouts.requestMs;
-          } else {
-            // Recreate ToolInvoker with new default timeout before connecting servers
-            this.toolInvoker = new ToolInvoker(
-              this.toolRegistry,
-              {
-                timeout: config.timeouts.requestMs
-              },
-              this.sseManager
-            );
-            // Also reflect to options for consistency
-            this.options.defaultTimeout = config.timeouts.requestMs;
-          }
+          // Recreate ToolInvoker with new default timeout before connecting servers
+          this.toolInvoker = new ToolInvoker(
+            this.toolRegistry,
+            {
+              timeout: config.timeouts.requestMs
+            },
+            this.sseManager
+          );
+          // Also reflect to options for consistency
+          this.options.defaultTimeout = config.timeouts.requestMs;
         }
 
         // Apply keepAliveMs to StreamableHTTP transport and start it
