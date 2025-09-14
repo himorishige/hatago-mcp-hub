@@ -5,15 +5,6 @@
 
 // export { simpleRetry, withTimeout } from './simple-retry.js';  // Using thin implementation instead
 
-// Legacy exports (deprecated - will be removed in next major version)
-export {
-  CircuitBreaker,
-  type CircuitBreakerConfig,
-  CircuitState,
-  createCircuitBreaker,
-  withCircuitBreaker
-} from './circuit-breaker.js';
-
 export {
   type ClassifiedError,
   // classifyError,  // Using thin implementation instead
