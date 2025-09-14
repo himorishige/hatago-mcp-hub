@@ -26,12 +26,6 @@ export const ServeCommands = {
   all: 'hatago serve --http --verbose'
 };
 
-// Configuration hot-reload alternatives (removed built-in --watch in v0.0.14)
-export const HotReloadAlternatives = {
-  nodemon: `npx nodemon --exec "hatago serve" --watch hatago.config.json`,
-  pm2: `pm2 start "hatago serve" --watch hatago.config.json`,
-  nodemonWithTags: `npx nodemon --exec "hatago serve --tags dev" --watch hatago.config.json`
-};
 
 export const EnvironmentSetup = `# 環境変数の設定
 export GITHUB_TOKEN="your-github-token"

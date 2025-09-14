@@ -5,7 +5,7 @@ manual: true
 ---
 
 import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
-import { InstallCommand, InitCommands, ServeCommands, HotReloadAlternatives, EnvironmentSetup, DockerCommands, DebugCommands } from '../../../../components/examples/cli-commands.mdx';
+import { InstallCommand, InitCommands, ServeCommands, EnvironmentSetup, DockerCommands, DebugCommands } from '../../../../components/examples/cli-commands.mdx';
 
 # CLIリファレンス
 
@@ -55,13 +55,19 @@ Hatago Hub を起動します。
 v0.0.14からは、パフォーマンス向上のため組み込みの設定監視機能を削除しました。設定の自動リロードが必要な場合は、以下の外部ツールを使用してください：
 
 ### nodemonを使用
-<Code code={HotReloadAlternatives.nodemon} lang="bash" />
+```bash
+npx nodemon --exec "hatago serve" --watch hatago.config.json
+```
 
 ### PM2を使用
-<Code code={HotReloadAlternatives.pm2} lang="bash" />
+```bash
+pm2 start "hatago serve" --watch hatago.config.json
+```
 
 ### タグ付きの例
-<Code code={HotReloadAlternatives.nodemonWithTags} lang="bash" />
+```bash
+npx nodemon --exec "hatago serve --tags dev" --watch hatago.config.json
+```
 
 <Tabs>
   <TabItem label="Claude Code / Gemini CLI">
