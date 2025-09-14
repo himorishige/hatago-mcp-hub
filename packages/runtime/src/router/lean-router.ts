@@ -1,5 +1,5 @@
 /**
- * Thin router - functional routing implementation
+ * Lean router - functional routing implementation
  *
  * Following Hatago philosophy: "Don't transform, relay"
  * Simple name resolution without complex routing logic
@@ -126,9 +126,9 @@ export function filterByServer<T>(
 }
 
 /**
- * Create a thin router for compatibility
+ * Create a lean router for compatibility
  */
-export function createThinRouter(): {
+export function createLeanRouter(): {
   routeTool: (publicName: string) => RouteResult;
   routeResource: (publicUri: string) => RouteResult;
   routePrompt: (publicName: string) => RouteResult;

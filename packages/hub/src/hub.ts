@@ -11,8 +11,8 @@ import {
   SessionManager,
   ToolInvoker,
   ToolRegistry,
-  createThinRuntime,
-  useThinRuntime
+  createLeanRuntime,
+  useLeanRuntime
 } from '@himorishige/hatago-runtime';
 import type { Tool } from '@himorishige/hatago-core';
 import { RPC_NOTIFICATION as CORE_RPC_NOTIFICATION } from '@himorishige/hatago-core';
@@ -142,17 +142,17 @@ export class HatagoHub {
     this.sseManager = new SSEManager(this.logger);
 
     // Check if thin runtime should be used
-    if (useThinRuntime()) {
-      this.logger.info('Using thin runtime implementation');
-      const thinRuntime = createThinRuntime({
+    if (useLeanRuntime()) {
+      this.logger.info('Using lean runtime implementation');
+      const leanRuntime = createLeanRuntime({
         sessionTtlSeconds: this.options.sessionTTL,
         toolTimeout: this.options.defaultTimeout
       });
 
       // Use thin implementations with proper compatibility
-      this.sessions = thinRuntime.sessions as unknown as SessionManager;
-      this.toolRegistry = thinRuntime.registry as unknown as ToolRegistry; // Now includes getServerTools
-      this.toolInvoker = thinRuntime.tools as unknown as ToolInvoker;
+      this.sessions = leanRuntime.sessions as unknown as SessionManager;
+      this.toolRegistry = leanRuntime.registry as unknown as ToolRegistry; // Now includes getServerTools
+      this.toolInvoker = leanRuntime.tools as unknown as ToolInvoker;
 
       // Debug: Check if listTools exists
       this.logger.debug('Thin toolInvoker methods:', {
@@ -433,7 +433,7 @@ export class HatagoHub {
         // Apply global timeouts to ToolInvoker default timeout if provided
         if (config.timeouts?.requestMs && Number.isFinite(config.timeouts.requestMs)) {
           // Check if we're using thin runtime
-          if (useThinRuntime()) {
+          if (useLeanRuntime()) {
             // For thin runtime, just update the timeout option
             // The thin implementation uses this via options.toolTimeout
             this.options.defaultTimeout = config.timeouts.requestMs;

@@ -11,15 +11,15 @@ import type { Session } from '@himorishige/hatago-core';
  * Simple session store using Map
  * No complex state management, just a Map with TTL
  */
-export type ThinSessionStore = {
+export type LeanSessionStore = {
   sessions: Map<string, Session>;
   ttlSeconds: number;
 };
 
 /**
- * Create a thin session store
+ * Create a lean session store
  */
-export function createThinSessionStore(ttlSeconds = 3600): ThinSessionStore {
+export function createLeanSessionStore(ttlSeconds = 3600): LeanSessionStore {
   return {
     sessions: new Map(),
     ttlSeconds
@@ -31,9 +31,9 @@ export function createThinSessionStore(ttlSeconds = 3600): ThinSessionStore {
  * Returns new store state and session
  */
 export function createOrGetSession(
-  store: ThinSessionStore,
+  store: LeanSessionStore,
   id: string
-): { store: ThinSessionStore; session: Session } {
+): { store: LeanSessionStore; session: Session } {
   const now = Date.now();
 
   // Check existing session
@@ -77,7 +77,7 @@ export function createOrGetSession(
 /**
  * Get a session if it exists and is not expired
  */
-export function getSession(store: ThinSessionStore, id: string): Session | undefined {
+export function getSession(store: LeanSessionStore, id: string): Session | undefined {
   const session = store.sessions.get(id);
   if (!session) return undefined;
 
@@ -93,7 +93,7 @@ export function getSession(store: ThinSessionStore, id: string): Session | undef
 /**
  * Delete a session
  */
-export function deleteSession(store: ThinSessionStore, id: string): ThinSessionStore {
+export function deleteSession(store: LeanSessionStore, id: string): LeanSessionStore {
   if (!store.sessions.has(id)) {
     return store;
   }
@@ -107,7 +107,7 @@ export function deleteSession(store: ThinSessionStore, id: string): ThinSessionS
 /**
  * Remove expired sessions
  */
-export function removeExpiredSessions(store: ThinSessionStore): ThinSessionStore {
+export function removeExpiredSessions(store: LeanSessionStore): LeanSessionStore {
   const now = Date.now();
   const newSessions = new Map<string, Session>();
 
@@ -129,7 +129,7 @@ export function removeExpiredSessions(store: ThinSessionStore): ThinSessionStore
 /**
  * Get active session count
  */
-export function getActiveSessionCount(store: ThinSessionStore): number {
+export function getActiveSessionCount(store: LeanSessionStore): number {
   const now = Date.now();
   let count = 0;
 
@@ -146,7 +146,7 @@ export function getActiveSessionCount(store: ThinSessionStore): number {
 /**
  * List all active sessions
  */
-export function listActiveSessions(store: ThinSessionStore): Session[] {
+export function listActiveSessions(store: LeanSessionStore): Session[] {
   const now = Date.now();
   const active: Session[] = [];
 
@@ -163,7 +163,7 @@ export function listActiveSessions(store: ThinSessionStore): Session[] {
 /**
  * Clear all sessions
  */
-export function clearAllSessions(store: ThinSessionStore): ThinSessionStore {
+export function clearAllSessions(store: LeanSessionStore): LeanSessionStore {
   return { ...store, sessions: new Map() };
 }
 
@@ -171,7 +171,7 @@ export function clearAllSessions(store: ThinSessionStore): ThinSessionStore {
  * Create a session manager wrapper for compatibility
  * This provides a mutable interface while using immutable functions internally
  */
-export function createThinSessionManager(ttlSeconds = 3600): {
+export function createLeanSessionManager(ttlSeconds = 3600): {
   create: (id: string) => Session;
   get: (id: string) => Session | undefined;
   delete: (id: string) => void;
@@ -181,7 +181,7 @@ export function createThinSessionManager(ttlSeconds = 3600): {
   clear: () => void;
   stop: () => void;
 } {
-  let store = createThinSessionStore(ttlSeconds);
+  let store = createLeanSessionStore(ttlSeconds);
 
   // Cleanup timer
   const cleanupInterval = setInterval(() => {

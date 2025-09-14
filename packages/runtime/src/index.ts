@@ -45,4 +45,4 @@ export * from './tool-invoker/index.js';
 
 // Thin runtime - lightweight functional implementations
 // Note: Import these directly from './thin-runtime.js' to avoid naming conflicts
-export { createThinRuntime, useThinRuntime, type ThinRuntime } from './thin-runtime.js';
+export { createLeanRuntime, useLeanRuntime, type LeanRuntime } from './lean-runtime.js';

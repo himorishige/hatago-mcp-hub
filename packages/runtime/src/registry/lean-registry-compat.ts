@@ -1,35 +1,35 @@
 /**
- * Compatibility wrapper for thin registry implementations
+ * Compatibility wrapper for lean registry implementations
  *
  * Provides backward compatibility with existing ToolRegistry interface
- * while using the thin functional implementations underneath
+ * while using the lean functional implementations underneath
  */
 
 import type { Tool, Resource, Prompt } from '@modelcontextprotocol/sdk/types.js';
 import {
-  createThinToolStore,
+  createLeanToolStore,
   registerTools,
   unregisterServerTools,
   getAllTools,
   getTool,
   resolveTool,
-  createThinResourceStore,
+  createLeanResourceStore,
   registerResources,
   getAllResources,
   getResource,
-  createThinPromptStore,
+  createLeanPromptStore,
   registerPrompts,
   getAllPrompts
-} from './thin-registry.js';
+} from './lean-registry.js';
 
 /**
- * Create a compatible thin registry with all expected methods
+ * Create a compatible lean registry with all expected methods
  * This bridges the gap between the old class-based API and new functional API
  */
-export function createCompatibleThinRegistry() {
-  let toolStore = createThinToolStore();
-  let resourceStore = createThinResourceStore();
-  let promptStore = createThinPromptStore();
+export function createCompatibleLeanRegistry() {
+  let toolStore = createLeanToolStore();
+  let resourceStore = createLeanResourceStore();
+  let promptStore = createLeanPromptStore();
 
   return {
     // Tool operations with compatibility names
@@ -57,7 +57,7 @@ export function createCompatibleThinRegistry() {
       return getTool(toolStore, name);
     },
 
-    // Important: getServerTools was missing in thin implementation
+    // Important: getServerTools was missing in lean implementation
     getServerTools: (serverId: string): Tool[] => {
       const serverToolNames = toolStore.serverTools.get(serverId);
       if (!serverToolNames) return [];
@@ -93,9 +93,9 @@ export function createCompatibleThinRegistry() {
 
     // Clear all registries
     clear: () => {
-      toolStore = createThinToolStore();
-      resourceStore = createThinResourceStore();
-      promptStore = createThinPromptStore();
+      toolStore = createLeanToolStore();
+      resourceStore = createLeanResourceStore();
+      promptStore = createLeanPromptStore();
     }
   };
 }
@@ -103,4 +103,4 @@ export function createCompatibleThinRegistry() {
 /**
  * Type for the compatible registry
  */
-export type CompatibleThinRegistry = ReturnType<typeof createCompatibleThinRegistry>;
+export type CompatibleLeanRegistry = ReturnType<typeof createCompatibleLeanRegistry>;

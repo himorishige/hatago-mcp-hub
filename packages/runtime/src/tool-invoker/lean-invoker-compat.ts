@@ -1,8 +1,8 @@
 /**
- * Compatibility wrapper for thin tool invoker
+ * Compatibility wrapper for lean tool invoker
  *
  * Provides backward compatibility with existing ToolInvoker interface
- * while using the thin functional implementation underneath
+ * while using the lean functional implementation underneath
  */
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
@@ -11,19 +11,19 @@ import {
   registerHandler,
   createToolPipeline,
   createConcurrencyLimiter,
-  type ThinToolHandler,
+  type LeanToolHandler,
   type ToolCallResult
-} from './thin-invoker.js';
+} from './lean-invoker.js';
 
 /**
- * Create a compatible thin tool invoker with all expected methods
+ * Create a compatible lean tool invoker with all expected methods
  * This bridges the gap between the old class-based API and new functional API
  */
 type ToolRegistry = {
   getAllTools(): Tool[];
 };
 
-export function createCompatibleThinToolInvoker(
+export function createCompatibleLeanToolInvoker(
   options: {
     timeout?: number;
     maxConcurrency?: number;
@@ -35,10 +35,10 @@ export function createCompatibleThinToolInvoker(
   const pipeline = createToolPipeline();
 
   // Track registered handlers for unregister support
-  const registeredHandlers = new Map<string, ThinToolHandler>();
+  const registeredHandlers = new Map<string, LeanToolHandler>();
 
   return {
-    registerHandler: (toolName: string, handler: ThinToolHandler) => {
+    registerHandler: (toolName: string, handler: LeanToolHandler) => {
       registry = registerHandler(registry, toolName, handler);
       registeredHandlers.set(toolName, handler);
     },
@@ -58,7 +58,7 @@ export function createCompatibleThinToolInvoker(
     },
 
     callTool: async (
-      _sessionId: string, // May be ignored in thin implementation
+      _sessionId: string, // May be ignored in lean implementation
       toolName: string,
       args: unknown,
       context?: {
@@ -105,4 +105,4 @@ export function createCompatibleThinToolInvoker(
 /**
  * Type for the compatible tool invoker
  */
-export type CompatibleThinToolInvoker = ReturnType<typeof createCompatibleThinToolInvoker>;
+export type CompatibleLeanToolInvoker = ReturnType<typeof createCompatibleLeanToolInvoker>;

@@ -1,5 +1,5 @@
 /**
- * Thin registry implementations - functional approach
+ * Lean registry implementations - functional approach
  *
  * Following Hatago philosophy: "Don't judge, pass through"
  * Simple Map-based registries without complex naming strategies
@@ -10,7 +10,7 @@ import type { Tool, Resource, Prompt } from '@modelcontextprotocol/sdk/types.js'
 /**
  * Simple tool store
  */
-export type ThinToolStore = {
+export type LeanToolStore = {
   tools: Map<string, Tool>;
   serverTools: Map<string, Set<string>>;
 };
@@ -18,7 +18,7 @@ export type ThinToolStore = {
 /**
  * Simple resource store
  */
-export type ThinResourceStore = {
+export type LeanResourceStore = {
   resources: Map<string, Resource>;
   serverResources: Map<string, Set<string>>;
 };
@@ -26,15 +26,15 @@ export type ThinResourceStore = {
 /**
  * Simple prompt store
  */
-export type ThinPromptStore = {
+export type LeanPromptStore = {
   prompts: Map<string, Prompt>;
   serverPrompts: Map<string, Set<string>>;
 };
 
 /**
- * Create a thin tool store
+ * Create a lean tool store
  */
-export function createThinToolStore(): ThinToolStore {
+export function createLeanToolStore(): LeanToolStore {
   return {
     tools: new Map(),
     serverTools: new Map()
@@ -45,10 +45,10 @@ export function createThinToolStore(): ThinToolStore {
  * Register tools from a server
  */
 export function registerTools(
-  store: ThinToolStore,
+  store: LeanToolStore,
   serverId: string,
   tools: Tool[]
-): ThinToolStore {
+): LeanToolStore {
   const newTools = new Map(store.tools);
   const newServerTools = new Map(store.serverTools);
   const toolNames = new Set<string>();
@@ -71,7 +71,7 @@ export function registerTools(
 /**
  * Unregister all tools from a server
  */
-export function unregisterServerTools(store: ThinToolStore, serverId: string): ThinToolStore {
+export function unregisterServerTools(store: LeanToolStore, serverId: string): LeanToolStore {
   const toolNames = store.serverTools.get(serverId);
   if (!toolNames) return store;
 
@@ -92,14 +92,14 @@ export function unregisterServerTools(store: ThinToolStore, serverId: string): T
 /**
  * Get all tools
  */
-export function getAllTools(store: ThinToolStore): Tool[] {
+export function getAllTools(store: LeanToolStore): Tool[] {
   return Array.from(store.tools.values());
 }
 
 /**
  * Get tool by name
  */
-export function getTool(store: ThinToolStore, name: string): Tool | undefined {
+export function getTool(store: LeanToolStore, name: string): Tool | undefined {
   return store.tools.get(name);
 }
 
@@ -120,9 +120,9 @@ export function resolveTool(name: string): { serverId: string; originalName: str
 }
 
 /**
- * Create a thin resource store
+ * Create a lean resource store
  */
-export function createThinResourceStore(): ThinResourceStore {
+export function createLeanResourceStore(): LeanResourceStore {
   return {
     resources: new Map(),
     serverResources: new Map()
@@ -133,10 +133,10 @@ export function createThinResourceStore(): ThinResourceStore {
  * Register resources from a server
  */
 export function registerResources(
-  store: ThinResourceStore,
+  store: LeanResourceStore,
   serverId: string,
   resources: Resource[]
-): ThinResourceStore {
+): LeanResourceStore {
   const newResources = new Map(store.resources);
   const newServerResources = new Map(store.serverResources);
   const resourceUris = new Set<string>();
@@ -159,21 +159,21 @@ export function registerResources(
 /**
  * Get all resources
  */
-export function getAllResources(store: ThinResourceStore): Resource[] {
+export function getAllResources(store: LeanResourceStore): Resource[] {
   return Array.from(store.resources.values());
 }
 
 /**
  * Get resource by URI
  */
-export function getResource(store: ThinResourceStore, uri: string): Resource | undefined {
+export function getResource(store: LeanResourceStore, uri: string): Resource | undefined {
   return store.resources.get(uri);
 }
 
 /**
- * Create a thin prompt store
+ * Create a lean prompt store
  */
-export function createThinPromptStore(): ThinPromptStore {
+export function createLeanPromptStore(): LeanPromptStore {
   return {
     prompts: new Map(),
     serverPrompts: new Map()
@@ -184,10 +184,10 @@ export function createThinPromptStore(): ThinPromptStore {
  * Register prompts from a server
  */
 export function registerPrompts(
-  store: ThinPromptStore,
+  store: LeanPromptStore,
   serverId: string,
   prompts: Prompt[]
-): ThinPromptStore {
+): LeanPromptStore {
   const newPrompts = new Map(store.prompts);
   const newServerPrompts = new Map(store.serverPrompts);
   const promptNames = new Set<string>();
@@ -209,14 +209,14 @@ export function registerPrompts(
 /**
  * Get all prompts
  */
-export function getAllPrompts(store: ThinPromptStore): Prompt[] {
+export function getAllPrompts(store: LeanPromptStore): Prompt[] {
   return Array.from(store.prompts.values());
 }
 
 /**
  * Combined registry manager for compatibility
  */
-export function createThinRegistryManager(): {
+export function createLeanRegistryManager(): {
   registerTools: (serverId: string, tools: Tool[]) => void;
   unregisterTools: (serverId: string) => void;
   getAllTools: () => Tool[];
@@ -229,9 +229,9 @@ export function createThinRegistryManager(): {
   getAllPrompts: () => Prompt[];
   clear: () => void;
 } {
-  let toolStore = createThinToolStore();
-  let resourceStore = createThinResourceStore();
-  let promptStore = createThinPromptStore();
+  let toolStore = createLeanToolStore();
+  let resourceStore = createLeanResourceStore();
+  let promptStore = createLeanPromptStore();
 
   return {
     // Tool operations
@@ -277,9 +277,9 @@ export function createThinRegistryManager(): {
 
     // Clear all
     clear: () => {
-      toolStore = createThinToolStore();
-      resourceStore = createThinResourceStore();
-      promptStore = createThinPromptStore();
+      toolStore = createLeanToolStore();
+      resourceStore = createLeanResourceStore();
+      promptStore = createLeanPromptStore();
     }
   };
 }

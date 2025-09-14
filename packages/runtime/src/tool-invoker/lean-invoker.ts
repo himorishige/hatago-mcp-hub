@@ -1,5 +1,5 @@
 /**
- * Thin tool invoker - functional implementation
+ * Lean tool invoker - functional implementation
  *
  * Following Hatago philosophy: "Don't transform, relay"
  * Simple function composition without complex state management
@@ -13,7 +13,7 @@ export type { ToolCallResult };
 /**
  * Tool handler function type
  */
-export type ThinToolHandler = (
+export type LeanToolHandler = (
   args: unknown,
   progressCallback?: (progress: number, total?: number, message?: string) => void
 ) => Promise<unknown>;
@@ -41,7 +41,7 @@ export type InvocationResult = {
 /**
  * Simple handler registry
  */
-export type HandlerRegistry = Map<string, ThinToolHandler>;
+export type HandlerRegistry = Map<string, LeanToolHandler>;
 
 /**
  * Create a handler registry
@@ -56,7 +56,7 @@ export function createHandlerRegistry(): HandlerRegistry {
 export function registerHandler(
   registry: HandlerRegistry,
   toolName: string,
-  handler: ThinToolHandler
+  handler: LeanToolHandler
 ): HandlerRegistry {
   const newRegistry = new Map(registry);
   newRegistry.set(toolName, handler);
@@ -193,15 +193,15 @@ export function createConcurrencyLimiter(maxConcurrent: number) {
 }
 
 /**
- * Create a thin tool invoker for compatibility
+ * Create a lean tool invoker for compatibility
  */
-export function createThinToolInvoker(
+export function createLeanToolInvoker(
   options: {
     timeout?: number;
     maxConcurrency?: number;
   } = {}
 ): {
-  registerHandler: (toolName: string, handler: ThinToolHandler) => void;
+  registerHandler: (toolName: string, handler: LeanToolHandler) => void;
   callTool: (
     sessionId: string,
     toolName: string,
@@ -216,12 +216,12 @@ export function createThinToolInvoker(
   const pipeline = createToolPipeline();
 
   return {
-    registerHandler: (toolName: string, handler: ThinToolHandler) => {
+    registerHandler: (toolName: string, handler: LeanToolHandler) => {
       registry = registerHandler(registry, toolName, handler);
     },
 
     callTool: async (
-      _sessionId: string, // Not used in thin implementation
+      _sessionId: string, // Not used in lean implementation
       toolName: string,
       args: unknown,
       progressCallback?: (progress: number, total?: number, message?: string) => void

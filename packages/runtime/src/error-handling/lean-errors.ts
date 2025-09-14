@@ -1,5 +1,5 @@
 /**
- * Thin error handling - minimal error types
+ * Lean error handling - minimal error types
  *
  * Following Hatago philosophy: "Don't judge, pass through"
  * Only 4 basic error types, no complex classification or recovery
@@ -8,7 +8,7 @@
 /**
  * Basic error types - minimal set
  */
-export enum ThinErrorType {
+export enum LeanErrorType {
   TRANSPORT = 'TransportError',
   PROTOCOL = 'ProtocolError',
   TIMEOUT = 'TimeoutError',
@@ -18,8 +18,8 @@ export enum ThinErrorType {
 /**
  * Simple error wrapper
  */
-export type ThinError = {
-  type: ThinErrorType;
+export type LeanError = {
+  type: LeanErrorType;
   message: string;
   originalError?: unknown;
 };
@@ -27,9 +27,9 @@ export type ThinError = {
 /**
  * Create a transport error
  */
-export function transportError(message: string, originalError?: unknown): ThinError {
+export function transportError(message: string, originalError?: unknown): LeanError {
   return {
-    type: ThinErrorType.TRANSPORT,
+    type: LeanErrorType.TRANSPORT,
     message,
     originalError
   };
@@ -38,9 +38,9 @@ export function transportError(message: string, originalError?: unknown): ThinEr
 /**
  * Create a protocol error
  */
-export function protocolError(message: string, originalError?: unknown): ThinError {
+export function protocolError(message: string, originalError?: unknown): LeanError {
   return {
-    type: ThinErrorType.PROTOCOL,
+    type: LeanErrorType.PROTOCOL,
     message,
     originalError
   };
@@ -49,9 +49,9 @@ export function protocolError(message: string, originalError?: unknown): ThinErr
 /**
  * Create a timeout error
  */
-export function timeoutError(message: string, originalError?: unknown): ThinError {
+export function timeoutError(message: string, originalError?: unknown): LeanError {
   return {
-    type: ThinErrorType.TIMEOUT,
+    type: LeanErrorType.TIMEOUT,
     message,
     originalError
   };
@@ -60,9 +60,9 @@ export function timeoutError(message: string, originalError?: unknown): ThinErro
 /**
  * Create a cancelled error
  */
-export function cancelledError(message: string, originalError?: unknown): ThinError {
+export function cancelledError(message: string, originalError?: unknown): LeanError {
   return {
-    type: ThinErrorType.CANCELLED,
+    type: LeanErrorType.CANCELLED,
     message,
     originalError
   };
@@ -72,7 +72,7 @@ export function cancelledError(message: string, originalError?: unknown): ThinEr
  * Simple error classification based on message
  * This is only for compatibility - prefer specific error constructors
  */
-export function classifyError(error: unknown): ThinError {
+export function classifyError(error: unknown): LeanError {
   const message = error instanceof Error ? error.message : String(error);
 
   // Simple keyword-based classification
@@ -93,11 +93,11 @@ export function classifyError(error: unknown): ThinError {
 }
 
 /**
- * Convert ThinError to standard Error
+ * Convert LeanError to standard Error
  */
-export function toError(thinError: ThinError): Error {
-  const error = new Error(thinError.message);
-  error.name = thinError.type;
+export function toError(leanError: LeanError): Error {
+  const error = new Error(leanError.message);
+  error.name = leanError.type;
   return error;
 }
 
