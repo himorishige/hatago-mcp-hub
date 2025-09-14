@@ -5,8 +5,6 @@
 
 Unified MCP (Model Context Protocol) Hub for managing multiple MCP servers. Works with Claude Code, Codex CLI, Cursor, Windsurf, VS Code and other MCP-compatible tools.
 
-> Note: Management components live in `@himorishige/hatago-hub-management/*`.
-
 ## Quick Start
 
 ```bash
