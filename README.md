@@ -29,9 +29,13 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 
 ### 🏮 Additional Features
 
-#### Hot Reload & Dynamic Updates
+#### Configuration Updates
 
-- **Config File Watching** - Auto-reload on configuration changes (no restart required)
+- **Manual Restart Required** - Configuration changes require server restart
+- **Alternative Solutions**:
+  - Use process managers (PM2, nodemon) for auto-restart
+  - Example: `nodemon --exec "hatago serve --http" --watch hatago.config.json`
+  - Or with PM2: `pm2 start "hatago serve" --watch hatago.config.json`
 - **Dynamic Tool List Updates** - Supports `notifications/tools/list_changed` notification
 
 #### Progress Notification Forwarding
@@ -73,7 +77,6 @@ Extracted modules for thin hub:
 
 - RPC handlers: `packages/hub/src/rpc/handlers.ts`
 - HTTP handler: `packages/hub/src/http/handler.ts`
-- Config reload/watch: `packages/hub/src/config/reload.ts`, `packages/hub/src/config/watch.ts`
 
 ## 📁 Project Structure
 
@@ -402,7 +405,6 @@ Start MCP Hub server:
 ```bash
 hatago serve --stdio --config ./hatago.config.json  # STDIO mode (default, requires config)
 hatago serve --http                                     # HTTP mode (config optional)
-hatago serve --watch           # Watch config changes
 hatago serve --config custom.json  # Custom config
 hatago serve --verbose         # Debug logging
 hatago serve --tags dev,test   # Filter servers by tags
@@ -419,6 +421,13 @@ Use `--env-file <path...>` to load variables before config parsing. This helps r
 - Paths: relative to CWD, `~/` expanded to home.
 - Precedence: files are applied in the given order; existing `process.env` keys are preserved unless `--env-override` is provided.
 
+## ✨ Performance Improvements (v0.0.14)
+
+- **8.44x faster startup**: 85.66ms → 10.14ms
+- **17% smaller package**: 1.04MB → 854KB (181KB reduction)
+- **Simplified architecture**: Removed EnhancedHub and management layers
+- **Trade-off**: Built-in config watching removed (use nodemon/PM2 instead)
+
 ## 🔧 Advanced Usage
 
 ### Programmatic API
@@ -430,8 +439,7 @@ import { startServer } from '@himorishige/hatago-mcp-hub';
 await startServer({
   mode: 'stdio',
   config: './hatago.config.json',
-  logLevel: 'info',
-  watchConfig: true
+  logLevel: 'info'
 });
 ```
 

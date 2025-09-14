@@ -199,9 +199,6 @@ hatago serve --stdio --config ./hatago.config.json
 # HTTPモード
 hatago serve --http
 
-# 設定ファイル監視モード
-hatago serve --stdio --config ./hatago.config.json --watch
-
 # カスタム設定ファイル
 hatago serve --config ./my-config.json
 
@@ -499,7 +496,7 @@ cd packages/mcp-hub
 pnpm dev
 
 # または
-npx . serve --http --watch
+npx . serve --http
 ```
 
 ### パッケージ構成
@@ -511,6 +508,25 @@ npx . serve --http --watch
 - `@himorishige/hatago-runtime` - ランタイムコンポーネント
 - `@himorishige/hatago-transport` - トランスポート層実装
 - `@himorishige/hatago-cli` - CLIツール
+
+### 設定ファイルの自動リロード（代替案）
+
+v0.0.14以降、--watchフラグは削除されました。代わりに以下の方法を使用してください：
+
+```bash
+# nodemonを使用
+nodemon --exec "hatago serve --stdio --config ./hatago.config.json" --watch hatago.config.json
+
+# PM2を使用
+pm2 start "hatago serve --stdio --config ./hatago.config.json" --watch hatago.config.json
+```
+
+## ✨ パフォーマンス改善 (v0.0.14)
+
+- **起動時間が8.44倍高速化**: 85.66ms → 10.14ms
+- **パッケージサイズ17%削減**: 1.04MB → 854KB (181KB削減)
+- **アーキテクチャの簡素化**: EnhancedHubと管理レイヤーを削除
+- **トレードオフ**: 組み込みの設定監視を削除（代わりにnodemon/PM2を使用）
 
 ## 📝 ライセンス
 

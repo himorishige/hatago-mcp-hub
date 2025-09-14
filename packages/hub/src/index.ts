@@ -5,36 +5,14 @@
  * tools, and resources.
  */
 
-import type { EnhancedHubOptions } from './enhanced-hub.js';
-import { EnhancedHatagoHub } from './enhanced-hub.js';
 import { HatagoHub } from './hub.js';
 import type { HubOptions, ServerSpec } from './types.js';
 
 /**
  * Create a new Hatago Hub instance
- * If a configFile is provided, creates an EnhancedHatagoHub with management features
+ * Always uses the basic Hub for simplicity and performance
  */
-export function createHub(options?: HubOptions | EnhancedHubOptions): HatagoHub {
-  // Check if config is provided (triggers enhanced features)
-  const hasConfig = Boolean(
-    (options as EnhancedHubOptions)?.configFile ?? (options as EnhancedHubOptions)?.preloadedConfig
-  );
-  
-  if (hasConfig) {
-    // Feature flag: Use basic Hub if enabled
-    const useBasicHub = 
-      process.env.HATAGO_USE_BASIC_HUB === '1' ||
-      process.env.HATAGO_FEATURE_BASIC_ONLY === '1';
-    
-    if (useBasicHub) {
-      // Silently use basic Hub with feature flag
-      return new HatagoHub(options);
-    }
-    
-    // Default: still use EnhancedHub (no warning for silent migration)
-    return new EnhancedHatagoHub(options as EnhancedHubOptions);
-  }
-  
+export function createHub(options?: HubOptions): HatagoHub {
   return new HatagoHub(options);
 }
 
@@ -95,9 +73,7 @@ export function sseServer(
   ];
 }
 
-export type { EnhancedHubOptions } from './enhanced-hub.js';
-// Export enhanced hub with management features
-export { EnhancedHatagoHub } from './enhanced-hub.js';
+// EnhancedHub has been removed for simplicity and performance
 // Export error classes
 export {
   ConfigError,

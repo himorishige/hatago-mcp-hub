@@ -65,7 +65,6 @@ Start the MCP Hub server:
 ```bash
 hatago serve --stdio --config ./hatago.config.json  # STDIO mode (default, requires config)
 hatago serve --http                                 # HTTP mode (config optional)
-hatago serve --watch           # Watch config for changes
 hatago serve --config custom.json  # Use custom config file
 hatago serve --verbose         # Enable debug logging
 hatago serve --env-file ./.env # Load variables from .env before start (can repeat)
@@ -294,10 +293,9 @@ Example:
 
 ### 🔄 Dynamic Updates
 
-- **Hot Reload**: Automatic config reload with `--watch` flag
+- **Configuration**: Requires restart (use nodemon/PM2 for auto-restart)
 - **Tool List Updates**: Dynamic tool registration with `notifications/tools/list_changed`
 - **Progress Notifications**: Real-time operation updates from child servers
-- **Graceful Reconnection**: Maintains sessions during config changes
 
 ### 🧩 Built-in Internal Resource
 
@@ -321,8 +319,7 @@ import { startServer } from '@himorishige/hatago-mcp-hub';
 await startServer({
   mode: 'stdio',
   config: './hatago.config.json',
-  logLevel: 'info',
-  watchConfig: true
+  logLevel: 'info'
 });
 ```
 
