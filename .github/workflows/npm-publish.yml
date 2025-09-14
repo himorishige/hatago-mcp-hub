@@ -98,7 +98,9 @@ jobs:
         run: ./mcp-publisher login github-oidc
 
       - name: Publish to MCP Registry
-        run: ./mcp-publisher publish
+        run: |
+          cd packages/mcp-hub
+          ../../mcp-publisher publish
 
       - name: Verify publication
         run: |
