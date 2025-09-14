@@ -59,8 +59,7 @@ describe('server/http /health (smoke)', () => {
       config: { path: 'ignored.json', data: { mcpServers: {} } as any },
       host: '127.0.0.1',
       port: 0,
-      logger,
-      watchConfig: false
+      logger
     });
 
     expect(capturedFetch).toBeTypeOf('function');

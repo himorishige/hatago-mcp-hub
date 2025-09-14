@@ -26,7 +26,7 @@ export type ServerOptions = {
   logLevel?: string;
   verbose?: boolean;
   quiet?: boolean;
-  watchConfig?: boolean;
+
   tags?: string[];
 };
 
@@ -42,7 +42,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
     logLevel = 'info',
     verbose = false,
     quiet = false,
-    watchConfig = false,
+
     tags
   } = options;
 
@@ -66,7 +66,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   // Start server based on mode
   if (mode === 'stdio') {
     logger.debug('Starting in STDIO mode');
-    await startStdio(config, logger, watchConfig, tags);
+    await startStdio(config, logger, tags);
   } else if (mode === 'http') {
     logger.debug(`Starting in HTTP mode on ${host}:${port}`);
     await startHttp({
@@ -74,7 +74,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
       host,
       port,
       logger,
-      watchConfig,
+
       tags
     });
   } else {

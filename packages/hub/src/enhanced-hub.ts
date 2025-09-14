@@ -3,7 +3,7 @@
  * Integrates activation management, idle detection, and MCP management tools
  */
 
-import { existsSync, readFileSync, unwatchFile, watchFile } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import type { ActivationPolicy, IdlePolicy, Tool, LogData } from '@himorishige/hatago-core';
 import {
   expandConfig,
@@ -94,6 +94,13 @@ export class EnhancedHatagoHub extends HatagoHub {
     super(options);
     this.enhancedOptions = options;
 
+    // Deprecation warning
+    this.logger.warn(
+      'EnhancedHatagoHub is deprecated and will be removed in the next major version. ' +
+        'For config watching, please use external tools like nodemon, PM2, or ts-node-dev. ' +
+        'The base HatagoHub now provides all essential functionality.'
+    );
+
     // Ensure platform is initialized
     if (!getPlatform()) {
       setPlatform(createNodePlatform());
@@ -112,15 +119,9 @@ export class EnhancedHatagoHub extends HatagoHub {
       // Highest priority: preloaded configuration (already validated/expanded by server loader)
       this.config = options.preloadedConfig.data as HatagoConfig;
       this.processConfiguration();
-      if (options.watchConfig && this.configPath) {
-        this.startConfigWatch();
-      }
     } else if (options.configFile) {
       // Fallback: load from config file path (JSON/JSONC). Note: validation happens in server loader path.
       this.loadConfiguration(options.configFile);
-      if (options.watchConfig) {
-        this.startConfigWatch();
-      }
     }
 
     // Override tools object to use callToolWithActivation
@@ -466,21 +467,6 @@ export class EnhancedHatagoHub extends HatagoHub {
   }
 
   /**
-   * Start watching config file
-   */
-  private startConfigWatch(): void {
-    if (!this.configPath) return;
-
-    const configFile = this.configPath;
-
-    // Watch for changes
-    watchFile(configFile, { interval: 2000 }, () => {
-      this.logger.info('Configuration file changed, reloading...');
-      void this.reloadConfiguration();
-    });
-  }
-
-  /**
    * Reload configuration
    */
   async reloadConfiguration(): Promise<void> {
@@ -541,9 +527,6 @@ export class EnhancedHatagoHub extends HatagoHub {
    * Shutdown the hub
    */
   async shutdown(): Promise<void> {
-    // Stop config watching
-    if (this.configPath) unwatchFile(this.configPath);
-
     // Shutdown management components
     if (this.activationManager) {
       await this.activationManager.shutdown();
