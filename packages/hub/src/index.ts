@@ -15,13 +15,26 @@ import type { HubOptions, ServerSpec } from './types.js';
  * If a configFile is provided, creates an EnhancedHatagoHub with management features
  */
 export function createHub(options?: HubOptions | EnhancedHubOptions): HatagoHub {
-  // Use EnhancedHatagoHub when config is provided (file or preloaded)
-  const hasEnhanced = Boolean(
+  // Check if config is provided (triggers enhanced features)
+  const hasConfig = Boolean(
     (options as EnhancedHubOptions)?.configFile ?? (options as EnhancedHubOptions)?.preloadedConfig
   );
-  if (hasEnhanced) {
+  
+  if (hasConfig) {
+    // Feature flag: Use basic Hub if enabled
+    const useBasicHub = 
+      process.env.HATAGO_USE_BASIC_HUB === '1' ||
+      process.env.HATAGO_FEATURE_BASIC_ONLY === '1';
+    
+    if (useBasicHub) {
+      // Silently use basic Hub with feature flag
+      return new HatagoHub(options);
+    }
+    
+    // Default: still use EnhancedHub (no warning for silent migration)
     return new EnhancedHatagoHub(options as EnhancedHubOptions);
   }
+  
   return new HatagoHub(options);
 }
 
