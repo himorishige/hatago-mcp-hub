@@ -38,7 +38,7 @@ describe('E2E: Streaming', () => {
           args: [fixturePath, '--stream']
         });
 
-        const result = await hub.tools.call('test__stream_echo', { count: 5, text: 'stream' });
+        const result = await hub.tools.call('test_stream_echo', { count: 5, text: 'stream' });
 
         // Should receive all chunks
         expect(result.content).toHaveLength(5);
@@ -69,9 +69,9 @@ describe('E2E: Streaming', () => {
 
         // Execute multiple streaming calls in parallel
         const promises = [
-          hub.tools.call('test__stream_echo', { count: 3, text: 'first' }),
-          hub.tools.call('test__stream_echo', { count: 3, text: 'second' }),
-          hub.tools.call('test__stream_echo', { count: 3, text: 'third' })
+          hub.tools.call('test_stream_echo', { count: 3, text: 'first' }),
+          hub.tools.call('test_stream_echo', { count: 3, text: 'second' }),
+          hub.tools.call('test_stream_echo', { count: 3, text: 'third' })
         ];
 
         const results = await Promise.all(promises);
@@ -99,7 +99,7 @@ describe('E2E: Streaming', () => {
           args: [fixturePath, '--stream']
         });
 
-        const result = await hub.tools.call('test__stream_echo', { count: 100, text: 'chunk' });
+        const result = await hub.tools.call('test_stream_echo', { count: 100, text: 'chunk' });
 
         // Should receive all 100 chunks
         expect(result.content).toHaveLength(100);
@@ -129,10 +129,10 @@ describe('E2E: Streaming', () => {
         });
 
         // Start a streaming call
-        const streamPromise = hub.tools.call('test__stream_echo', { count: 10, text: 'data' });
+        const streamPromise = hub.tools.call('test_stream_echo', { count: 10, text: 'data' });
 
         // Meanwhile, execute a slow operation
-        const slowPromise = hub.tools.call('test__slow', { delay: 200 });
+        const slowPromise = hub.tools.call('test_slow', { delay: 200 });
 
         // Both should complete without blocking each other
         const [streamResult, slowResult] = await Promise.all([streamPromise, slowPromise]);
@@ -164,7 +164,7 @@ describe('E2E: Streaming', () => {
         // For now, we'll test that partial results are handled
 
         // Start a long streaming operation
-        const promise = hub.tools.call('test__stream_echo', { count: 1000, text: 'long' });
+        const promise = hub.tools.call('test_stream_echo', { count: 1000, text: 'long' });
 
         // In a real test, we'd kill the server here
         // For now, just verify the operation completes
@@ -196,10 +196,10 @@ describe('E2E: Streaming', () => {
 
           // Execute a mix of operations
           const promises = [
-            hub.tools.call('test__echo', { text: 'simple' }),
-            hub.tools.call('test__stream_echo', { count: 5, text: 'stream' }),
-            hub.tools.call('test__slow', { delay: 100 }),
-            hub.tools.call('test__echo', { text: 'another' })
+            hub.tools.call('test_echo', { text: 'simple' }),
+            hub.tools.call('test_stream_echo', { count: 5, text: 'stream' }),
+            hub.tools.call('test_slow', { delay: 100 }),
+            hub.tools.call('test_echo', { text: 'another' })
           ];
 
           const results = await Promise.all(promises);

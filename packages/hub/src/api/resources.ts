@@ -20,29 +20,27 @@ export function listResources(hub: ResourcesHub, options?: ListOptions) {
 }
 
 export async function readResource(hub: ResourcesHub, uri: string, options?: ReadOptions) {
+  // Check for internal resource first
+  if (uri === 'hatago://servers') {
+    const serverList = hub.getServers().map((s) => ({
+      id: s.id,
+      status: s.status,
+      type: s.spec?.url ? 'remote' : 'local',
+      url: s.spec?.url ?? null,
+      command: s.spec?.command ?? null,
+      tools: s.tools?.map((t) => t.name) ?? [],
+      resources: s.resources?.map((r) => r.uri) ?? [],
+      prompts: s.prompts?.map((p) => p.name) ?? [],
+      error: s.error?.message ?? null
+    }));
+    const payload = { total: serverList.length, servers: serverList };
+    hub.emit('resource:read', { uri, serverId: '_internal', result: payload });
+    return { contents: [{ uri, text: JSON.stringify(payload, null, 2) }] };
+  }
+
   const resourceInfo = hub.resourceRegistry.resolveResource(uri);
 
   if (resourceInfo) {
-    if (resourceInfo.serverId === '_internal') {
-      if (uri === 'hatago://servers') {
-        const serverList = hub.getServers().map((s) => ({
-          id: s.id,
-          status: s.status,
-          type: s.spec?.url ? 'remote' : 'local',
-          url: s.spec?.url ?? null,
-          command: s.spec?.command ?? null,
-          tools: s.tools?.map((t) => t.name) ?? [],
-          resources: s.resources?.map((r) => r.uri) ?? [],
-          prompts: s.prompts?.map((p) => p.name) ?? [],
-          error: s.error?.message ?? null
-        }));
-        const payload = { total: serverList.length, servers: serverList };
-        hub.emit('resource:read', { uri, serverId: '_internal', result: payload });
-        return { contents: [{ uri, text: JSON.stringify(payload, null, 2) }] };
-      }
-      throw new Error(`Unknown internal resource: ${uri}`);
-    }
-
     const client = hub.clients.get(resourceInfo.serverId);
     if (client) {
       try {

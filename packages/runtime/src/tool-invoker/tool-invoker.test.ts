@@ -12,12 +12,7 @@ describe('ToolInvoker', () => {
   let mockSseManager: any;
 
   beforeEach(() => {
-    toolRegistry = new ToolRegistry({
-      namingConfig: {
-        strategy: 'namespace',
-        separator: '_'
-      }
-    });
+    toolRegistry = new ToolRegistry();
 
     mockSseManager = {
       sendProgress: vi.fn()

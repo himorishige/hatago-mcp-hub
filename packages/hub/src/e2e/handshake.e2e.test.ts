@@ -49,7 +49,7 @@ describe('E2E: Handshake', () => {
 
         // Verify tools are available
         const tools = hub.tools.list();
-        expect(tools.some((t) => t.name === 'test-echo__echo')).toBe(true);
+        expect(tools.some((t) => t.name === 'test-echo_echo')).toBe(true);
       } finally {
         await hub.stop();
       }
@@ -83,9 +83,9 @@ describe('E2E: Handshake', () => {
 
         // Check tools from both servers
         const tools = hub.tools.list();
-        expect(tools.some((t) => t.name === 'server1__echo')).toBe(true);
-        expect(tools.some((t) => t.name === 'server2__echo')).toBe(true);
-        expect(tools.some((t) => t.name === 'server2__slow')).toBe(true);
+        expect(tools.some((t) => t.name === 'server1_echo')).toBe(true);
+        expect(tools.some((t) => t.name === 'server2_echo')).toBe(true);
+        expect(tools.some((t) => t.name === 'server2_slow')).toBe(true);
       } finally {
         await hub.stop();
       }
