@@ -89,6 +89,11 @@ pnpm dev          # Start dev server with watch mode
 npx @himorishige/hatago-mcp-hub init   # Initialize config
 npx @himorishige/hatago-mcp-hub serve  # Start server
 npx @himorishige/hatago-mcp-hub serve --tags dev,test  # With tag filtering
+
+# Auto-reload configuration (v0.0.14+)
+npx nodemon --exec "hatago serve" --watch hatago.config.json
+# Or with PM2
+pm2 start "hatago serve" --watch hatago.config.json
 ```
 
 ## CLI Commands

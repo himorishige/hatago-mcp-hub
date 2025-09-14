@@ -16,6 +16,12 @@ Hatago MCP Hub is a lightweight hub server that provides unified management for 
 
 ## ✨ Features
 
+### 🚀 Performance (v0.0.14)
+
+- **8.44x Faster Startup** - 85.66ms → 10.14ms
+- **17% Smaller Package** - 1.04MB → 854KB
+- **Simplified Architecture** - Direct server management without abstraction layers
+
 ### 🎯 Simple & Lightweight
 
 - **Zero Configuration Start (HTTP mode)** - `npx @himorishige/hatago-mcp-hub serve --http`

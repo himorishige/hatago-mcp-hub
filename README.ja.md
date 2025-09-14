@@ -16,6 +16,12 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 ## ✨ 特徴
 
+### 🚀 パフォーマンス (v0.0.14)
+
+- **8.44倍高速な起動** - 85.66ms → 10.14ms
+- **17%小さいパッケージ** - 1.04MB → 854KB
+- **シンプルなアーキテクチャ** - 抽象レイヤーなしの直接的なサーバー管理
+
 ### 🎯 シンプル & 軽量
 
 - **設定不要で即座に起動** - `npx @himorishige/hatago-mcp-hub`
@@ -29,9 +35,13 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 ### 🏮 その他の機能
 
-#### ホットリロード & 動的更新
+#### 設定の更新
 
-- **設定ファイル監視** - 設定変更時の自動リロード（再起動不要）
+- **手動再起動が必要** - 設定変更時はサーバーの再起動が必要
+- **代替ソリューション**:
+  - プロセスマネージャー（PM2、nodemon）で自動再起動
+  - 例: `nodemon --exec "hatago serve --http" --watch hatago.config.json`
+  - PM2の場合: `pm2 start "hatago serve" --watch hatago.config.json`
 - **ツールリスト動的更新** - `notifications/tools/list_changed`通知サポート
 
 #### プログレス通知転送
