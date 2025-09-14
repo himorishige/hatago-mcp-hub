@@ -4,6 +4,7 @@ import type { Logger } from '../logger.js';
 import type { ServerConfig } from '@himorishige/hatago-core/schemas';
 import type { ServerSpec } from '../types.js';
 import { HATAGO_VERSION } from '@himorishige/hatago-core';
+import { createHatagoError, toError } from '../errors.js';
 
 // ---- transport wrapping ----------------------------------------------------
 
@@ -109,7 +110,9 @@ export async function connectWithRetry(args: {
     err.cause = err.cause ?? lastError;
     throw err;
   }
-  throw new Error(`Failed to connect to ${id} after ${maxRetries} attempts`);
+  throw toError(
+    createHatagoError('transport', `Failed to connect to ${id} after ${maxRetries} attempts`)
+  );
 }
 
 // ---- normalize server spec -------------------------------------------------

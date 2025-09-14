@@ -1,4 +1,5 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { createHatagoError, toError } from '../errors.js';
 import type { PromptRegistry } from '@himorishige/hatago-runtime';
 import type { ConnectedServer, ListOptions } from '../types.js';
 import { parseQualifiedName } from '../utils/naming.js';
@@ -46,5 +47,5 @@ export async function getPrompt(hub: PromptsHub, name: string, args?: unknown) {
       messages: []
     };
   }
-  throw new Error(`Prompt not found: ${name}`);
+  throw toError(createHatagoError('internal', `Prompt not found: ${name}`));
 }

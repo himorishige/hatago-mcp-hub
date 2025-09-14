@@ -28,7 +28,7 @@ import * as PromptsApi from './api/prompts.js';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ServerConfig } from '@himorishige/hatago-core/schemas';
 import { type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-// import { UnsupportedFeatureError } from './errors.js'; // moved to transport-factory
+import { createHatagoError, toError } from './errors.js';
 import { Logger } from './logger.js';
 // Notifications are handled outside base hub (Enhanced only)
 import { SSEManager } from './sse-manager.js';
@@ -168,7 +168,7 @@ export class HatagoHub {
     options?: { suppressToolListNotification?: boolean }
   ): Promise<this> {
     if (this.servers.has(id)) {
-      throw new Error(`Server ${id} already exists`);
+      throw toError(createHatagoError('internal', `Server ${id} already exists`));
     }
 
     // Store server info

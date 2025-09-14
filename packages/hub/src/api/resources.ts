@@ -1,4 +1,5 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { createHatagoError, toError } from '../errors.js';
 import type { ResourceRegistry } from '@himorishige/hatago-runtime';
 import type { ConnectedServer, ListOptions, ReadOptions } from '../types.js';
 
@@ -53,5 +54,5 @@ export async function readResource(hub: ResourcesHub, uri: string, _options?: Re
     }
   }
 
-  throw new Error(`No server found for resource: ${uri}`);
+  throw toError(createHatagoError('internal', `No server found for resource: ${uri}`));
 }
