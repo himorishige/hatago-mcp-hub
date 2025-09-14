@@ -29,7 +29,7 @@ npx @himorishige/hatago-mcp-hub serve --http --port 3535
 
 ```bash
 hatago init  [--mode stdio|http] [--config path] [--force]
-hatago serve [--stdio|--http] [-c path] [-h host] [-p port] [--watch] [--tags a,b] [--verbose|--quiet]
+hatago serve [--stdio|--http] [-c path] [-h host] [-p port] [--tags a,b] [--verbose|--quiet]
 ```
 
 ## Configuration
@@ -65,7 +65,8 @@ Remote servers:
 
 ```ts
 import { startServer } from '@himorishige/hatago-mcp-hub';
-await startServer({ mode: 'stdio', config: './hatago.config.json', watchConfig: true });
+await startServer({ mode: 'stdio', config: './hatago.config.json' });
+// Note: watchConfig removed in v0.0.14 - use external tools like nodemon for auto-reload
 ```
 
 ## License

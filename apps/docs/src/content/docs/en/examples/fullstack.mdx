@@ -36,7 +36,11 @@ manual: true
 ## Start
 
 ```bash
-hatago serve --tags dev --watch
+# Auto-reload with nodemon
+npx nodemon --exec "hatago serve --tags dev" --watch hatago.config.json
+
+# Or run directly
+hatago serve --tags dev
 ```
 
 ## Tip

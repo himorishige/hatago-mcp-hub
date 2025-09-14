@@ -348,21 +348,31 @@ cat hatago.config.json | jq .
 hatago serve --stdio --config ./hatago.config.json --verbose
 ```
 
-## 🔄 ホットリロード
+## 🔄 設定の自動リロード（v0.0.14以降）
 
-設定ファイルの変更を自動的に反映：
+v0.0.14からは、パフォーマンス向上のため組み込みの設定監視機能を削除しました。設定の自動リロードが必要な場合は、以下の外部ツールを使用してください：
 
+**nodemonを使用：**
 ```bash
-hatago serve --watch
+npx nodemon --exec "hatago serve" --watch hatago.config.json
+```
+
+**PM2を使用：**
+```bash
+pm2 start "hatago serve" --watch hatago.config.json
 ```
 
 変更が検出されると：
 
-1. 新しい設定を読み込み
-2. サーバーを再接続
-3. クライアントに通知
+1. Hatagoサーバーが再起動
+2. 新しい設定を読み込み
+3. クライアントに再接続
 
-<Aside type="tip">開発中は`--watch`フラグを常に使用することをお勧めします。</Aside>
+<Aside type="tip">開発中はnodemonまたはPM2を使用した自動リロードをお勧めします。</Aside>
+
+<Aside type="note">
+  この変更により、起動時間が8.44倍高速化（85.66ms → 10.14ms）されました。
+</Aside>
 
 ## 📖 関連ドキュメント
 

@@ -307,7 +307,7 @@ hatago serve --tags "$TAGS" --verbose
 ```json
 {
   "scripts": {
-    "mcp:dev": "hatago serve --tags development,local --watch",
+    "mcp:dev": "nodemon --exec 'hatago serve --tags development,local' --watch hatago.config.json",
     "mcp:staging": "hatago serve --tags staging --verbose",
     "mcp:prod": "hatago serve --tags production",
     "mcp:test": "hatago serve --tags test,mock",

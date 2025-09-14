@@ -51,7 +51,7 @@ Set up Hatago MCP Hub inside an existing Node.js project and reach a practical, 
 
   # Add scripts
   npm pkg set scripts.mcp="hatago serve"
-  npm pkg set scripts.mcp:dev="hatago serve --tags dev --watch"
+  npm pkg set scripts.mcp:dev="nodemon --exec 'hatago serve --tags dev' --watch hatago.config.json"
   npm pkg set scripts.mcp:prod="hatago serve --tags production"
   ```
   </TabItem>
@@ -61,7 +61,7 @@ Set up Hatago MCP Hub inside an existing Node.js project and reach a practical, 
   ```bash
   pnpm add -D @himorishige/hatago-mcp-hub
   pnpm pkg set scripts.mcp="hatago serve"
-  pnpm pkg set scripts.mcp:dev="hatago serve --tags dev --watch"
+  pnpm pkg set scripts.mcp:dev="nodemon --exec 'hatago serve --tags dev' --watch hatago.config.json"
   pnpm pkg set scripts.mcp:prod="hatago serve --tags production"
   ```
   </TabItem>

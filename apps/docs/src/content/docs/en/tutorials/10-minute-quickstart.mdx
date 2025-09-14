@@ -147,7 +147,9 @@ In a hurry? Save this as `hatago.config.json`:
   </TabItem>
   <TabItem label="Hot reload">
     ```bash
-    npx @himorishige/hatago-mcp-hub serve --watch
+    # Auto-reload with external tools (v0.0.14+)
+    # Using nodemon
+    npx nodemon --exec "npx @himorishige/hatago-mcp-hub serve" --watch hatago.config.json
     ```
   </TabItem>
 </Tabs>
