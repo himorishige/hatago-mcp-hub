@@ -1,7 +1,7 @@
 {
-  "name": "@himorishige/hatago-mcp-hub",
-  "mcpName": "io.github.himorishige/hatago-mcp-hub",
-  "version": "0.0.16",
+  "name": "@drmikecrowe/hatago-mcp-hub",
+  "mcpName": "io.github.drmikecrowe/hatago-mcp-hub",
+  "version": "0.1.2",
   "description": "Unified MCP Hub for managing multiple Model Context Protocol servers",
   "type": "module",
   "main": "./dist/node/index.js",
@@ -54,9 +54,9 @@
     "lint": "eslint ./src"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.4",
-    "hono": "^4.9.4",
-    "commander": "^14.0.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "commander": "^14.0.0",
+    "hono": "^4.12.29"
   },
   "devDependencies": {
     "@himorishige/hatago-core": "workspace:*",
@@ -64,9 +64,9 @@
     "@himorishige/hatago-runtime": "workspace:*",
     "@himorishige/hatago-server": "workspace:*",
     "@himorishige/hatago-transport": "workspace:*",
-    "@types/node": "^20.11.5",
+    "@types/node": "^20.19.11",
     "tsdown": "^0.14.2",
-    "typescript": "~5.7.2",
+    "typescript": "~5.7.3",
     "vitest": "^2.1.9"
   },
   "engines": {
@@ -90,10 +90,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/himorishige/hatago-mcp-hub.git"
+    "url": "https://github.com/drmikecrowe/hatago-mcp-hub.git"
   },
   "bugs": {
-    "url": "https://github.com/himorishige/hatago-mcp-hub/issues"
+    "url": "https://github.com/drmikecrowe/hatago-mcp-hub/issues"
   },
-  "homepage": "https://github.com/himorishige/hatago-mcp-hub#readme"
+  "homepage": "https://github.com/drmikecrowe/hatago-mcp-hub#readme"
 }

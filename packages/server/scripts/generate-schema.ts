@@ -151,10 +151,70 @@ const schema = {
             description: 'Whether this server is disabled',
             default: false
           },
+          description: {
+            type: 'string',
+            description:
+              'Human/agent-readable hint describing what this server is for and when to use it'
+          },
           tags: {
             type: 'array',
             items: { type: 'string' },
             description: 'Tags for grouping servers (e.g., "dev", "production", "開発")'
+          },
+          skills: {
+            type: 'string',
+            description:
+              'Path to a directory of skills bound to this server (must stay within the config directory), exposed as skill://<serverId>/<name> resources'
+          },
+          instructions: {
+            oneOf: [
+              { type: 'string' },
+              {
+                type: 'object',
+                additionalProperties: false,
+                properties: { file: { type: 'string' } },
+                required: ['file']
+              }
+            ],
+            description:
+              "Guidance text aggregated into the hub's initialize.instructions (hard 2KB limit across all servers — startup fails if exceeded). Literal string, or { file: path } (path must stay within the config directory)."
+          },
+          tools: {
+            type: 'object',
+            description: "Filter/override which of this server's tools are exposed",
+            additionalProperties: false,
+            properties: {
+              include: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Allowlist of upstream tool names to expose'
+              },
+              exclude: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Denylist of upstream tool names to hide'
+              },
+              overrides: {
+                type: 'object',
+                description: 'Per-tool name/description overrides, keyed by original tool name',
+                additionalProperties: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    name: {
+                      type: 'string',
+                      description:
+                        "Rename the exposed tool (the hub's naming strategy/prefix is still applied on top)"
+                    },
+                    description: {
+                      type: 'string',
+                      description:
+                        'Description template: {description} expands to the upstream description (augment); no placeholder replaces it fully; empty string leaves it unchanged'
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

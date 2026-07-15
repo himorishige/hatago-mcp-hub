@@ -2,15 +2,30 @@
 
 # 🏮 Hatago MCP Hub
 
-[![npm](https://img.shields.io/npm/v/@himorishige/hatago-mcp-hub?logo=npm&color=cb0000)](https://www.npmjs.com/package/@himorishige/hatago-mcp-hub)
-[![GitHub Release](https://img.shields.io/github/v/release/himorishige/hatago-mcp-hub?display_name=tag&sort=semver)](https://github.com/himorishige/hatago-mcp-hub/releases)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/himorishige/hatago-mcp-hub)
+[![npm](https://img.shields.io/npm/v/@drmikecrowe/hatago-mcp-hub?logo=npm&color=cb0000)](https://www.npmjs.com/package/@drmikecrowe/hatago-mcp-hub)
+[![GitHub Release](https://img.shields.io/github/v/release/drmikecrowe/hatago-mcp-hub?display_name=tag&sort=semver)](https://github.com/drmikecrowe/hatago-mcp-hub/releases)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/drmikecrowe/hatago-mcp-hub)
 
 > **Hatago (旅籠)** - 江戸時代の宿場町で旅人を泊める宿。現代のAIツールとMCPサーバーをつなぐ中継地点。
+
+> [!NOTE]
+> **本プロジェクトは [himorishige/hatago-mcp-hub](https://github.com/himorishige/hatago-mcp-hub) のフォークです**（作者: [Hiroshi Morishige (@himorishige)](https://github.com/himorishige)）。Hatago のオリジナルの設計・アーキテクチャ・「薄い実装」という思想については、すべて upstream プロジェクトによるものです。本フォークは、その上に下記のオプションのカスタマイズ機能を追加しているに過ぎません。
+>
+> このブランチは、将来的に upstream へのコントリビュートを見据えて作成しました。**もし upstream 側で開発が再開し、これらの機能（またはそれに相当する機能）が採用された場合、本フォークは独自路線を維持せず upstream に追従して収束させます。**
 
 ## 概要
 
 Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統合管理する軽量なハブサーバーです。Claude Code、Codex CLI、Cursor、Windsurf、VS Codeなどの開発ツールから、さまざまなMCPサーバーを一元的に利用できます。
+
+## 🆕 新機能: 接続先のMCPサーバーに手を加えずカスタマイズ
+
+Hatagoは、ハブ層だけで接続先のMCPサーバーが公開する内容やエージェントの使い方を変更できるようになりました。アップストリームのサーバー自体は一切変更不要です。
+
+- **📝 サーバー指示（instructions）** — サーバーに `instructions` 文字列（またはファイル）を設定すると、Hatago がそれらを集約して `initialize.instructions` として返すため、接続時にエージェントへ自動的にガイダンスが渡ります。詳細は [Server Instructions](docs/configuration.md#server-instructions) を参照してください。
+- **🧠 サーバー単位のスキル（`skill://`）** — サーバーに `skills` ディレクトリを指定すると、各スキルが `skill://<serverId>/<name>` リソースとして公開され、接続したエージェントがすぐに発見できます。サーバーの使い方をエージェントに軽量に教える手段です。詳細は [Local Skills](docs/configuration.md#local-skills) を参照してください。
+- **🎛️ ツールフィルタリング＆上書き** — `tools.include` / `exclude` で公開する upstream ツールを絞り込み、`tools.overrides` で名前や説明をサーバーごとに書き換えられます。重複したツールやノイズの多いツール群をクライアントのコンテキストから排除できます。詳細は [Tool Filtering and Overrides](docs/configuration.md#tool-filtering-and-overrides) を参照してください。
+
+いずれもオプションでデフォルトは無効のため、既存の設定はそのまま動作します。
 
 [Zenn: Hatago MCP Hub で始めるマルチMCP運用 - ひとつの設定で全部つながる](https://zenn.dev/himorishige/articles/introduce-hatago-mcp-hub)
 
@@ -30,7 +45,7 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 ### 🎯 シンプル & 軽量
 
-- **設定不要で即座に起動** - `npx @himorishige/hatago-mcp-hub`
+- **設定不要で即座に起動** - `npx @drmikecrowe/hatago-mcp-hub`
 - **既存プロジェクトに非侵襲** - プロジェクトディレクトリを汚染しません
 
 ### 🔌 豊富な接続性
@@ -58,13 +73,22 @@ Hatago MCP Hubは、複数のMCP（Model Context Protocol）サーバーを統�
 
 #### 内部リソース（最小）
 
-- `hatago://servers` — 現在接続中のサーバー一覧を JSON で返します（`id`/`status`/`type`/`tools`/`resources`/`prompts`）。
+- `hatago://servers` — 現在接続中のサーバー一覧を JSON で返します（`id`/`description`/`status`/`type`/`tools`/`resources`/`prompts`）。任意の `description` フィールドは、エージェントがツールを呼び出す前にルーティングを判断するためのヒントです。詳細は [Server Descriptions](docs/configuration.md#server-descriptions-routing-hints) を参照してください。
+
+#### サーバー単位のスキル（`skill://`）
+
+- 各サーバーに `skills` ディレクトリを指定すると、各スキルが `skill://<serverId>/<name>` リソースとして `resources/list` に公開され、接続したエージェントが即座に発見できます。スキルはそのサーバーのライフサイクルに従い（切断・無効化時に削除）、マニフェスト上もそのサーバーの配下に表示されます。フラットな `<name>.md` と `<name>/SKILL.md` ディレクトリ形式の両方に対応します。詳細は [Local Skills](docs/configuration.md#local-skills) を参照してください。
+
+#### サーバー指示（instructions）
+
+- 各サーバーに `instructions` 文字列（または `{ "file": "..." }`）を指定すると、Hatago は有効なサーバーの指示を集約し、自身の `initialize.instructions` として返します。接続時にエージェントへガイダンスが渡ります（Claude Code は接続時にサーバー指示を読み込みます）。Claude Code は合計 2KB で切り詰めるため簡潔に保ってください。詳細は [Server Instructions](docs/configuration.md#server-instructions) を参照してください。
 
 #### 既存機能の改善
 
 - **環境変数展開** - Claude Code互換の`${VAR}`と`${VAR:-default}`構文
 - **設定検証** - Zodスキーマによる型安全な設定
 - **タグベースフィルタリング** - タグによるサーバーのグループ化とフィルタリング
+- **サーバー単位のツールフィルタ／上書き** - サーバーごとに公開するツールを選び、名前や説明を上書き（`tools.include` / `exclude` / `overrides`）
 - **設定ファイル継承** - `extends`フィールドによる設定の継承とDRY原則の実現
 
 ### 最小 Hub インターフェース（IHub）
@@ -111,19 +135,19 @@ Codemod（任意）: `node scripts/codemod/legacy-imports.mjs <paths...>`
 
 ```bash
 # npxで直接実行（推奨）
-npx @himorishige/hatago-mcp-hub init    # 設定ファイル生成
+npx @drmikecrowe/hatago-mcp-hub init    # 設定ファイル生成
 # STDIO は設定ファイル指定が必須
-npx @himorishige/hatago-mcp-hub serve --stdio --config ./hatago.config.json
+npx @drmikecrowe/hatago-mcp-hub serve --stdio --config ./hatago.config.json
 # または設定なしで HTTP を起動（デモ/開発）
-npx @himorishige/hatago-mcp-hub serve --http   # サーバー起動
+npx @drmikecrowe/hatago-mcp-hub serve --http   # サーバー起動
 
 # グローバルインストール
-npm install -g @himorishige/hatago-mcp-hub
+npm install -g @drmikecrowe/hatago-mcp-hub
 hatago init
 hatago serve
 
 # プロジェクトローカル
-npm install @himorishige/hatago-mcp-hub
+npm install @drmikecrowe/hatago-mcp-hub
 ```
 
 ## 🚀 クイックスタート
@@ -132,11 +156,11 @@ npm install @himorishige/hatago-mcp-hub
 
 ```bash
 # 対話的な設定ファイル生成
-npx @himorishige/hatago-mcp-hub init
+npx @drmikecrowe/hatago-mcp-hub init
 
 # モード指定での生成
-npx @himorishige/hatago-mcp-hub init --mode stdio  # STDIOモード
-npx @himorishige/hatago-mcp-hub init --mode http   # HTTPモード
+npx @drmikecrowe/hatago-mcp-hub init --mode stdio  # STDIOモード
+npx @drmikecrowe/hatago-mcp-hub init --mode http   # HTTPモード
 ```
 
 ### STDIOモードでの設定例
@@ -151,7 +175,7 @@ npx @himorishige/hatago-mcp-hub init --mode http   # HTTPモード
     "hatago": {
       "command": "npx",
       "args": [
-        "@himorishige/hatago-mcp-hub",
+        "@drmikecrowe/hatago-mcp-hub",
         "serve",
         "--stdio",
         "--config",
@@ -169,7 +193,7 @@ npx @himorishige/hatago-mcp-hub init --mode http   # HTTPモード
 ```toml
 [mcp_servers.hatago]
 command = "npx"
-args = ["-y", "@himorishige/hatago-mcp-hub", "serve", "--stdio", "--config", "/path/to/hatago.config.json"]
+args = ["-y", "@drmikecrowe/hatago-mcp-hub", "serve", "--stdio", "--config", "/path/to/hatago.config.json"]
 ```
 
 ### HTTPモードでの設定例
@@ -247,7 +271,7 @@ hatago serve --http --env-file ./.env --env-override
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "$schema": "https://raw.githubusercontent.com/drmikecrowe/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
   "mcpServers": {
@@ -464,7 +488,7 @@ hatago-mcp-hub/
      ↑
 @himorishige/hatago-server (サーバー本体)
      ↑
-@himorishige/hatago-mcp-hub (メインパッケージ)
+@drmikecrowe/hatago-mcp-hub (メインパッケージ)
 ```
 
 ### マルチランタイム対応
@@ -517,7 +541,7 @@ npx . serve --http
 
 ### パッケージ構成
 
-- `@himorishige/hatago-mcp-hub` - メインパッケージ（npmリリース対象）
+- `@drmikecrowe/hatago-mcp-hub` - メインパッケージ（npmリリース対象）
 - `@himorishige/hatago-server` - MCPハブサーバー実装
 - `@himorishige/hatago-hub` - Hubコア機能
 - `@himorishige/hatago-core` - 共通型定義とインターフェース

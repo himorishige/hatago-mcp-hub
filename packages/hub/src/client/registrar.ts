@@ -22,78 +22,143 @@ type RegistrarHub = {
   onNotification?: (n: JSONRPCMessage) => Promise<void>;
 };
 
+/**
+ * Filter a server's tools by original name.
+ * `include` (if non-empty) keeps only listed tools; `exclude` then drops listed
+ * tools, so exclude wins over include. No filter returns all tools unchanged.
+ */
+export function filterToolsByName<T extends { name: string }>(
+  tools: T[],
+  filter?: { include?: string[]; exclude?: string[] }
+): T[] {
+  if (!filter) return tools;
+  let result = tools;
+  if (filter.include && filter.include.length > 0) {
+    const include = new Set(filter.include);
+    result = result.filter((t) => include.has(t.name));
+  }
+  if (filter.exclude && filter.exclude.length > 0) {
+    const exclude = new Set(filter.exclude);
+    result = result.filter((t) => !exclude.has(t.name));
+  }
+  return result;
+}
+
+/**
+ * Apply a description override template. `{description}` expands to the upstream
+ * description; a template without the placeholder replaces it entirely. Returns the
+ * original description unchanged when no template is provided, or when the template
+ * is an empty string (empty means "leave unchanged", not "erase").
+ */
+export function applyDescriptionTemplate(
+  template: string | undefined,
+  original: string | undefined
+): string | undefined {
+  if (template === undefined || template === '') return original;
+  return template.replaceAll('{description}', original ?? '');
+}
+
 export async function registerServerTools(
   hub: RegistrarHub,
   client: Client,
   serverId: string,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
+  toolFilter?: {
+    include?: string[];
+    exclude?: string[];
+    overrides?: Record<string, { name?: string; description?: string }>;
+  }
 ): Promise<void> {
   try {
     const toolsResult = await client.listTools();
-    const toolArray = toolsResult.tools ?? [];
+    const allTools = toolsResult.tools ?? [];
+    const toolArray = filterToolsByName(allTools, toolFilter);
+
+    if (toolArray.length !== allTools.length) {
+      hub.logger.info(
+        `[Hub] Tool filter for ${serverId}: exposing ${toolArray.length}/${allTools.length} tools`,
+        { excluded: allTools.filter((t) => !toolArray.includes(t)).map((t) => t.name) }
+      );
+    }
 
     hub.logger.debug(`[Hub] Registering ${toolArray.length} tools from ${serverId}`, {
       toolNames: toolArray.map((t) => t.name)
     });
 
-    const toolsWithHandlers = toolArray.map((tool) => ({
-      ...tool,
-      handler: async (
-        args: unknown,
-        progressCallback?: (progress: number) => void
-      ): Promise<unknown> => {
-        const toolCall = client.callTool(
-          {
-            name: tool.name,
-            arguments: args as { [x: string]: unknown } | undefined
-          },
-          undefined,
-          {
-            onprogress: (progress: {
-              progressToken?: string;
-              progress?: number;
-              total?: number;
-              message?: string;
-            }) => {
-              hub.logger.debug(`[Hub] Tool progress from ${serverId}/${tool.name}`, progress);
+    const toolsWithHandlers = toolArray.map((tool) => {
+      // Capture the original upstream name before any override; outbound calls must
+      // use it so a renamed tool still resolves on the child server. [transparency]
+      const originalName = tool.name;
+      const override = toolFilter?.overrides?.[originalName];
+      const exposed = {
+        ...tool,
+        name: override?.name ?? tool.name,
+        description: applyDescriptionTemplate(override?.description, tool.description)
+      };
 
-              const notification = {
-                jsonrpc: '2.0' as const,
-                method: RPC_NOTIFICATION.progress,
-                params: {
-                  progressToken: progress.progressToken ?? `${serverId}-${tool.name}-${Date.now()}`,
-                  progress: progress.progress ?? 0,
-                  total: progress.total,
-                  message: progress.message
+      return {
+        ...exposed,
+        handler: async (
+          args: unknown,
+          progressCallback?: (progress: number) => void,
+          progressToken?: string
+        ): Promise<unknown> => {
+          const toolCall = client.callTool(
+            {
+              name: originalName,
+              arguments: args as { [x: string]: unknown } | undefined
+            },
+            undefined,
+            {
+              onprogress: (progress: {
+                progressToken?: string;
+                progress?: number;
+                total?: number;
+                message?: string;
+              }) => {
+                hub.logger.debug(`[Hub] Tool progress from ${serverId}/${originalName}`, progress);
+
+                const notification = {
+                  jsonrpc: '2.0' as const,
+                  method: RPC_NOTIFICATION.progress,
+                  params: {
+                    progressToken:
+                      progressToken ??
+                      progress.progressToken ??
+                      `${serverId}-${originalName}-${Date.now()}`,
+                    progress: progress.progress ?? 0,
+                    total: progress.total,
+                    message: progress.message
+                  }
+                } satisfies JSONRPCMessage;
+
+                if (progressCallback && typeof progress.progress === 'number') {
+                  void progressCallback(progress.progress);
                 }
-              } satisfies JSONRPCMessage;
-
-              if (progressCallback && typeof progress.progress === 'number') {
-                void progressCallback(progress.progress);
-              }
-              if (hub.onNotification) {
-                void hub.onNotification(notification);
+                if (hub.onNotification) {
+                  void hub.onNotification(notification);
+                }
               }
             }
-          }
-        );
-
-        // Timeout guard
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        const timeoutPromise = new Promise((_, reject) => {
-          timer = setTimeout(
-            () => reject(new Error(`Tool call timed out after ${requestTimeoutMs}ms`)),
-            requestTimeoutMs
           );
-        });
-        try {
-          const result = await Promise.race([toolCall, timeoutPromise]);
-          return result;
-        } finally {
-          if (timer) clearTimeout(timer);
+
+          // Timeout guard
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`Tool call timed out after ${requestTimeoutMs}ms`)),
+              requestTimeoutMs
+            );
+          });
+          try {
+            const result = await Promise.race([toolCall, timeoutPromise]);
+            return result;
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
         }
-      }
-    }));
+      };
+    });
 
     hub.toolRegistry.registerServerTools(serverId, toolsWithHandlers as unknown as Tool[]);
     const registeredTools = hub.toolRegistry.getServerTools(serverId);

@@ -10,11 +10,11 @@ Hatago MCP Hub uses a JSON configuration file to manage MCP server connections. 
 
 ```bash
 # Interactive mode selection
-npx @himorishige/hatago-mcp-hub init
+npx @drmikecrowe/hatago-mcp-hub init
 
 # Or specify mode directly
-npx @himorishige/hatago-mcp-hub init --mode stdio  # For Claude Code
-npx @himorishige/hatago-mcp-hub init --mode http   # For debugging
+npx @drmikecrowe/hatago-mcp-hub init --mode stdio  # For Claude Code
+npx @drmikecrowe/hatago-mcp-hub init --mode http   # For debugging
 ```
 
 ### Configuration File Location
@@ -31,7 +31,7 @@ The configuration file can be specified via:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "$schema": "https://raw.githubusercontent.com/drmikecrowe/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
   "mcpServers": {
@@ -167,6 +167,236 @@ hatago serve --tags dev,api
 ```
 
 The above will load servers that contain at least one of the provided tags (`dev` OR `api`). If `--tags` is omitted, all non-disabled servers are loaded.
+
+## Server Descriptions (Routing Hints)
+
+When several servers look alike by id alone (e.g. three Atlassian instances), an agent has no way to decide _where_ to send a query before issuing a call. The optional `description` field on any server is a free-text routing hint. Hatago does not interpret it — it simply relays it into the `hatago://servers` manifest so an agent can reason about routing up front.
+
+```json
+{
+  "mcpServers": {
+    "jira": {
+      "url": "https://example.atlassian.net/mcp",
+      "type": "sse",
+      "description": "Jira only — project tracking. Use for issues, sprints, and boards."
+    },
+    "confluence-internal": {
+      "url": "https://example.atlassian.net/mcp",
+      "type": "sse",
+      "description": "Internal engineering Confluence — team documentation."
+    },
+    "confluence-primary": {
+      "url": "https://example.atlassian.net/mcp",
+      "type": "sse",
+      "description": "Primary knowledge base — product strategy and platform docs. Search here first for strategy questions."
+    }
+  }
+}
+```
+
+The value surfaces in the built-in `hatago://servers` resource, one entry per server:
+
+```json
+{
+  "total": 3,
+  "servers": [
+    {
+      "id": "confluence-primary",
+      "description": "Primary knowledge base — product strategy and platform docs. Search here first for strategy questions.",
+      "status": "connected",
+      "type": "remote",
+      "url": "https://example.atlassian.net/mcp",
+      "command": null,
+      "tools": ["confluence-primary_search", "..."],
+      "resources": [],
+      "prompts": [],
+      "error": null
+    }
+  ]
+}
+```
+
+Servers without a `description` report `"description": null`. This is the recommended way to give a connecting agent routing guidance without hard-coding it into every prompt.
+
+## Server Instructions
+
+A server `description` is a passive hint that only helps an agent that reads the `hatago://servers` manifest. To **push** guidance into the agent at connect — the closest thing to "add this to the system prompt" — use the optional `instructions` field.
+
+Hatago aggregates the `instructions` of all active servers and returns them as its own MCP `initialize.instructions`. Per the MCP spec this string is a hint that clients MAY add to the model's context; **Claude Code loads server instructions at session start** (like skills — telling the model what each server is for and when to reach for it).
+
+`instructions` accepts either a literal string or a `{ "file": "..." }` reference (path resolved against the config file's directory):
+
+```json
+{
+  "mcpServers": {
+    "confluence-primary": {
+      "url": "https://example.atlassian.net/mcp",
+      "type": "sse",
+      "instructions": "For product-strategy or platform questions, search this server first."
+    },
+    "jira": {
+      "url": "https://example.atlassian.net/mcp",
+      "type": "sse",
+      "instructions": { "file": "./instructions/jira.md" }
+    }
+  }
+}
+```
+
+produces, in hatago's `initialize` result:
+
+```json
+{
+  "protocolVersion": "…",
+  "capabilities": { "tools": {}, "resources": {}, "prompts": {} },
+  "serverInfo": { "…": "…" },
+  "instructions": "## confluence-primary\nFor product-strategy or platform questions, search this server first.\n\n## jira\n<contents of jira.md>"
+}
+```
+
+Notes:
+
+- **Config-sourced, connection-independent.** Instructions are read from config at startup and included for every **active** server (not `disabled`, matching any `--tags` filter) — regardless of whether that server's upstream connection later succeeds. There is no per-server file convention or directory scan; one string or one file per server.
+- **2KB budget (enforced).** Claude Code truncates a server's instructions at **2KB**, and it sees hatago as a *single* server — so the *entire aggregated* string shares one 2KB budget. Keep each server's text short and put the critical guidance first. **Hatago enforces this: if the aggregate exceeds 2KB, startup fails with an error** (rather than silently losing guidance to client-side truncation).
+- **Path containment.** A `{ file }` path must resolve **within the config-file directory** (`..` traversal and out-of-tree absolute paths are rejected — that server's instructions are skipped with a warning, and the file is never read). To source instructions from elsewhere, place a symlink inside the config directory. A single file larger than 2KB is likewise skipped with a warning. This mirrors how a bad `skills` path degrades. (The **aggregate** 2KB limit above is the one hard error — it fails startup.)
+- **Client-dependent.** The `initialize.instructions` field is verified to load in Claude Code; other clients MAY ignore it (per the MCP spec). It is a hint, not a guarantee.
+- The three guidance mechanisms compose: `description` (manifest routing hint), `instructions` (push at connect), and per-server [skills](#local-skills) (pull on demand).
+
+## Tool Filtering and Overrides
+
+The optional `tools` field on any server lets you control which of that server's tools are exposed and how they are presented. Both filtering and overrides key off the server's **original** tool name (before Hatago prefixing) and are applied at registration, so hidden tools never enter your client's context.
+
+### Filtering (`include` / `exclude`)
+
+Some MCP servers expose many tools, all of which land in your client's context. Filter them down:
+
+```json
+{
+  "mcpServers": {
+    "atlassian": {
+      "url": "https://mcp.atlassian.com/v1/sse",
+      "type": "sse",
+      "tools": {
+        "include": ["getJiraIssue", "searchJiraIssues", "createJiraIssue"]
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "tools": {
+        "exclude": ["delete_repository"]
+      }
+    }
+  }
+}
+```
+
+- `include` — expose only these tools (allow-list). Omit to start from all tools.
+- `exclude` — hide these tools (deny-list).
+- If both are set, `exclude` is applied after `include`, so **exclude wins**.
+- Omitting `tools` entirely exposes all of the server's tools (the default).
+
+### Overrides (`overrides`)
+
+When you attach two instances of the same server (for example, two Atlassian servers pointing at different Confluence instances), Hatago already prevents name collisions by prefixing every tool with the server id (`serverId_toolName`). But the instances still expose identical descriptions, so an LLM cannot tell them apart. Use `overrides` — keyed by the original tool name — to rename a tool and/or rewrite its description per instance:
+
+```json
+{
+  "mcpServers": {
+    "confluence-internal": {
+      "command": "npx",
+      "args": ["-y", "mcp-atlassian"],
+      "tools": {
+        "overrides": {
+          "createConfluencePage": {
+            "name": "create_internal_page",
+            "description": "For the INTERNAL engineering Confluence. {description}"
+          }
+        }
+      }
+    },
+    "confluence-customer": {
+      "command": "npx",
+      "args": ["-y", "mcp-atlassian"],
+      "tools": {
+        "overrides": {
+          "createConfluencePage": {
+            "name": "create_customer_page",
+            "description": "For the CUSTOMER-facing Confluence instance. {description}"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+- `name` — renames the exposed tool. The server-id prefix is still applied, so the result is `serverId_<name>`. Omit to keep the original name portion.
+- `description` — a **template**. The placeholder `{description}` expands to the tool's upstream description, so you can _augment_ it (`"For the INTERNAL Confluence. {description}"`). A string with no placeholder fully replaces the description. Omit the field — or set an **empty string** — to keep the upstream text unchanged.
+- Overrides are metadata only — the tool is still relayed to the underlying server under its original name.
+- Filtering runs first; overrides then apply to whatever tools remain.
+
+## Local Skills
+
+A **skill** is a markdown document (instructions, a routing guide, reference content) that Hatago binds to a specific MCP server and exposes to connecting agents as a `skill://<serverId>/<name>` resource. Skills appear in Hatago's aggregated `resources/list`, so an agent discovers them on connect — no server call required.
+
+Skills are **per server**. Each skill is owned by the server it is attached to, which means it:
+
+- is namespaced by server id (`skill://confluence-primary/kb-router`), so two servers can ship a same-named skill without collision;
+- shares that server's lifecycle — it is registered when the server connects and removed when the server is disconnected, disabled, or filtered out by `--tags`;
+- appears under that server's entry in the `hatago://servers` manifest.
+
+This is the right home for guidance about _how to use a particular server_ — for example, a routing skill that tells an agent to search the primary knowledge base first for strategy questions.
+
+### Enabling Skills
+
+Add a `skills` field to a server entry, pointing at a directory of skills:
+
+```json
+{
+  "version": 1,
+  "mcpServers": {
+    "confluence-primary": {
+      "url": "https://example.atlassian.net/mcp",
+      "type": "sse",
+      "description": "Primary knowledge base — product strategy and platform docs.",
+      "skills": "./skills/confluence-primary"
+    }
+  }
+}
+```
+
+The path resolves against the configuration file's directory and **must stay within it** (`..` traversal and out-of-tree absolute paths are rejected — skills for that server are skipped with a warning, and the server still connects). Symlinks are followed, so you can link an external skills directory in from inside the config tree.
+
+### Skill File Layout
+
+Hatago discovers skills in two layouts inside the server's `skills` directory:
+
+- **Flat file** — `<dir>/<name>.md`
+- **Directory per skill** — `<dir>/<name>/SKILL.md` (the Claude Code convention; a subdirectory may hold supporting files, only `SKILL.md` is loaded)
+
+Subdirectories without a `SKILL.md` are ignored. Every skill file needs YAML frontmatter with `name` and `description`; the body below the frontmatter is served verbatim.
+
+```markdown
+---
+name: kb-router
+description: Routes strategy questions to the primary knowledge base. Read first when unsure which Atlassian server to search.
+---
+
+# Knowledge Base Router
+
+For anything about product strategy or the platform, search this server first...
+```
+
+### How Agents See It
+
+With the skill above attached to the `confluence-primary` server, it is registered as:
+
+- A `resources/list` entry: `{ "uri": "skill://confluence-primary/kb-router", "name": "kb-router", "description": "...", "mimeType": "text/markdown" }`
+- An entry in `confluence-primary`'s `resources` array in the `hatago://servers` manifest.
+- Its body is returned when the agent reads `skill://confluence-primary/kb-router`.
+
+The `description` is what an agent scans to decide whether to open the skill, so make it specific about _when_ the skill applies. Pair the skill with the owning server's [description](#server-descriptions-routing-hints): the server description says what the server is, and the skill spells out how to use it.
 
 ## Configuration Inheritance
 
@@ -335,17 +565,30 @@ Each server in `mcpServers` can be configured as either a local/NPX server or a 
 
 ### Server Configuration Fields
 
-| Field      | Type     | Description                                 | Required                 |
-| ---------- | -------- | ------------------------------------------- | ------------------------ |
-| `command`  | string   | Command to execute (local/NPX)              | Yes (local)              |
-| `args`     | string[] | Command arguments                           | No                       |
-| `env`      | object   | Environment variables                       | No                       |
-| `cwd`      | string   | Working directory                           | No (default: config dir) |
-| `url`      | string   | Server URL (remote)                         | Yes (remote)             |
-| `type`     | string   | Remote server type: "http" or "sse"         | No (default: "http")     |
-| `headers`  | object   | HTTP headers (remote)                       | No                       |
-| `disabled` | boolean  | Disable this server                         | No (default: false)      |
-| `tags`     | string[] | Optional tags for server grouping/filtering | No                       |
+| Field      | Type     | Description                                                                    | Required                 |
+| ---------- | -------- | ------------------------------------------------------------------------------ | ------------------------ |
+| `command`  | string   | Command to execute (local/NPX)                                                 | Yes (local)              |
+| `args`     | string[] | Command arguments                                                              | No                       |
+| `env`      | object   | Environment variables                                                          | No                       |
+| `cwd`      | string   | Working directory                                                              | No (default: config dir) |
+| `url`      | string   | Server URL (remote)                                                            | Yes (remote)             |
+| `type`     | string   | Remote server type: "http" or "sse"                                            | No (default: "http")     |
+| `headers`  | object   | HTTP headers (remote)                                                          | No                       |
+| `disabled` | boolean  | Disable this server                                                            | No (default: false)      |
+| `description` | string | Routing hint surfaced per server in the `hatago://servers` manifest          | No                       |
+| `tags`     | string[] | Optional tags for server grouping/filtering                                    | No                       |
+| `tools`    | object   | Tool filtering (`include`/`exclude`) and per-tool name/description `overrides` | No                       |
+| `skills`   | string   | Path (within the config dir) to a skills directory → `skill://<serverId>/<name>` resources | No          |
+| `instructions` | string \| `{ file }` | Guidance aggregated into the hub's `initialize.instructions` (hard 2KB total; startup fails if exceeded) | No |
+
+## Security Considerations
+
+The configuration file is a **trusted, operator-authored** input — the person who writes it already controls the host. The per-server fields above are read and relayed accordingly:
+
+- **File paths are contained.** `skills` and `instructions.file` are resolved against the config-file directory and must stay within it; `..` traversal and out-of-tree absolute paths are rejected. Use a symlink inside the config tree to include an external directory deliberately.
+- **`instructions` and `skills` content is surfaced to the agent.** Instruction text enters the client's context at connect (via `initialize.instructions`) and skill bodies are served as `skill://` resources. Treat these files as trusted; do not populate them from untrusted sources (the same caution applies to `extends`ed config fragments).
+- **Tool overrides are high-privilege.** Renaming/retitling a tool changes only how it is *presented* to the agent — the original upstream tool is still invoked. Don't disguise a destructive tool as a benign one, and don't accept `overrides` from untrusted config.
+- **The `hatago://servers` manifest** exposes each server's `command`/`url` (but never `headers`/`env`). If you serve the hub over HTTP to untrusted clients, treat this as reconnaissance surface.
 
 ## Environment Variable Expansion
 
@@ -415,7 +658,7 @@ Management components are available under `@himorishige/hatago-hub-management/*`
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "$schema": "https://raw.githubusercontent.com/drmikecrowe/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "debug",
   "mcpServers": {
@@ -711,7 +954,7 @@ Always include the schema URL:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "$schema": "https://raw.githubusercontent.com/drmikecrowe/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1
 }
 ```
@@ -840,6 +1083,6 @@ Key changes:
 
 ## Additional Resources
 
-- [JSON Schema](https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json)
-- [Example Configurations](https://github.com/himorishige/hatago-mcp-hub/tree/main/schemas)
+- [JSON Schema](https://raw.githubusercontent.com/drmikecrowe/hatago-mcp-hub/main/schemas/config.schema.json)
+- [Example Configurations](https://github.com/drmikecrowe/hatago-mcp-hub/tree/main/schemas)
 - [MCP Protocol Documentation](https://modelcontextprotocol.io/)

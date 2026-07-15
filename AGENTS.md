@@ -175,7 +175,15 @@ server.registerTool('tool_name', { inputSchema: z.object({ p: z.string() }) }, h
 
       // 共通
       "disabled": false,
-      "tags": ["dev", "production"]
+      "tags": ["dev", "production"],
+      "description": "What this server is for", // hatago://servers のルーティングヒント
+      "tools": {                                // 任意: ツールのフィルタ/リネーム
+        "include": ["tool_a"],
+        "exclude": ["tool_b"],
+        "overrides": { "tool_a": { "name": "renamed", "description": "For X. {description}" } }
+      },
+      "skills": "./skills/server-id",           // 設定ディレクトリ内 → skill://<id>/<name>
+      "instructions": "Search here first for X" // initialize.instructions へ集約 (2KB 上限)
     }
   }
 }

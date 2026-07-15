@@ -45,7 +45,6 @@ export async function startStdio(
   const hub = createHub({
     configFile: maybeExists ? config.path : undefined,
     preloadedConfig: { path: config.path, data: config.data },
-
     tags,
     enableStreamableTransport: false
   });

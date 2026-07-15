@@ -11,6 +11,7 @@ export default defineConfig({
   clean: true,
   platform: 'node', // Use node platform to properly handle Node.js built-ins
   target: 'node20',
+  hash: false,
   external: [
     '@himorishige/hatago-core',
     '@modelcontextprotocol/sdk'

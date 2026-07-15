@@ -29,3 +29,12 @@ pnpm-debug.log*
 /.mcp.json
 /claude-with-everything.config.json
 /hatago.config-test.json
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+/.beads/
+/.agents/
+/.claude/.caveman-notified

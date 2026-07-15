@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-hub",
-  "version": "0.0.16",
+  "version": "0.1.2",
   "description": "User-friendly facade for Hatago MCP Hub",
   "type": "module",
   "main": "./dist/index.js",
@@ -44,20 +44,20 @@
     "@himorishige/hatago-core": "workspace:*",
     "@himorishige/hatago-runtime": "workspace:*",
     "@himorishige/hatago-transport": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.17.4",
-    "diff": "^8.0.2",
-    "hono": "^4.9.4",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "diff": "^8.0.4",
+    "hono": "^4.12.29",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.68",
-    "@cloudflare/workers-types": "^4.20241127.0",
-    "@types/node": "^20.17.10",
+    "@cloudflare/workers-types": "^4.20250829.0",
+    "@types/node": "^20.19.11",
     "eventsource": "^4.0.0",
-    "miniflare": "^3.20241205.0",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "miniflare": "^3.20250718.1",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.9"
   },
   "files": [
     "dist",

@@ -1,0 +1,39 @@
+# Scan Policy Report
+
+This report tells you whether the results of a Socket scan results violate the
+security policy set by your organization.
+
+## Health status
+
+The scan *PASSES* all requirements set by your security policy.
+
+## Settings
+
+Configuration used to generate this report:
+
+- Organization: drmikecrowepersonal
+- Scan ID: 0c0d949c-8c49-4187-89fb-88e36fe69973
+- Alert folding: none
+- Minimal policy level for alert to be included in report: warn
+- Include license alerts: no
+
+## Alerts
+
+All the alerts from the scan with a policy set to at least "warn".
+
+| ------ | -------------- | ----------------- | ------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Policy | Alert Type     | Package           | Introduced by | url                                                              | Manifest file                                                                                                                                                                                                                        |
+| ------ | -------------- | ----------------- | ------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| warn   | obfuscatedFile | as-table          | 1.0.55        | https://socket.dev/npm/package/as-table/overview/1.0.55          | pnpm-lock.yaml                                                                                                                                                                                                                       |
+| warn   | criticalCVE    | vitest            | 2.1.9         | https://socket.dev/npm/package/vitest/overview/2.1.9             | packages/cli/package.json, packages/hub/package.json, packages/mcp-hub/package.json, packages/server/package.json, packages/transport/package.json, pnpm-lock.yaml, packages/test-utils/package.json, and packages/core/package.json |
+| warn   | obfuscatedFile | ansis             | 4.1.0         | https://socket.dev/npm/package/ansis/overview/4.1.0              | pnpm-lock.yaml                                                                                                                                                                                                                       |
+| warn   | obfuscatedFile | node-fetch-native | 1.6.7         | https://socket.dev/npm/package/node-fetch-native/overview/1.6.7  | pnpm-lock.yaml                                                                                                                                                                                                                       |
+| warn   | obfuscatedFile | compiler          | 2.13.1        | https://socket.dev/npm/package/@astrojs/compiler/overview/2.13.1 | pnpm-lock.yaml                                                                                                                                                                                                                       |
+| warn   | obfuscatedFile | css-tree          | 3.2.1         | https://socket.dev/npm/package/css-tree/overview/3.2.1           | pnpm-lock.yaml                                                                                                                                                                                                                       |
+| warn   | obfuscatedFile | robust-predicates | 3.0.3         | https://socket.dev/npm/package/robust-predicates/overview/3.0.3  | pnpm-lock.yaml                                                                                                                                                                                                                       |
+| warn   | obfuscatedFile | astro             | 5.18.2        | https://socket.dev/npm/package/astro/overview/5.18.2             | apps/docs/package.json and pnpm-lock.yaml                                                                                                                                                                                            |
+| warn   | obfuscatedFile | runtime           | 1.11.1        | https://socket.dev/npm/package/@emnapi/runtime/overview/1.11.1   | pnpm-lock.yaml                                                                                                                                                                                                                       |
+| warn   | obfuscatedFile | mermaid           | 11.16.0       | https://socket.dev/npm/package/mermaid/overview/11.16.0          | apps/docs/package.json and pnpm-lock.yaml                                                                                                                                                                                            |
+| ------ | -------------- | ----------------- | ------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+
+

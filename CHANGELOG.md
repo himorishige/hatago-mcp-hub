@@ -5,6 +5,32 @@ All notable changes to Hatago MCP Hub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-07-15
+
+### Documentation
+
+- `packages/mcp-hub/README.md` (the README published to npm) now carries the full "Customize Any MCP Server" docs — Per-Server Tool Filtering, Per-Server Tool Overrides, Per-Server Skills, Server Instructions, and the OAuth/`mcp-remote` composite example — matching the repo root README instead of only the composite snippet.
+
+### Changed
+
+- Bumped all workspace package versions to 0.1.2.
+
+## [0.1.1] - 2026-07-15
+
+### Documentation
+
+- README: documented the OAuth-only remote server pattern — why `mcp-remote` (a local `command`/`args` bridge) is required for servers needing interactive OAuth, since Hatago's `url`/`type` remote transport only forwards static headers. Added a composite real-world example combining `description`, `instructions`, `skills`, and `tools.overrides` on a single server.
+
+## [0.1.0] - 2026-07-15
+
+### Added
+
+- Per-server `instructions` (string or file), aggregated into `initialize.instructions` at connect time (2KB cap).
+- Per-server `skills` directories, exposed as `skill://<serverId>/<name>` resources.
+- Per-server `tools.include` / `tools.exclude` filtering and `tools.overrides` (rename + description augmentation) applied at registration time.
+
+All new fields are optional and default off; servers with no new config behave exactly as before.
+
 ## [0.0.16] - 2025-09-14
 
 ### Changed

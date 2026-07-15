@@ -123,7 +123,10 @@ export class ToolInvoker {
       await this.acquire();
       let result: unknown;
       try {
-        result = await this.executeWithTimeout(() => handler(args, progressHandler), timeout);
+        result = await this.executeWithTimeout(
+          () => handler(args, progressHandler, token),
+          timeout
+        );
       } finally {
         this.release();
       }

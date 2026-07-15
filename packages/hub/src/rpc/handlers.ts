@@ -5,16 +5,8 @@ import type { HatagoHub } from '../hub.js';
 import {
   HATAGO_PROTOCOL_VERSION,
   HATAGO_SERVER_INFO,
-  RPC_NOTIFICATION as CORE_RPC_NOTIFICATION,
   RPC_METHOD as CORE_RPC_METHOD
 } from '@himorishige/hatago-core';
-const FALLBACK_RPC_NOTIFICATION = {
-  initialized: 'notifications/initialized',
-  cancelled: 'notifications/cancelled',
-  progress: 'notifications/progress',
-  tools_list_changed: 'notifications/tools/list_changed'
-} as const;
-const RPC_NOTIFICATION = CORE_RPC_NOTIFICATION ?? FALLBACK_RPC_NOTIFICATION;
 
 const FALLBACK_RPC_METHOD = {
   initialize: 'initialize',
@@ -99,13 +91,16 @@ export function handleInitialize(
     (params?.capabilities as Record<string, unknown>) ?? {}
   );
 
+  const instructions = hub.instructions;
+
   return {
     jsonrpc: '2.0',
     id: id as string | number,
     result: {
       protocolVersion: HATAGO_PROTOCOL_VERSION,
       capabilities: { tools: {}, resources: {}, prompts: {} },
-      serverInfo: HATAGO_SERVER_INFO
+      serverInfo: HATAGO_SERVER_INFO,
+      ...(instructions ? { instructions } : {})
     }
   };
 }
@@ -135,7 +130,7 @@ export async function handleToolsCall(
   sessionId?: string
 ): Promise<JSONRPCResponse> {
   const h = hub as unknown as HubCtx;
-  const { logger, streamableTransport, sseManager, clients, options, onNotification } = h;
+  const { logger, streamableTransport, sseManager } = h;
 
   const progressToken = (params as { _meta?: { progressToken?: string | number } })?._meta
     ?.progressToken;
@@ -153,91 +148,10 @@ export async function handleToolsCall(
     tokenRegistered = true;
   }
 
-  let toolName = (params as { name?: string })?.name ?? '';
-  let serverId: string | undefined;
-  if (toolName) {
-    const { parseQualifiedName } = await import('../utils/naming.js');
-    const parsed = parseQualifiedName(toolName, options.separator);
-    serverId = parsed.serverId;
-    toolName = parsed.name;
-  }
-
   try {
-    // Use direct client path whenever we know the server and a progressToken is present.
-    // This ensures onprogress forwarding works in both STDIO and HTTP modes. [REH][SF]
-    if (serverId && progressToken) {
-      const client = clients.get(serverId);
-      if (client) {
-        const upstreamToken = `upstream-${Date.now()}`;
-        const result = await client.callTool(
-          {
-            name: toolName,
-            arguments: (params as { arguments?: unknown })?.arguments,
-            _meta: { progressToken: upstreamToken }
-          },
-          undefined,
-          {
-            onprogress: (progress: {
-              progressToken?: string;
-              progress?: number;
-              total?: number;
-              message?: string;
-            }) => {
-              logger.info(`[Hub] Direct client onprogress`, {
-                serverId,
-                toolName,
-                progressToken,
-                progress
-              } as LogData);
-
-              const hasStreamable = !!streamableTransport;
-              const hasOnNotification = !!onNotification;
-
-              if (!hasOnNotification && !hasStreamable) {
-                logger.warn('[Hub] No notification sink configured; notifications will be dropped');
-              } else if (!hasOnNotification && hasStreamable) {
-                logger.debug('[Hub] Using StreamableHTTP transport for notifications (HTTP mode)');
-              }
-
-              if (hasOnNotification && onNotification) {
-                const notification = {
-                  jsonrpc: '2.0' as const,
-                  method: RPC_NOTIFICATION.progress,
-                  params: {
-                    progressToken,
-                    progress: progress?.progress ?? 0,
-                    total: progress?.total,
-                    message: progress?.message
-                  }
-                };
-                void onNotification(notification);
-              }
-              if (hasStreamable && streamableTransport) {
-                void streamableTransport.sendProgressNotification?.(
-                  progressToken,
-                  progress?.progress ?? 0,
-                  progress?.total,
-                  progress?.message
-                );
-              }
-
-              if (progressToken && sseManager && sessionId) {
-                sseManager.sendProgress(progressToken.toString(), {
-                  progressToken: progressToken.toString(),
-                  progress: progress?.progress ?? 0,
-                  total: progress?.total,
-                  message: progress?.message
-                });
-              }
-            }
-          }
-        );
-
-        return { jsonrpc: '2.0', id: id as string | number, result };
-      }
-    }
-
-    // Fallback to normal invoker path (with optional progress token passthrough)
+    // Always go through the invoker path: it resolves renamed/overridden tool
+    // names back to the upstream original name before calling the client, and
+    // already forwards progress via hub.onNotification regardless of transport. [SF]
     const result = await h.tools.call(
       (params as { name?: string; arguments?: unknown } | undefined)?.name as string,
       (params as { arguments?: unknown } | undefined)?.arguments,

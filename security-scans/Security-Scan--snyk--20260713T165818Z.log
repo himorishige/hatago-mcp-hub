@@ -1,0 +1,256 @@
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       package.json
+Project name:      package.json
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested /home/mcrowe/Programming/AI/hatago-mcp-hub for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       apps/docs/package.json
+Project name:      @himorishige/hatago-docs
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested /home/mcrowe/Programming/AI/hatago-mcp-hub for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       examples/node-example/package.json
+Project name:      hatago-node-example
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 100 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       examples/workers-example/package.json
+Project name:      hatago-workers-example
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 100 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       examples/workers-simple-example/package.json
+Project name:      hatago-workers-simple-example
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 100 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/cli/package.json
+Project name:      @himorishige/hatago-cli
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 108 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/core/package.json
+Project name:      @himorishige/hatago-core
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 99 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/hub/package.json
+Project name:      @himorishige/hatago-hub
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 104 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/mcp-hub/package.json
+Project name:      @himorishige/hatago-mcp-hub
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 99 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/runtime/package.json
+Project name:      @himorishige/hatago-runtime
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 100 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/server/package.json
+Project name:      @himorishige/hatago-server
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 105 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/test-fixtures/package.json
+Project name:      @himorishige/hatago-test-fixtures
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 99 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/test-utils/package.json
+Project name:      @himorishige/hatago-test-utils
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 105 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+-------------------------------------------------------
+
+Testing /home/mcrowe/Programming/AI/hatago-mcp-hub...
+
+Organization:      drmikecrowe
+Package manager:   pnpm
+Target file:       packages/transport/package.json
+Project name:      @himorishige/hatago-transport
+Open source:       no
+Project path:      /home/mcrowe/Programming/AI/hatago-mcp-hub
+Licenses:          enabled
+
+✔ Tested 100 dependencies for known issues, no vulnerable paths found.
+
+Next steps:
+- Run `snyk monitor` to be notified about new related vulnerabilities.
+- Run `snyk test` as part of your CI/test.
+
+
+Tested 14 projects, no vulnerable paths were found.
+
+
+

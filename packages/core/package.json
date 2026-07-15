@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-core",
-  "version": "0.0.16",
+  "version": "0.1.2",
   "description": "Core types and protocol definitions for Hatago MCP Hub",
   "type": "module",
   "sideEffects": false,
@@ -37,13 +37,13 @@
     "lint": "eslint ./src"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.4",
-    "zod": "^3.24.1"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "tsdown": "^0.14.2",
-    "typescript": "^5.8.3",
-    "vitest": "^2.1.8"
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.9"
   },
   "engines": {
     "node": ">=20"

@@ -40,12 +40,61 @@ export const TimeoutConfigSchema = z.object({
 });
 
 /**
+ * Per-server tool filter: choose which upstream tools are exposed (by original
+ * name) and optionally override the exposed name/description per tool.
+ */
+export const ToolFilterSchema = z
+  .object({
+    include: z.array(z.string()).optional().describe('Allowlist of upstream tool names to expose'),
+    exclude: z.array(z.string()).optional().describe('Denylist of upstream tool names to hide'),
+    overrides: z
+      .record(
+        z
+          .object({
+            name: z
+              .string()
+              .optional()
+              .describe(
+                "Rename the exposed tool (the hub's naming strategy/prefix is still applied on top)"
+              ),
+            description: z
+              .string()
+              .optional()
+              .describe(
+                'Description template shown to clients: {description} expands to the upstream description (augment); a template without the placeholder replaces it fully; an empty string leaves it unchanged'
+              )
+          })
+          .strict()
+      )
+      .optional()
+      .describe('Per-tool name/description overrides, keyed by original tool name')
+  })
+  .strict();
+
+/**
  * Base server configuration (shared fields)
  */
 const BaseServerConfigSchema = z.object({
   disabled: z.boolean().optional().default(false).describe('Whether this server is disabled'),
+  description: z
+    .string()
+    .optional()
+    .describe('Human/agent-readable hint describing what this server is for and when to use it'),
   timeouts: TimeoutConfigSchema.optional().describe('Server-specific timeout overrides'),
-  tags: z.array(z.string()).optional().describe('Tags for grouping servers')
+  tags: z.array(z.string()).optional().describe('Tags for grouping servers'),
+  tools: ToolFilterSchema.optional().describe('Filter/override which of this server’s tools are exposed'),
+  skills: z
+    .string()
+    .optional()
+    .describe(
+      'Path to a directory of skills bound to this server, exposed as skill://<serverId>/<name> resources'
+    ),
+  instructions: z
+    .union([z.string(), z.object({ file: z.string() }).strict()])
+    .optional()
+    .describe(
+      "Guidance text aggregated into the hub's initialize.instructions (hard 2KB limit across all servers — startup fails if exceeded). Literal string, or { file: path } (path must stay within the config directory)."
+    )
 });
 
 /**

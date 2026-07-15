@@ -80,7 +80,7 @@ hatago-mcp-hub/
      ↑
 @himorishige/hatago-server (server with CLI)
      ↑
-@himorishige/hatago-mcp-hub (main package)
+@drmikecrowe/hatago-mcp-hub (main package)
 ```
 
 ## Core Components
@@ -193,7 +193,7 @@ The transport layer now uses `RelayTransport` as the default implementation, pro
 
 ```typescript
 {
-  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "$schema": "https://raw.githubusercontent.com/drmikecrowe/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
   "mcpServers": {
@@ -486,4 +486,4 @@ interface Platform {
 
 - [MCP Specification](https://modelcontextprotocol.io/)
 - [Hono Framework](https://hono.dev/)
-- [Repository](https://github.com/himorishige/hatago-mcp-hub)
+- [Repository](https://github.com/drmikecrowe/hatago-mcp-hub)

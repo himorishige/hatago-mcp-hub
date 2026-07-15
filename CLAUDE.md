@@ -138,7 +138,15 @@ hatago serve --tags dev,test  # Filter servers by tags
 
       // Common
       "disabled": false,
-      "tags": ["dev", "production"]  // Optional: for tag-based filtering
+      "tags": ["dev", "production"],           // Optional: tag-based filtering
+      "description": "What this server is for", // Routing hint in hatago://servers
+      "tools": {                                // Optional: filter/rename tools
+        "include": ["tool_a"],                  //   allowlist (original names)
+        "exclude": ["tool_b"],                  //   denylist
+        "overrides": { "tool_a": { "name": "renamed", "description": "For X. {description}" } }
+      },
+      "skills": "./skills/server-id",           // Dir (within config dir) → skill://<id>/<name>
+      "instructions": "Search here first for X" // Pushed into initialize.instructions (2KB cap)
     }
   }
 }

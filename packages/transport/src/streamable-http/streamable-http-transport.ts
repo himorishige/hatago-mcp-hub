@@ -131,6 +131,12 @@ export class StreamableHTTPTransport implements Transport {
     // Handle response messages
     if (isJSONRPCResponse(message) || isJSONRPCError(message)) {
       const requestId = message.id;
+      // Error responses may omit the id (e.g. parse errors); they cannot be
+      // routed to a request stream, so relay them to all open streams.
+      if (requestId === undefined) {
+        await this.broadcastNotification(message);
+        return;
+      }
       const streamId = this.maps.requestToStreamMapping.get(requestId);
       if (streamId) {
         await this.writeToStream(streamId, message, true);

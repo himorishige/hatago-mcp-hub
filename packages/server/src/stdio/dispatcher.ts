@@ -28,16 +28,19 @@ export async function processMessage(
 
   try {
     switch (method) {
-      case 'initialize':
+      case 'initialize': {
+        const instructions = (hub as { instructions?: string }).instructions;
         return {
           jsonrpc: '2.0',
           id: id as string | number | null,
           result: {
             protocolVersion: HATAGO_PROTOCOL_VERSION,
             capabilities: { tools: {}, resources: {}, prompts: {} },
-            serverInfo: { ...HATAGO_SERVER_INFO }
+            serverInfo: { ...HATAGO_SERVER_INFO },
+            ...(instructions ? { instructions } : {})
           }
         };
+      }
 
       case RPC_NOTIFICATION.initialized:
       case RPC_NOTIFICATION.cancelled:

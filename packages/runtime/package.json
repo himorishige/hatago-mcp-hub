@@ -1,6 +1,6 @@
 {
   "name": "@himorishige/hatago-runtime",
-  "version": "0.0.16",
+  "version": "0.1.2",
   "description": "Runtime components for Hatago MCP Hub - session, registry, router, and retry management",
   "type": "module",
   "sideEffects": false,
@@ -42,14 +42,14 @@
   },
   "dependencies": {
     "@himorishige/hatago-core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.17.4"
+    "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241127.0",
-    "@types/node": "^20.0.0",
+    "@cloudflare/workers-types": "^4.20250829.0",
+    "@types/node": "^20.19.11",
     "tsdown": "^0.14.2",
-    "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.7"
   },
   "engines": {
     "node": ">=20"

@@ -111,7 +111,8 @@ describe('ToolInvoker', () => {
 
       expect(handler).toHaveBeenCalledWith(
         { message: 'Hello' },
-        undefined // No progress callback without progressToken
+        undefined, // No progress callback without progressToken
+        undefined
       );
 
       expect(result).toMatchObject({
@@ -139,7 +140,7 @@ describe('ToolInvoker', () => {
       const args = { a: 1, b: 'test', c: true };
       const result = await toolInvoker.callTool('session', 'test_args', args);
 
-      expect(handler).toHaveBeenCalledWith(args, undefined);
+      expect(handler).toHaveBeenCalledWith(args, undefined, undefined);
       expect(result.content[0].text).toContain(JSON.stringify(args));
     });
 
@@ -395,7 +396,7 @@ describe('ToolInvoker', () => {
 
       const result = await toolInvoker.callTool('session', 'no_args', {});
       expect(result.content[0].text).toBe('No args needed');
-      expect(handler).toHaveBeenCalledWith({}, undefined);
+      expect(handler).toHaveBeenCalledWith({}, undefined, undefined);
     });
 
     it('should handle null/undefined arguments', async () => {

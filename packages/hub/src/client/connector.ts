@@ -55,11 +55,7 @@ export async function connectWithRetry(args: {
           version: HATAGO_VERSION
         },
         {
-          capabilities: {
-            tools: {},
-            resources: {},
-            prompts: {}
-          }
+          capabilities: {}
         }
       );
 
@@ -120,6 +116,14 @@ export async function connectWithRetry(args: {
 export function normalizeServerSpec(config: ServerConfig): ServerSpec {
   const spec: ServerSpec = {};
 
+  if (config.description) {
+    spec.description = config.description;
+  }
+
+  if (config.skills) {
+    spec.skillsPath = config.skills;
+  }
+
   if ('command' in config) {
     spec.command = config.command;
     spec.args = config.args;
@@ -131,6 +135,10 @@ export function normalizeServerSpec(config: ServerConfig): ServerSpec {
     spec.url = config.url;
     spec.type = config.type ?? 'streamable-http';
     spec.headers = config.headers;
+  }
+
+  if (config.tools) {
+    spec.toolFilter = config.tools;
   }
 
   if (config.timeouts) {

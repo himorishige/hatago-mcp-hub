@@ -53,7 +53,8 @@ describe('Internal Resource: hatago://servers', () => {
       await hub.addServer('test', {
         command: 'node',
         args: [fixturePath, '--echo'],
-        connectTimeout: 10000
+        connectTimeout: 10000,
+        description: 'Echo test server — routing hint'
       });
 
       const res = await hub.resources.read('hatago://servers');
@@ -62,6 +63,7 @@ describe('Internal Resource: hatago://servers', () => {
 
       expect(payload.total).toBe(1);
       expect(payload.servers?.[0]?.id).toBe('test');
+      expect(payload.servers?.[0]?.description).toBe('Echo test server — routing hint');
       expect(payload.servers?.[0]?.status).toBe('connected');
       // Tools are prefixed by server id with chosen strategy
       expect(Array.isArray(payload.servers?.[0]?.tools)).toBe(true);

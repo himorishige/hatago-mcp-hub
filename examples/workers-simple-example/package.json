@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@himorishige/hatago-mcp-hub": "workspace:*",
-    "hono": "^4.9.4"
+    "hono": "^4.12.29"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
-    "typescript": "^5.7.2",
-    "wrangler": "^4.27.0"
+    "typescript": "^5.9.2",
+    "wrangler": "^4.110.0"
   }
 }

@@ -57,6 +57,11 @@ import {
 } from './client/registrar.js';
 // Internal tools removed. Keep minimal internal resources only. [SF]
 import type { Resource } from '@himorishige/hatago-core';
+import { loadSkills, type SkillBody } from './skills-loader.js';
+import { aggregateInstructions, INSTRUCTIONS_BYTE_LIMIT } from './instructions.js';
+import { resolveWithin } from './path-guard.js';
+import { dirname } from 'node:path';
+import { readFileSync, statSync } from 'node:fs';
 
 /**
  * Main Hub class - provides simplified API for MCP operations
@@ -105,6 +110,12 @@ export class HatagoHub {
 
   // Notification callback for forwarding to parent
   public onNotification?: (notification: unknown) => Promise<void>;
+
+  // Skill resource bodies keyed by URI (SKILL.md and companion files)
+  private _skillBodies = new Map<string, SkillBody>();
+
+  // Aggregated per-server instructions returned in the initialize result
+  private _instructions = '';
 
   // Toolset versioning
   private toolsetRevision = 0;
@@ -238,6 +249,7 @@ export class HatagoHub {
       if (server.resources.length > 0) {
         this.resourceRegistry.clearServerResources(id);
       }
+      this.clearServerSkills(id);
 
       // Unregister prompts
       if (server.prompts.length > 0) {
@@ -303,19 +315,23 @@ export class HatagoHub {
       this.logger.warn(`Server ${id} not found when updating status to connected`);
     }
 
-    // Register tools using extracted registrar
+    // Register tools using extracted registrar. Forward the per-server tool
+    // filter (include/exclude/overrides) so it is actually applied. [transparency]
     {
       const requestTimeoutMs = spec.timeout ?? this.options.defaultTimeout;
-      this.logger.debug('Before registerServerTools - checking toolInvoker:', {
-        hasListTools:
-          'listTools' in this.toolInvoker &&
-          typeof (this.toolInvoker as { listTools?: unknown }).listTools === 'function',
-        toolInvokerType: this.toolInvoker?.constructor?.name || 'unknown'
-      });
-      await registerServerTools(this as never, client, id, requestTimeoutMs);
+      if (spec.toolFilter) {
+        this.logger.info(`[Hub] Applying tool filter for ${id}`, {
+          include: spec.toolFilter.include,
+          exclude: spec.toolFilter.exclude,
+          overrides: spec.toolFilter.overrides ? Object.keys(spec.toolFilter.overrides) : undefined
+        });
+      }
+      await registerServerTools(this as never, client, id, requestTimeoutMs, spec.toolFilter);
     }
 
     await registerServerResources(this as never, client, id);
+
+    await this.registerServerSkills(id, spec.skillsPath);
 
     await registerServerPrompts(this as never, client, id);
   }
@@ -393,6 +409,33 @@ export class HatagoHub {
 
         // Base hub: notifications are not managed here
 
+        // Aggregate per-server instructions for the initialize result. Done here
+        // (synchronously, before any further await) so it is ready before the
+        // first client message is dispatched. Config-sourced, so it does not
+        // depend on upstream connections succeeding.
+        if (config.mcpServers) {
+          const configPath = this.options.preloadedConfig?.path ?? this.options.configFile;
+          const baseDir = configPath ? dirname(configPath) : process.cwd();
+          this._instructions = aggregateInstructions(
+            config.mcpServers as Record<string, Record<string, unknown>>,
+            {
+              baseDir,
+              isActive: (cfg) => this.isServerActive(cfg as { disabled?: boolean; tags?: string[] }),
+              // Guard the read size to avoid pulling a huge file into memory /
+              // blocking the event loop before the aggregate limit is checked.
+              readFile: (p) => {
+                const { size } = statSync(p);
+                if (size > INSTRUCTIONS_BYTE_LIMIT) {
+                  throw new Error(`file is ${size} bytes, exceeds the ${INSTRUCTIONS_BYTE_LIMIT}-byte limit`);
+                }
+                return readFileSync(p, 'utf-8');
+              },
+              warn: (m: string) => this.logger.warn(m),
+              log: (m: string) => this.logger.info(`[Hub] ${m}`)
+            }
+          );
+        }
+
         // Apply global timeouts to ToolInvoker default timeout if provided
         if (config.timeouts?.requestMs && Number.isFinite(config.timeouts.requestMs)) {
           // Recreate ToolInvoker with new default timeout before connecting servers
@@ -436,24 +479,13 @@ export class HatagoHub {
         if (config.mcpServers) {
           const connectPromises: Array<Promise<void>> = [];
           for (const [id, serverConfig] of Object.entries(config.mcpServers)) {
-            // Skip disabled servers
-            if (serverConfig.disabled === true) {
-              this.logger.info(`Skipping disabled server: ${id}`);
+            // Skip disabled / tag-filtered servers (shared predicate)
+            if (!this.isServerActive(serverConfig as { disabled?: boolean; tags?: string[] })) {
+              this.logger.info(`Skipping inactive server: ${id}`, {
+                disabled: serverConfig.disabled === true,
+                requiredTags: this.options.tags
+              });
               continue;
-            }
-
-            // Check tag filtering
-            if (this.options.tags && this.options.tags.length > 0) {
-              const serverTags = (serverConfig as unknown as { tags?: string[] }).tags ?? [];
-              const hasMatchingTag = this.options.tags.some((tag) => serverTags.includes(tag));
-
-              if (!hasMatchingTag) {
-                this.logger.info(`Skipping server ${id} (no matching tags)`, {
-                  requiredTags: this.options.tags,
-                  serverTags
-                });
-                continue;
-              }
             }
 
             const spec = this.normalizeServerSpec(serverConfig as ServerConfig);
@@ -541,6 +573,112 @@ export class HatagoHub {
 
     this.logger.info('[Hub] Registering internal resources', { count: resources.length });
     this.resourceRegistry.registerServerResources('_internal', resources);
+  }
+
+  /**
+   * Expose skill bodies for read-path consumers (hatago-88h.7)
+   */
+  get skillBodies(): Map<string, SkillBody> {
+    return this._skillBodies;
+  }
+
+  /**
+   * Aggregated per-server instructions surfaced in the initialize result.
+   */
+  get instructions(): string {
+    return this._instructions;
+  }
+
+  /**
+   * Whether a server from config is active for this hub instance: not disabled
+   * and (when tag filtering is on) matching at least one requested tag. Shared
+   * by the connect loop and instruction aggregation. [DRY]
+   */
+  private isServerActive(serverConfig: { disabled?: boolean; tags?: string[] }): boolean {
+    if (serverConfig.disabled === true) return false;
+    if (this.options.tags && this.options.tags.length > 0) {
+      const serverTags = serverConfig.tags ?? [];
+      return this.options.tags.some((tag) => serverTags.includes(tag));
+    }
+    return true;
+  }
+
+  /**
+   * Register a server's local skills as skill://<serverId>/<name> resources.
+   * Skills are merged into the server's resource set so they are cleared with
+   * the server on disconnect and appear under it in the hatago://servers
+   * manifest. Relative paths resolve against the config file directory.
+   */
+  private async registerServerSkills(serverId: string, skillsPath?: string): Promise<void> {
+    if (!skillsPath) return;
+
+    const configPath = this.options.preloadedConfig?.path ?? this.options.configFile;
+    const baseDir = configPath ? dirname(configPath) : process.cwd();
+    // Contained to the config directory (rejects `..`/absolute escapes). A bad
+    // path skips skills for this server with a diagnostic — the server still
+    // connects — mirroring how a bad instructions path degrades. [security]
+    let resolvedPath: string;
+    try {
+      resolvedPath = resolveWithin(baseDir, skillsPath, `skills path for server '${serverId}'`);
+    } catch (err) {
+      this.logger.warn(
+        `[Hub] Skipping skills for ${serverId} — ${err instanceof Error ? err.message : String(err)}`
+      );
+      return;
+    }
+
+    const skills = await loadSkills(resolvedPath, { warn: (m: string) => this.logger.warn(m) });
+    if (skills.length === 0) {
+      this.logger.info(`[Hub] No skills found for ${serverId} at ${resolvedPath}`);
+      return;
+    }
+    this.logger.info(`[Hub] Registered ${skills.length} skill(s) for ${serverId}`, {
+      skills: skills.map((s) => s.name)
+    });
+
+    // Each skill contributes its SKILL.md plus every bundled companion file
+    // (routing-index.json, references/*, …) as its own resource, so a client
+    // sees the whole skill bundle in resources/list rather than just the body.
+    const skillResources: Resource[] = [];
+    for (const s of skills) {
+      const skillUri = `skill://${serverId}/${s.name}`;
+      skillResources.push({
+        uri: skillUri,
+        name: s.name,
+        description: s.description,
+        mimeType: 'text/markdown'
+      });
+      this._skillBodies.set(skillUri, { text: s.body, mimeType: 'text/markdown' });
+
+      for (const f of s.files) {
+        const fileUri = `${skillUri}/${f.path}`;
+        skillResources.push({
+          uri: fileUri,
+          name: `${s.name}/${f.path}`,
+          description: `Companion file for skill '${s.name}'`,
+          mimeType: f.mimeType
+        });
+        this._skillBodies.set(fileUri, { text: f.content, mimeType: f.mimeType });
+      }
+    }
+
+    // Merge with any upstream resources already registered for this server so
+    // both are retained under the same server id.
+    const server = this.servers.get(serverId);
+    const merged: Resource[] = [...(server?.resources ?? []), ...skillResources];
+    if (server) server.resources = merged;
+    this.resourceRegistry.registerServerResources(serverId, merged);
+  }
+
+  /**
+   * Drop a server's skill bodies (skill://<serverId>/...) from the read-path map.
+   * The corresponding registry resources are cleared via clearServerResources.
+   */
+  private clearServerSkills(serverId: string): void {
+    const prefix = `skill://${serverId}/`;
+    for (const uri of this._skillBodies.keys()) {
+      if (uri.startsWith(prefix)) this._skillBodies.delete(uri);
+    }
   }
 
   /**

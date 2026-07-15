@@ -40,7 +40,7 @@ Create a shared base configuration that includes common servers and settings:
 ```json
 // .mcp-configs/base.config.json
 {
-  "$schema": "https://raw.githubusercontent.com/himorishige/hatago-mcp-hub/main/schemas/config.schema.json",
+  "$schema": "https://raw.githubusercontent.com/drmikecrowe/hatago-mcp-hub/main/schemas/config.schema.json",
   "version": 1,
   "logLevel": "info",
   "mcpServers": {
@@ -367,7 +367,7 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost/test
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx @himorishige/hatago-mcp-hub serve \
+          npx @drmikecrowe/hatago-mcp-hub serve \
             --config .mcp-configs/test.config.json \
             --tags test
 ```

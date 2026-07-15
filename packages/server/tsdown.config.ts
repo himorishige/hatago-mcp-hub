@@ -9,6 +9,7 @@ export default defineConfig({
   treeshake: true,
   sourcemap: false,
   dts: true, // Generate type definitions for library usage
+  hash: false,
   env: {
     HATAGO_BUILD_TARGET: 'node'
   },

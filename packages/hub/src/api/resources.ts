@@ -2,6 +2,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { createHatagoError, toError } from '../errors.js';
 import type { ResourceRegistry } from '@himorishige/hatago-runtime';
 import type { ConnectedServer, ListOptions, ReadOptions } from '../types.js';
+import type { SkillBody } from '../skills-loader.js';
 
 export type ResourcesHub = {
   servers: Map<string, ConnectedServer>;
@@ -10,6 +11,7 @@ export type ResourcesHub = {
   emit: (event: string, data: unknown) => void;
   logger: { error: (m: string, d?: unknown) => void };
   getServers: () => ConnectedServer[];
+  skillBodies?: Map<string, SkillBody>;
 };
 
 export function listResources(hub: ResourcesHub, _options?: ListOptions) {
@@ -21,6 +23,7 @@ export async function readResource(hub: ResourcesHub, uri: string, _options?: Re
   if (uri === 'hatago://servers') {
     const serverList = hub.getServers().map((s) => ({
       id: s.id,
+      description: s.spec?.description ?? null,
       status: s.status,
       type: s.spec?.url ? 'remote' : 'local',
       url: s.spec?.url ?? null,
@@ -33,6 +36,14 @@ export async function readResource(hub: ResourcesHub, uri: string, _options?: Re
     const payload = { total: serverList.length, servers: serverList };
     hub.emit('resource:read', { uri, serverId: '_internal', result: payload });
     return { contents: [{ uri, text: JSON.stringify(payload, null, 2) }] };
+  }
+
+  if (uri.startsWith('skill://')) {
+    const body = hub.skillBodies?.get(uri);
+    if (body !== undefined) {
+      return { contents: [{ uri, mimeType: body.mimeType, text: body.text }] };
+    }
+    throw toError(createHatagoError('internal', `Skill not found: ${uri}`));
   }
 
   const resourceInfo = hub.resourceRegistry.resolveResource(uri);

@@ -4,6 +4,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { HatagoHub } from './hub.js';
+import { registerServerTools } from './client/registrar.js';
 
 describe('HatagoHub progress forwarding (pre-route)', () => {
   it('forwards notifications/progress to onNotification during tools/call', async () => {
@@ -19,6 +20,7 @@ describe('HatagoHub progress forwarding (pre-route)', () => {
 
     // Stub a client that triggers onprogress
     const client: any = {
+      listTools: async () => ({ tools: [{ name: 'test', description: '', inputSchema: {} }] }),
       callTool: async (_req: any, _unused: any, opts: any) => {
         // Emit a couple of progress updates
         await opts.onprogress({ progress: 10, total: 100, message: 'start' });
@@ -27,7 +29,8 @@ describe('HatagoHub progress forwarding (pre-route)', () => {
       }
     };
 
-    // Register fake server and client
+    // Register fake server and client through the real registration path, so the
+    // tool has a properly-mapped handler (matches how connectServer wires things up).
     (hub as any).servers.set('s1', {
       id: 's1',
       spec: {},
@@ -37,6 +40,7 @@ describe('HatagoHub progress forwarding (pre-route)', () => {
       status: 'active'
     });
     (hub as any).clients.set('s1', client);
+    await registerServerTools(hub as any, client, 's1', 30000);
 
     // Invoke tools/call via internal request handler with progressToken
     const msg = {

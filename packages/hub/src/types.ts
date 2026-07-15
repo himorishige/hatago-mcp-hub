@@ -8,6 +8,14 @@ import type { Prompt, Resource, Tool, HatagoConfig } from '@himorishige/hatago-c
  * Server specification
  */
 export type ServerSpec = {
+  // Routing hint surfaced in the hatago://servers manifest
+  description?: string;
+
+  // Directory of local skills bound to this server, exposed as
+  // skill://<serverId>/<name> resources. Resolved against the config file
+  // directory and contained within it (traversal/out-of-tree paths rejected).
+  skillsPath?: string;
+
   // Local server
   command?: string;
   args?: string[];
@@ -25,6 +33,14 @@ export type ServerSpec = {
   keepAliveTimeout?: number; // Keep-alive timeout
   reconnect?: boolean;
   reconnectDelay?: number;
+
+  // Filter which of the server's tools are exposed (by original tool name),
+  // and optionally override the exposed name/description per tool.
+  toolFilter?: {
+    include?: string[];
+    exclude?: string[];
+    overrides?: Record<string, { name?: string; description?: string }>;
+  };
 };
 
 /**

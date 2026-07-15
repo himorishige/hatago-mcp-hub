@@ -11,13 +11,13 @@
   },
   "dependencies": {
     "@himorishige/hatago-mcp-hub": "workspace:*",
-    "@hono/node-server": "^1.14.0",
-    "hono": "^4.9.4"
+    "@hono/node-server": "^1.19.14",
+    "hono": "^4.12.29"
   },
   "devDependencies": {
-    "@types/node": "^20.17.10",
+    "@types/node": "^20.19.11",
     "ts-node": "^10.9.2",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }

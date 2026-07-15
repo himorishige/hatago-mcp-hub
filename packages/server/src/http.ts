@@ -37,7 +37,6 @@ export async function startHttp(options: HttpOptions): Promise<void> {
   const hub = createHub({
     configFile: maybeExists ? config.path : undefined,
     preloadedConfig: { path: config.path, data: config.data },
-
     tags
   });
   await hub.start();

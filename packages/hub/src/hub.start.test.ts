@@ -11,7 +11,8 @@ vi.mock('node:fs', () => ({
 
 // Mock path module
 vi.mock('node:path', () => ({
-  resolve: vi.fn((path: string) => path)
+  resolve: vi.fn((path: string) => path),
+  dirname: vi.fn((path: string) => path)
 }));
 
 describe('HatagoHub start() config loading', () => {
